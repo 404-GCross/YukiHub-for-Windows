@@ -53,7 +53,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          unformatted="$(gofmt -l . | grep -v '^updater/' || true)"
+          unformatted="$(gofmt -l .)"
           if [ -n "$unformatted" ]; then
             echo "以下文件未通过 gofmt，请先执行 gofmt -w 再提交："
             echo "$unformatted"
