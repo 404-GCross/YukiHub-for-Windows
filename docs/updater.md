@@ -1,17 +1,17 @@
 # Windows 应用内更新
 
-LunaBox 使用独立的 `LunaBoxUpdater.exe` 完成伪应用内更新，不依赖 Velopack 的目录结构或运行时 SDK。便携版和安装版都保持现有平铺目录，数据路径不迁移；下载、重建和 journal 放在系统临时目录，不在便携版根目录新增更新工作目录。
+YukiHub 使用独立的 `YukiHubUpdater.exe` 完成伪应用内更新，不依赖 Velopack 的目录结构或运行时 SDK。便携版和安装版都保持现有平铺目录，数据路径不迁移；下载、重建和 journal 放在系统临时目录，不在便携版根目录新增更新工作目录。
 
-更新器与资产生成器位于独立 Go module `updater/`。LunaBox 侧的清单获取、下载和任务调度位于 `internal/updateclient/`，Wails service 只负责接口适配、进度事件与退出调度。
+更新器与资产生成器位于独立 Go module `updater/`。YukiHub 侧的清单获取、下载和任务调度位于 `internal/updateclient/`，Wails service 只负责接口适配、进度事件与退出调度。
 
 ## 更新模型
 
-- LunaBox 继续负责版本检测、代理配置、下载进度和退出前同步。
-- `LunaBoxUpdater.exe prepare` 在 LunaBox 运行时重建并验证新文件，不修改应用目录。
-- `LunaBoxUpdater.exe commit` 等待 LunaBox 退出，再事务性替换发生变化的文件并重启应用。
-- 只为上一稳定版本的 `LunaBox.exe` 生成 Zstandard dictionary patch（`.zsdiff`）。源版本或源 SHA-256 不完全匹配时直接选择完整 `.zst`。
+- YukiHub 继续负责版本检测、代理配置、下载进度和退出前同步。
+- `YukiHubUpdater.exe prepare` 在 YukiHub 运行时重建并验证新文件，不修改应用目录。
+- `YukiHubUpdater.exe commit` 等待 YukiHub 退出，再事务性替换发生变化的文件并重启应用。
+- 只为上一稳定版本的 `YukiHub.exe` 生成 Zstandard dictionary patch（`.zsdiff`）。源版本或源 SHA-256 不完全匹配时直接选择完整 `.zst`。
 - CLI、updater、7z 和 DuckDB 不做 patch；它们未变化时不下载，变化时使用各自的完整 `.zst`。
-- patch 重建或验证失败时，LunaBox 保持运行并下载 `LunaBox.exe` 的完整 `.zst` 后重新 prepare。
+- patch 重建或验证失败时，YukiHub 保持运行并下载 `YukiHub.exe` 的完整 `.zst` 后重新 prepare。
 
 发布清单包含四个独立 channel：
 
@@ -26,27 +26,27 @@ windows-arm64-installer
 
 - 清单和每个下载产物必须使用 HTTPS，并记录大小和 SHA-256。
 - prepare 标记绑定完整 task；prepare 后修改路径、哈希、重启参数等都会使 commit 拒绝执行。
-- `LunaBox.exe`、`LunaBoxUpdater.exe` 和 `lunacli.exe` 在替换前通过 Windows Authenticode 校验。
+- `YukiHub.exe`、`YukiHubUpdater.exe` 和 `yukihubcli.exe` 在替换前通过 Windows Authenticode 校验。
 - updater 只允许修改代码内列出的运行时文件，拒绝绝对路径、目录穿越和任意数据文件。
-- 每次替换都有 journal 和备份。文件被 CLI/7z 等进程短暂锁定时会在 10 秒内重试，仍无法替换则按逆序回滚，但不会强杀用户进程；LunaBox 尚未退出时发生的验证/等待错误不会启动第二个实例，回滚本身失败时也不会冒险启动混合版本。
+- 每次替换都有 journal 和备份。文件被 CLI/7z 等进程短暂锁定时会在 10 秒内重试，仍无法替换则按逆序回滚，但不会强杀用户进程；YukiHub 尚未退出时发生的验证/等待错误不会启动第二个实例，回滚本身失败时也不会冒险启动混合版本。
 - 安装版 commit 通过 UAC 提权，仅更新文件和卸载项中的 `DisplayVersion`，不会重建 NSIS uninstaller。
-- `duckdb.dll` 和 `7z.dll` 本身没有 LunaBox Authenticode 校验，其真实性依赖更新清单、S3 发布凭据和发布任务权限。自定义更新源的维护者需要承担同等的发布安全责任。
+- `duckdb.dll` 和 `7z.dll` 本身没有 YukiHub Authenticode 校验，其真实性依赖更新清单、S3 发布凭据和发布任务权限。自定义更新源的维护者需要承担同等的发布安全责任。
 
 ## 发布流程
 
 `scripts/build.bat` 会把 updater 放入便携包和 NSIS 安装目录。SignPath 的 portable 和 installer-payload artifact configuration 必须同时签名：
 
 ```text
-LunaBox.exe
-lunacli.exe
-LunaBoxUpdater.exe
+YukiHub.exe
+yukihubcli.exe
+YukiHubUpdater.exe
 ```
 
-release workflow 会验证三者的 Authenticode 签名，收集每个 channel 的实际运行时文件，生成完整 `.zst` 和 JSON 清单。若能从 S3 取得上一稳定版的 `LunaBox.exe.zst`，还会调用官方 `zstd --patch-from` 生成 patch，并用 updater 自己的解码器重建、校验后再发布。
+release workflow 会验证三者的 Authenticode 签名，收集每个 channel 的实际运行时文件，生成完整 `.zst` 和 JSON 清单。若能从 S3 取得上一稳定版的 `YukiHub.exe.zst`，还会调用官方 `zstd --patch-from` 生成 patch，并用 updater 自己的解码器重建、校验后再发布。
 
 签名后的便携包和安装包发布到 GitHub Release。完整 `.zst`、可用的 `.zsdiff`、manifest 与版本信息发布到 S3。版本资产先上传，manifest 随后上传，channel 版本信息最后上传。
 
-第一次包含 updater 的版本是 bootstrap 版本：旧版本目录里没有 `LunaBoxUpdater.exe`，必须由用户手动下载或安装一次。从下一个版本开始才能使用应用内更新；第一次生成更新资产时没有旧 `.zst` 基线也属于正常情况，只会发布完整更新。
+第一次包含 updater 的版本是 bootstrap 版本：旧版本目录里没有 `YukiHubUpdater.exe`，必须由用户手动下载或安装一次。从下一个版本开始才能使用应用内更新；第一次生成更新资产时没有旧 `.zst` 基线也属于正常情况，只会发布完整更新。
 
 正式版本源沿用 `sync/version.json`，无需写入 `update_manifest_url`。正式构建会根据 `internal/version.UpdateServiceURL` 与版本号生成清单地址：
 
@@ -64,14 +64,14 @@ release workflow 会验证三者的 Authenticode 签名，收集每个 channel �
 
 1. 使用工作流自带的 branch 下拉框选择要构建的分支。
 2. `version` 填不带 `v` 的 `X.Y.Z-test.N`，并确保它在 SemVer 顺序上高于待更新客户端，例如从 `1.10.0` 测试时使用 `1.10.1-test.1`。
-3. `previous_tag` 留空时只生成 full 资产；填写已有 release tag 时，会从 S3 下载该版本的 `LunaBox.exe.zst` 并尝试生成 delta。
+3. `previous_tag` 留空时只生成 full 资产；填写已有 release tag 时，会从 S3 下载该版本的 `YukiHub.exe.zst` 并尝试生成 delta。
 
 测试 tag 不会覆盖，成功后会创建 `vX.Y.Z-test.N` pre-release。要验证 delta，先发布并安装 A（例如 `1.10.1-test.1`），再发布 B（例如 `1.10.1-test.2`），且 B 的 `previous_tag` 填 A 的 tag。
 
 每个测试版本的 version JSON 与更新资产保存在 S3，GitHub pre-release 只包含签名后的公开发行包。不要修改正式的 `sync/version.json`；关闭待测试客户端后，在其 `appconf.json` 中将 `update_check_url` 设置为 release notes 给出的测试地址：
 
 - 便携版：程序目录旁的 `appconf.json`
-- 安装版：`%APPDATA%\LunaBox\appconf.json`
+- 安装版：`%APPDATA%\YukiHub\appconf.json`
 
 测试 JSON 已显式包含 `update_manifest_url`。测试结束后删除 `update_check_url` 或设为空字符串，即可恢复正式 Cloudflare/Netlify 更新源。
 

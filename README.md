@@ -1,182 +1,107 @@
-<img src="screenshot/hero.png" alt="LunaBox" />
+# YukiHub for Windows
 
-<div align="center">
+YukiHub 的 Windows 桌面版：Galgame / 视觉小说库管理、启动与游玩记录工具。
 
-[中文](README.zh-CN.md) | [English](README.md) | [日本語](README.ja.md)
+> **开发状态：早期开发中。** 当前仓库是以上游 LunaBox 为基线的硬分叉，
+> 正在进行去品牌化、工程加固与产品层重建。**尚无可发布的安装包**，
+> 界面与功能仍是上游形态。进度见 [docs/ROADMAP.md](docs/ROADMAP.md)。
 
-</div>
+## 这是什么
 
-<p align="center">
-  <a href="https://github.com/Saramanda9988/LunaBox/releases">
-    <img src="https://img.shields.io/github/downloads/Saramanda9988/LunaBox/total?color=369eff&labelColor=black&logo=github&style=flat-square&label=Downloads" /></a>
-  <a href="https://github.com/Saramanda9988/LunaBox/stargazers">
-    <img src="https://img.shields.io/github/stars/Saramanda9988/LunaBox?color=369eff&labelColor=black&logo=github&style=flat-square&label=Stars" /></a>
-  <a href="https://github.com/Saramanda9988/LunaBox/releases/latest">
-    <img src="https://img.shields.io/github/v/release/Saramanda9988/LunaBox?color=369eff&labelColor=black&logo=github&style=flat-square&label=Release" /></a>
-</p>
+YukiHub 有两个端：
 
-<p align="center">
-  <a href="http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=Eq5DkGu1gs6tL9bUEJFiq46r6czdpQaR&authKey=w1NRtvE8fYAgShdzGFGx4QDaKQyJRypgHOrVMOhxK5cjUbGt4TXu4px2L%2FJem2WN&noverify=0&group_code=1094948837"><img src="screenshot/qq-community.png" alt="Join the LunaBox QQ Group" width="45%" /></a>
-  <a href="https://t.me/+6YTPdl-6YeM1OGNl"><img src="screenshot/telegram-community.png" alt="Join the LunaBox Telegram Group" width="45%" /></a>
-</p>
+| 端 | 仓库 | 许可证 |
+| --- | --- | --- |
+| Android 手机版 | https://github.com/xm486/YukiHub | GPL-3.0 |
+| Windows 桌面版（本仓库） | 见仓库地址 | AGPL-3.0 |
 
-## ✨ Features
+桌面版的目标不是把手机版移植过来，而是与手机版共享同一套数据语义与使用习惯：
+游戏库、游玩记录、资料刮削、数据同步、备份恢复。两端之间的数据可以互相导入导出。
 
-- **Game category management** - Organize your library with custom categories
-- **Playtime tracking** - Automatically track session time when launching games
-- **Multi-dimensional statistics** - View play data by day/week/month/year and export shareable stat cards
-- **AI insights** - Analyze gameplay data to generate personalized, playful reports, with MCP exposure and CLI skill support for broader data-use scenarios
-- **Convenient data import** - Import from PotatoVN, Playnite, Vnite, and Steam; supports folder batch import and drag-and-drop
-- **Backup and sync (beta)** - Local backup and multi-device sync, AWS S3, Qiniu, Alibaba Cloud OSS (S3-compatible), and OneDrive backup
-- **CLI Mode** - Support for managing, launching, and backing up games, and modifying program data via command line
-- **Privacy and security** - All sensitive data is stored locally
+## 规划中的能力
 
-## 📷 Screenshots
+已从上游基线继承并可直接使用：
 
-<details>
-<summary>Click to view more custom background styles</summary>
+- Windows 游戏进程识别与退出监听，自动统计游玩时长
+- Locale Emulator 启动（日文游戏转区）与 Magpie 缩放器联动
+- 多来源资料刮削（Bangumi、VNDB、月幕 Gal、Hikarinagi、Steam 等）
+- 批量目录扫描导入、拖入导入，以及从 Playnite / PotatoVN / Vnite / ReinaManager 迁移
+- 存档与数据库备份（本地 + 云）、多设备同步
+- 系统托盘、开机自启、URL 协议唤醒、代理、后台静音
+- 命令行长接口与 MCP 服务
+- NSIS 安装器与应用内增量更新
 
-<table>
-  <tr>
-    <td width="50%" align="center">
-      <img src="screenshot/home-img.png" alt="Home with custom background" />
-      <br />
-      <sub>Home</sub>
-    </td>
-    <td width="50%" align="center">
-      <img src="screenshot/home-1-img.png" alt="Alternative home with custom background" />
-      <br />
-      <sub>Alternative Home</sub>
-    </td>
-  </tr>
-  <tr>
-    <td width="50%" align="center">
-      <img src="screenshot/lib-img.png" alt="Library with custom background" />
-      <br />
-      <sub>Library</sub>
-    </td>
-    <td width="50%" align="center">
-      <img src="screenshot/game-img.png" alt="Game detail with custom background" />
-      <br />
-      <sub>Game Detail</sub>
-    </td>
-  </tr>
-  <tr>
-    <td colspan="2" align="center">
-      <img src="screenshot/stats-img.png" alt="Statistics with custom background" width="60%" />
-      <br />
-      <sub>Statistics</sub>
-    </td>
-  </tr>
-</table>
+计划从 Android 版迁入：
 
-</details>
+- 与手机版一致的游玩记录与同步协议（见 [迁移设计](docs/mobile-yukihub-migration.md)）
+- AI 游玩报告
+- OCR + 多引擎翻译工作流
 
-<details>
-<summary>Click to view stat export poster templates</summary>
+暂缓：
 
-<table>
-  <tr>
-    <td width="33%" align="center">
-      <img src="screenshot/lunabox-stats-20260124-175553.png" alt="Minimal stat poster" />
-      <br />
-      <sub>Minimal</sub>
-    </td>
-    <td width="33%" align="center">
-      <img src="screenshot/lunabox-stats-20260124-175602.png" alt="Future retro stat poster" />
-      <br />
-      <sub>Future Retro</sub>
-    </td>
-    <td width="33%" align="center">
-      <img src="screenshot/lunabox-stats-20260124-175617.png" alt="Journal style stat poster" />
-      <br />
-      <sub>Journal Style</sub>
-    </td>
-  </tr>
-</table>
+- 离线 3D 展厅（手机版已有实现，桌面版后续再评估）
 
-</details>
+明确不做：
 
-Additional in-app screenshots (located in the `screenshot/` directory):
+- 内置 Galgame 引擎与模拟器启动（Windows 上直接运行原生程序即可）
 
-<table>
-  <tr>
-    <td width="50%" align="center">
-      <img src="screenshot/home.png" alt="Home" />
-      <br />
-      <sub>Home</sub>
-    </td>
-    <td width="50%" align="center">
-      <img src="screenshot/home-1.png" alt="Alternative home" />
-      <br />
-      <sub>Alternative Home</sub>
-    </td>
-  </tr>
-  <tr>
-    <td width="50%" align="center">
-      <img src="screenshot/lib.png" alt="Library" />
-      <br />
-      <sub>Library</sub>
-    </td>
-    <td width="50%" align="center">
-      <img src="screenshot/game.png" alt="Game detail" />
-      <br />
-      <sub>Game Detail</sub>
-    </td>
-  </tr>
-  <tr>
-    <td colspan="2" align="center">
-      <img src="screenshot/stats.png" alt="Statistics" width="60%" />
-      <br />
-      <sub>Statistics</sub>
-    </td>
-  </tr>
-</table>
+## 从源码构建
 
-## 📦 Installation
+环境要求：
 
-### Download from Releases
+- Go（版本见 `go.mod`，当前 1.27.1）
+- Node.js 24 与 pnpm 9
+- Wails v3 CLI，版本需与 `go.mod` 中 `github.com/wailsapp/wails/v3` **完全一致**
 
-Go to the [Releases](https://github.com/Saramanda9988/LunaBox/releases) page and download the latest installer.
+```bash
+# 1. 前端依赖
+cd frontend && pnpm install && cd ..
 
-You can also download a Nightly build from [AutoBuild](https://github.com/Saramanda9988/LunaBox/releases/tag/dev-latest) to try the latest features.
+# 2. 生成 Wails 绑定（后端 service 方法签名变更后必须重新执行）
+wails3 generate bindings -clean=true -ts
 
-## 🤝 Contributing
+# 3. 开发模式运行
+wails3 dev -config ./build/config.yml -port 9245
 
-Issues and Pull Requests are welcome.
+# 4. 构建
+wails3 build
+```
 
-## 😀 From Open Source to Open Source
+提交前自检：
 
-Inspiration:
+```bash
+gofmt -l .          # 应无输出
+go vet ./...
+go test ./... -count=1
+```
 
-- [PotatoVN](https://github.com/GoldenPotato137/PotatoVN) - Galgame 管理工具
-- [ReinaManager](https://github.com/huoshen80/ReinaManager) - 一款轻量化的galgame和视觉小说管理工具
-- [Playnite](https://github.com/JosefNemec/Playnite) - An open source video game library manager with one simple goal: to provide a unified interface for all of your games
-- [Vnite](https://github.com/ximu3/vnite) - A unified platform to organize your game collection, track gameplay, with real-time cloud sync across devices and detailed gameplay reports
+## 分叉说明与待配置项
 
-## 🙏 Acknowledgements
+本仓库是 LunaBox v1.13.0 的硬分叉。代码层面的品牌替换已完成，但**仓库地址、第三方服务凭据、
+代码签名与更新服务**必须由 YukiHub 自行配置后才能发布。完整清单见
+[docs/fork-setup.md](docs/fork-setup.md)。
 
-Game metadata APIs:
+上游版权与修改记录见 [docs/upstream-lunabox.md](docs/upstream-lunabox.md)。
 
-- [Bangumi](https://github.com/bangumi) - Bangumi番组计划
-- [VNDB](https://vndb.org/) - The Visual Novel Database
-- [月幕gal](https://www.ymgal.games/) - 请感受这绝妙的文艺体裁
-- [萌娘百科](https://zh.moegirl.org.cn/) - 万物皆可萌的百科全书
-- [Steam](https://store.steampowered.com/) - The world's largest digital game distribution platform
-- [TouchGal](https://www.touchgal.ink/) - A one-stop Galgame culture community
-- [Hikarinagi](https://www.hikarinagi.org/) - An ACGN community for you and fellow fans
+## 开源许可
 
-Archive extraction support:
+本项目采用 **GNU Affero General Public License v3.0（AGPL-3.0）**，全文见 [LICENSE](LICENSE)。
 
-- [7-Zip](https://www.7-zip.org/) - A free and open-source file archiver, a utility used to place groups of files within compressed containers known as "archives".
+- 本项目是修改版本，基于 LunaBox 开发，**并非上游官方发行版**，上游不提供担保或支持。
+- 上游项目版权归 LunaBox contributors 所有，同样采用 AGPL-3.0。
+- 版权与修改声明见 [NOTICE](NOTICE)，合规义务说明见 [docs/AGPL-COMPLIANCE.md](docs/AGPL-COMPLIANCE.md)。
+- 第三方组件许可证见 [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md)。
 
-## 🙌 Sponsors
+## 免责声明
 
-| [![SignPath](screenshot/signpath-icon.png)](https://about.signpath.io/product/open-source) | Free code signing on Windows provided by [SignPath.io](https://about.signpath.io/product/open-source), certificate by [SignPath Foundation](https://signpath.org/). |
-| --- | --- |
+本项目仅用于管理和启动你**有权使用**的游戏、应用或资源。
 
-## 📄 License
+本项目不提供游戏本体、破解资源或任何绕过授权的能力，也不为违规用途提供支持。
 
-This project is licensed under [AGPL v3](LICENSE).
+## 参与贡献
 
-[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FSaramanda9988%2FLunaBox.svg?type=large&issueType=license)](https://app.fossa.com/projects/git%2Bgithub.com%2FSaramanda9988%2FLunaBox?ref=badge_large&issueType=license)
+- 提交前请确保 `gofmt`、`go vet`、`go test` 均通过。
+- 后端改动请遵循 [docs/backend.md](docs/backend.md) 的分层与依赖注入约束。
+- 涉及数据结构变更时，请同时更新 [迁移设计](docs/mobile-yukihub-migration.md)，
+  因为 Android 版需要与桌面版保持数据语义一致。
+- 大型技术决策请先写 ADR，放在 `docs/decisions/` 下。

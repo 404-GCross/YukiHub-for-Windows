@@ -1,0 +1,49 @@
+YukiHub for Windows
+===================
+
+本仓库是 YukiHub 项目的 Windows 桌面版本。
+
+许可证
+------
+本产品整体按 GNU Affero General Public License v3.0 授权，全文见 LICENSE。
+分发本产品的任何副本（包括二进制）时，必须一并分发 LICENSE 与本 NOTICE。
+
+上游来源与版权声明
+------------------
+本产品来源于下列上游项目，其版权声明依 AGPL-3.0 第 4 节要求予以保留：
+
+  LunaBox
+    版权:   Copyright (c) LunaBox contributors
+    版本:   v1.13.0
+    来源:   https://github.com/Saramanda9988/LunaBox
+    许可证: GNU Affero General Public License v3.0
+
+修改声明（AGPL-3.0 第 5(a) 条）
+------------------------------
+YukiHub for Windows 是对 LunaBox 的修改版本。
+
+  首次修改日期: 2026-09-27
+  修改主体:     YukiHub 项目
+  修改内容:     见 docs/upstream-lunabox.md 以及本仓库的 git 提交历史
+
+这是与原始版本不同的修改版本，并非上游官方发行版。
+上游项目不对本产品提供任何担保或支持。
+
+本产品按 AGPL-3.0 第 5(c) 条要求，整体（而非部分）按本许可证授权，
+不附加任何额外限制条款。
+
+对应源代码
+----------
+本产品的完整对应源代码（含构建与安装脚本）可在本仓库获取。
+如通过二进制分发，请确保接收者能够获得与所分发二进制版本完全对应的源码。
+
+YukiHub 项目家族
+----------------
+  YukiHub（Android 手机版）  https://github.com/xm486/YukiHub   许可证: GPL-3.0
+
+手机版与桌面版为同一产品家族的两端。当前桌面版代码尚未包含手机版源码；
+后续若从手机版移植代码，将同时保留其 GPL-3.0 版权声明与许可证文本。
+
+第三方组件
+----------
+本产品分发或链接了若干第三方组件，其许可证与声明见 THIRD_PARTY_LICENSES.md。
