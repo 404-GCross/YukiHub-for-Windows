@@ -1,0 +1,835 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'  # 例如: v1.0.0, v1.2.3
+  workflow_dispatch:
+
+env:
+  LUNABOX_UPDATE_SERVICE_URL: ${{ vars.UPDATE_PUBLIC_BASE_URL }}
+
+jobs:
+  build-release:
+    name: Windows ${{ matrix.arch }} / ${{ matrix.mode }}
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      actions: read
+      contents: read
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - arch: amd64
+            mode: portable
+            runner: windows-2025
+          - arch: arm64
+            mode: portable
+            runner: windows-11-arm
+            msystem: CLANGARM64
+            toolchain: mingw-w64-clang-aarch64-toolchain
+          - arch: amd64
+            mode: installer
+            runner: windows-2025
+          - arch: arm64
+            mode: installer
+            runner: windows-11-arm
+            msystem: CLANGARM64
+            toolchain: mingw-w64-clang-aarch64-toolchain
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+          cache-dependency-path: |
+            go.sum
+            updater/go.sum
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Install matching Wails v3 CLI
+        shell: pwsh
+        run: |
+          $Version = (go list -m -f '{{.Version}}' github.com/wailsapp/wails/v3).Trim()
+          go install "github.com/wailsapp/wails/v3/cmd/wails3@$Version"
+          $Installed = (& wails3 version 2>&1 | Out-String).Trim()
+          if ($Installed -ne $Version) {
+            throw "wails3 version mismatch: expected $Version, found $Installed"
+          }
+
+      - name: Setup ARM64 CGO toolchain
+        id: msys2-arm64
+        if: matrix.arch == 'arm64'
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: ${{ matrix.msystem }}
+          path-type: inherit
+          install: ${{ matrix.toolchain }}
+
+      - name: Export ARM64 MSYS2 location
+        if: matrix.arch == 'arm64'
+        shell: pwsh
+        run: |
+          $Location = '${{ steps.msys2-arm64.outputs.msys2-location }}'
+          if ([string]::IsNullOrWhiteSpace($Location)) {
+            throw 'MSYS2 location output is empty.'
+          }
+          "MSYS2_LOCATION=$Location" >> $env:GITHUB_ENV
+
+      - name: Install NSIS
+        if: matrix.mode == 'installer'
+        shell: pwsh
+        run: |
+          choco install nsis --no-progress -y
+          'C:\Program Files (x86)\NSIS' >> $env:GITHUB_PATH
+
+      - name: Get version from tag
+        id: get_version
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Build Portable with script
+        if: matrix.mode == 'portable'
+        env:
+          LUNABOX_BANGUMI_CLIENT_ID: ${{ vars.LUNABOX_BANGUMI_CLIENT_ID }}
+          LUNABOX_BANGUMI_CLIENT_SECRET: ${{ secrets.LUNABOX_BANGUMI_CLIENT_SECRET }}
+          LUNABOX_HIKARINAGI_CLIENT_ID: ${{ vars.LUNABOX_HIKARINAGI_CLIENT_ID }}
+          LUNABOX_TOUCHGAL_TOKEN: ${{ secrets.LUNABOX_TOUCHGAL_TOKEN }}
+          LUNABOX_UMBRA_CLIENT_ID: ${{ vars.LUNABOX_UMBRA_CLIENT_ID }}
+          LUNABOX_UMBRA_REGISTRATION_TOKEN: ${{ secrets.LUNABOX_UMBRA_REGISTRATION_TOKEN }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          .\scripts\build.bat "portable" "${{ steps.get_version.outputs.VERSION }}" "${{ matrix.arch }}"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+          $Artifact = "build/bin/LunaBox-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-portable.zip"
+          if (!(Test-Path $Artifact)) {
+            Get-ChildItem -Path "build/bin" -Recurse | ForEach-Object { Write-Host $_.FullName }
+            throw "Build artifact not found: $Artifact"
+          }
+        shell: pwsh
+
+      - name: Build Installer Payload with script
+        if: matrix.mode == 'installer'
+        env:
+          LUNABOX_BANGUMI_CLIENT_ID: ${{ vars.LUNABOX_BANGUMI_CLIENT_ID }}
+          LUNABOX_BANGUMI_CLIENT_SECRET: ${{ secrets.LUNABOX_BANGUMI_CLIENT_SECRET }}
+          LUNABOX_HIKARINAGI_CLIENT_ID: ${{ vars.LUNABOX_HIKARINAGI_CLIENT_ID }}
+          LUNABOX_TOUCHGAL_TOKEN: ${{ secrets.LUNABOX_TOUCHGAL_TOKEN }}
+          LUNABOX_UMBRA_CLIENT_ID: ${{ vars.LUNABOX_UMBRA_CLIENT_ID }}
+          LUNABOX_UMBRA_REGISTRATION_TOKEN: ${{ secrets.LUNABOX_UMBRA_REGISTRATION_TOKEN }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          .\scripts\build.bat "installer-payload" "${{ steps.get_version.outputs.VERSION }}" "${{ matrix.arch }}"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+          $PayloadDir = "build/windows/payload/${{ matrix.arch }}"
+          if (!(Test-Path "$PayloadDir/LunaBox.exe") -or !(Test-Path "$PayloadDir/lunacli.exe") -or !(Test-Path "build/bin/LunaBoxUpdater.exe")) {
+            Get-ChildItem -Path $PayloadDir -Recurse | ForEach-Object { Write-Host $_.FullName }
+            Get-ChildItem -Path "build/bin" -Recurse | ForEach-Object { Write-Host $_.FullName }
+            throw "Installer payload must contain LunaBox.exe, lunacli.exe, and LunaBoxUpdater.exe."
+          }
+
+          $SigningDir = "build/signing/installer-payload"
+          if (Test-Path $SigningDir) { Remove-Item $SigningDir -Recurse -Force }
+          New-Item -ItemType Directory -Force -Path $SigningDir | Out-Null
+          Copy-Item -LiteralPath "$PayloadDir/LunaBox.exe" -Destination $SigningDir -Force
+          Copy-Item -LiteralPath "$PayloadDir/lunacli.exe" -Destination $SigningDir -Force
+          Copy-Item -LiteralPath "build/bin/LunaBoxUpdater.exe" -Destination $SigningDir -Force
+        shell: pwsh
+
+      - name: Upload Unsigned Portable Artifact
+        id: upload-unsigned-portable
+        if: matrix.mode == 'portable'
+        uses: actions/upload-artifact@v4
+        with:
+          name: unsigned-lunabox-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-portable
+          path: build/bin/LunaBox-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-portable.zip
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Sign Portable Artifact
+        if: matrix.mode == 'portable'
+        uses: signpath/github-action-submit-signing-request@v2
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG || 'test-signing' }}
+          artifact-configuration-slug: ${{ vars.SIGNPATH_PORTABLE_ARTIFACT_CONFIGURATION_SLUG || 'github-portable' }}
+          github-artifact-id: ${{ steps.upload-unsigned-portable.outputs.artifact-id }}
+          wait-for-completion: true
+          wait-for-completion-timeout-in-seconds: 1200
+          output-artifact-directory: signed
+
+      - name: Verify signed portable artifact
+        if: matrix.mode == 'portable'
+        run: |
+          $ErrorActionPreference = "Stop"
+          $Artifact = "signed/LunaBox-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-portable.zip"
+          if (!(Test-Path $Artifact)) {
+            Get-ChildItem -Path signed -Recurse | ForEach-Object { Write-Host $_.FullName }
+            throw "Signed portable artifact not found: $Artifact"
+          }
+
+          $ExtractDir = Join-Path $env:RUNNER_TEMP "lunabox-signed-portable"
+          if (Test-Path $ExtractDir) { Remove-Item $ExtractDir -Recurse -Force }
+          Expand-Archive -Path $Artifact -DestinationPath $ExtractDir -Force
+          $PayloadDir = (Get-ChildItem $ExtractDir -Filter "LunaBox.exe" -Recurse | Select-Object -First 1).Directory.FullName
+          if ([string]::IsNullOrWhiteSpace($PayloadDir)) {
+            throw "Signed portable archive does not contain LunaBox.exe."
+          }
+          foreach ($Name in @("LunaBox.exe", "lunacli.exe", "LunaBoxUpdater.exe")) {
+            $Path = Join-Path $PayloadDir $Name
+            if (!(Test-Path $Path)) { throw "Signed portable archive is missing $Name." }
+            $Signature = Get-AuthenticodeSignature $Path
+            if ($Signature.Status -ne "Valid") {
+              throw "$Name does not have a valid Authenticode signature: $($Signature.Status)"
+            }
+          }
+
+          $RuntimeDir = Join-Path $PWD "update-runtime"
+          if (Test-Path $RuntimeDir) { Remove-Item $RuntimeDir -Recurse -Force }
+          New-Item -ItemType Directory -Force -Path $RuntimeDir | Out-Null
+          foreach ($Name in @("LunaBox.exe", "lunacli.exe", "LunaBoxUpdater.exe", "duckdb.dll")) {
+            $Source = Join-Path $PayloadDir $Name
+            if (Test-Path $Source) { Copy-Item $Source -Destination $RuntimeDir -Force }
+          }
+          if (Test-Path (Join-Path $PayloadDir "7z")) {
+            Copy-Item (Join-Path $PayloadDir "7z") -Destination $RuntimeDir -Recurse -Force
+          }
+        shell: pwsh
+
+      - name: Upload Portable Artifact
+        if: matrix.mode == 'portable'
+        uses: actions/upload-artifact@v4
+        with:
+          name: lunabox-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-portable
+          path: signed/LunaBox-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-portable.zip
+          if-no-files-found: error
+
+      - name: Upload Unsigned Installer Payload
+        id: upload-unsigned-installer-payload
+        if: matrix.mode == 'installer'
+        uses: actions/upload-artifact@v4
+        with:
+          name: unsigned-lunabox-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-installer-payload
+          path: build/signing/installer-payload/
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Sign Installer Payload
+        if: matrix.mode == 'installer'
+        uses: signpath/github-action-submit-signing-request@v2
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG || 'test-signing' }}
+          artifact-configuration-slug: ${{ vars.SIGNPATH_INSTALLER_PAYLOAD_ARTIFACT_CONFIGURATION_SLUG || 'github-installer-payload' }}
+          github-artifact-id: ${{ steps.upload-unsigned-installer-payload.outputs.artifact-id }}
+          wait-for-completion: true
+          wait-for-completion-timeout-in-seconds: 1200
+          output-artifact-directory: signed-payload
+
+      - name: Build Installer from signed payload
+        if: matrix.mode == 'installer'
+        run: |
+          $ErrorActionPreference = "Stop"
+          $SignedGui = "signed-payload/LunaBox.exe"
+          $SignedCli = "signed-payload/lunacli.exe"
+          $SignedUpdater = "signed-payload/LunaBoxUpdater.exe"
+          if (!(Test-Path $SignedGui) -or !(Test-Path $SignedCli) -or !(Test-Path $SignedUpdater)) {
+            Get-ChildItem -Path signed-payload -Recurse | ForEach-Object { Write-Host $_.FullName }
+            throw "Signed installer payload must contain LunaBox.exe, lunacli.exe, and LunaBoxUpdater.exe."
+          }
+          foreach ($Path in @($SignedGui, $SignedCli, $SignedUpdater)) {
+            $Signature = Get-AuthenticodeSignature $Path
+            if ($Signature.Status -ne "Valid") {
+              throw "$(Split-Path $Path -Leaf) does not have a valid Authenticode signature: $($Signature.Status)"
+            }
+          }
+
+          $PayloadDir = "build/windows/payload/${{ matrix.arch }}"
+          Copy-Item $SignedGui -Destination "$PayloadDir/LunaBox.exe" -Force
+          Copy-Item $SignedCli -Destination "$PayloadDir/lunacli.exe" -Force
+          Copy-Item $SignedUpdater -Destination "build/bin/LunaBoxUpdater.exe" -Force
+
+          .\scripts\build.bat "installer-package" "${{ steps.get_version.outputs.VERSION }}" "${{ matrix.arch }}"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+          $Artifact = "build/bin/LunaBox-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-setup.exe"
+          if (!(Test-Path $Artifact)) {
+            Get-ChildItem -Path "build/bin" -Recurse | ForEach-Object { Write-Host $_.FullName }
+            throw "Installer artifact not found: $Artifact"
+          }
+
+          $RuntimeDir = Join-Path $PWD "update-runtime"
+          if (Test-Path $RuntimeDir) { Remove-Item $RuntimeDir -Recurse -Force }
+          New-Item -ItemType Directory -Force -Path $RuntimeDir | Out-Null
+          foreach ($Name in @("LunaBoxUpdater.exe", "duckdb.dll")) {
+            $Source = Join-Path "build/bin" $Name
+            if (Test-Path $Source) { Copy-Item $Source -Destination $RuntimeDir -Force }
+          }
+          foreach ($Name in @("LunaBox.exe", "lunacli.exe")) {
+            $Source = Join-Path $PayloadDir $Name
+            if (Test-Path $Source) { Copy-Item $Source -Destination $RuntimeDir -Force }
+          }
+          if (Test-Path "build/bin/7z") {
+            Copy-Item "build/bin/7z" -Destination $RuntimeDir -Recurse -Force
+          }
+        shell: pwsh
+
+      - name: Upload update runtime input
+        uses: actions/upload-artifact@v4
+        with:
+          name: update-runtime-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-${{ matrix.mode }}
+          path: update-runtime/
+          if-no-files-found: error
+
+      - name: Upload Unsigned Installer Artifact
+        id: upload-unsigned-installer
+        if: matrix.mode == 'installer'
+        uses: actions/upload-artifact@v4
+        with:
+          name: unsigned-lunabox-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-installer
+          path: build/bin/LunaBox-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-setup.exe
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Sign Installer Artifact
+        if: matrix.mode == 'installer'
+        uses: signpath/github-action-submit-signing-request@v2
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG || 'test-signing' }}
+          artifact-configuration-slug: ${{ vars.SIGNPATH_INSTALLER_ARTIFACT_CONFIGURATION_SLUG || 'github-installer' }}
+          github-artifact-id: ${{ steps.upload-unsigned-installer.outputs.artifact-id }}
+          wait-for-completion: true
+          wait-for-completion-timeout-in-seconds: 1200
+          output-artifact-directory: signed-installer
+
+      - name: Verify signed installer artifact
+        if: matrix.mode == 'installer'
+        run: |
+          $ErrorActionPreference = "Stop"
+          $Artifact = "signed-installer/LunaBox-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-setup.exe"
+          if (!(Test-Path $Artifact)) {
+            Get-ChildItem -Path signed-installer -Recurse | ForEach-Object { Write-Host $_.FullName }
+            throw "Signed installer artifact not found: $Artifact"
+          }
+        shell: pwsh
+
+      - name: Upload Installer Artifact
+        if: matrix.mode == 'installer'
+        uses: actions/upload-artifact@v4
+        with:
+          name: lunabox-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-installer
+          path: signed-installer/LunaBox-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-setup.exe
+          if-no-files-found: error
+
+  build-macos:
+    name: macOS ${{ matrix.arch }} / DMG
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - arch: arm64
+            runner: macos-15
+          - arch: amd64
+            runner: macos-15-intel
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Free disk space for macOS build
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Disk space before cleanup:"
+          df -h /
+
+          developer_dir="$(xcode-select -p)"
+          selected_xcode="$(cd "$developer_dir/../.." && pwd -P)"
+
+          shopt -s nullglob
+          for xcode_app in /Applications/Xcode*.app; do
+            if [[ ! -d "$xcode_app" ]]; then
+              echo "Skipping unavailable Xcode entry: $xcode_app"
+              continue
+            fi
+            resolved_xcode="$(cd "$xcode_app" && pwd -P)"
+            if [[ "$resolved_xcode" != "$selected_xcode" ]]; then
+              sudo rm -rf "$xcode_app"
+            fi
+          done
+
+          while IFS= read -r -d '' platform_dir; do
+            sudo rm -rf "$platform_dir"
+          done < <(
+            find "$developer_dir/Platforms" \
+              -mindepth 1 \
+              -maxdepth 1 \
+              -type d \
+              ! -name 'MacOSX.platform' \
+              -print0
+          )
+
+          sudo rm -rf \
+            /Library/Developer/CoreSimulator \
+            "$HOME/Library/Developer/CoreSimulator" \
+            "$HOME/Library/Android" \
+            "$HOME/.android"
+
+          xcodebuild -version
+          echo "Disk space after cleanup:"
+          df -h /
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+          cache-dependency-path: |
+            go.sum
+            updater/go.sum
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Install matching Wails v3 CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(go list -m -f '{{.Version}}' github.com/wailsapp/wails/v3)"
+          go install "github.com/wailsapp/wails/v3/cmd/wails3@$version"
+          test "$(wails3 version 2>&1)" = "$version"
+
+      - name: Get version from tag
+        id: get_version
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Build app bundle and DMG
+        shell: bash
+        env:
+          LUNABOX_BANGUMI_CLIENT_ID: ${{ vars.LUNABOX_BANGUMI_CLIENT_ID }}
+          LUNABOX_BANGUMI_CLIENT_SECRET: ${{ secrets.LUNABOX_BANGUMI_CLIENT_SECRET }}
+          LUNABOX_HIKARINAGI_CLIENT_ID: ${{ vars.LUNABOX_HIKARINAGI_CLIENT_ID }}
+          LUNABOX_TOUCHGAL_TOKEN: ${{ secrets.LUNABOX_TOUCHGAL_TOKEN }}
+          LUNABOX_UMBRA_CLIENT_ID: ${{ vars.LUNABOX_UMBRA_CLIENT_ID }}
+          LUNABOX_UMBRA_REGISTRATION_TOKEN: ${{ secrets.LUNABOX_UMBRA_REGISTRATION_TOKEN }}
+        run: |
+          set -euo pipefail
+          chmod +x scripts/build.sh
+          ./scripts/build.sh installer '${{ steps.get_version.outputs.VERSION }}' '${{ matrix.arch }}'
+          test -f 'build/bin/LunaBox-${{ steps.get_version.outputs.VERSION }}-macos-${{ matrix.arch }}.dmg'
+
+      - name: Upload DMG
+        uses: actions/upload-artifact@v4
+        with:
+          name: lunabox-${{ steps.get_version.outputs.VERSION }}-macos-${{ matrix.arch }}
+          path: build/bin/LunaBox-${{ steps.get_version.outputs.VERSION }}-macos-${{ matrix.arch }}.dmg
+          if-no-files-found: error
+
+  build-linux:
+    name: Linux ${{ matrix.arch }} / Packages
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          # 暂停 Linux ARM64 构建，待托管运行器环境恢复后重新启用。
+          # - arch: arm64
+          #   runner: ubuntu-24.04-arm
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+          cache-dependency-path: |
+            go.sum
+            updater/go.sum
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Install Linux build dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y build-essential ca-certificates curl desktop-file-utils libayatana-appindicator3-dev libgtk-4-dev libwebkitgtk-6.0-dev pkg-config
+
+      - name: Install nFPM
+        shell: bash
+        run: |
+          set -euo pipefail
+          go install github.com/goreleaser/nfpm/v2/cmd/nfpm@latest
+          nfpm --version
+
+      - name: Install appimagetool
+        shell: bash
+        run: |
+          set -euo pipefail
+          case '${{ matrix.arch }}' in
+            amd64) appimage_arch='x86_64' ;;
+            arm64) appimage_arch='aarch64' ;;
+            *) echo 'Unsupported AppImage architecture: ${{ matrix.arch }}' >&2; exit 1 ;;
+          esac
+          tool_path="${RUNNER_TEMP:-/tmp}/appimagetool-${appimage_arch}.AppImage"
+          curl -fsSL \
+            "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-${appimage_arch}.AppImage" \
+            -o "$tool_path"
+          chmod 755 "$tool_path"
+          sudo install -m 0755 "$tool_path" /usr/local/bin/appimagetool
+          APPIMAGE_EXTRACT_AND_RUN=1 appimagetool --version
+
+      - name: Install matching Wails v3 CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(go list -m -f '{{.Version}}' github.com/wailsapp/wails/v3)"
+          go install "github.com/wailsapp/wails/v3/cmd/wails3@$version"
+          test "$(wails3 version 2>&1)" = "$version"
+
+      - name: Patch Wails Linux tray support
+        shell: bash
+        run: ./scripts/patch-wails-linux-tray.sh
+
+      - name: Get version from tag
+        id: get_version
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Build Linux packages
+        shell: bash
+        env:
+          LUNABOX_BANGUMI_CLIENT_ID: ${{ vars.LUNABOX_BANGUMI_CLIENT_ID }}
+          LUNABOX_BANGUMI_CLIENT_SECRET: ${{ secrets.LUNABOX_BANGUMI_CLIENT_SECRET }}
+          LUNABOX_HIKARINAGI_CLIENT_ID: ${{ vars.LUNABOX_HIKARINAGI_CLIENT_ID }}
+          LUNABOX_TOUCHGAL_TOKEN: ${{ secrets.LUNABOX_TOUCHGAL_TOKEN }}
+          LUNABOX_UMBRA_CLIENT_ID: ${{ vars.LUNABOX_UMBRA_CLIENT_ID }}
+          LUNABOX_UMBRA_REGISTRATION_TOKEN: ${{ secrets.LUNABOX_UMBRA_REGISTRATION_TOKEN }}
+          APPIMAGE_EXTRACT_AND_RUN: "1"
+        run: |
+          set -euo pipefail
+          chmod +x scripts/build.sh
+          ./scripts/build.sh all '${{ steps.get_version.outputs.VERSION }}' '${{ matrix.arch }}'
+          test "$(find build/bin -maxdepth 1 -type f -name 'LunaBox-*-linux-${{ matrix.arch }}.deb' | wc -l | tr -d ' ')" -eq 1
+          test "$(find build/bin -maxdepth 1 -type f -name 'LunaBox-*-linux-${{ matrix.arch }}.rpm' | wc -l | tr -d ' ')" -eq 1
+          test "$(find build/bin -maxdepth 1 -type f -name 'LunaBox-*-linux-${{ matrix.arch }}.AppImage' | wc -l | tr -d ' ')" -eq 1
+
+      - name: Upload Linux packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: lunabox-${{ steps.get_version.outputs.VERSION }}-linux-${{ matrix.arch }}
+          path: |
+            build/bin/LunaBox-*-linux-${{ matrix.arch }}.deb
+            build/bin/LunaBox-*-linux-${{ matrix.arch }}.rpm
+            build/bin/LunaBox-*-linux-${{ matrix.arch }}.AppImage
+          if-no-files-found: error
+
+  create-release:
+    name: Create GitHub Release
+    needs: [build-release, build-macos, build-linux]
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: |
+            go.sum
+            updater/go.sum
+
+      - name: Get version from tag
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: lunabox-*
+          path: ./artifacts
+          merge-multiple: true
+
+      - name: Download signed update runtime inputs
+        uses: actions/download-artifact@v4
+        with:
+          pattern: update-runtime-*
+          path: ./update-runtime-artifacts
+
+      - name: Display structure of downloaded files
+        run: ls -R ./artifacts
+
+      - name: Prepare release files
+        run: |
+          mkdir -p release
+          find ./artifacts -maxdepth 1 -type f \( -name "*.zip" -o -name "*.exe" -o -name "*.dmg" -o -name "*.tar.gz" -o -name "*.deb" -o -name "*.rpm" -o -name "*.AppImage" \) -exec cp {} ./release/ \;
+          test "$(find ./release -maxdepth 1 -type f | wc -l | tr -d ' ')" -eq 9
+          ls -lh ./release
+
+      - name: Find previous stable release
+        id: previous_release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.UPDATE_S3_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.UPDATE_S3_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ${{ vars.UPDATE_S3_REGION || 'auto' }}
+          UPDATE_S3_BUCKET: ${{ vars.UPDATE_S3_BUCKET }}
+          UPDATE_S3_ENDPOINT: ${{ vars.UPDATE_S3_ENDPOINT }}
+        run: |
+          CURRENT_TAG="$GITHUB_REF_NAME"
+          PREVIOUS_TAG="$(gh release list --repo "$GITHUB_REPOSITORY" --limit 30 --json tagName,isDraft,isPrerelease --jq "[.[] | select(.isDraft == false and .isPrerelease == false and .tagName != \"$CURRENT_TAG\")][0].tagName // \"\"")"
+          PREVIOUS_VERSION="${PREVIOUS_TAG#v}"
+          echo "tag=$PREVIOUS_TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$PREVIOUS_VERSION" >> "$GITHUB_OUTPUT"
+
+          mkdir -p previous-update-assets
+          if [ -n "$PREVIOUS_TAG" ]; then
+            aws s3 cp \
+              "s3://${UPDATE_S3_BUCKET}/releases/${PREVIOUS_VERSION}/" \
+              ./previous-update-assets/ \
+              --recursive \
+              --exclude "*" \
+              --include "LunaBox-${PREVIOUS_VERSION}-windows-*-LunaBox.exe.zst" \
+              --endpoint-url "$UPDATE_S3_ENDPOINT" || true
+          fi
+
+      - name: Install Zstandard CLI
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y zstd
+
+      - name: Generate full and delta update assets
+        env:
+          VERSION: ${{ steps.get_version.outputs.VERSION }}
+          PREVIOUS_VERSION: ${{ steps.previous_release.outputs.version }}
+          UPDATE_PUBLIC_BASE_URL: ${{ vars.UPDATE_PUBLIC_BASE_URL }}
+        run: |
+          test -n "$UPDATE_PUBLIC_BASE_URL"
+          ASSET_BASE_URL="${UPDATE_PUBLIC_BASE_URL%/}/v1/releases/${VERSION}/assets"
+          ARGS=(
+            --input-root "$GITHUB_WORKSPACE/update-runtime-artifacts"
+            --previous-root "$GITHUB_WORKSPACE/previous-update-assets"
+            --output "$GITHUB_WORKSPACE/update-assets"
+            --version "$VERSION"
+            --asset-base-url "$ASSET_BASE_URL"
+            --event-url "${UPDATE_PUBLIC_BASE_URL%/}/v1/events"
+          )
+          if [ -n "$PREVIOUS_VERSION" ]; then
+            ARGS+=(--previous-version "$PREVIOUS_VERSION")
+          fi
+          go -C updater run ./cmd/lunabox-update-builder "${ARGS[@]}"
+          jq empty "update-assets/LunaBox-${VERSION}-update-manifest.json"
+          ls -lh ./update-assets
+
+      - name: Generate update version source
+        env:
+          VERSION: ${{ steps.get_version.outputs.VERSION }}
+        run: |
+          SOURCE_FILE="sync/version.json"
+          SOURCE_VERSION="$(jq -r '.version // empty' "$SOURCE_FILE")"
+          if [ "$SOURCE_VERSION" != "$VERSION" ]; then
+            echo "$SOURCE_FILE version $SOURCE_VERSION does not match release version $VERSION" >&2
+            exit 1
+          fi
+          cp "$SOURCE_FILE" update-assets/version.json
+          jq empty update-assets/version.json
+
+      - name: Upload update assets to S3
+        env:
+          VERSION: ${{ steps.get_version.outputs.VERSION }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.UPDATE_S3_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.UPDATE_S3_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ${{ vars.UPDATE_S3_REGION || 'auto' }}
+          UPDATE_S3_BUCKET: ${{ vars.UPDATE_S3_BUCKET }}
+          UPDATE_S3_ENDPOINT: ${{ vars.UPDATE_S3_ENDPOINT }}
+        run: |
+          test -n "$UPDATE_S3_BUCKET"
+          test -n "$UPDATE_S3_ENDPOINT"
+          PREFIX="s3://${UPDATE_S3_BUCKET}/releases/${VERSION}"
+          aws s3 cp ./update-assets "$PREFIX/" \
+            --recursive \
+            --exclude "*" \
+            --include "*.zst" \
+            --include "*.zsdiff" \
+            --cache-control "public,max-age=31536000,immutable" \
+            --endpoint-url "$UPDATE_S3_ENDPOINT"
+          aws s3 cp "update-assets/LunaBox-${VERSION}-update-manifest.json" "$PREFIX/manifest.json" \
+            --content-type "application/json" \
+            --cache-control "public,max-age=31536000,immutable" \
+            --endpoint-url "$UPDATE_S3_ENDPOINT"
+          aws s3 cp update-assets/version.json "$PREFIX/version.json" \
+            --content-type "application/json" \
+            --cache-control "public,max-age=31536000,immutable" \
+            --endpoint-url "$UPDATE_S3_ENDPOINT"
+
+      - name: Generate release notes
+        id: release_notes
+        run: |
+          VERSION="${{ steps.get_version.outputs.VERSION }}"
+
+          # 检查是否存在 CHANGELOG.md
+          if [ -f "CHANGELOG.md" ]; then
+            # 提取当前版本的 changelog
+            # 命中 ## VERSION / ## vVERSION 后，输出到下一个二级标题前为止
+            awk -v version="$VERSION" '
+              function normalize_heading(line, heading) {
+                heading = line
+                sub(/^##[[:space:]]+/, "", heading)
+                sub(/^v/, "", heading)
+                sub(/[[:space:]]+$/, "", heading)
+                return heading
+              }
+
+              /^##[[:space:]]+/ {
+                current = normalize_heading($0)
+                if (found && current != version) {
+                  exit
+                }
+                if (current == version) {
+                  found = 1
+                }
+              }
+
+              found {
+                print
+              }
+            ' CHANGELOG.md > release_notes.md
+
+            # 如果没有找到对应版本的内容，文件会是空的
+            if [ ! -s release_notes.md ]; then
+              echo "未找到版本 ${VERSION} 的 changelog，使用默认模板"
+              rm -f release_notes.md
+            fi
+          fi
+
+          # 如果没有从 CHANGELOG.md 提取到内容，使用默认模板
+          if [ ! -f "release_notes.md" ]; then
+            cat << EOF > release_notes.md
+          ## LunaBox ${{ steps.get_version.outputs.VERSION }}
+
+          ### 📝 更新内容
+
+          请查看 [Commits](https://github.com/${{ github.repository }}/commits/${{ github.ref_name }})
+          EOF
+          fi
+
+          # 添加下载说明
+          echo "" >> release_notes.md
+          echo "---" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "### 📦 下载说明" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "| 文件 | 说明 |" >> release_notes.md
+          echo "|------|------|" >> release_notes.md
+          echo "| \`*-windows-*-portable.zip\` | Windows 便携版，解压即用，数据存储在程序目录 |" >> release_notes.md
+          echo "| \`*-windows-*-setup.exe\` | Windows 安装版，数据存储在 %APPDATA%\\\\LunaBox |" >> release_notes.md
+          echo "| \`*-macos-*.dmg\` | macOS 磁盘映像，将 LunaBox 拖入 Applications |" >> release_notes.md
+          echo "| \`*-linux-*.AppImage\` | Linux AppImage，依赖系统 GTK4 / WebKitGTK 6.0 运行库 |" >> release_notes.md
+          echo "| \`*-linux-*.deb\` | Linux Debian/Ubuntu 安装包 |" >> release_notes.md
+          echo "| \`*-linux-*.rpm\` | Linux Fedora/RHEL/openSUSE 安装包 |" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "Windows 提供 AMD64、ARM64；macOS 提供 Intel AMD64、Apple Silicon ARM64；Linux 提供 AMD64。" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "### 🔗 相关链接" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "- [查看所有提交](https://github.com/${{ github.repository }}/commits/${{ github.ref_name }})" >> release_notes.md
+
+          cat release_notes.md
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release/*
+          body_path: release_notes.md
+          draft: false
+          prerelease: false
+          generate_release_notes: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish stable update channel
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.UPDATE_S3_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.UPDATE_S3_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ${{ vars.UPDATE_S3_REGION || 'auto' }}
+          UPDATE_S3_BUCKET: ${{ vars.UPDATE_S3_BUCKET }}
+          UPDATE_S3_ENDPOINT: ${{ vars.UPDATE_S3_ENDPOINT }}
+        run: |
+          aws s3 cp update-assets/version.json "s3://${UPDATE_S3_BUCKET}/channels/stable/version.json" \
+            --content-type "application/json" \
+            --cache-control "public,max-age=60" \
+            --endpoint-url "$UPDATE_S3_ENDPOINT"
