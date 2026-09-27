@@ -5,7 +5,8 @@ import { useEffect, useRef, useState } from "react";
 
 import { useTranslation } from "react-i18next";
 
-import { GetVersionInfo } from "../../bindings/lunabox/internal/service/versionservice";
+import { GetVersionInfo } from "../../bindings/yukihub/internal/service/versionservice";
+import { AboutPanel } from "../components/panel/AboutPanel";
 import { AISettingsPanel } from "../components/panel/AISettingsPanel";
 import { AppDataSettingsPanel } from "../components/panel/AppDataSettingsPanel";
 import { AutoBackupSettingsPanel } from "../components/panel/AutoBackupSettingsPanel";
@@ -296,6 +297,14 @@ function SettingsPage() {
           <AppDataSettingsPanel />
         </CollapsibleSection>
 
+        <CollapsibleSection
+          title={t("settings.sections.about")}
+          icon="i-mdi-information-outline"
+          defaultOpen={false}
+        >
+          <AboutPanel />
+        </CollapsibleSection>
+
         {["portable", "appimage"].includes(versionInfo?.buildMode ?? "") && (
           <CollapsibleSection
             title={t("settings.sections.portableSetup")}
@@ -309,7 +318,7 @@ function SettingsPage() {
 
       <div className="pt-4 text-center text-brand-500 dark:text-brand-400 pb-8 flex flex-col items-center justify-center">
         <p className="text-xs">
-          Lunabox made with LunaRain_079 &amp; Contributors.
+          YukiHub for Windows — a modified fork of LunaBox by Saramanda9988 &amp; contributors.
         </p>
         {versionInfo && (
           <p className="mt-1 text-xs opacity-80">
@@ -331,7 +340,7 @@ function SettingsPage() {
         <button
           type="button"
           onClick={() =>
-            void Browser.OpenURL("https://github.com/Saramanda9988/LunaBox")}
+            void Browser.OpenURL("https://github.com/xm486/YukiHub")}
           className="mt-6 flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition-colors border border-brand-200 dark:border-brand-700/80 hover:bg-brand-100 hover:text-brand-800 dark:hover:bg-brand-800 dark:hover:text-brand-100"
         >
           <div className="i-mdi-github text-xl" />
