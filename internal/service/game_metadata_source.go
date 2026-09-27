@@ -4,13 +4,13 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"lunabox/internal/common/enums"
-	"lunabox/internal/models"
-	"lunabox/internal/service/cloudsync"
-	"lunabox/internal/service/gamehelper"
-	"lunabox/internal/utils/dbutils"
 	"strings"
 	"time"
+	"yukihub/internal/common/enums"
+	"yukihub/internal/models"
+	"yukihub/internal/service/cloudsync"
+	"yukihub/internal/service/gamehelper"
+	"yukihub/internal/utils/dbutils"
 )
 
 func scanGameMetadataSources(rows *sql.Rows) ([]models.GameMetadataSource, error) {

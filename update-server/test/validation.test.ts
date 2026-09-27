@@ -12,7 +12,7 @@ describe("update object keys", () => {
     expect(channelObjectKey("windows-stable")).toBe("channels/windows-stable/version.json");
     expect(manifestObjectKey("2.0.0-test.3")).toBe("releases/2.0.0-test.3/manifest.json");
     expect(versionObjectKey("2.0.0-test.3")).toBe("releases/2.0.0-test.3/version.json");
-    expect(assetObjectKey("2.0.0-test.3", "LunaBox.exe.zst")).toBe("releases/2.0.0-test.3/LunaBox.exe.zst");
+    expect(assetObjectKey("2.0.0-test.3", "YukiHub.exe.zst")).toBe("releases/2.0.0-test.3/YukiHub.exe.zst");
   });
 
   it("rejects directory traversal", () => {
@@ -31,7 +31,7 @@ describe("update events", () => {
       channel: "windows-amd64-portable",
       architecture: "amd64",
       build_mode: "portable",
-      artifact: "LunaBox.exe.zst",
+      artifact: "YukiHub.exe.zst",
       transferred_bytes: 1024,
       client_time: "2026-08-17T10:00:00Z",
     });
@@ -92,7 +92,7 @@ describe("update events", () => {
       architecture: "amd64",
       build_mode: "portable",
       failure_code: "prepare_failed",
-      failure_reason: "verify Authenticode signature for C:\\Users\\alice\\LunaBox.exe",
+      failure_reason: "verify Authenticode signature for C:\\Users\\alice\\YukiHub.exe",
     });
 
     expect(event.failure_code).toBe("prepare_failed");

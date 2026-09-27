@@ -3,9 +3,9 @@
 package appconf
 
 import (
-	"lunabox/internal/applog"
 	"os/exec"
 	"strings"
+	"yukihub/internal/applog"
 )
 
 func detectDefaultCrossOverRunnerPath(config *AppConfig) bool {

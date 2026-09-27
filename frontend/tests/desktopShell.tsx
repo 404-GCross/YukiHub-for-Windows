@@ -1,7 +1,7 @@
 import {
   DesktopShellProvider,
   OverlayHost,
-} from "@lunabox/desktop-shell-react";
+} from "@yukihub/desktop-shell-react";
 import { StrictMode, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { BetterDrawer } from "../src/components/ui/better/BetterDrawer";

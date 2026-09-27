@@ -3,14 +3,14 @@ package appconf
 import (
 	"encoding/json"
 	"log"
-	enums2 "lunabox/internal/common/enums"
-	"lunabox/internal/utils"
-	"lunabox/internal/utils/apputils"
-	"lunabox/internal/utils/metadata"
-	"lunabox/internal/utils/proxyutils"
 	"os"
 	"path/filepath"
 	"strings"
+	enums2 "yukihub/internal/common/enums"
+	"yukihub/internal/utils"
+	"yukihub/internal/utils/apputils"
+	"yukihub/internal/utils/metadata"
+	"yukihub/internal/utils/proxyutils"
 )
 
 var defaultMetadataSources = []string{
@@ -21,13 +21,13 @@ var defaultMetadataSources = []string{
 }
 
 var allowedMetadataSourceSet = map[string]struct{}{
-	string(enums2.Bangumi):    {},
-	string(enums2.VNDB):       {},
-	string(enums2.Ymgal):      {},
-	string(enums2.Steam):      {},
-	string(enums2.DLsite):     {},
-	string(enums2.TouchGal):   {},
-	string(enums2.Hikarinagi): {},
+	string(enums2.Bangumi):      {},
+	string(enums2.VNDB):         {},
+	string(enums2.Ymgal):        {},
+	string(enums2.Steam):        {},
+	string(enums2.DLsite):       {},
+	string(enums2.TouchGal):     {},
+	string(enums2.Hikarinagi):   {},
 	string(enums2.ErogameScape): {},
 }
 
@@ -248,7 +248,7 @@ func LoadConfig() (*AppConfig, error) {
 		MCPEnabled:                    false,
 		MCPPort:                       DefaultMCPPort,
 		CloudBackupEnabled:            false,
-		CloudBackupProvider:           "umbra",
+		CloudBackupProvider:           "webdav",
 		BackupPassword:                "",
 		BackupUserID:                  "",
 		CloudSyncEnabled:              false,

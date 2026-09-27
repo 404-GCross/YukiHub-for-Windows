@@ -6,9 +6,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"lunabox/internal/models"
-	"lunabox/internal/utils/processutils"
-	"lunabox/internal/utils/steamutils"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -16,6 +13,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"yukihub/internal/models"
+	"yukihub/internal/utils/processutils"
+	"yukihub/internal/utils/steamutils"
 )
 
 var (
@@ -1093,7 +1093,7 @@ func saveSteamShortcutFile(
 
 	backupPath := ""
 	if hasOriginal {
-		backupPath = path + ".lunabox.bak"
+		backupPath = path + ".yukihub.bak"
 		if err := os.WriteFile(backupPath, original, 0o644); err != nil {
 			return "", fmt.Errorf("back up Steam shortcuts: %w", err)
 		}

@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"lunabox/internal/utils/proxyutils"
+	"yukihub/internal/utils/proxyutils"
 )
 
 type roundTripFunc func(*http.Request) (*http.Response, error)

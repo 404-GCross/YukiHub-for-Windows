@@ -13,7 +13,7 @@ The source assets are grouped by platform:
 Refresh the standard platform assets from `build/` with:
 
 ```shell
-wails3 update build-assets -name LunaBox -binaryname LunaBox -config config.yml -dir .
+wails3 update build-assets -name YukiHub -binaryname YukiHub -config config.yml -dir .
 ```
 
 Review generated changes after refreshing because `windows/nsis/` is part of the checked-in Wails v3 packaging setup.
@@ -45,4 +45,4 @@ scripts\build.bat all <version> <amd64|arm64>
 ./scripts/build.sh installer <version> <amd64|arm64>
 ```
 
-Windows produces an NSIS installer and portable ZIP. macOS produces a DMG containing `LunaBox.app`.
+Windows produces an NSIS installer and portable ZIP. macOS produces a DMG containing `YukiHub.app`.

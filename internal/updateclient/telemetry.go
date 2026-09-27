@@ -12,12 +12,12 @@ import (
 	"strings"
 	"time"
 
-	"lunabox/internal/appconf"
-	"lunabox/internal/applog"
-	"lunabox/internal/utils/apputils"
-	"lunabox/internal/utils/downloadutils"
-	"lunabox/internal/utils/identityutils"
-	"lunabox/updater/updateutils"
+	"yukihub/internal/appconf"
+	"yukihub/internal/applog"
+	"yukihub/internal/utils/apputils"
+	"yukihub/internal/utils/downloadutils"
+	"yukihub/internal/utils/identityutils"
+	"yukihub/updater/updateutils"
 
 	"github.com/google/uuid"
 )
@@ -132,7 +132,7 @@ func removePendingUpdate() {
 	}
 }
 
-// ReportPendingResult reports the updater result after the new LunaBox process
+// ReportPendingResult reports the updater result after the new YukiHub process
 // starts. Failed sends retain the pending marker for the next launch.
 func ReportPendingResult(ctx context.Context, config *appconf.AppConfig, userAgent string) error {
 	statePath, err := pendingUpdatePath()
@@ -225,5 +225,5 @@ func isUpdateWorkDir(workDir string) bool {
 	if err != nil || relative == "." || relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
 		return false
 	}
-	return strings.HasPrefix(filepath.Base(workDir), "LunaBox-update-")
+	return strings.HasPrefix(filepath.Base(workDir), "YukiHub-update-")
 }

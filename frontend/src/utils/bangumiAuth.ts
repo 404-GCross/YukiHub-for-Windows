@@ -6,7 +6,7 @@ import {
   GetProfile,
   StartAuth,
   SyncAllGameStatuses,
-} from "../../bindings/lunabox/internal/service/bangumiservice";
+} from "../../bindings/yukihub/internal/service/bangumiservice";
 
 export const BANGUMI_STATUS_SYNC_PROGRESS_EVENT
   = "bangumi:status-sync-progress";

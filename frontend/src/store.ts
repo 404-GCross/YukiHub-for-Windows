@@ -13,16 +13,16 @@ import {
   ApplyGameLibraryPathChange,
   GetAppConfig,
   UpdateAppConfig,
-} from "../bindings/lunabox/internal/service/configservice";
-import { GetHomePageData } from "../bindings/lunabox/internal/service/homeservice";
+} from "../bindings/yukihub/internal/service/configservice";
+import { GetHomePageData } from "../bindings/yukihub/internal/service/homeservice";
 import {
   StartGameWithOptions,
   StartGameWithTracking,
-} from "../bindings/lunabox/internal/service/startservice";
+} from "../bindings/yukihub/internal/service/startservice";
 import {
   GetGOOS,
   SupportsBackgroundProcessMute,
-} from "../bindings/lunabox/internal/service/versionservice";
+} from "../bindings/yukihub/internal/service/versionservice";
 import { normalizeEnabledMetadataSources } from "./utils/metadataSources";
 
 type AISummaryCache = {

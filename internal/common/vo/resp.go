@@ -1,10 +1,10 @@
 package vo
 
 import (
-	enums "lunabox/internal/common/enums"
-	"lunabox/internal/models"
-	"lunabox/internal/utils/metadata"
 	"time"
+	enums "yukihub/internal/common/enums"
+	"yukihub/internal/models"
+	"yukihub/internal/utils/metadata"
 )
 
 type CategoryVO struct {

@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import {
   SaveCroppedBackgroundImage,
   SelectAndCropBackgroundImage,
-} from "../../../bindings/lunabox/internal/service/configservice";
+} from "../../../bindings/yukihub/internal/service/configservice";
 import { detectImageBrightness } from "../../utils/detectImageBrightness";
 import { ImageCropperModal } from "../modal/ImageCropperModal";
 import { BetterActionInput } from "../ui/better/BetterActionInput";

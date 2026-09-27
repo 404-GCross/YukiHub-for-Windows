@@ -6,31 +6,31 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"lunabox/internal/appconf"
-	"lunabox/internal/applog"
-	enums2 "lunabox/internal/common/enums"
-	"lunabox/internal/common/vo"
-	"lunabox/internal/models"
-	"lunabox/internal/protocol"
-	"lunabox/internal/service/cloudsync"
-	"lunabox/internal/service/gamehelper"
-	"lunabox/internal/service/gamehelper/idmapper"
-	"lunabox/internal/utils"
-	"lunabox/internal/utils/apputils"
-	"lunabox/internal/utils/dbutils"
-	"lunabox/internal/utils/downloadutils"
-	"lunabox/internal/utils/imageutils"
-	"lunabox/internal/utils/metadata"
-	"lunabox/internal/utils/processutils"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
 	"time"
+	"yukihub/internal/appconf"
+	"yukihub/internal/applog"
+	enums2 "yukihub/internal/common/enums"
+	"yukihub/internal/common/vo"
+	"yukihub/internal/models"
+	"yukihub/internal/protocol"
+	"yukihub/internal/service/cloudsync"
+	"yukihub/internal/service/gamehelper"
+	"yukihub/internal/service/gamehelper/idmapper"
+	"yukihub/internal/utils"
+	"yukihub/internal/utils/apputils"
+	"yukihub/internal/utils/dbutils"
+	"yukihub/internal/utils/downloadutils"
+	"yukihub/internal/utils/imageutils"
+	"yukihub/internal/utils/metadata"
+	"yukihub/internal/utils/processutils"
 
 	"github.com/google/uuid"
-	"lunabox/internal/wailsruntime"
+	"yukihub/internal/wailsruntime"
 )
 
 type GameService struct {
@@ -1418,7 +1418,7 @@ func (s *GameService) coverExportSource(game models.Game) (string, func(), error
 	}, nil
 }
 
-// ExportLaunchShortcut exports a per-game .url shortcut that re-enters LunaBox via protocol.
+// ExportLaunchShortcut exports a per-game .url shortcut that re-enters YukiHub via protocol.
 func (s *GameService) ExportLaunchShortcut(gameID string) (string, error) {
 	game, err := s.GetGameByID(gameID)
 	if err != nil {

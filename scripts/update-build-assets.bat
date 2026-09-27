@@ -1,7 +1,7 @@
 @echo off
 setlocal EnableExtensions DisableDelayedExpansion
 
-REM Updates Wails platform metadata while preserving LunaBox's custom Linux assets.
+REM Updates Wails platform metadata while preserving YukiHub's custom Linux assets.
 REM Usage: scripts\update-build-assets.bat <version>
 
 cd /d "%~dp0\.."
@@ -12,8 +12,8 @@ if not "%~2"=="" goto :usage
 
 set "VERSION=%VERSION_ARG%"
 if /i "%VERSION:~0,1%"=="v" set "VERSION=%VERSION:~1%"
-set "LUNABOX_ASSET_VERSION=%VERSION%"
-powershell -NoProfile -Command "if ($env:LUNABOX_ASSET_VERSION -notmatch '^\d+\.\d+\.\d+$') { exit 1 }"
+set "YUKIHUB_ASSET_VERSION=%VERSION%"
+powershell -NoProfile -Command "if ($env:YUKIHUB_ASSET_VERSION -notmatch '^\d+\.\d+\.\d+$') { exit 1 }"
 if errorlevel 1 (
     echo ERROR: Version must use the X.Y.Z format.
     exit /b 1
@@ -42,7 +42,7 @@ if not exist "%LINUX_NFPM_PATH%" (
     exit /b 1
 )
 
-set "BACKUP_DIR=%TEMP%\lunabox-build-assets-%RANDOM%-%RANDOM%"
+set "BACKUP_DIR=%TEMP%\yukihub-build-assets-%RANDOM%-%RANDOM%"
 mkdir "%BACKUP_DIR%" >nul 2>nul
 if errorlevel 1 (
     echo ERROR: Unable to create temporary directory: %BACKUP_DIR%
@@ -58,7 +58,7 @@ if errorlevel 1 goto :backup_failed
 
 powershell -NoProfile -Command ^
     "$path = $env:CONFIG_PATH;" ^
-    "$version = $env:LUNABOX_ASSET_VERSION;" ^
+    "$version = $env:YUKIHUB_ASSET_VERSION;" ^
     "$lines = [System.IO.File]::ReadAllLines($path);" ^
     "$inInfo = $false; $updated = 0;" ^
     "for ($index = 0; $index -lt $lines.Length; $index++) {" ^
@@ -73,8 +73,8 @@ powershell -NoProfile -Command ^
     "[System.IO.File]::WriteAllLines($path, $lines, [System.Text.UTF8Encoding]::new($false))"
 if errorlevel 1 goto :update_failed
 
-echo Updating Wails build assets for LunaBox %VERSION%...
-wails3 update build-assets -name LunaBox -binaryname LunaBox -config "%CONFIG_PATH%" -dir build
+echo Updating Wails build assets for YukiHub %VERSION%...
+wails3 update build-assets -name YukiHub -binaryname YukiHub -config "%CONFIG_PATH%" -dir build
 if errorlevel 1 goto :update_failed
 
 call :restore_linux_assets

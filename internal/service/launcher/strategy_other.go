@@ -4,8 +4,8 @@ package launcher
 
 import (
 	"fmt"
-	"lunabox/internal/appconf"
-	"lunabox/internal/models"
+	"yukihub/internal/appconf"
+	"yukihub/internal/models"
 )
 
 func supportsPlatformSteamLaunch(_ *models.Game) bool {

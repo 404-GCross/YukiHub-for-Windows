@@ -26,7 +26,7 @@ func TestExtractArchiveWithBundled7z(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create archive entry: %v", err)
 	}
-	if _, err := entry.Write([]byte("lunabox")); err != nil {
+	if _, err := entry.Write([]byte("yukihub")); err != nil {
 		t.Fatalf("write archive entry: %v", err)
 	}
 	if err := zipWriter.Close(); err != nil {
@@ -49,7 +49,7 @@ func TestExtractArchiveWithBundled7z(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read extracted file: %v", err)
 	}
-	if string(content) != "lunabox" {
-		t.Fatalf("extracted content = %q, want %q", content, "lunabox")
+	if string(content) != "yukihub" {
+		t.Fatalf("extracted content = %q, want %q", content, "yukihub")
 	}
 }

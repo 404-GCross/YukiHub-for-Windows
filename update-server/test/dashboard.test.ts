@@ -10,7 +10,7 @@ describe("release dashboard manifest parsing", () => {
         "windows-amd64-portable": {
           files: [
             {
-              path: "LunaBox.exe",
+              path: "YukiHub.exe",
               full: { size: 1_000, url: "https://example.com/full", sha256: "full" },
               patch: {
                 size: 250,
@@ -25,7 +25,7 @@ describe("release dashboard manifest parsing", () => {
         "windows-arm64-portable": {
           files: [
             {
-              path: "LunaBox.exe",
+              path: "YukiHub.exe",
               full: { size: 800 },
               patch: { size: 400, source_version: "1.11.2" },
             },
@@ -41,14 +41,14 @@ describe("release dashboard manifest parsing", () => {
         channels: [
           {
             name: "windows-amd64-portable",
-            asset: "LunaBox.exe",
+            asset: "YukiHub.exe",
             patch_size: 250,
             full_size: 1_000,
             saving_percent: 75,
           },
           {
             name: "windows-arm64-portable",
-            asset: "LunaBox.exe",
+            asset: "YukiHub.exe",
             patch_size: 400,
             full_size: 800,
             saving_percent: 50,
@@ -61,7 +61,7 @@ describe("release dashboard manifest parsing", () => {
   it("rejects malformed channel files", () => {
     expect(parseReleaseManifest({
       version: "2.0.0",
-      channels: { stable: { files: [{ path: "LunaBox.exe" }] } },
+      channels: { stable: { files: [{ path: "YukiHub.exe" }] } },
     })).toBeNull();
   });
 });

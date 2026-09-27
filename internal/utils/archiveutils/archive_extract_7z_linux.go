@@ -55,7 +55,7 @@ func resolveBundled7zz() (string, error) {
 	for _, candidate := range []string{
 		filepath.Join(baseDir, "bin", "7zz"),
 		filepath.Join(baseDir, "7zz"),
-		filepath.Join("/usr", "lib", "lunabox", "7zz"),
+		filepath.Join("/usr", "lib", "yukihub", "7zz"),
 	} {
 		if fileExists(candidate) {
 			return candidate, nil

@@ -8,21 +8,21 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
-	"lunabox/internal/appconf"
-	"lunabox/internal/applog"
-	"lunabox/internal/common/vo"
-	"lunabox/internal/utils/apputils"
-	"lunabox/internal/utils/httputils"
-	"lunabox/internal/version"
 	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
+	"yukihub/internal/appconf"
+	"yukihub/internal/applog"
+	"yukihub/internal/common/vo"
+	"yukihub/internal/utils/apputils"
+	"yukihub/internal/utils/httputils"
+	"yukihub/internal/version"
 
-	"lunabox/internal/wailsruntime"
 	"resty.dev/v3"
+	"yukihub/internal/wailsruntime"
 )
 
 //go:embed templates/*.html
@@ -174,7 +174,7 @@ func (s *TemplateService) RenderTemplate(req vo.RenderTemplateRequest) (vo.Rende
 	}
 
 	// 填充应用信息
-	req.Data.AppName = "LunaBox"
+	req.Data.AppName = "YukiHub"
 	req.Data.AppVersion = version.Version
 	if req.Data.ExportTime == "" {
 		req.Data.ExportTime = time.Now().Format("2006-01-02 15:04:05")
@@ -218,7 +218,7 @@ func (s *TemplateService) PrepareExportData(stats vo.PeriodStats, aiSummary stri
 		TotalPlayDuration: stats.TotalPlayDuration,
 		TotalPlayTimeStr:  formatDuration(stats.TotalPlayDuration),
 		AISummary:         aiSummary,
-		AppName:           "LunaBox",
+		AppName:           "YukiHub",
 		AppVersion:        version.Version,
 	}
 
@@ -370,7 +370,7 @@ func (s *TemplateService) ExportRenderedHTML(base64Data string) error {
 	}
 
 	filename, err := s.runtime.SaveFile(wailsruntime.SaveDialogOptions{
-		Filename: fmt.Sprintf("lunabox-stats-%s.png", time.Now().Format("20060102-150405")),
+		Filename: fmt.Sprintf("yukihub-stats-%s.png", time.Now().Format("20060102-150405")),
 		Title:    "保存统计图片",
 		Filters: []wailsruntime.FileFilter{
 			{

@@ -1,10 +1,10 @@
 package cloudsync
 
 import (
-	"lunabox/internal/common/enums"
-	"lunabox/internal/models"
 	"path/filepath"
 	"strings"
+	"yukihub/internal/common/enums"
+	"yukihub/internal/models"
 )
 
 func gameFromModel(game models.Game) Game {

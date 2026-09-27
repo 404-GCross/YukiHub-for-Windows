@@ -1,6 +1,6 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
-	"name": "lunabox-update-server",
+	"name": "yukihub-update-server",
 	"main": "src/index.ts",
 	"compatibility_date": "2026-09-19",
 	"compatibility_flags": ["nodejs_compat"],
@@ -14,36 +14,36 @@
 	},
 	"env": {
 		"test": {
-			"name": "lunabox-update-server-test",
+			"name": "yukihub-update-server-test",
 			"workers_dev": true,
 			"r2_buckets": [
 				{
-          "bucket_name": "lunabox-updates-test",
+          "bucket_name": "yukihub-updates-test",
           "binding": "UPDATE_BUCKET"
 				}
 			],
 			"d1_databases": [
 				{
           "binding": "UPDATE_DB",
-          "database_name": "lunabox-updates-test",
+          "database_name": "yukihub-updates-test",
           "database_id": "1a790194-fcf9-4a5a-9673-fb1bed8fefff",
 					"migrations_dir": "migrations"
 				}
 			]
 		},
 		"production": {
-			"name": "lunabox-update-server",
+			"name": "yukihub-update-server",
 			"workers_dev": true,
 			"r2_buckets": [
 				{
 					"binding": "UPDATE_BUCKET",
-					"bucket_name": "lunabox-updates"
+					"bucket_name": "yukihub-updates"
 				}
 			],
 			"d1_databases": [
 				{
 					"binding": "UPDATE_DB",
-					"database_name": "lunabox-updates",
+					"database_name": "yukihub-updates",
 					"database_id": "b0629a51-df13-48f8-836e-6b6e99650ed5",
 					"migrations_dir": "migrations"
 				}

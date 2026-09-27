@@ -1,5 +1,5 @@
 {
-  "name": "@lunabox/desktop-shell-react",
+  "name": "@yukihub/desktop-shell-react",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -22,7 +22,7 @@
   },
   "dependencies": {
     "@headlessui/react": "^2.2.9",
-    "@lunabox/desktop-shell-core": "workspace:*"
+    "@yukihub/desktop-shell-core": "workspace:*"
   },
   "devDependencies": {
     "@types/react": "^18.3.27",

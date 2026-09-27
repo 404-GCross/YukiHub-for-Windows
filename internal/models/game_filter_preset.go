@@ -1,8 +1,8 @@
 package models
 
 import (
-	"lunabox/internal/common/enums"
 	"time"
+	"yukihub/internal/common/enums"
 )
 
 type GameFilterPreset struct {

@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"lunabox/updater/updateutils"
+	"yukihub/updater/updateutils"
 )
 
 func TestAssetURLUsesConfiguredBaseURL(t *testing.T) {
@@ -17,8 +17,8 @@ func TestAssetURLUsesConfiguredBaseURL(t *testing.T) {
 
 	got := assetURL(options{
 		assetBaseURL: "https://updates.example.com/releases/2.0.0/",
-	}, "LunaBox.exe.zst")
-	if got != "https://updates.example.com/releases/2.0.0/LunaBox.exe.zst" {
+	}, "YukiHub.exe.zst")
+	if got != "https://updates.example.com/releases/2.0.0/YukiHub.exe.zst" {
 		t.Fatalf("unexpected asset URL: %s", got)
 	}
 }
@@ -41,12 +41,12 @@ func TestRunBuildsValidatedManifestAndFullFallbacks(t *testing.T) {
 		inputRoot:  inputRoot,
 		outputDir:  outputDir,
 		version:    version,
-		repository: "example/LunaBox",
+		repository: "example/YukiHub",
 	}); err != nil {
 		t.Fatal(err)
 	}
 
-	manifestPath := filepath.Join(outputDir, "LunaBox-2.0.0-update-manifest.json")
+	manifestPath := filepath.Join(outputDir, "YukiHub-2.0.0-update-manifest.json")
 	data, err := os.ReadFile(manifestPath)
 	if err != nil {
 		t.Fatal(err)
@@ -91,13 +91,13 @@ func TestRunBuildsOnlySelectedArchitectures(t *testing.T) {
 		inputRoot:     inputRoot,
 		outputDir:     outputDir,
 		version:       version,
-		repository:    "example/LunaBox",
+		repository:    "example/YukiHub",
 		architectures: "amd64",
 	}); err != nil {
 		t.Fatal(err)
 	}
 
-	manifestPath := filepath.Join(outputDir, "LunaBox-2.0.0-test-update-manifest.json")
+	manifestPath := filepath.Join(outputDir, "YukiHub-2.0.0-test-update-manifest.json")
 	data, err := os.ReadFile(manifestPath)
 	if err != nil {
 		t.Fatal(err)
@@ -139,8 +139,8 @@ func TestBuildPatchUsesUpdaterCompatibleZstdFormat(t *testing.T) {
 	newBytes := bytes.Clone(oldBytes)
 	copy(newBytes[512*1024:512*1024+4096], bytes.Repeat([]byte("updated-block"), 342)[:4096])
 
-	oldExe := filepath.Join(root, "old-LunaBox.exe")
-	newExe := filepath.Join(root, "new-LunaBox.exe")
+	oldExe := filepath.Join(root, "old-YukiHub.exe")
+	newExe := filepath.Join(root, "new-YukiHub.exe")
 	if err := os.WriteFile(oldExe, oldBytes, 0755); err != nil {
 		t.Fatal(err)
 	}
@@ -148,7 +148,7 @@ func TestBuildPatchUsesUpdaterCompatibleZstdFormat(t *testing.T) {
 		t.Fatal(err)
 	}
 	channelName := "windows-amd64-portable"
-	previousAsset := filepath.Join(previousRoot, "LunaBox-1.0.0-"+channelName+"-LunaBox.exe.zst")
+	previousAsset := filepath.Join(previousRoot, "YukiHub-1.0.0-"+channelName+"-YukiHub.exe.zst")
 	if err := compressFull(oldExe, previousAsset); err != nil {
 		t.Fatal(err)
 	}
@@ -166,7 +166,7 @@ func TestBuildPatchUsesUpdaterCompatibleZstdFormat(t *testing.T) {
 		outputDir:       outputDir,
 		version:         "1.1.0",
 		previousVersion: "1.0.0",
-		repository:      "example/LunaBox",
+		repository:      "example/YukiHub",
 	}, channelName, newExe, fullSize)
 	if err != nil {
 		t.Fatal(err)
@@ -178,7 +178,7 @@ func TestBuildPatchUsesUpdaterCompatibleZstdFormat(t *testing.T) {
 
 func writeRuntimeFixture(t *testing.T, root string) {
 	t.Helper()
-	for _, path := range []string{"LunaBox.exe", "LunaBoxUpdater.exe", "lunacli.exe", "7z/7z.exe", "7z/7z.dll"} {
+	for _, path := range []string{"YukiHub.exe", "YukiHubUpdater.exe", "yukihubcli.exe", "7z/7z.exe", "7z/7z.dll"} {
 		filePath := filepath.Join(root, filepath.FromSlash(path))
 		if err := os.MkdirAll(filepath.Dir(filePath), 0755); err != nil {
 			t.Fatal(err)

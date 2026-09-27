@@ -13,7 +13,7 @@ import (
 
 const portableRegistryPath = `Software\Classes\` + Scheme
 
-// RegisterPortableURLScheme registers lunabox:// for a Windows portable build.
+// RegisterPortableURLScheme registers yukihub:// for a Windows portable build.
 // Packaged builds use Wails' protocol configuration instead.
 func RegisterPortableURLScheme(exePath string) error {
 	if exePath == "" {
@@ -39,7 +39,7 @@ func RegisterPortableURLScheme(exePath string) error {
 	}
 	defer root.Close()
 
-	if err := root.SetStringValue("", "URL:LunaBox Protocol"); err != nil {
+	if err := root.SetStringValue("", "URL:YukiHub Protocol"); err != nil {
 		return fmt.Errorf("set protocol description: %w", err)
 	}
 	if err := root.SetStringValue("URL Protocol", ""); err != nil {
@@ -60,7 +60,7 @@ func RegisterPortableURLScheme(exePath string) error {
 }
 
 // GetRegisteredURLSchemeExe returns the executable currently registered for
-// lunabox:// in the current user's registry. An empty path means unregistered.
+// yukihub:// in the current user's registry. An empty path means unregistered.
 func GetRegisteredURLSchemeExe() (string, error) {
 	commandKey, err := registry.OpenKey(
 		registry.CURRENT_USER,
@@ -103,20 +103,20 @@ func extractExeFromCommand(command string) string {
 	return command
 }
 
-// platformHandlerMatchesTarget reports whether a LunaBox-specific handler
+// platformHandlerMatchesTarget reports whether a YukiHub-specific handler
 // wrapper points at targetPath. Windows registers the executable directly, so
 // the plain path comparison in HandlerMatchesTarget is enough.
 func platformHandlerMatchesTarget(string, string) bool {
 	return false
 }
 
-// platformManagedHandler reports whether registeredPath is a LunaBox-created
+// platformManagedHandler reports whether registeredPath is a YukiHub-created
 // handler wrapper. Only Linux creates wrapper scripts.
 func platformManagedHandler(string) bool {
 	return false
 }
 
-// UnregisterPortableURLScheme removes the current-user lunabox:// association.
+// UnregisterPortableURLScheme removes the current-user yukihub:// association.
 func UnregisterPortableURLScheme() error {
 	if err := deleteRegistryTree(registry.CURRENT_USER, portableRegistryPath); err != nil {
 		return fmt.Errorf("delete protocol registry key: %w", err)

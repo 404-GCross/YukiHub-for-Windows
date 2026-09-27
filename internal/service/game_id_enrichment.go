@@ -8,10 +8,10 @@ import (
 	"strings"
 	"time"
 
-	"lunabox/internal/common/enums"
-	"lunabox/internal/service/cloudsync"
-	"lunabox/internal/service/gamehelper/idmapper"
-	"lunabox/internal/utils/dbutils"
+	"yukihub/internal/common/enums"
+	"yukihub/internal/service/cloudsync"
+	"yukihub/internal/service/gamehelper/idmapper"
+	"yukihub/internal/utils/dbutils"
 
 	duckdb "github.com/duckdb/duckdb-go/v2"
 )

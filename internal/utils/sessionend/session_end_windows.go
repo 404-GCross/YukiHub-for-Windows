@@ -94,7 +94,7 @@ type msg struct {
 
 func Start(options Options) (*Hook, error) {
 	if options.Reason == "" {
-		options.Reason = "LunaBox is saving application data"
+		options.Reason = "YukiHub is saving application data"
 	}
 
 	hook := &Hook{
@@ -174,11 +174,11 @@ func (h *Hook) run() {
 }
 
 func createWindow() (windows.Handle, error) {
-	className, err := windows.UTF16PtrFromString("LunaBoxSessionEndWindow")
+	className, err := windows.UTF16PtrFromString("YukiHubSessionEndWindow")
 	if err != nil {
 		return 0, err
 	}
-	windowName, err := windows.UTF16PtrFromString("LunaBox Session End")
+	windowName, err := windows.UTF16PtrFromString("YukiHub Session End")
 	if err != nil {
 		return 0, err
 	}

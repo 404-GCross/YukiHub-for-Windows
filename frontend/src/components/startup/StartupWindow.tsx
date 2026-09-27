@@ -4,7 +4,7 @@ import { Window } from "@wailsio/runtime";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { GetFailure } from "../../../bindings/lunabox/internal/service/startupservice";
+import { GetFailure } from "../../../bindings/yukihub/internal/service/startupservice";
 import appIconDarkUrl from "../../assets/branding/appicon-dark.png";
 import appIconUrl from "../../assets/branding/appicon.png";
 import topbarTitleDarkUrl from "../../assets/branding/topbar-title-dark.png";
@@ -17,7 +17,7 @@ interface StartupFailure {
 
 function applyStoredTheme() {
   const root = window.document.documentElement;
-  const storedTheme = localStorage.getItem("lunabox-theme");
+  const storedTheme = localStorage.getItem("yukihub-theme");
   const prefersDark = window.matchMedia("(prefers-color-scheme: dark)");
   const theme
     = storedTheme === "dark" || (storedTheme !== "light" && prefersDark.matches)
@@ -110,13 +110,13 @@ function StartupWindow() {
             src={topbarTitleDarkUrl}
             className="h-auto w-38 dark:hidden"
             draggable="false"
-            alt="LunaBox"
+            alt="YukiHub"
           />
           <img
             src={topbarTitleUrl}
             className="hidden h-auto w-38 dark:block"
             draggable="false"
-            alt="LunaBox"
+            alt="YukiHub"
           />
         </div>
       </aside>

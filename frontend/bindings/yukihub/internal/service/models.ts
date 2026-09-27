@@ -662,7 +662,7 @@ export class LocalProtonTool {
 }
 
 /**
- * PortableCLIStatus describes the lunacli presence and command registration.
+ * PortableCLIStatus describes the yukihubcli presence and command registration.
  */
 export class PortableCLIStatus {
     "available": boolean;
@@ -706,7 +706,7 @@ export class PortableCLIStatus {
 }
 
 /**
- * PortableProtocolStatus describes the current lunabox:// scheme binding.
+ * PortableProtocolStatus describes the current yukihub:// scheme binding.
  */
 export class PortableProtocolStatus {
     "registered": boolean;
@@ -858,7 +858,7 @@ export class PreviewGame {
 }
 
 /**
- * StartupFailure contains the diagnostic message shown when LunaBox cannot
+ * StartupFailure contains the diagnostic message shown when YukiHub cannot
  * create its main window.
  */
 export class StartupFailure {

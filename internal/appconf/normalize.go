@@ -4,8 +4,8 @@ import (
 	"strings"
 	"time"
 
-	enums2 "lunabox/internal/common/enums"
-	"lunabox/internal/utils/proxyutils"
+	enums2 "yukihub/internal/common/enums"
+	"yukihub/internal/utils/proxyutils"
 )
 
 func NormalizeScheduledDBBackup(config *AppConfig) bool {

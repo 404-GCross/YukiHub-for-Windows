@@ -1,4 +1,4 @@
-module lunabox
+module yukihub
 
 go 1.27.1
 
@@ -25,11 +25,11 @@ require (
 	golang.org/x/mod v0.41.0
 	golang.org/x/sys v0.48.0
 	golift.io/xtractr v0.3.0
-	lunabox/updater v0.0.0
+	yukihub/updater v0.0.0
 	resty.dev/v3 v3.0.0-rc.3
 )
 
-replace lunabox/updater => ./updater
+replace yukihub/updater => ./updater
 
 require (
 	github.com/adrg/xdg v0.5.3 // indirect

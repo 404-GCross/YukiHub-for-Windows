@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { LayerPortal } from "@lunabox/desktop-shell-react";
+import { LayerPortal } from "@yukihub/desktop-shell-react";
 
 export const APP_MODAL_ROOT_ID = "app-modal-root";
 

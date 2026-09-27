@@ -3,13 +3,13 @@ package protonutils
 import (
 	"fmt"
 	"hash/fnv"
-	"lunabox/internal/utils/apputils"
 	"os"
 	"path/filepath"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
+	"yukihub/internal/utils/apputils"
 )
 
 const runnerPrefix = "proton"

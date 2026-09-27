@@ -2,8 +2,8 @@ package test
 
 import (
 	"database/sql"
-	"lunabox/internal/applog"
 	"testing"
+	"yukihub/internal/applog"
 
 	_ "github.com/duckdb/duckdb-go/v2"
 )

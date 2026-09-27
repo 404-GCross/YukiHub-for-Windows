@@ -12,7 +12,7 @@ import (
 	"sort"
 	"strings"
 
-	"lunabox/updater/updateutils"
+	"yukihub/updater/updateutils"
 
 	"github.com/klauspost/compress/zstd"
 )
@@ -38,9 +38,9 @@ type managedFileSpec struct {
 }
 
 var managedFileSpecs = []managedFileSpec{
-	{Path: "LunaBox.exe", InstallerPolicy: updateutils.InstallPolicyAlways, PortablePolicy: updateutils.InstallPolicyAlways},
-	{Path: "LunaBoxUpdater.exe", InstallerPolicy: updateutils.InstallPolicyAlways, PortablePolicy: updateutils.InstallPolicyAlways},
-	{Path: "lunacli.exe", InstallerPolicy: updateutils.InstallPolicyIfPresent, PortablePolicy: updateutils.InstallPolicyAlways},
+	{Path: "YukiHub.exe", InstallerPolicy: updateutils.InstallPolicyAlways, PortablePolicy: updateutils.InstallPolicyAlways},
+	{Path: "YukiHubUpdater.exe", InstallerPolicy: updateutils.InstallPolicyAlways, PortablePolicy: updateutils.InstallPolicyAlways},
+	{Path: "yukihubcli.exe", InstallerPolicy: updateutils.InstallPolicyIfPresent, PortablePolicy: updateutils.InstallPolicyAlways},
 	{Path: "duckdb.dll", InstallerPolicy: updateutils.InstallPolicyAlways, PortablePolicy: updateutils.InstallPolicyAlways},
 	{Path: "7z/7z.exe", InstallerPolicy: updateutils.InstallPolicyAlways, PortablePolicy: updateutils.InstallPolicyAlways},
 	{Path: "7z/7z.dll", InstallerPolicy: updateutils.InstallPolicyAlways, PortablePolicy: updateutils.InstallPolicyAlways},
@@ -125,7 +125,7 @@ func run(opts options) error {
 	if err != nil {
 		return err
 	}
-	manifestPath := filepath.Join(opts.outputDir, fmt.Sprintf("LunaBox-%s-update-manifest.json", opts.version))
+	manifestPath := filepath.Join(opts.outputDir, fmt.Sprintf("YukiHub-%s-update-manifest.json", opts.version))
 	if err := os.WriteFile(manifestPath, append(data, '\n'), 0644); err != nil {
 		return err
 	}
@@ -181,7 +181,7 @@ func buildChannel(opts options, channelName string, mode string, inputDir string
 		if err != nil {
 			return updateutils.ReleaseChannel{}, err
 		}
-		assetBase := fmt.Sprintf("LunaBox-%s-%s-%s", opts.version, channelName, assetPathName(spec.Path))
+		assetBase := fmt.Sprintf("YukiHub-%s-%s-%s", opts.version, channelName, assetPathName(spec.Path))
 		fullName := assetBase + ".zst"
 		fullPath := filepath.Join(opts.outputDir, fullName)
 		if err := compressFull(sourcePath, fullPath); err != nil {
@@ -209,7 +209,7 @@ func buildChannel(opts options, channelName string, mode string, inputDir string
 			},
 		}
 
-		if spec.Path == "LunaBox.exe" && opts.previousVersion != "" && opts.previousRoot != "" {
+		if spec.Path == "YukiHub.exe" && opts.previousVersion != "" && opts.previousRoot != "" {
 			patch, patchErr := buildPatch(opts, channelName, sourcePath, fullSize)
 			if patchErr != nil {
 				fmt.Fprintf(os.Stderr, "skipping patch for %s: %v\n", channelName, patchErr)
@@ -224,7 +224,7 @@ func buildChannel(opts options, channelName string, mode string, inputDir string
 
 func buildPatch(opts options, channelName string, targetPath string, fullSize int64) (*updateutils.PatchArtifact, error) {
 	previousFullName := fmt.Sprintf(
-		"LunaBox-%s-%s-LunaBox.exe.zst",
+		"YukiHub-%s-%s-YukiHub.exe.zst",
 		opts.previousVersion,
 		channelName,
 	)
@@ -232,12 +232,12 @@ func buildPatch(opts options, channelName string, targetPath string, fullSize in
 	if err != nil {
 		return nil, err
 	}
-	tempDir, err := os.MkdirTemp("", "lunabox-update-base-")
+	tempDir, err := os.MkdirTemp("", "yukihub-update-base-")
 	if err != nil {
 		return nil, err
 	}
 	defer os.RemoveAll(tempDir)
-	previousExe := filepath.Join(tempDir, "LunaBox.exe")
+	previousExe := filepath.Join(tempDir, "YukiHub.exe")
 	if err := decompressFull(previousFullPath, previousExe); err != nil {
 		return nil, fmt.Errorf("decompress previous executable: %w", err)
 	}
@@ -247,7 +247,7 @@ func buildPatch(opts options, channelName string, targetPath string, fullSize in
 	}
 
 	patchName := fmt.Sprintf(
-		"LunaBox-%s-%s-LunaBox.exe-from-%s.zsdiff",
+		"YukiHub-%s-%s-YukiHub.exe-from-%s.zsdiff",
 		opts.version,
 		channelName,
 		opts.previousVersion,
@@ -266,7 +266,7 @@ func buildPatch(opts options, channelName string, targetPath string, fullSize in
 	if output, err := command.CombinedOutput(); err != nil {
 		return nil, fmt.Errorf("zstd --patch-from failed: %s: %w", strings.TrimSpace(string(output)), err)
 	}
-	verifiedTarget := filepath.Join(tempDir, "verified-LunaBox.exe")
+	verifiedTarget := filepath.Join(tempDir, "verified-YukiHub.exe")
 	if err := updateutils.ReconstructZstdPatch(previousExe, patchPath, verifiedTarget); err != nil {
 		_ = os.Remove(patchPath)
 		return nil, fmt.Errorf("verify generated patch reconstruction: %w", err)

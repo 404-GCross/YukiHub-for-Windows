@@ -1,4 +1,4 @@
-import { OverlayHost } from "@lunabox/desktop-shell-react";
+import { OverlayHost } from "@yukihub/desktop-shell-react";
 import { createRootRoute, Outlet, useLocation } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";

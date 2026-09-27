@@ -5,12 +5,12 @@ package launcher
 import (
 	"context"
 	"errors"
-	"lunabox/internal/appconf"
-	"lunabox/internal/common/enums"
-	"lunabox/internal/models"
 	"os"
 	"path/filepath"
 	"testing"
+	"yukihub/internal/appconf"
+	"yukihub/internal/common/enums"
+	"yukihub/internal/models"
 )
 
 func tempLinuxExecutable(t *testing.T, name string) string {
@@ -31,7 +31,7 @@ func TestLinuxLauncherStrategyWineSystemPlan(t *testing.T) {
 	}
 	cfg := &appconf.AppConfig{
 		WineRunnerPath: winePath,
-		WinePrefix:     "/home/u/.wine_lunabox",
+		WinePrefix:     "/home/u/.wine_yukihub",
 	}
 
 	strategy, err := SelectLauncherStrategy(game, LaunchOptions{}, cfg)
@@ -60,7 +60,7 @@ func TestLinuxLauncherStrategyWineSystemPlan(t *testing.T) {
 		t.Fatalf("expected Linux exit watch, got %+v", plan.ExitWatch)
 	}
 	assertEnvContains(t, plan.Env, "WINEDEBUG=-all")
-	assertEnvContains(t, plan.Env, "WINEPREFIX=/home/u/.wine_lunabox")
+	assertEnvContains(t, plan.Env, "WINEPREFIX=/home/u/.wine_yukihub")
 }
 
 func TestLinuxNativeStrategyEnablesProcessHandoff(t *testing.T) {
@@ -106,7 +106,7 @@ func TestLinuxLauncherStrategyWineEnvLaunchOptions(t *testing.T) {
 func TestLinuxLauncherStrategyProtonPlan(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
-	compatData := filepath.Join(home, ".local", "share", "LunaBox", "proton-compatdata", "game", "pfx")
+	compatData := filepath.Join(home, ".local", "share", "YukiHub", "proton-compatdata", "game", "pfx")
 	protonPath := filepath.Join(home, ".config", "heroic", "tools", "proton", "DW-Proton", "proton")
 	if err := os.MkdirAll(filepath.Dir(protonPath), 0o755); err != nil {
 		t.Fatalf("create Proton dir: %v", err)

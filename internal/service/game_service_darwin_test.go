@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"lunabox/internal/service/gamehelper"
+	"yukihub/internal/service/gamehelper"
 )
 
 func TestExecutableDialogDirectoryMacAppBundle(t *testing.T) {

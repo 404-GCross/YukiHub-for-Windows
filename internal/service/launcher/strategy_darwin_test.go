@@ -5,11 +5,11 @@ package launcher
 import (
 	"context"
 	"errors"
-	"lunabox/internal/appconf"
-	"lunabox/internal/models"
 	"os"
 	"path/filepath"
 	"testing"
+	"yukihub/internal/appconf"
+	"yukihub/internal/models"
 )
 
 func tempWineBinary(t *testing.T) string {

@@ -6,8 +6,8 @@ import (
 	"context"
 	"fmt"
 
-	"lunabox/internal/appconf"
-	"lunabox/internal/models"
+	"yukihub/internal/appconf"
+	"yukihub/internal/models"
 )
 
 func getPlatformTools(_ context.Context, _ models.Game, _ *appconf.AppConfig) (Info, error) {

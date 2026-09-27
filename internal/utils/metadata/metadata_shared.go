@@ -2,14 +2,14 @@ package metadata
 
 import (
 	"io"
-	enums2 "lunabox/internal/common/enums"
-	"lunabox/internal/models"
-	"lunabox/internal/utils/httputils"
-	"lunabox/internal/utils/proxyutils"
 	"math"
 	"net/http"
 	"strings"
 	"time"
+	enums2 "yukihub/internal/common/enums"
+	"yukihub/internal/models"
+	"yukihub/internal/utils/httputils"
+	"yukihub/internal/utils/proxyutils"
 
 	"github.com/labstack/gommon/log"
 )

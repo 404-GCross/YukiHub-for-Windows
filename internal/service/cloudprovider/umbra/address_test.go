@@ -10,7 +10,7 @@ func TestAddressRoundTrip(t *testing.T) {
 	tests := []string{
 		"saves/550e8400-e29b-41d4-a716-446655440000/2026-07-10T12-30-45.zip",
 		"saves/550e8400-e29b-41d4-a716-446655440000/latest.zip",
-		"database/lunabox_2026-07-10T12-30-45.zip",
+		"database/yukihub_2026-07-10T12-30-45.zip",
 		"database/latest.zip",
 		"sync/covers/550e8400-e29b-41d4-a716-446655440000.webp",
 	}

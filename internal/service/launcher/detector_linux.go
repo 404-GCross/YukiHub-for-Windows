@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"lunabox/internal/utils/processutils"
+	"yukihub/internal/utils/processutils"
 )
 
 func DetectStagedProcess(input StagedProcessDetectionInput, logger DetectionLogger) StagedProcessDetectionResult {

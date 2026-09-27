@@ -12,9 +12,9 @@ import (
 	"strings"
 	"time"
 
-	"lunabox/internal/utils/httputils"
-	"lunabox/internal/utils/proxyutils"
 	"resty.dev/v3"
+	"yukihub/internal/utils/httputils"
+	"yukihub/internal/utils/proxyutils"
 )
 
 // OneDrive 常量
@@ -564,5 +564,5 @@ func (p *OneDriveProvider) EnsureDir(ctx context.Context, folderPath string) err
 }
 
 func (p *OneDriveProvider) GetCloudPath(userID, subPath string) string {
-	return fmt.Sprintf("/LunaBox/v1/%s/%s", userID, subPath)
+	return fmt.Sprintf("/YukiHub/v1/%s/%s", userID, subPath)
 }

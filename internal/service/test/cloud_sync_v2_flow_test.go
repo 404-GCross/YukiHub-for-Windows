@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"lunabox/internal/appconf"
-	"lunabox/internal/service/cloudprovider"
-	"lunabox/internal/service/cloudsync"
+	"yukihub/internal/appconf"
+	"yukihub/internal/service/cloudprovider"
+	"yukihub/internal/service/cloudsync"
 )
 
 // mockProvider 是一个内存伪 provider，用于断言 SyncToCloud 的远端 IO 顺序与文件集合。

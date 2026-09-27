@@ -1,16 +1,16 @@
 ---
-name: lunabox
-description: "Operate the LunaBox visual novel / galgame library via the `lunacli` CLI tool. This skill should be used when the user asks to browse their game library, get game details or recommendations, launch a game, backup saves, or check play status. Trigger on keywords: game, galgame, visual novel, VN, play, launch, start, backup, save, library, LunaBox, lunacli."
+name: yukihub
+description: "Operate the YukiHub visual novel / galgame library via the `yukihubcli` CLI tool. This skill should be used when the user asks to browse their game library, get game details or recommendations, launch a game, backup saves, or check play status. Trigger on keywords: game, galgame, visual novel, VN, play, launch, start, backup, save, library, YukiHub, yukihubcli."
 ---
 
-# LunaBox CLI Skill
+# YukiHub CLI Skill
 
-LunaBox is a Windows visual novel / galgame library manager. The `lunacli` binary provides CLI access to the full library — listing, querying, launching, and backing up games. This skill enables AI agents to operate LunaBox on behalf of users.
+YukiHub is a Windows visual novel / galgame library manager. The `yukihubcli` binary provides CLI access to the full library — listing, querying, launching, and backing up games. This skill enables AI agents to operate YukiHub on behalf of users.
 
 ## Prerequisites
 
-- The `lunacli` binary must be in the system PATH or at a known absolute path.
-- LunaBox must have games already added via the GUI application.
+- The `yukihubcli` binary must be in the system PATH or at a known absolute path.
+- YukiHub must have games already added via the GUI application.
 - Output is UTF-8 and may contain CJK characters (Japanese game titles) and Unicode symbols.
 
 ## Commands
@@ -20,7 +20,7 @@ LunaBox is a Windows visual novel / galgame library manager. The `lunacli` binar
 Show every game in the user's library.
 
 ```bash
-lunacli list
+yukihubcli list
 ```
 
 Output is an ASCII table with columns: **Short ID** (8-char prefix), **Status Icon**, **Name**.
@@ -39,7 +39,7 @@ Status icons:
 Show comprehensive metadata for a single game.
 
 ```bash
-lunacli detail <game>
+yukihubcli detail <game>
 ```
 
 Output is key-value pairs (one per line, split on first `:`): Name, ID, Status, Source, Company, Launch Path, Save Path, Process Name, Use Locale Emulator, Use Magpie, Created At, Cached At, Summary.
@@ -49,10 +49,10 @@ Output is key-value pairs (one per line, split on first `:`): Name, ID, Status, 
 Launch a game from the library.
 
 ```bash
-lunacli start <game>
-lunacli start <game> --le          # With Locale Emulator (Japanese locale)
-lunacli start <game> --magpie      # With Magpie (resolution upscaling)
-lunacli start <game> --le --magpie # Both
+yukihubcli start <game>
+yukihubcli start <game> --le          # With Locale Emulator (Japanese locale)
+yukihubcli start <game> --magpie      # With Magpie (resolution upscaling)
+yukihubcli start <game> --le --magpie # Both
 ```
 
 Flags:
@@ -68,8 +68,8 @@ On success: `Game started successfully!` followed by `Recording play duration...
 Create a local backup of a game's save files.
 
 ```bash
-lunacli backup --game <game>
-lunacli backup -g <game>
+yukihubcli backup --game <game>
+yukihubcli backup -g <game>
 ```
 
 On success, output includes: `✓ Game save backup created successfully!`, Game name, File name, Size, Path.
@@ -77,7 +77,7 @@ On success, output includes: `✓ Game save backup created successfully!`, Game 
 ### Version
 
 ```bash
-lunacli version
+yukihubcli version
 ```
 
 Returns version, git commit, build time, build mode.
@@ -85,11 +85,11 @@ Returns version, git commit, build time, build mode.
 ### Portable Protocol Management
 
 ```bash
-lunacli protocol register [--exe <path>]
-lunacli protocol unregister
+yukihubcli protocol register [--exe <path>]
+yukihubcli protocol unregister
 ```
 
-Register or unregister `lunabox://` for a Windows portable build. Installed
+Register or unregister `yukihub://` for a Windows portable build. Installed
 builds receive the association from the Wails installer.
 
 ## Game Resolution
@@ -116,33 +116,33 @@ Common errors (non-zero exit code, message on stderr):
 | `no game found matching: <query>` | No match at all |
 | `please use a longer ID prefix to match exactly one game` | Ambiguous ID prefix |
 | `please use the exact game ID or refine your search` | Ambiguous name match |
-| `Locale Emulator path is not configured` | LE not set up in LunaBox settings |
-| `Magpie path is not configured` | Magpie not set up in LunaBox settings |
+| `Locale Emulator path is not configured` | LE not set up in YukiHub settings |
+| `Magpie path is not configured` | Magpie not set up in YukiHub settings |
 
 ## Safety Notes
 
 - Only `start` and `backup` have side effects. `list`, `detail`, and `version` are read-only.
 - Do not run multiple `start` commands simultaneously — one game at a time.
 - Always confirm with the user before running `start` (launches a program) or `backup` (writes to disk).
-- When recommending games, run `lunacli list` first, then `lunacli detail` on candidates to read summaries before making recommendations.
+- When recommending games, run `yukihubcli list` first, then `yukihubcli detail` on candidates to read summaries before making recommendations.
 
 ## System Prompt Snippet
 
-To integrate LunaBox into a bot framework, add the following to the bot's system prompt:
+To integrate YukiHub into a bot framework, add the following to the bot's system prompt:
 
 ```
-You have access to the user's LunaBox game library via the `lunacli` CLI tool.
+You have access to the user's YukiHub game library via the `yukihubcli` CLI tool.
 
 Available actions:
-- `lunacli list` — Show all games (ID, status, name)
-- `lunacli detail <game>` — Show game metadata and synopsis
-- `lunacli start <game> [--le] [--magpie]` — Launch a game
-- `lunacli backup -g <game>` — Backup game saves
+- `yukihubcli list` — Show all games (ID, status, name)
+- `yukihubcli detail <game>` — Show game metadata and synopsis
+- `yukihubcli start <game> [--le] [--magpie]` — Launch a game
+- `yukihubcli backup -g <game>` — Backup game saves
 
 Game queries accept: full ID, 8-char ID prefix, or game name (fuzzy match).
 Status: · not started, ▶ playing, ✓ completed, ○ on hold, ✗ dropped.
 
 Use these tools to help the user manage their visual novel library: browse games,
 get recommendations, check play status, launch games, and backup saves.
-Always run `lunacli list` first if you need to know what games the user has.
+Always run `yukihubcli list` first if you need to know what games the user has.
 ```

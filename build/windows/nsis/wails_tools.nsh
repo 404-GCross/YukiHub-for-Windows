@@ -5,19 +5,19 @@
 !include "FileFunc.nsh"
 
 !ifndef INFO_PROJECTNAME
-    !define INFO_PROJECTNAME "LunaBox"
+    !define INFO_PROJECTNAME "YukiHub"
 !endif
 !ifndef INFO_COMPANYNAME
-    !define INFO_COMPANYNAME "LunaBox"
+    !define INFO_COMPANYNAME "YukiHub"
 !endif
 !ifndef INFO_PRODUCTNAME
-    !define INFO_PRODUCTNAME "LunaBox"
+    !define INFO_PRODUCTNAME "YukiHub"
 !endif
 !ifndef INFO_PRODUCTVERSION
-    !define INFO_PRODUCTVERSION "1.13.0"
+    !define INFO_PRODUCTVERSION "0.1.0"
 !endif
 !ifndef INFO_COPYRIGHT
-    !define INFO_COPYRIGHT "Copyright (c) LunaBox contributors"
+    !define INFO_COPYRIGHT "Copyright (c) YukiHub contributors"
 !endif
 !ifndef PRODUCT_EXECUTABLE
     !define PRODUCT_EXECUTABLE "${INFO_PROJECTNAME}.exe"
@@ -253,13 +253,13 @@ RequestExecutionLevel "${REQUEST_EXECUTION_LEVEL}"
 !macro wails.associateCustomProtocols
     ; Create custom protocols associations
     
-      !insertmacro CUSTOM_PROTOCOL_ASSOCIATE "lunabox" "LunaBox Protocol" "$INSTDIR\${PRODUCT_EXECUTABLE},0" "$INSTDIR\${PRODUCT_EXECUTABLE} $\"%1$\""
+      !insertmacro CUSTOM_PROTOCOL_ASSOCIATE "yukihub" "YukiHub Protocol" "$INSTDIR\${PRODUCT_EXECUTABLE},0" "$INSTDIR\${PRODUCT_EXECUTABLE} $\"%1$\""
     
 !macroend
 
 !macro wails.unassociateCustomProtocols
     ; Delete app custom protocol associations
     
-      !insertmacro CUSTOM_PROTOCOL_UNASSOCIATE "lunabox"
+      !insertmacro CUSTOM_PROTOCOL_UNASSOCIATE "yukihub"
     
 !macroend

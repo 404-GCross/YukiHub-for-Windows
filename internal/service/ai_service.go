@@ -7,16 +7,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"lunabox/internal/appconf"
-	"lunabox/internal/applog"
-	enums2 "lunabox/internal/common/enums"
-	"lunabox/internal/common/vo"
-	"lunabox/internal/service/gamehelper"
-	"lunabox/internal/utils"
-	"lunabox/internal/utils/httputils"
 	"net/http"
 	"strings"
 	"time"
+	"yukihub/internal/appconf"
+	"yukihub/internal/applog"
+	enums2 "yukihub/internal/common/enums"
+	"yukihub/internal/common/vo"
+	"yukihub/internal/service/gamehelper"
+	"yukihub/internal/utils"
+	"yukihub/internal/utils/httputils"
 )
 
 type AiService struct {
@@ -134,7 +134,7 @@ func (s *AiService) buildSystemPrompt(data *AIStatsData, spoilerLevel string) st
 
 	// 工具环境提醒
 	sb.WriteString("[环境说明]\n")
-	sb.WriteString("用户使用的程序是 LunaBox，一款本地游戏管理和启动器软件。请勿在回答中提及该软件名称。\n\n")
+	sb.WriteString("用户使用的程序是 YukiHub，一款本地游戏管理和启动器软件。请勿在回答中提及该软件名称。\n\n")
 	sb.WriteString(fmt.Sprintf("用户的语言是 %s，请严格返回相同语言的回答\n", s.appConfig.Language))
 	// 防剧透指令（仅在有游戏时注入，且非 full 等级）
 	if spoilerLevel != "full" && len(data.TopGames) > 0 {

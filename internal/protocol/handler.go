@@ -8,9 +8,9 @@ import (
 	"strings"
 )
 
-// HandlerMatchesTarget reports whether the lunabox:// handler registered at
+// HandlerMatchesTarget reports whether the yukihub:// handler registered at
 // registeredPath already launches targetPath, so the registration can be kept
-// as-is. Platform specifics such as LunaBox's own launcher wrappers are
+// as-is. Platform specifics such as YukiHub's own launcher wrappers are
 // resolved by platformHandlerMatchesTarget.
 func HandlerMatchesTarget(registeredPath string, targetPath string) bool {
 	if sameExecutablePath(registeredPath, targetPath) {
@@ -19,13 +19,13 @@ func HandlerMatchesTarget(registeredPath string, targetPath string) bool {
 	return platformHandlerMatchesTarget(registeredPath, targetPath)
 }
 
-// IsManagedHandler reports whether registeredPath was written by LunaBox's own
+// IsManagedHandler reports whether registeredPath was written by YukiHub's own
 // protocol registration, which means it can safely be replaced on repair.
 func IsManagedHandler(registeredPath string) bool {
 	return platformManagedHandler(registeredPath)
 }
 
-// RegistrationNeedsRepair reports whether the lunabox:// handler registered at
+// RegistrationNeedsRepair reports whether the yukihub:// handler registered at
 // registeredPath is stale relative to currentPath and should be re-registered.
 func RegistrationNeedsRepair(registeredPath string, currentPath string) bool {
 	if strings.TrimSpace(registeredPath) == "" || HandlerMatchesTarget(registeredPath, currentPath) {

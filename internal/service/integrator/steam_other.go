@@ -5,7 +5,7 @@ package integrator
 import (
 	"context"
 	"fmt"
-	"lunabox/internal/models"
+	"yukihub/internal/models"
 )
 
 func resolveSteamPlatformTarget(_ context.Context, _ models.Game) (SteamResult, error) {

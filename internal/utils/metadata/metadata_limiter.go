@@ -5,12 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"lunabox/internal/common/enums"
-	"lunabox/internal/utils/httputils"
 	"net/http"
 	"strings"
 	"sync"
 	"time"
+	"yukihub/internal/common/enums"
+	"yukihub/internal/utils/httputils"
 )
 
 type MetadataSource = enums.SourceType

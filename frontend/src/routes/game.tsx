@@ -9,7 +9,7 @@ import {
   GetCategories,
   GetCategoriesByGame,
   RemoveGameFromCategory,
-} from "../../bindings/lunabox/internal/service/categoryservice";
+} from "../../bindings/yukihub/internal/service/categoryservice";
 import {
   BatchUpdateStatus,
   DeleteGame,
@@ -31,12 +31,12 @@ import {
   UpdateGameFromRemoteBySource,
   UpdateGameFromRemoteWithFields,
   UpsertGameMetadataSource,
-} from "../../bindings/lunabox/internal/service/gameservice";
+} from "../../bindings/yukihub/internal/service/gameservice";
 import {
   GetGameSteamStatus,
   ImportGameToSteam,
-} from "../../bindings/lunabox/internal/service/integrationservice";
-import { GetTagsByGame } from "../../bindings/lunabox/internal/service/tagservice";
+} from "../../bindings/yukihub/internal/service/integrationservice";
+import { GetTagsByGame } from "../../bindings/yukihub/internal/service/tagservice";
 import { enums } from "../../src/bindings/models";
 import { onWailsEvent } from "../../src/bindings/runtime";
 import { SetGameSteamLaunchOptions } from "../bindings/integration";

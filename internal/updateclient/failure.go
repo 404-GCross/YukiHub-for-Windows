@@ -5,7 +5,7 @@ import (
 	"os"
 	"syscall"
 
-	"lunabox/updater/updateutils"
+	"yukihub/updater/updateutils"
 )
 
 // Normalized reasons reported to the update server. Raw error messages contain

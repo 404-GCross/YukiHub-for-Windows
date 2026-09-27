@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"time"
 
-	"lunabox/internal/appconf"
-	"lunabox/internal/common/enums"
-	"lunabox/internal/service/gamehelper"
+	"yukihub/internal/appconf"
+	"yukihub/internal/common/enums"
+	"yukihub/internal/service/gamehelper"
 )
 
 type AIStatsProvider interface {

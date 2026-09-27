@@ -14,7 +14,7 @@ import (
 )
 
 // Prepare reconstructs and verifies every target file without modifying the
-// application directory. It is safe to run while LunaBox is still running.
+// application directory. It is safe to run while YukiHub is still running.
 func Prepare(task *Task) error {
 	if task == nil {
 		return fmt.Errorf("update task is nil")
@@ -121,9 +121,9 @@ func preparePatchChain(task *Task, file TaskFile, firstOutput string) error {
 }
 
 func requiresAuthenticode(managedPath string) bool {
-	return strings.EqualFold(managedPath, "LunaBox.exe") ||
-		strings.EqualFold(managedPath, "LunaBoxUpdater.exe") ||
-		strings.EqualFold(managedPath, "lunacli.exe")
+	return strings.EqualFold(managedPath, "YukiHub.exe") ||
+		strings.EqualFold(managedPath, "YukiHubUpdater.exe") ||
+		strings.EqualFold(managedPath, "yukihubcli.exe")
 }
 
 func ValidatePrepared(task *Task) error {

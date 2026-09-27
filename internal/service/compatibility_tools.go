@@ -1,6 +1,6 @@
 package service
 
-import "lunabox/internal/service/compattools"
+import "yukihub/internal/service/compattools"
 
 // GameCompatibilityToolsInfo 描述某个游戏可用的 Wine/Proton 快捷工具。
 type GameCompatibilityToolsInfo struct {

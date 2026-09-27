@@ -4,10 +4,10 @@ package importer
 
 import (
 	"fmt"
-	"lunabox/internal/common/enums"
 	"os"
 	"path/filepath"
 	"strings"
+	"yukihub/internal/common/enums"
 )
 
 func findSteamInstallPath() (string, error) {

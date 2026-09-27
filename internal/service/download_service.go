@@ -6,26 +6,26 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"lunabox/internal/appconf"
-	"lunabox/internal/applog"
-	enums2 "lunabox/internal/common/enums"
-	"lunabox/internal/common/vo"
-	"lunabox/internal/models"
-	"lunabox/internal/service/gamehelper"
-	"lunabox/internal/utils/apputils"
-	"lunabox/internal/utils/archiveutils"
-	"lunabox/internal/utils/downloadutils"
-	"lunabox/internal/utils/imageutils"
-	metadatautils "lunabox/internal/utils/metadata"
 	"os"
 	pathpkg "path"
 	"path/filepath"
 	"strings"
 	"sync"
 	"time"
+	"yukihub/internal/appconf"
+	"yukihub/internal/applog"
+	enums2 "yukihub/internal/common/enums"
+	"yukihub/internal/common/vo"
+	"yukihub/internal/models"
+	"yukihub/internal/service/gamehelper"
+	"yukihub/internal/utils/apputils"
+	"yukihub/internal/utils/archiveutils"
+	"yukihub/internal/utils/downloadutils"
+	"yukihub/internal/utils/imageutils"
+	metadatautils "yukihub/internal/utils/metadata"
 
 	"github.com/google/uuid"
-	"lunabox/internal/wailsruntime"
+	"yukihub/internal/wailsruntime"
 )
 
 const (
@@ -100,7 +100,7 @@ type DownloadService struct {
 	emitEvent      func(string, ...interface{})
 	mu             sync.RWMutex
 	tasks          map[string]*DownloadTask
-	pendingInstall *vo.InstallRequest // 从 lunabox:// URI 传入的待安装请求，在 GUI 就绪前暂存
+	pendingInstall *vo.InstallRequest // 从 yukihub:// URI 传入的待安装请求，在 GUI 就绪前暂存
 }
 
 func NewDownloadService() *DownloadService {
@@ -1627,7 +1627,7 @@ func downloadTaskExtractStagingPath(extractPath string, taskID string) string {
 	if safeTaskID == "" {
 		safeTaskID = "unknown"
 	}
-	return extractPath + ".lunabox.extracting." + safeTaskID
+	return extractPath + ".yukihub.extracting." + safeTaskID
 }
 
 // finalizeDownloadExtractDir 将任务专属的解压 staging 目录落位到正式目录。

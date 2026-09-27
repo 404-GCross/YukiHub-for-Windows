@@ -12,9 +12,9 @@ import (
 	"time"
 
 	umbrsdk "github.com/Umbrae-Labs/umbra-sdk/umbra-go"
-	"lunabox/internal/utils/httputils"
-	"lunabox/internal/utils/identityutils"
-	"lunabox/internal/utils/proxyutils"
+	"yukihub/internal/utils/httputils"
+	"yukihub/internal/utils/identityutils"
+	"yukihub/internal/utils/proxyutils"
 )
 
 const defaultRedirectURI = "http://127.0.0.1:0/auth/callback"
@@ -194,14 +194,14 @@ func Authenticate(ctx context.Context, cfg Config, appVersion string, opener Bro
 	}
 	needsRegistration := credentials == nil || credentials.DeviceID == "" || credentials.DeviceSecret == ""
 	if needsRegistration && strings.TrimSpace(cfg.RegistrationToken) == "" {
-		return fmt.Errorf("Umbra 安装令牌未注入，请在构建时配置 LUNABOX_UMBRA_REGISTRATION_TOKEN")
+		return fmt.Errorf("Umbra 安装令牌未注入，请在构建时配置 YUKIHUB_UMBRA_REGISTRATION_TOKEN")
 	}
 
 	var registration *umbrsdk.DeviceRegistrationOptions
 	if needsRegistration {
 		installationID, err := identityutils.LoadOrCreateInstallationID()
 		if err != nil {
-			return fmt.Errorf("获取 LunaBox 安装标识失败: %w", err)
+			return fmt.Errorf("获取 YukiHub 安装标识失败: %w", err)
 		}
 		device, err := umbrsdk.DetectDeviceMetadata(umbrsdk.DeviceMetadataOptions{
 			AppVersion: appVersion,
@@ -267,7 +267,7 @@ func newClient(cfg Config, opener BrowserOpenerFunc, registration *umbrsdk.Devic
 		return nil, nil, nil, fmt.Errorf("Umbra Base URL 不能为空")
 	}
 	if strings.TrimSpace(cfg.ClientID) == "" {
-		return nil, nil, nil, fmt.Errorf("Umbra OAuth Client ID 未注入，请在构建时配置 LUNABOX_UMBRA_CLIENT_ID")
+		return nil, nil, nil, fmt.Errorf("Umbra OAuth Client ID 未注入，请在构建时配置 YUKIHUB_UMBRA_CLIENT_ID")
 	}
 	httpClient, _, err := httputils.NewClient(httputils.ClientOptions{
 		Timeout:     60 * time.Second,

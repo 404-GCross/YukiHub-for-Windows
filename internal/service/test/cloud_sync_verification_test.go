@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"lunabox/internal/appconf"
-	"lunabox/internal/models"
-	"lunabox/internal/service"
+	"yukihub/internal/appconf"
+	"yukihub/internal/models"
+	"yukihub/internal/service"
 
 	_ "github.com/duckdb/duckdb-go/v2"
 )

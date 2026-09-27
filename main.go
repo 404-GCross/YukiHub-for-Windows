@@ -8,20 +8,6 @@ import (
 	"fmt"
 	"io/fs"
 	"log/slog"
-	"lunabox/internal/applog"
-	"lunabox/internal/cli"
-	"lunabox/internal/cli/ipcclient"
-	"lunabox/internal/cli/ipcserver"
-	"lunabox/internal/common/vo"
-	"lunabox/internal/migrations"
-	"lunabox/internal/platform"
-	"lunabox/internal/protocol"
-	"lunabox/internal/utils"
-	"lunabox/internal/utils/apputils"
-	"lunabox/internal/utils/dbutils"
-	"lunabox/internal/utils/imageutils"
-	"lunabox/internal/utils/sessionend"
-	"lunabox/internal/wailsruntime"
 	"net"
 	"net/http"
 	"os"
@@ -32,9 +18,23 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+	"yukihub/internal/applog"
+	"yukihub/internal/cli"
+	"yukihub/internal/cli/ipcclient"
+	"yukihub/internal/cli/ipcserver"
+	"yukihub/internal/common/vo"
+	"yukihub/internal/migrations"
+	"yukihub/internal/platform"
+	"yukihub/internal/protocol"
+	"yukihub/internal/utils"
+	"yukihub/internal/utils/apputils"
+	"yukihub/internal/utils/dbutils"
+	"yukihub/internal/utils/imageutils"
+	"yukihub/internal/utils/sessionend"
+	"yukihub/internal/wailsruntime"
 
-	"lunabox/internal/appconf"
-	"lunabox/internal/service"
+	"yukihub/internal/appconf"
+	"yukihub/internal/service"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
@@ -67,7 +67,7 @@ var remoteImageProxyHTTPServer *http.Server
 var sessionEndHook *sessionend.Hook
 
 const (
-	applicationUniqueID      = "io.github.saramanda9988.lunabox"
+	applicationUniqueID      = "com.yukihub.desktop"
 	remoteImageProxyHTTPAddr = "127.0.0.1:23680"
 )
 
@@ -294,10 +294,10 @@ func (s *lifecycleState) ConfigureTray(showStartupErrorPreview func()) {
 
 	tray := app.SystemTray.New()
 	if goruntime.GOOS == "linux" {
-		tray.SetLabel("LunaBox")
+		tray.SetLabel("YukiHub")
 	}
 	tray.SetMenu(menu)
-	tray.SetTooltip("LunaBox")
+	tray.SetTooltip("YukiHub")
 	if goruntime.GOOS == "darwin" {
 		tray.SetTemplateIcon(darwinTrayIcon)
 	} else if goruntime.GOOS == "linux" {
@@ -352,7 +352,7 @@ func parseProtocolRequest(rawURL string, allowLaunch bool) (*pendingProtocolRequ
 		req.install = installReq
 	case protocol.ActionLaunch:
 		if !allowLaunch {
-			return nil, fmt.Errorf("lunabox://launch is not supported on macOS yet")
+			return nil, fmt.Errorf("yukihub://launch is not supported on macOS yet")
 		}
 		launchReq, err := protocol.ParseLaunchURL(rawURL)
 		if err != nil {
@@ -496,7 +496,7 @@ func main() {
 	args, launchedByAutostart := extractAutostartLaunchFlag(args)
 	var initialProtocolRequest *pendingProtocolRequest
 
-	// lunabox:// URL：检查 GUI 是否已运行
+	// yukihub:// URL：检查 GUI 是否已运行
 	if len(args) == 1 && protocol.IsProtocolURL(args[0]) {
 		req, err := parseProtocolRequest(args[0], goruntime.GOOS != "darwin")
 		if err != nil {
@@ -507,7 +507,7 @@ func main() {
 		if ipcclient.IsServerRunning() {
 			if err := forwardProtocolRequestToRunningInstance(req); err != nil {
 				appLogger.Error("failed to forward protocol request to running instance: " + err.Error())
-				fmt.Fprintf(os.Stderr, "Error forwarding protocol request to LunaBox: %v\n", err)
+				fmt.Fprintf(os.Stderr, "Error forwarding protocol request to YukiHub: %v\n", err)
 				os.Exit(1)
 			}
 			appLogger.Info("protocol request forwarded to running instance")
@@ -818,8 +818,8 @@ func runGUI(
 	}
 
 	wailsApp := application.New(application.Options{
-		Name:        "LunaBox",
-		Description: "LunaBox game library manager",
+		Name:        "YukiHub",
+		Description: "YukiHub game library manager",
 		Icon:        applicationIcon,
 		Logger:      appLogger.Slog(),
 		LogLevel:    applicationLogLevel,
@@ -883,7 +883,7 @@ func runGUI(
 	newStartupErrorWindow := func(name string, hidden bool) *application.WebviewWindow {
 		return wailsApp.Window.NewWithOptions(application.WebviewWindowOptions{
 			Name:             name,
-			Title:            "LunaBox",
+			Title:            "YukiHub",
 			URL:              "/startup",
 			Width:            760,
 			Height:           360,
@@ -924,7 +924,7 @@ func runGUI(
 		showStartupErrorPreview = func() {
 			startupService.ReportFailure(
 				"开发预览：数据库启动失败\n\n" +
-					"打开数据库失败: IO Error: 无法打开 lunabox.db，文件可能正由另一个进程使用\n\n" +
+					"打开数据库失败: IO Error: 无法打开 yukihub.db，文件可能正由另一个进程使用\n\n" +
 					"此信息仅用于检查启动错误窗的界面样式。",
 			)
 			previewWindow := newStartupErrorWindow(
@@ -952,7 +952,7 @@ func runGUI(
 		}
 		mainWindow = wailsApp.Window.NewWithOptions(application.WebviewWindowOptions{
 			Name:             "main",
-			Title:            "LunaBox",
+			Title:            "YukiHub",
 			URL:              "/",
 			Width:            initWidth,
 			Height:           initHeight,
@@ -1025,7 +1025,7 @@ func runGUI(
 		}
 		var sessionHookErr error
 		sessionEndHook, sessionHookErr = sessionend.Start(sessionend.Options{
-			Reason: "LunaBox 正在保存数据并退出",
+			Reason: "YukiHub 正在保存数据并退出",
 			OnQueryEndSession: func() {
 				appState.QuitForSystemSessionEnd()
 			},
@@ -1088,7 +1088,7 @@ func runGUI(
 		if err != nil {
 			return fmt.Errorf("获取应用数据目录失败: %w", err)
 		}
-		dbPath := filepath.Join(dataDir, "lunabox.db")
+		dbPath := filepath.Join(dataDir, "yukihub.db")
 		db, err = dbutils.OpenDuckDBWithWALRecovery(ctx, dbPath, appLogger)
 		if err != nil {
 			return fmt.Errorf("打开数据库失败: %w", err)

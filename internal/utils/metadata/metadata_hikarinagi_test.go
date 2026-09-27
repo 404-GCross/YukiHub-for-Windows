@@ -2,13 +2,13 @@ package metadata
 
 import (
 	"io"
-	"lunabox/internal/common/enums"
-	"lunabox/internal/version"
 	"net/http"
 	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
+	"yukihub/internal/common/enums"
+	"yukihub/internal/version"
 )
 
 type hikarinagiRoundTripFunc func(*http.Request) (*http.Response, error)

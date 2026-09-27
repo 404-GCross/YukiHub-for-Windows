@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"lunabox/updater/updateutils"
+	"yukihub/updater/updateutils"
 )
 
 func TestManifestURLForVersion(t *testing.T) {
@@ -31,13 +31,13 @@ func TestResolvePatchChain(t *testing.T) {
 		SourceSHA256:  middleSHA,
 		Artifact:      updateutils.Artifact{URL: "https://updates.example.com/middle-to-final.zsdiff", Size: 1, SHA256: strings.Repeat("5", 64), Compression: updateutils.ArtifactCompressionZstd},
 	}
-	target := updateutils.ReleaseFile{Path: "LunaBox.exe", TargetSHA256: finalSHA, TargetSize: 3, Full: updateutils.Artifact{Size: 10}, Patch: &patchMiddleToFinal}
+	target := updateutils.ReleaseFile{Path: "YukiHub.exe", TargetSHA256: finalSHA, TargetSize: 3, Full: updateutils.Artifact{Size: 10}, Patch: &patchMiddleToFinal}
 	resolver := func(version string) (*updateutils.ReleaseManifest, updateutils.ReleaseChannel, error) {
 		if version != "1.12.1" {
 			t.Fatalf("unexpected resolver version: %s", version)
 		}
 		return &updateutils.ReleaseManifest{Version: version}, updateutils.ReleaseChannel{Files: []updateutils.ReleaseFile{{
-			Path: "LunaBox.exe", TargetSHA256: middleSHA, TargetSize: 2, Patch: &patchOldToMiddle,
+			Path: "YukiHub.exe", TargetSHA256: middleSHA, TargetSize: 2, Patch: &patchOldToMiddle,
 		}}}, nil
 	}
 

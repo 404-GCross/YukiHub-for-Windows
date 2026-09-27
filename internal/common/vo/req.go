@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	enums "lunabox/internal/common/enums"
-	"lunabox/internal/models"
-	"lunabox/internal/utils/metadata"
 	"strings"
+	enums "yukihub/internal/common/enums"
+	"yukihub/internal/models"
+	"yukihub/internal/utils/metadata"
 )
 
 type MCPGameID string
@@ -223,7 +223,7 @@ type RenderTemplateRequest struct {
 	Data       StatsExportData `json:"data"`        // 导出数据
 }
 
-// InstallRequest 通过 lunabox://install?... 触发的安装请求
+// InstallRequest 通过 yukihub://install?... 触发的安装请求
 type InstallRequest struct {
 	URL            string `json:"url"`             // 下载直链（必填）
 	FileName       string `json:"file_name"`       // 下载文件名（必填，不再从 URL 猜测）
@@ -241,7 +241,7 @@ type InstallRequest struct {
 	ExpiresAt      int64  `json:"expires_at"`      // 请求过期时间（Unix 秒，必填）
 }
 
-// ProtocolLaunchRequest 通过 lunabox://launch?game_id=... 触发的启动请求
+// ProtocolLaunchRequest 通过 yukihub://launch?game_id=... 触发的启动请求
 type ProtocolLaunchRequest struct {
 	GameID string `json:"game_id"`           // 游戏库中的稳定 ID（必填）
 	RawURL string `json:"raw_url,omitempty"` // 原始协议 URL（调试用途）

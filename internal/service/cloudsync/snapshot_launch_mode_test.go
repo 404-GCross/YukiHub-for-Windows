@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"lunabox/internal/appconf"
-	"lunabox/internal/migrations"
+	"yukihub/internal/appconf"
+	"yukihub/internal/migrations"
 
 	_ "github.com/duckdb/duckdb-go/v2"
 )

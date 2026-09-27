@@ -4,12 +4,12 @@ package focusing
 
 import (
 	"context"
-	"lunabox/internal/utils/processutils"
 	"os/exec"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+	"yukihub/internal/utils/processutils"
 )
 
 var (
@@ -40,7 +40,7 @@ type WindowFocusInfo struct {
 }
 
 // FocusTracker provides a conservative Linux fallback. Without a reliable
-// desktop-agnostic foreground-window API, LunaBox treats the tracked process as
+// desktop-agnostic foreground-window API, YukiHub treats the tracked process as
 // active while it is alive.
 type FocusTracker struct {
 	mu           sync.Mutex

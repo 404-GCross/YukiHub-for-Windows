@@ -1,11 +1,11 @@
 import type { vo } from "../src/bindings/models";
 import type { QuitSyncRequest } from "./hooks/useAppRuntimeEffects";
-import { DesktopShellProvider } from "@lunabox/desktop-shell-react";
-import { createWailsDesktopAdapter } from "@lunabox/desktop-shell-wails";
+import { DesktopShellProvider } from "@yukihub/desktop-shell-react";
+import { createWailsDesktopAdapter } from "@yukihub/desktop-shell-wails";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { SafeQuit } from "../bindings/lunabox/internal/service/configservice";
+import { SafeQuit } from "../bindings/yukihub/internal/service/configservice";
 import { TOPBAR_HEIGHT } from "./components/bar/TopBar";
 import { InstallConfirmModal } from "./components/modal/InstallConfirmModal";
 import { TimezoneSelectModal } from "./components/modal/TimezoneSelectModal";

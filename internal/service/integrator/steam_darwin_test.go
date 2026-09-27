@@ -3,8 +3,8 @@
 package integrator
 
 import (
-	"lunabox/internal/models"
 	"testing"
+	"yukihub/internal/models"
 )
 
 func TestNativeSteamLaunchIDAcceptsOnlyNativeAppID(t *testing.T) {

@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"time"
 
-	"lunabox/internal/applog"
-	"lunabox/internal/updateclient"
-	"lunabox/internal/version"
+	"yukihub/internal/applog"
+	"yukihub/internal/updateclient"
+	"yukihub/internal/version"
 )
 
 type UpdateProgress struct {
@@ -24,9 +24,9 @@ type UpdateApplyResult struct {
 	FileCount    int  `json:"file_count"`
 }
 
-// DownloadAndApplyUpdate downloads verified update artifacts with LunaBox's
+// DownloadAndApplyUpdate downloads verified update artifacts with YukiHub's
 // existing downloader, asks the standalone updater to prepare them, then starts
-// the updater in commit mode and enters the normal LunaBox shutdown flow.
+// the updater in commit mode and enters the normal YukiHub shutdown flow.
 func (s *UpdateService) DownloadAndApplyUpdate(manifestURL string) (*UpdateApplyResult, error) {
 	if !s.applyMu.TryLock() {
 		return nil, fmt.Errorf("an update is already in progress")

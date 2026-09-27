@@ -3,7 +3,7 @@ package ipcserver
 import (
 	"fmt"
 
-	"lunabox/internal/cli/ipccore"
+	"yukihub/internal/cli/ipccore"
 )
 
 // IsServerRunning 检查 Server 是否在运行

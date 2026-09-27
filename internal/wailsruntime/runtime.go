@@ -12,12 +12,12 @@ var ErrUnavailable = errors.New("Wails application runtime is unavailable")
 
 const wailsDialogCancelledMessage = "cancelled by user"
 
-// AutostartLaunchArgument lets LunaBox distinguish a login launch from a
+// AutostartLaunchArgument lets YukiHub distinguish a login launch from a
 // normal user-initiated launch.
 const AutostartLaunchArgument = "--autostart"
 
 // Runtime is the small subset of the Wails v3 application/window API used by
-// LunaBox services. Services receive it explicitly instead of resolving global
+// YukiHub services. Services receive it explicitly instead of resolving global
 // application state or using the context-based Wails v2 runtime shape.
 type Runtime interface {
 	Emit(name string, data ...any) bool

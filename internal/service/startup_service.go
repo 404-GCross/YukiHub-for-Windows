@@ -4,7 +4,7 @@ import "sync"
 
 const startupFailedEvent = "startup:failed"
 
-// StartupFailure contains the diagnostic message shown when LunaBox cannot
+// StartupFailure contains the diagnostic message shown when YukiHub cannot
 // create its main window.
 type StartupFailure struct {
 	Message string `json:"message"`

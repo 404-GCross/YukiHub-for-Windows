@@ -12,8 +12,8 @@ func TestExtractExeFromCommand(t *testing.T) {
 		command string
 		want    string
 	}{
-		{name: "quoted", command: `"C:\Program Files\LunaBox\LunaBox.exe" "%1"`, want: `C:\Program Files\LunaBox\LunaBox.exe`},
-		{name: "plain", command: `C:\LunaBox\LunaBox.exe "%1"`, want: `C:\LunaBox\LunaBox.exe`},
+		{name: "quoted", command: `"C:\Program Files\YukiHub\YukiHub.exe" "%1"`, want: `C:\Program Files\YukiHub\YukiHub.exe`},
+		{name: "plain", command: `C:\YukiHub\YukiHub.exe "%1"`, want: `C:\YukiHub\YukiHub.exe`},
 		{name: "empty", command: "  ", want: ""},
 	}
 

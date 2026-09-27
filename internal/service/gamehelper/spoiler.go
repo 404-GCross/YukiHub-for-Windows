@@ -3,8 +3,8 @@ package gamehelper
 import (
 	"strings"
 
-	"lunabox/internal/appconf"
-	"lunabox/internal/common/vo"
+	"yukihub/internal/appconf"
+	"yukihub/internal/common/vo"
 )
 
 func NormalizeSpoilerLevel(level string) string {

@@ -6,8 +6,8 @@ import {
   ScheduleFullDataRestore,
   SelectBackupRestorePath,
   SelectBackupSavePath,
-} from "../../../bindings/lunabox/internal/service/backupservice";
-import { SafeQuit } from "../../../bindings/lunabox/internal/service/configservice";
+} from "../../../bindings/yukihub/internal/service/backupservice";
+import { SafeQuit } from "../../../bindings/yukihub/internal/service/configservice";
 import { useAppStore } from "../../store";
 import { formatLocalDateTime } from "../../utils/time";
 import { ConfirmModal } from "../modal/ConfirmModal";

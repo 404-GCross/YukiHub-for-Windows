@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-const linuxWebKitModeEnv = "LUNABOX_WEBKIT_MODE"
+const linuxWebKitModeEnv = "YUKIHUB_WEBKIT_MODE"
 
 type RuntimeEnvironment struct {
 	Key    string

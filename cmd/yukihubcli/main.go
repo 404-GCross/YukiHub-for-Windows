@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"lunabox/internal/cli/ipcclient"
+	"yukihub/internal/cli/ipcclient"
 )
 
 // localOnlyCommands 必须在本地运行、不转发给 GUI 的命令。
@@ -35,8 +35,8 @@ func main() {
 		return
 	}
 
-	fmt.Println("Error: LunaBox application is not running.")
-	fmt.Println("Please start LunaBox first to use CLI commands.")
+	fmt.Println("Error: YukiHub application is not running.")
+	fmt.Println("Please start YukiHub first to use CLI commands.")
 	os.Exit(1)
 }
 

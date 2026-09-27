@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"lunabox/internal/utils/proxyutils"
-	"lunabox/internal/version"
+	"yukihub/internal/utils/proxyutils"
+	"yukihub/internal/version"
 )
 
 type transferProxyConfig struct {

@@ -7,7 +7,7 @@ import (
 )
 
 // ResolveLaunchShortcutIconPath picks the icon source for a launch shortcut: the game
-// executable when it can supply an icon, otherwise the current LunaBox executable.
+// executable when it can supply an icon, otherwise the current YukiHub executable.
 func ResolveLaunchShortcutIconPath(gamePath string) string {
 	trimmedPath := strings.TrimSpace(gamePath)
 	if trimmedPath != "" {

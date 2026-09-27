@@ -7,7 +7,7 @@ import {
   AddUserTag,
   DeleteTag,
   GetTagsByGame,
-} from "../../../bindings/lunabox/internal/service/tagservice";
+} from "../../../bindings/yukihub/internal/service/tagservice";
 import { useAppStore } from "../../store";
 import { getTagDisplayName } from "../../utils/tagTranslation";
 

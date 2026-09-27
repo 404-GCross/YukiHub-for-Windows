@@ -1726,7 +1726,7 @@ export class ImportSelection {
 }
 
 /**
- * InstallRequest 通过 lunabox://install?... 触发的安装请求
+ * InstallRequest 通过 yukihub://install?... 触发的安装请求
  */
 export class InstallRequest {
     /**
@@ -2257,7 +2257,7 @@ export class PeriodStatsRequest {
 }
 
 /**
- * ProtocolLaunchRequest 通过 lunabox://launch?game_id=... 触发的启动请求
+ * ProtocolLaunchRequest 通过 yukihub://launch?game_id=... 触发的启动请求
  */
 export class ProtocolLaunchRequest {
     /**

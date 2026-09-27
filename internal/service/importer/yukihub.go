@@ -7,17 +7,17 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"lunabox/internal/applog"
-	"lunabox/internal/common/enums"
-	"lunabox/internal/common/vo"
-	"lunabox/internal/models"
-	"lunabox/internal/models/yukihub"
 	"os"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
+	"yukihub/internal/applog"
+	"yukihub/internal/common/enums"
+	"yukihub/internal/common/vo"
+	"yukihub/internal/models"
+	"yukihub/internal/models/yukihub"
 
 	"github.com/google/uuid"
 )
@@ -429,13 +429,13 @@ func convertYukiHubSessions(gameID string, game yukihub.Game, entries []yukihub.
 	return sessions
 }
 
-// mapYukiHubGameStatus 把 YukiHub 备份里的 play_status 映射为 LunaBox 状态。
+// mapYukiHubGameStatus 把 YukiHub 备份里的 play_status 映射为 YukiHub 状态。
 //
 // YukiHub 侧 normalizePlayStatus（GameRepository.java）只会产出这五个值：
 // unplayed 未玩 / playing 在玩 / completed 玩过 / onhold 搁置 / dropped 抛弃。
 // 这里额外容忍下划线、过去式等历史写法，避免旧备份解析不到。
 //
-// unplayed 与未知值一律落到「未开始」；LunaBox 的「想玩」在 YukiHub 侧没有对应状态。
+// unplayed 与未知值一律落到「未开始」；桌面端的「想玩」在手机版 YukiHub 侧没有对应状态。
 func mapYukiHubGameStatus(status string) enums.GameStatus {
 	switch strings.ToLower(strings.TrimSpace(status)) {
 	case "playing":

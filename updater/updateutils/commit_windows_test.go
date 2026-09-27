@@ -10,7 +10,7 @@ import (
 )
 
 func TestConfigureRestartCommandShowsGUIWithoutConsole(t *testing.T) {
-	command := exec.Command("LunaBox.exe")
+	command := exec.Command("YukiHub.exe")
 	if err := configureRestartCommand(command); err != nil {
 		t.Fatal(err)
 	}

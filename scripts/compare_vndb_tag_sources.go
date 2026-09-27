@@ -3,12 +3,12 @@
 // compare_vndb_tag_sources compares the tag rows generated from a VNDB dump
 // with the rows produced by internal/utils/metadata/metadata_vndb.go.
 //
-// It does not write to the LunaBox database or CSV export.
+// It does not write to the YukiHub database or CSV export.
 //
 // Examples:
 //
 //	go run scripts/compare_vndb_tag_sources.go --ids v572 --dump build/bin/vndb-db-2026-07-02.tar.zst --tag-limit -1
-//	go run scripts/compare_vndb_tag_sources.go --target build/bin/lunabox_2026-06-25T22-10-40/database --dump build/bin/vndb-db-2026-07-02.tar.zst --tag-limit -1 --max 20
+//	go run scripts/compare_vndb_tag_sources.go --target build/bin/yukihub_2026-06-25T22-10-40/database --dump build/bin/vndb-db-2026-07-02.tar.zst --tag-limit -1 --max 20
 package main
 
 import (
@@ -31,7 +31,7 @@ import (
 	"strconv"
 	"strings"
 
-	"lunabox/internal/utils/metadata"
+	"yukihub/internal/utils/metadata"
 
 	_ "github.com/duckdb/duckdb-go/v2"
 )
@@ -111,7 +111,7 @@ const (
 )
 
 func main() {
-	targetPath := flag.String("target", "", "optional LunaBox DuckDB file or CSV export database directory")
+	targetPath := flag.String("target", "", "optional YukiHub DuckDB file or CSV export database directory")
 	dumpPath := flag.String("dump", "", "VNDB near-complete dump, for example vndb-db-2026-07-02.tar.zst")
 	idsRaw := flag.String("ids", "", "comma-separated VNDB IDs to compare; bypasses --target discovery")
 	tagLimit := flag.Int("tag-limit", defaultTagLimit, "maximum VNDB tags per game; -1 keeps all, 0 keeps none")
@@ -671,7 +671,7 @@ func resolveTarget(rawPath string) (targetInfo, error) {
 	if len(dbCandidates) == 1 {
 		return targetInfo{kind: targetKindDuckDB, inputPath: abs, dbPath: dbCandidates[0]}, nil
 	}
-	return targetInfo{}, fmt.Errorf("target directory is neither a LunaBox CSV export nor a directory with exactly one .db file: %s", abs)
+	return targetInfo{}, fmt.Errorf("target directory is neither a YukiHub CSV export nor a directory with exactly one .db file: %s", abs)
 }
 
 func loadGames(ctx context.Context, target targetInfo) ([]gameRef, error) {

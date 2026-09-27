@@ -9,8 +9,8 @@ import (
 	"fmt"
 	"strings"
 
-	"lunabox/internal/appconf"
-	"lunabox/internal/models"
+	"yukihub/internal/appconf"
+	"yukihub/internal/models"
 )
 
 const (

@@ -5,16 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"lunabox/internal/appconf"
-	"lunabox/internal/applog"
-	"lunabox/internal/common/vo"
-	"lunabox/internal/models"
-	"lunabox/internal/service/cloudprovider"
-	"lunabox/internal/service/gamehelper"
-	launcherpkg "lunabox/internal/service/launcher"
-	"lunabox/internal/utils/audioutils"
-	"lunabox/internal/utils/processutils"
-	"lunabox/internal/utils/timerutils"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -22,8 +12,18 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+	"yukihub/internal/appconf"
+	"yukihub/internal/applog"
+	"yukihub/internal/common/vo"
+	"yukihub/internal/models"
+	"yukihub/internal/service/cloudprovider"
+	"yukihub/internal/service/gamehelper"
+	launcherpkg "yukihub/internal/service/launcher"
+	"yukihub/internal/utils/audioutils"
+	"yukihub/internal/utils/processutils"
+	"yukihub/internal/utils/timerutils"
 
-	"lunabox/internal/wailsruntime"
+	"yukihub/internal/wailsruntime"
 )
 
 const (
@@ -770,7 +770,7 @@ func (s *StartService) finalizePlaySessionOnce(session *activePlaySession, reaso
 	}
 }
 
-// EndCurrentPlaySession manually ends LunaBox tracking for the active game.
+// EndCurrentPlaySession manually ends YukiHub tracking for the active game.
 // It does not terminate the external game process; it finalizes the current
 // play session and stops monitoring so later process exit cannot write twice.
 func (s *StartService) EndCurrentPlaySession(gameID string) error {

@@ -5,12 +5,6 @@ import (
 	"database/sql"
 	"fmt"
 	"io"
-	"lunabox/internal/appconf"
-	"lunabox/internal/applog"
-	"lunabox/internal/common/enums"
-	"lunabox/internal/common/vo"
-	"lunabox/internal/service"
-	"lunabox/internal/utils/imageutils"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -19,6 +13,12 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+	"yukihub/internal/appconf"
+	"yukihub/internal/applog"
+	"yukihub/internal/common/enums"
+	"yukihub/internal/common/vo"
+	"yukihub/internal/service"
+	"yukihub/internal/utils/imageutils"
 )
 
 func TestBangumiServiceSyncAllGameStatuses(t *testing.T) {

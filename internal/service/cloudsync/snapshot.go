@@ -7,18 +7,18 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"lunabox/internal/applog"
-	"lunabox/internal/common/enums"
-	"lunabox/internal/models"
-	"lunabox/internal/service/cloudprovider"
-	"lunabox/internal/service/cloudprovider/batchupload"
-	"lunabox/internal/service/gamehelper"
-	"lunabox/internal/utils/dbutils"
-	"lunabox/internal/utils/imageutils"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
+	"yukihub/internal/applog"
+	"yukihub/internal/common/enums"
+	"yukihub/internal/models"
+	"yukihub/internal/service/cloudprovider"
+	"yukihub/internal/service/cloudprovider/batchupload"
+	"yukihub/internal/service/gamehelper"
+	"yukihub/internal/utils/dbutils"
+	"yukihub/internal/utils/imageutils"
 
 	"github.com/google/uuid"
 )
@@ -146,7 +146,7 @@ func (h *Helper) LoadV1Snapshot(provider cloudprovider.CloudStorageProvider) (Sn
 		return snapshot, false, nil
 	}
 
-	tempFile, err := os.CreateTemp("", "lunabox_cloud_sync_*.json")
+	tempFile, err := os.CreateTemp("", "yukihub_cloud_sync_*.json")
 	if err != nil {
 		return snapshot, false, fmt.Errorf("create temp cloud sync file: %w", err)
 	}

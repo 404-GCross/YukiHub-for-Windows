@@ -5,10 +5,10 @@ import (
 	"net/http"
 	"time"
 
-	"lunabox/internal/utils/httputils"
-	"lunabox/internal/utils/proxyutils"
-	"lunabox/internal/version"
 	"resty.dev/v3"
+	"yukihub/internal/utils/httputils"
+	"yukihub/internal/utils/proxyutils"
+	"yukihub/internal/version"
 )
 
 const (

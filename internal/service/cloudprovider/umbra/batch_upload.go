@@ -18,9 +18,9 @@ import (
 	"time"
 
 	umbrsdk "github.com/Umbrae-Labs/umbra-sdk/umbra-go"
-	"lunabox/internal/service/cloudprovider/batchupload"
-	"lunabox/internal/utils/httputils"
 	"resty.dev/v3"
+	"yukihub/internal/service/cloudprovider/batchupload"
+	"yukihub/internal/utils/httputils"
 )
 
 const (

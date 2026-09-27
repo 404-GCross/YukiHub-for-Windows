@@ -12,7 +12,7 @@ import (
 func TestInstallAppImageProtocolLauncherWritesStableWrapper(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
-	appImagePath := filepath.Join(t.TempDir(), "LunaBox's Test.AppImage")
+	appImagePath := filepath.Join(t.TempDir(), "YukiHub's Test.AppImage")
 	if err := os.WriteFile(appImagePath, []byte("#!/usr/bin/env sh\n"), 0755); err != nil {
 		t.Fatalf("write AppImage: %v", err)
 	}
@@ -22,7 +22,7 @@ func TestInstallAppImageProtocolLauncherWritesStableWrapper(t *testing.T) {
 		t.Fatalf("installAppImageProtocolLauncher() error = %v", err)
 	}
 
-	expectedPath := filepath.Join(home, ".local", "share", "LunaBox", linuxAppImageLauncherName)
+	expectedPath := filepath.Join(home, ".local", "share", "YukiHub", linuxAppImageLauncherName)
 	if launcherPath != expectedPath {
 		t.Fatalf("launcher path = %q, want %q", launcherPath, expectedPath)
 	}
@@ -41,7 +41,7 @@ func TestInstallAppImageProtocolLauncherWritesStableWrapper(t *testing.T) {
 	for _, want := range []string{
 		linuxAppImageLauncherMarker,
 		"exec \"$appimage\" \"$@\"",
-		"LunaBox-*-linux-*.AppImage",
+		"YukiHub-*-linux-*.AppImage",
 		"$home_dir/Downloads",
 		"$home_dir/下载",
 	} {

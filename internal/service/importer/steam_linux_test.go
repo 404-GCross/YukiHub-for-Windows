@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"lunabox/internal/common/enums"
-	"lunabox/internal/models/steam"
+	"yukihub/internal/common/enums"
+	"yukihub/internal/models/steam"
 )
 
 func TestFindSteamInstallPathLinuxUsesEnvCandidate(t *testing.T) {

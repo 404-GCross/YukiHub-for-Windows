@@ -6,15 +6,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"lunabox/internal/common/enums"
-	"lunabox/internal/models"
-	"lunabox/internal/utils/steamutils"
 	"os"
 	"path/filepath"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
+	"yukihub/internal/common/enums"
+	"yukihub/internal/models"
+	"yukihub/internal/utils/steamutils"
 )
 
 const steamDefaultCompatibilityTool = "proton_experimental"

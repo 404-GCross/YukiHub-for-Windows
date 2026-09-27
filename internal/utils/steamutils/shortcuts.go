@@ -396,7 +396,7 @@ func appendSteamShortcut(entries []binaryVDFEntry, name string, executable strin
 		binaryVDFStringEntry("FlatpakAppID", ""),
 		binaryVDFStringEntry("sortas", ""),
 		binaryVDFObjectEntry("tags", []binaryVDFEntry{
-			binaryVDFStringEntry("0", "LunaBox"),
+			binaryVDFStringEntry("0", "YukiHub"),
 		}),
 	})
 	container.Children = append(container.Children, shortcut)

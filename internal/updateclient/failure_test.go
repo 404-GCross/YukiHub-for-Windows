@@ -8,7 +8,7 @@ import (
 	"syscall"
 	"testing"
 
-	"lunabox/updater/updateutils"
+	"yukihub/updater/updateutils"
 )
 
 func TestPrepareFailureReason(t *testing.T) {

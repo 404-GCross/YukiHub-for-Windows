@@ -1,11 +1,11 @@
 package service
 
 import (
-	"lunabox/internal/common/enums"
-	"lunabox/internal/common/vo"
-	"lunabox/internal/models"
-	"lunabox/internal/utils/metadata"
 	"testing"
+	"yukihub/internal/common/enums"
+	"yukihub/internal/common/vo"
+	"yukihub/internal/models"
+	"yukihub/internal/utils/metadata"
 )
 
 func TestFetchImportMetadataSourceReturnsEverySameNameCandidate(t *testing.T) {

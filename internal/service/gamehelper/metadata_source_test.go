@@ -3,8 +3,8 @@ package gamehelper
 import (
 	"testing"
 
-	"lunabox/internal/common/enums"
-	"lunabox/internal/models"
+	"yukihub/internal/common/enums"
+	"yukihub/internal/models"
 )
 
 func TestNormalizeMetadataSource(t *testing.T) {

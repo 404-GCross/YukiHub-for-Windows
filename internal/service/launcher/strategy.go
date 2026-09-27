@@ -3,13 +3,13 @@ package launcher
 import (
 	"context"
 	"fmt"
-	"lunabox/internal/appconf"
-	"lunabox/internal/common/enums"
-	"lunabox/internal/models"
-	"lunabox/internal/utils/timerutils"
 	"os"
 	"path/filepath"
 	"strings"
+	"yukihub/internal/appconf"
+	"yukihub/internal/common/enums"
+	"yukihub/internal/models"
+	"yukihub/internal/utils/timerutils"
 )
 
 type DetectionMode int

@@ -18,9 +18,9 @@ check_tool() {
 
 check_tool python3
 
-if [[ -n "${LUNABOX_WAILS_MODULE_DIR:-}" ]]; then
-    module_version="${LUNABOX_WAILS_MODULE_VERSION:-local}"
-    module_dir="$(cd "$LUNABOX_WAILS_MODULE_DIR" && pwd -P)"
+if [[ -n "${YUKIHUB_WAILS_MODULE_DIR:-}" ]]; then
+    module_version="${YUKIHUB_WAILS_MODULE_VERSION:-local}"
+    module_dir="$(cd "$YUKIHUB_WAILS_MODULE_DIR" && pwd -P)"
 else
     check_tool go
     module_version="$(go list -m -f '{{.Version}}' github.com/wailsapp/wails/v3)"
@@ -102,7 +102,7 @@ changed = False
 # Wails applies its NVIDIA workaround in package init, before main() can set
 # runtime defaults. Keep WebKitGTK's GPU renderer available on amd64 instead
 # of forcing hardware acceleration off. An explicit environment override still
-# takes precedence; arm64 keeps the upstream workaround and LunaBox safe mode.
+# takes precedence; arm64 keeps the upstream workaround and YukiHub safe mode.
 changed |= replace_once(
     application_linux_go,
     '''\t"path/filepath"
@@ -115,7 +115,7 @@ changed |= replace_once(
     application_linux_go,
     '''\tif os.Getenv("WEBKIT_DISABLE_DMABUF_RENDERER") == "" && isNVIDIAGPU() {
 ''',
-    '''\t// LunaBox patch: amd64 uses the default GPU renderer; set
+    '''\t// YukiHub patch: amd64 uses the default GPU renderer; set
 \t// WEBKIT_DISABLE_DMABUF_RENDERER=1 to opt back into the NVIDIA workaround.
 \tif os.Getenv("WEBKIT_DISABLE_DMABUF_RENDERER") == "" && isNVIDIAGPU() && runtime.GOARCH != "amd64" {
 ''',
@@ -135,7 +135,7 @@ func isNVIDIAGPU() bool {
 ''',
     '''\t\t_ = os.Setenv("WEBKIT_DISABLE_DMABUF_RENDERER", "1")
 \t}
-\t// LunaBox patch: avoid NVIDIA EGL crashes in SkiaGPUWorker TLS teardown.
+\t// YukiHub patch: avoid NVIDIA EGL crashes in SkiaGPUWorker TLS teardown.
 \t// WebKitGTK 2.52 keeps GPU painting enabled with zero worker threads.
 \tif runtime.GOARCH == "amd64" && isNVIDIAGPU() &&
 \t\tC.webkit_get_major_version() == 2 && C.webkit_get_minor_version() == 52 &&
@@ -157,10 +157,10 @@ changed |= replace_once(
 ''',
     '''#include "linux_cgo.h"
 
-// LunaBox patch: allow native display cadence on amd64 Linux.
-static void lunabox_configure_rendering_cadence(WebKitSettings *settings) {
+// YukiHub patch: allow native display cadence on amd64 Linux.
+static void yukihub_configure_rendering_cadence(WebKitSettings *settings) {
 #if WEBKIT_CHECK_VERSION(2, 42, 0) && defined(__x86_64__)
-    const char *prefer60 = g_getenv("LUNABOX_WEBKIT_PREFER_60FPS");
+    const char *prefer60 = g_getenv("YUKIHUB_WEBKIT_PREFER_60FPS");
     if (prefer60 && !g_strcmp0(prefer60, "1"))
         return;
 
@@ -183,20 +183,20 @@ changed |= replace_once(
     '''\tsettings := C.webkit_settings_new()
 ''',
     '''\tsettings := C.webkit_settings_new()
-\tC.lunabox_configure_rendering_cadence(settings)
+\tC.yukihub_configure_rendering_cadence(settings)
 ''',
 )
 
 changed |= replace_if_present(
     systemtray_go,
-    '''\t// LunaBox patch: keep Linux tray menus host-rendered through StatusNotifierItem.Menu.
+    '''\t// YukiHub patch: keep Linux tray menus host-rendered through StatusNotifierItem.Menu.
 \t// Wails v3 OpenMenu is not implemented on Linux, so installing ShowMenu
 \t// as the default right-click handler eats the tray host's context-menu event.
 \tif s.rightClickHandler == nil && hasMenu && runtime.GOOS != "linux" {
 \t\ts.rightClickHandler = s.ShowMenu
 \t}
 ''',
-    '''\t// LunaBox patch: on Linux, leave ContextMenu unhandled so the tray host
+    '''\t// YukiHub patch: on Linux, leave ContextMenu unhandled so the tray host
 \t// falls back to StatusNotifierItem.Menu and renders the exported DBusMenu.
 \t// Wails v3 installs ShowMenu by default, but OpenMenu is not
 \t// implemented on Linux, which makes right-click look dead.
@@ -212,7 +212,7 @@ changed |= replace_if_present(
 \t\ts.rightClickHandler = s.ShowMenu
 \t}
 ''',
-    '''\t// LunaBox patch: on Linux, leave ContextMenu unhandled so the tray host
+    '''\t// YukiHub patch: on Linux, leave ContextMenu unhandled so the tray host
 \t// falls back to StatusNotifierItem.Menu and renders the exported DBusMenu.
 \t// Wails v3 installs ShowMenu by default, but OpenMenu is not
 \t// implemented on Linux, which makes right-click look dead.
@@ -228,7 +228,7 @@ changed |= replace_once(
 \t\ts.rightClickHandler = s.ShowMenu
 \t}
 ''',
-    '''\t// LunaBox patch: on Linux, leave ContextMenu unhandled so the tray host
+    '''\t// YukiHub patch: on Linux, leave ContextMenu unhandled so the tray host
 \t// falls back to StatusNotifierItem.Menu and renders the exported DBusMenu.
 \t// Wails v3 installs ShowMenu by default, but OpenMenu is not
 \t// implemented on Linux, which makes right-click look dead.
@@ -301,7 +301,7 @@ changed |= replace_if_present(
 changed |= replace_if_present(
     linux_go,
     '''func (s *linuxSystemTray) openMenu() {
-\t// LunaBox patch: Linux tray menu is opened by the tray host through
+\t// YukiHub patch: Linux tray menu is opened by the tray host through
 \t// StatusNotifierItem.Menu and com.canonical.dbusmenu. There is no app-side
 \t// popup implementation in Wails v3.
 }
@@ -521,7 +521,7 @@ required_snippets = [
     (application_linux_go, read_source(application_linux_go), 'runtime.GOARCH != "amd64"'),
     (application_linux_go, read_source(application_linux_go), 'C.webkit_get_minor_version() == 52'),
     (application_linux_go, read_source(application_linux_go), 'os.Setenv("WEBKIT_SKIA_GPU_PAINTING_THREADS", "0")'),
-    (linux_cgo_go, read_source(linux_cgo_go), 'C.lunabox_configure_rendering_cadence(settings)'),
+    (linux_cgo_go, read_source(linux_cgo_go), 'C.yukihub_configure_rendering_cadence(settings)'),
     (systemtray_go, systemtray_text, 'runtime.GOOS != "linux"'),
     (linux_go, linux_text, 'tooltip:        s.tooltip'),
     (linux_go, linux_text, 'func (s *linuxSystemTray) setTooltip(tooltipText string)'),

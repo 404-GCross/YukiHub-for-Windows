@@ -6,9 +6,9 @@ import (
 	"reflect"
 	"testing"
 
-	"lunabox/internal/common/enums"
-	"lunabox/internal/common/vo"
-	"lunabox/internal/migrations"
+	"yukihub/internal/common/enums"
+	"yukihub/internal/common/vo"
+	"yukihub/internal/migrations"
 
 	_ "github.com/duckdb/duckdb-go/v2"
 )

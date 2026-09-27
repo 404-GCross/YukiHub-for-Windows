@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"lunabox/internal/common/enums"
-	"lunabox/internal/common/vo"
+	"yukihub/internal/common/enums"
+	"yukihub/internal/common/vo"
 )
 
 func TestSyncAllReportsDatabaseInitializationFailure(t *testing.T) {

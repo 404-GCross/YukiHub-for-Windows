@@ -4,15 +4,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"lunabox/internal/common/enums"
-	"lunabox/internal/models"
-	"lunabox/internal/version"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+	"yukihub/internal/common/enums"
+	"yukihub/internal/models"
+	"yukihub/internal/version"
 )
 
 // YmgalInfoGetter 获取月幕 Galgame 信息。

@@ -3,12 +3,12 @@
 package importer
 
 import (
-	"lunabox/internal/common/enums"
-	"lunabox/internal/models"
-	"lunabox/internal/models/steam"
 	"os"
 	"path/filepath"
 	"testing"
+	"yukihub/internal/common/enums"
+	"yukihub/internal/models"
+	"yukihub/internal/models/steam"
 )
 
 func TestFindSteamInstallPathInHome(t *testing.T) {

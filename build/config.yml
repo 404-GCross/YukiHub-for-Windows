@@ -1,17 +1,17 @@
 version: "3"
 
 info:
-  companyName: LunaBox
-  productName: LunaBox
-  productIdentifier: io.github.saramanda9988.lunabox
-  description: LunaBox game library manager
-  copyright: Copyright (c) LunaBox contributors
-  comments: LunaBox game library manager
-  version: 1.13.0
+  companyName: YukiHub
+  productName: YukiHub
+  productIdentifier: com.yukihub.desktop
+  description: YukiHub game library manager
+  copyright: Copyright (c) YukiHub contributors
+  comments: YukiHub game library manager
+  version: 0.1.0
 
 protocols:
-  - scheme: lunabox
-    description: LunaBox Protocol
+  - scheme: yukihub
+    description: YukiHub Protocol
 
 dev_mode:
   root_path: .

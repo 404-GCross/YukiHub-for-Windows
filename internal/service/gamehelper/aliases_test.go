@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"lunabox/internal/common/enums"
+	"yukihub/internal/common/enums"
 )
 
 func TestMergeAliasesKeepsManualAliases(t *testing.T) {

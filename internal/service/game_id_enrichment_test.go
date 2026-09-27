@@ -5,9 +5,9 @@ import (
 	"sync"
 	"testing"
 
-	"lunabox/internal/appconf"
-	"lunabox/internal/common/enums"
-	"lunabox/internal/service/gamehelper/idmapper"
+	"yukihub/internal/appconf"
+	"yukihub/internal/common/enums"
+	"yukihub/internal/service/gamehelper/idmapper"
 )
 
 func TestGameIDMapperLoadsOnDemand(t *testing.T) {

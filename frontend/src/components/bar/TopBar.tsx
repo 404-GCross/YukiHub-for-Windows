@@ -2,7 +2,7 @@ import {
   useDesktopWindow,
   WindowDragRegion,
   WindowNoDragRegion,
-} from "@lunabox/desktop-shell-react";
+} from "@yukihub/desktop-shell-react";
 import { useRef } from "react";
 import topbarTitleDarkUrl from "../../assets/branding/topbar-title-dark.png";
 import topbarTitleUrl from "../../assets/branding/topbar-title.png";

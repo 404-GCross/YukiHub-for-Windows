@@ -4,17 +4,17 @@ import (
 	"archive/zip"
 	"database/sql"
 	"encoding/json"
-	"lunabox/internal/common/enums"
-	"lunabox/internal/common/vo"
-	"lunabox/internal/models"
-	"lunabox/internal/models/playnite"
-	"lunabox/internal/models/potatovn"
-	"lunabox/internal/models/reinamanager"
-	"lunabox/internal/models/vnite"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
+	"yukihub/internal/common/enums"
+	"yukihub/internal/common/vo"
+	"yukihub/internal/models"
+	"yukihub/internal/models/playnite"
+	"yukihub/internal/models/potatovn"
+	"yukihub/internal/models/reinamanager"
+	"yukihub/internal/models/vnite"
 )
 
 func TestPlayniteImportPreservesExporterFields(t *testing.T) {
@@ -45,7 +45,7 @@ func TestPlayniteImportPreservesExporterFields(t *testing.T) {
 	if err != nil {
 		t.Fatalf("marshal Playnite export: %v", err)
 	}
-	jsonPath := filepath.Join(t.TempDir(), "lunabox-playnite.json")
+	jsonPath := filepath.Join(t.TempDir(), "yukihub-playnite.json")
 	if err := os.WriteFile(jsonPath, data, 0o600); err != nil {
 		t.Fatalf("write Playnite export: %v", err)
 	}

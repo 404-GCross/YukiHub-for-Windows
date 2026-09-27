@@ -1,6 +1,6 @@
 import type { HTMLAttributes } from "react";
 import { FocusTrap, FocusTrapFeatures, Portal } from "@headlessui/react";
-import { mountModalScope } from "@lunabox/desktop-shell-core";
+import { mountModalScope } from "@yukihub/desktop-shell-core";
 import { useLayoutEffect, useRef } from "react";
 import { useDesktopShell } from "./DesktopShellContext.js";
 import { LayerPortal } from "./LayerPortal.js";

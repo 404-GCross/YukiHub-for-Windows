@@ -10,19 +10,19 @@
 #include <string.h>
 
 enum {
-    LunaBoxProcessMuteSuccess = 0,
-    LunaBoxProcessMuteUnavailable = 1,
-    LunaBoxProcessMuteProcessNotFound = 2,
-    LunaBoxProcessMuteFailure = 3,
+    YukiHubProcessMuteSuccess = 0,
+    YukiHubProcessMuteUnavailable = 1,
+    YukiHubProcessMuteProcessNotFound = 2,
+    YukiHubProcessMuteFailure = 3,
 };
 
 typedef struct {
     AudioObjectID tap_id;
     AudioObjectID aggregate_device_id;
     AudioDeviceIOProcID io_proc_id;
-} LunaBoxProcessMuteTap;
+} YukiHubProcessMuteTap;
 
-static OSStatus lunabox_process_mute_io_proc(
+static OSStatus yukihub_process_mute_io_proc(
     AudioObjectID device_id,
     const AudioTimeStamp *current_time,
     const AudioBufferList *input_data,
@@ -48,28 +48,28 @@ static OSStatus lunabox_process_mute_io_proc(
     return noErr;
 }
 
-static bool lunabox_cleanup_status_is_ignorable(OSStatus status) {
+static bool yukihub_cleanup_status_is_ignorable(OSStatus status) {
     return status == noErr ||
         status == kAudioHardwareBadObjectError ||
         status == kAudioHardwareNotRunningError;
 }
 
-static void lunabox_record_cleanup_status(OSStatus status, OSStatus *first_error) {
-    if (!lunabox_cleanup_status_is_ignorable(status) && *first_error == noErr) {
+static void yukihub_record_cleanup_status(OSStatus status, OSStatus *first_error) {
+    if (!yukihub_cleanup_status_is_ignorable(status) && *first_error == noErr) {
         *first_error = status;
     }
 }
 
-int32_t lunabox_process_mute_supported(void) {
+int32_t yukihub_process_mute_supported(void) {
     if (@available(macOS 14.2, *)) {
         return 1;
     }
     return 0;
 }
 
-int32_t lunabox_create_process_mute_tap(uint32_t process_id, uintptr_t *tap_handle, int32_t *os_status) {
+int32_t yukihub_create_process_mute_tap(uint32_t process_id, uintptr_t *tap_handle, int32_t *os_status) {
     if (tap_handle == NULL || os_status == NULL || process_id == 0 || process_id > INT32_MAX) {
-        return LunaBoxProcessMuteFailure;
+        return YukiHubProcessMuteFailure;
     }
 
     *tap_handle = 0;
@@ -96,12 +96,12 @@ int32_t lunabox_create_process_mute_tap(uint32_t process_id, uintptr_t *tap_hand
             );
             if (status != noErr || process_object_id == kAudioObjectUnknown) {
                 *os_status = status;
-                return LunaBoxProcessMuteProcessNotFound;
+                return YukiHubProcessMuteProcessNotFound;
             }
 
             CATapDescription *description = [[CATapDescription alloc] initStereoMixdownOfProcesses:@[@(process_object_id)]];
             [description setUUID:[NSUUID UUID]];
-            [description setName:[NSString stringWithFormat:@"LunaBox background mute %u", process_id]];
+            [description setName:[NSString stringWithFormat:@"YukiHub background mute %u", process_id]];
             [description setPrivate:YES];
             [description setMuteBehavior:CATapMutedWhenTapped];
 
@@ -110,7 +110,7 @@ int32_t lunabox_create_process_mute_tap(uint32_t process_id, uintptr_t *tap_hand
             if (status != noErr || created_tap_id == kAudioObjectUnknown) {
                 [description release];
                 *os_status = status;
-                return LunaBoxProcessMuteFailure;
+                return YukiHubProcessMuteFailure;
             }
 
             AudioObjectID output_device_id = kAudioObjectUnknown;
@@ -132,7 +132,7 @@ int32_t lunabox_create_process_mute_tap(uint32_t process_id, uintptr_t *tap_hand
                 AudioHardwareDestroyProcessTap(created_tap_id);
                 [description release];
                 *os_status = status;
-                return LunaBoxProcessMuteFailure;
+                return YukiHubProcessMuteFailure;
             }
 
             CFStringRef output_device_uid = NULL;
@@ -154,12 +154,12 @@ int32_t lunabox_create_process_mute_tap(uint32_t process_id, uintptr_t *tap_hand
                 AudioHardwareDestroyProcessTap(created_tap_id);
                 [description release];
                 *os_status = status;
-                return LunaBoxProcessMuteFailure;
+                return YukiHubProcessMuteFailure;
             }
 
             NSString *tap_uid = [[description UUID] UUIDString];
             NSDictionary *aggregate_description = @{
-                @kAudioAggregateDeviceNameKey: [NSString stringWithFormat:@"LunaBox mute %u", process_id],
+                @kAudioAggregateDeviceNameKey: [NSString stringWithFormat:@"YukiHub mute %u", process_id],
                 @kAudioAggregateDeviceUIDKey: [[NSUUID UUID] UUIDString],
                 @kAudioAggregateDeviceMainSubDeviceKey: (NSString *)output_device_uid,
                 @kAudioAggregateDeviceIsPrivateKey: @(YES),
@@ -188,13 +188,13 @@ int32_t lunabox_create_process_mute_tap(uint32_t process_id, uintptr_t *tap_hand
             if (status != noErr || aggregate_device_id == kAudioObjectUnknown) {
                 AudioHardwareDestroyProcessTap(created_tap_id);
                 *os_status = status;
-                return LunaBoxProcessMuteFailure;
+                return YukiHubProcessMuteFailure;
             }
 
             AudioDeviceIOProcID io_proc_id = NULL;
             status = AudioDeviceCreateIOProcID(
                 aggregate_device_id,
-                lunabox_process_mute_io_proc,
+                yukihub_process_mute_io_proc,
                 NULL,
                 &io_proc_id
             );
@@ -202,7 +202,7 @@ int32_t lunabox_create_process_mute_tap(uint32_t process_id, uintptr_t *tap_hand
                 AudioHardwareDestroyAggregateDevice(aggregate_device_id);
                 AudioHardwareDestroyProcessTap(created_tap_id);
                 *os_status = status;
-                return LunaBoxProcessMuteFailure;
+                return YukiHubProcessMuteFailure;
             }
 
             status = AudioDeviceStart(aggregate_device_id, io_proc_id);
@@ -211,62 +211,62 @@ int32_t lunabox_create_process_mute_tap(uint32_t process_id, uintptr_t *tap_hand
                 AudioHardwareDestroyAggregateDevice(aggregate_device_id);
                 AudioHardwareDestroyProcessTap(created_tap_id);
                 *os_status = status;
-                return LunaBoxProcessMuteFailure;
+                return YukiHubProcessMuteFailure;
             }
 
-            LunaBoxProcessMuteTap *tap = calloc(1, sizeof(LunaBoxProcessMuteTap));
+            YukiHubProcessMuteTap *tap = calloc(1, sizeof(YukiHubProcessMuteTap));
             if (tap == NULL) {
                 AudioDeviceStop(aggregate_device_id, io_proc_id);
                 AudioDeviceDestroyIOProcID(aggregate_device_id, io_proc_id);
                 AudioHardwareDestroyAggregateDevice(aggregate_device_id);
                 AudioHardwareDestroyProcessTap(created_tap_id);
                 *os_status = kAudioHardwareUnspecifiedError;
-                return LunaBoxProcessMuteFailure;
+                return YukiHubProcessMuteFailure;
             }
 
             tap->tap_id = created_tap_id;
             tap->aggregate_device_id = aggregate_device_id;
             tap->io_proc_id = io_proc_id;
             *tap_handle = (uintptr_t)tap;
-            return LunaBoxProcessMuteSuccess;
+            return YukiHubProcessMuteSuccess;
         }
     }
 
-    return LunaBoxProcessMuteUnavailable;
+    return YukiHubProcessMuteUnavailable;
 }
 
-int32_t lunabox_destroy_process_mute_tap(uintptr_t tap_handle, int32_t *os_status) {
+int32_t yukihub_destroy_process_mute_tap(uintptr_t tap_handle, int32_t *os_status) {
     if (os_status == NULL || tap_handle == 0) {
-        return LunaBoxProcessMuteFailure;
+        return YukiHubProcessMuteFailure;
     }
 
     *os_status = noErr;
     if (@available(macOS 14.2, *)) {
-        LunaBoxProcessMuteTap *tap = (LunaBoxProcessMuteTap *)tap_handle;
+        YukiHubProcessMuteTap *tap = (YukiHubProcessMuteTap *)tap_handle;
         OSStatus first_error = noErr;
-        lunabox_record_cleanup_status(
+        yukihub_record_cleanup_status(
             AudioDeviceStop(tap->aggregate_device_id, tap->io_proc_id),
             &first_error
         );
-        lunabox_record_cleanup_status(
+        yukihub_record_cleanup_status(
             AudioDeviceDestroyIOProcID(tap->aggregate_device_id, tap->io_proc_id),
             &first_error
         );
-        lunabox_record_cleanup_status(
+        yukihub_record_cleanup_status(
             AudioHardwareDestroyAggregateDevice(tap->aggregate_device_id),
             &first_error
         );
-        lunabox_record_cleanup_status(
+        yukihub_record_cleanup_status(
             AudioHardwareDestroyProcessTap(tap->tap_id),
             &first_error
         );
         free(tap);
         if (first_error != noErr) {
             *os_status = first_error;
-            return LunaBoxProcessMuteFailure;
+            return YukiHubProcessMuteFailure;
         }
-        return LunaBoxProcessMuteSuccess;
+        return YukiHubProcessMuteSuccess;
     }
 
-    return LunaBoxProcessMuteUnavailable;
+    return YukiHubProcessMuteUnavailable;
 }

@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 import type { Toast, ToastPosition } from "react-hot-toast";
-import { LayerPortal } from "@lunabox/desktop-shell-react";
+import { LayerPortal } from "@yukihub/desktop-shell-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { resolveValue, toast as toastApi, useToaster } from "react-hot-toast";
 import { useTranslation } from "react-i18next";

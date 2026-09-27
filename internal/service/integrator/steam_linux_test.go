@@ -4,12 +4,12 @@ package integrator
 
 import (
 	"context"
-	"lunabox/internal/models"
-	"lunabox/internal/utils/steamutils"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"yukihub/internal/models"
+	"yukihub/internal/utils/steamutils"
 )
 
 func TestFindSteamRootLinuxUsesEnvCandidate(t *testing.T) {

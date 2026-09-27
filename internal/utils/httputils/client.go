@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"lunabox/internal/utils/proxyutils"
-	"lunabox/internal/version"
 	"resty.dev/v3"
+	"yukihub/internal/utils/proxyutils"
+	"yukihub/internal/version"
 )
 
 // ClientOptions configures a standard application HTTP client.

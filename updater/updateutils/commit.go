@@ -41,7 +41,7 @@ func (e *unsafeRestartCommitError) Unwrap() error {
 	return e.err
 }
 
-// ShouldRestartAfterCommit reports whether LunaBox has exited far enough for
+// ShouldRestartAfterCommit reports whether YukiHub has exited far enough for
 // the updater to safely start it again. Validation and wait failures leave the
 // original process running and must not create a second instance.
 func ShouldRestartAfterCommit(err error) bool {
@@ -65,7 +65,7 @@ type transactionJournalEntry struct {
 	Applied       bool   `json:"applied"`
 }
 
-// Commit waits for LunaBox to exit and replaces only the managed files listed
+// Commit waits for YukiHub to exit and replaces only the managed files listed
 // in the prepared task. Replacements are journaled and rolled back in reverse
 // order if any file is locked or cannot be replaced.
 func Commit(task *Task) error {
@@ -84,7 +84,7 @@ func Commit(task *Task) error {
 		timeout = time.Duration(task.WaitTimeout) * time.Second
 	}
 	if err := waitForProcessExit(task.WaitPID, timeout); err != nil {
-		return &preExitCommitError{err: withFailureKind(FailureKindWait, fmt.Errorf("wait for LunaBox to exit: %w", err))}
+		return &preExitCommitError{err: withFailureKind(FailureKindWait, fmt.Errorf("wait for YukiHub to exit: %w", err))}
 	}
 
 	journal, err := newTransactionJournal(task)
@@ -190,7 +190,7 @@ func Restart(task *Task) error {
 		return withFailureKind(FailureKindRestart, err)
 	}
 	if err := command.Start(); err != nil {
-		return withFailureKind(FailureKindRestart, fmt.Errorf("restart LunaBox: %w", err))
+		return withFailureKind(FailureKindRestart, fmt.Errorf("restart YukiHub: %w", err))
 	}
 	return command.Process.Release()
 }
@@ -206,7 +206,7 @@ type UpdateResult struct {
 }
 
 // WriteFailure records a failed commit together with its normalized failure
-// kind, so the next LunaBox launch can report the reason without uploading the
+// kind, so the next YukiHub launch can report the reason without uploading the
 // raw message.
 func WriteFailure(task *Task, err error) error {
 	message := ""
@@ -239,7 +239,7 @@ func newTransactionJournal(task *Task) (*transactionJournal, error) {
 		Status:        "applying",
 		Entries:       make([]transactionJournalEntry, 0, len(task.Files)),
 	}
-	// LunaBox.exe is deliberately replaced last. A crash before that point leaves
+	// YukiHub.exe is deliberately replaced last. A crash before that point leaves
 	// the old GUI executable available to report or retry the update.
 	appendEntry := func(file TaskFile) error {
 		targetPath := localPath(task.AppDir, file.Path)
@@ -255,14 +255,14 @@ func newTransactionJournal(task *Task) (*transactionJournal, error) {
 		return nil
 	}
 	for _, file := range task.Files {
-		if !stringsEqualFold(file.Path, "LunaBox.exe") {
+		if !stringsEqualFold(file.Path, "YukiHub.exe") {
 			if err := appendEntry(file); err != nil {
 				return nil, err
 			}
 		}
 	}
 	for _, file := range task.Files {
-		if stringsEqualFold(file.Path, "LunaBox.exe") {
+		if stringsEqualFold(file.Path, "YukiHub.exe") {
 			if err := appendEntry(file); err != nil {
 				return nil, err
 			}

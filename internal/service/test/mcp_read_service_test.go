@@ -8,12 +8,12 @@ import (
 	"testing"
 	"time"
 
-	"lunabox/internal/appconf"
-	"lunabox/internal/common/enums"
-	"lunabox/internal/common/vo"
-	"lunabox/internal/models"
-	"lunabox/internal/service"
-	"lunabox/internal/utils/metadata"
+	"yukihub/internal/appconf"
+	"yukihub/internal/common/enums"
+	"yukihub/internal/common/vo"
+	"yukihub/internal/models"
+	"yukihub/internal/service"
+	"yukihub/internal/utils/metadata"
 )
 
 func TestMCPReadServiceListGamesBounded(t *testing.T) {

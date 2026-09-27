@@ -1,6 +1,6 @@
 import type { DashboardData, ReleaseDetailData, ReleaseFilters } from "./types";
 
-const TOKEN_KEY = "lunabox-admin-token";
+const TOKEN_KEY = "yukihub-admin-token";
 
 export class UnauthorizedError extends Error {}
 

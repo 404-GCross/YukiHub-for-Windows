@@ -19,7 +19,7 @@ export function LoginView({ loading, error, onSubmit }: LoginViewProps) {
       <Card className="login-card" variant="borderless">
         <Flex vertical align="center" gap={8} className="login-heading">
           <Avatar shape="square" size={48} style={{ background: token.colorPrimary, fontSize: 24 }}>L</Avatar>
-          <Typography.Title level={2}>LunaBox 更新控制台</Typography.Title>
+          <Typography.Title level={2}>YukiHub 更新控制台</Typography.Title>
           <Typography.Text type="secondary">查看发布状态、客户端更新进度与失败详情</Typography.Text>
         </Flex>
         <Form

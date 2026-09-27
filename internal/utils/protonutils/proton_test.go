@@ -82,19 +82,19 @@ func TestDiscoverToolsFindsProtonPlusLutrisWineRunner(t *testing.T) {
 }
 
 func TestNormalizeCompatDataPathAcceptsPfxDirectory(t *testing.T) {
-	got := NormalizeCompatDataPath("/home/u/.local/share/LunaBox/proton-compatdata/game/pfx")
-	want := "/home/u/.local/share/LunaBox/proton-compatdata/game"
+	got := NormalizeCompatDataPath("/home/u/.local/share/YukiHub/proton-compatdata/game/pfx")
+	want := "/home/u/.local/share/YukiHub/proton-compatdata/game"
 	if got != want {
 		t.Fatalf("expected %q, got %q", want, got)
 	}
 }
 
 func TestResolveCompatDataPathNormalizesConfiguredPath(t *testing.T) {
-	got, err := ResolveCompatDataPath("/home/u/.local/share/LunaBox/proton-compatdata/game/pfx", "game")
+	got, err := ResolveCompatDataPath("/home/u/.local/share/YukiHub/proton-compatdata/game/pfx", "game")
 	if err != nil {
 		t.Fatalf("ResolveCompatDataPath() error = %v", err)
 	}
-	want := "/home/u/.local/share/LunaBox/proton-compatdata/game"
+	want := "/home/u/.local/share/YukiHub/proton-compatdata/game"
 	if got != want {
 		t.Fatalf("expected %q, got %q", want, got)
 	}

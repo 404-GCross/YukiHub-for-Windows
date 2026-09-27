@@ -1,7 +1,7 @@
 import type {
   DesktopPlatform,
   DesktopWindowAdapter,
-} from "@lunabox/desktop-shell-core";
+} from "@yukihub/desktop-shell-core";
 
 import { System, Window } from "@wailsio/runtime";
 

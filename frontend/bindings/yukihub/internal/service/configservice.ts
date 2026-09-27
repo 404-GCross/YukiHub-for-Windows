@@ -33,7 +33,7 @@ export function GetAppConfig(): $CancellablePromise<appconf$0.AppConfig> {
 }
 
 /**
- * OpenDataDirectory 在系统文件管理器中打开 LunaBox 数据目录。
+ * OpenDataDirectory 在系统文件管理器中打开 YukiHub 数据目录。
  */
 export function OpenDataDirectory(): $CancellablePromise<string> {
     return $Call.ByID(2980986610);

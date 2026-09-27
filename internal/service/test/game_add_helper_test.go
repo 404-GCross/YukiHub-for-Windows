@@ -1,10 +1,10 @@
 package test
 
 import (
-	"lunabox/internal/common/enums"
-	"lunabox/internal/common/vo"
-	"lunabox/internal/models"
-	"lunabox/internal/service"
+	"yukihub/internal/common/enums"
+	"yukihub/internal/common/vo"
+	"yukihub/internal/models"
+	"yukihub/internal/service"
 )
 
 func addGameViaMetadata(gameService *service.GameService, game models.Game) error {

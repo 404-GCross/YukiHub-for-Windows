@@ -5,15 +5,15 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"lunabox/internal/appconf"
-	"lunabox/internal/common/vo"
-	"lunabox/internal/service/cloudprovider"
-	"lunabox/internal/utils/archiveutils"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
+	"yukihub/internal/appconf"
+	"yukihub/internal/common/vo"
+	"yukihub/internal/service/cloudprovider"
+	"yukihub/internal/utils/archiveutils"
 
 	_ "github.com/duckdb/duckdb-go/v2"
 )
@@ -225,7 +225,7 @@ func TestRestoreArchivePreservesSourceModificationTime(t *testing.T) {
 func TestCleanupOldCloudDBBackupsUsesDatabaseRetention(t *testing.T) {
 	provider := &retentionTestProvider{}
 	for day := 1; day <= 4; day++ {
-		provider.keys = append(provider.keys, fmt.Sprintf("v1/user/database/lunabox_2026-09-0%dT03-00-00.zip", day))
+		provider.keys = append(provider.keys, fmt.Sprintf("v1/user/database/yukihub_2026-09-0%dT03-00-00.zip", day))
 	}
 	provider.keys = append(provider.keys, "v1/user/database/latest.zip")
 
@@ -286,7 +286,7 @@ func TestCreateDBBackupForShutdownUsesIndependentContext(t *testing.T) {
 	if _, err := db.Exec(`CREATE TABLE backup_test (id INTEGER PRIMARY KEY, name TEXT)`); err != nil {
 		t.Fatalf("create test table: %v", err)
 	}
-	if _, err := db.Exec(`INSERT INTO backup_test VALUES (1, 'LunaBox')`); err != nil {
+	if _, err := db.Exec(`INSERT INTO backup_test VALUES (1, 'YukiHub')`); err != nil {
 		t.Fatalf("insert test row: %v", err)
 	}
 

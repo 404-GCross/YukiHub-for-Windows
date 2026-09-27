@@ -109,7 +109,7 @@ func updateInstallMetadata(buildMode string, version string) error {
 	}
 	key, err := registry.OpenKey(
 		registry.LOCAL_MACHINE,
-		`Software\Microsoft\Windows\CurrentVersion\Uninstall\LunaBoxLunaBox`,
+		`Software\Microsoft\Windows\CurrentVersion\Uninstall\YukiHubYukiHub`,
 		registry.SET_VALUE,
 	)
 	if err != nil {

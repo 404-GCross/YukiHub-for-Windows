@@ -4,7 +4,7 @@ React infrastructure for desktop WebView applications. The package provides
 window adapters, desktop insets, drag regions, named overlay hosts, and
 semantic overlay layers without imposing an application theme.
 
-The package is private while its API is validated in LunaBox.
+The package is private while its API is validated in YukiHub.
 
 ## Scoped Modals
 
@@ -50,7 +50,7 @@ and drawers, focus restoration, resizing and zoom at desktop and narrow widths.
 import {
   DesktopShellProvider,
   OverlayHost,
-} from "@lunabox/desktop-shell-react";
+} from "@yukihub/desktop-shell-react";
 
 function App() {
   return (

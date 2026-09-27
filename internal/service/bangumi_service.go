@@ -11,17 +11,6 @@ import (
 	"fmt"
 	"html"
 	"io"
-	"lunabox/internal/appconf"
-	"lunabox/internal/applog"
-	"lunabox/internal/common/enums"
-	"lunabox/internal/common/vo"
-	"lunabox/internal/models"
-	"lunabox/internal/service/gamehelper"
-	"lunabox/internal/service/remotestatus"
-	"lunabox/internal/utils/httputils"
-	"lunabox/internal/utils/imageutils"
-	"lunabox/internal/utils/metadata"
-	"lunabox/internal/version"
 	"net"
 	"net/http"
 	"net/url"
@@ -29,8 +18,19 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"yukihub/internal/appconf"
+	"yukihub/internal/applog"
+	"yukihub/internal/common/enums"
+	"yukihub/internal/common/vo"
+	"yukihub/internal/models"
+	"yukihub/internal/service/gamehelper"
+	"yukihub/internal/service/remotestatus"
+	"yukihub/internal/utils/httputils"
+	"yukihub/internal/utils/imageutils"
+	"yukihub/internal/utils/metadata"
+	"yukihub/internal/version"
 
-	"lunabox/internal/wailsruntime"
+	"yukihub/internal/wailsruntime"
 )
 
 const (
@@ -39,8 +39,8 @@ const (
 	bangumiCurrentUserURL      = "https://api.bgm.tv/v0/me"
 	bangumiCollectionAPIFormat = "https://api.bgm.tv/v0/users/-/collections/%s"
 
-	bangumiOAuthClientIDEnv     = "LUNABOX_BANGUMI_CLIENT_ID"
-	bangumiOAuthClientSecretEnv = "LUNABOX_BANGUMI_CLIENT_SECRET"
+	bangumiOAuthClientIDEnv     = "YUKIHUB_BANGUMI_CLIENT_ID"
+	bangumiOAuthClientSecretEnv = "YUKIHUB_BANGUMI_CLIENT_SECRET"
 
 	bangumiOAuthCallbackPort = 23679
 	bangumiOAuthCallbackPath = "/callback"

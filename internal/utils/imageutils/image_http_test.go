@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"lunabox/internal/version"
+	"yukihub/internal/version"
 )
 
 func TestImageRequestRetriesRateLimitWithApplicationHeaders(t *testing.T) {

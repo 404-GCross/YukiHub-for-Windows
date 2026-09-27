@@ -1,7 +1,7 @@
 package cli
 
 import (
-	"lunabox/internal/cli/protocolcmd"
+	"yukihub/internal/cli/protocolcmd"
 
 	"github.com/spf13/cobra"
 )

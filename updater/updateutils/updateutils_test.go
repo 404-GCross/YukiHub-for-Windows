@@ -23,7 +23,7 @@ func TestNormalizeManagedPath(t *testing.T) {
 		t.Fatalf("unexpected normalized path: %s", valid)
 	}
 
-	for _, value := range []string{"../LunaBox.exe", "/LunaBox.exe", `C:\LunaBox.exe`, "data/lunabox.db", "7z/../../lunabox.db"} {
+	for _, value := range []string{"../YukiHub.exe", "/YukiHub.exe", `C:\YukiHub.exe`, "data/yukihub.db", "7z/../../yukihub.db"} {
 		if _, err := NormalizeManagedPath(value); err == nil {
 			t.Errorf("expected path %q to be rejected", value)
 		}
@@ -49,7 +49,7 @@ func TestReleaseManifestRejectsInsecureEventURL(t *testing.T) {
 func TestPrepareZstdPatchAndFullFallback(t *testing.T) {
 	t.Parallel()
 
-	oldBytes := bytes.Repeat([]byte("old LunaBox executable block\n"), 4096)
+	oldBytes := bytes.Repeat([]byte("old YukiHub executable block\n"), 4096)
 	newBytes := append([]byte("new header\n"), oldBytes...)
 	newBytes = append(newBytes, []byte("new trailer\n")...)
 
@@ -60,7 +60,7 @@ func TestPrepareZstdPatchAndFullFallback(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	patchPath := filepath.Join(workDir, "LunaBox.exe.zsdiff")
+	patchPath := filepath.Join(workDir, "YukiHub.exe.zsdiff")
 	encoder, err := zstd.NewWriter(nil, zstd.WithEncoderDictRaw(0, oldBytes), zstd.WithEncoderCRC(true))
 	if err != nil {
 		t.Fatal(err)
@@ -87,7 +87,7 @@ func TestPrepareZstdPatchAndFullFallback(t *testing.T) {
 	}
 	assertFileBytes(t, localPath(stagingDir(patchTask), "duckdb.dll"), newBytes)
 
-	fullPath := filepath.Join(workDir, "LunaBox.exe.zst")
+	fullPath := filepath.Join(workDir, "YukiHub.exe.zst")
 	fullEncoder, err := zstd.NewWriter(nil, zstd.WithEncoderCRC(true))
 	if err != nil {
 		t.Fatal(err)
@@ -225,7 +225,7 @@ func TestPreparedMarkerRejectsTaskChangesBeforeCommit(t *testing.T) {
 		t.Fatalf("expected modified task rejection, got %v", err)
 	}
 	if ShouldRestartAfterCommit(err) {
-		t.Fatal("a pre-exit validation failure must not restart LunaBox")
+		t.Fatal("a pre-exit validation failure must not restart YukiHub")
 	}
 }
 
@@ -234,7 +234,7 @@ func TestRollbackFailurePreventsRestart(t *testing.T) {
 
 	err := &unsafeRestartCommitError{err: os.ErrPermission}
 	if ShouldRestartAfterCommit(err) {
-		t.Fatal("an incomplete rollback must not restart LunaBox")
+		t.Fatal("an incomplete rollback must not restart YukiHub")
 	}
 }
 
@@ -364,7 +364,7 @@ func testTask(appDir string, workDir string, file TaskFile) *Task {
 		AppDir:        appDir,
 		WorkDir:       workDir,
 		WaitPID:       999999,
-		RestartPath:   "LunaBox.exe",
+		RestartPath:   "YukiHub.exe",
 		Files:         []TaskFile{file},
 	}
 }

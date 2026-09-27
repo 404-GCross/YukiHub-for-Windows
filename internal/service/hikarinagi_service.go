@@ -12,18 +12,6 @@ import (
 	"fmt"
 	"html"
 	"io"
-	"lunabox/internal/appconf"
-	"lunabox/internal/applog"
-	"lunabox/internal/common/enums"
-	"lunabox/internal/common/vo"
-	"lunabox/internal/models"
-	"lunabox/internal/service/gamehelper"
-	"lunabox/internal/service/remotestatus"
-	"lunabox/internal/utils/httputils"
-	"lunabox/internal/utils/imageutils"
-	"lunabox/internal/utils/metadata"
-	"lunabox/internal/version"
-	"lunabox/internal/wailsruntime"
 	"net"
 	"net/http"
 	"net/url"
@@ -31,6 +19,18 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"yukihub/internal/appconf"
+	"yukihub/internal/applog"
+	"yukihub/internal/common/enums"
+	"yukihub/internal/common/vo"
+	"yukihub/internal/models"
+	"yukihub/internal/service/gamehelper"
+	"yukihub/internal/service/remotestatus"
+	"yukihub/internal/utils/httputils"
+	"yukihub/internal/utils/imageutils"
+	"yukihub/internal/utils/metadata"
+	"yukihub/internal/version"
+	"yukihub/internal/wailsruntime"
 )
 
 const (
@@ -42,7 +42,7 @@ const (
 	hikarinagiSiteURL           = "https://www.hikarinagi.org/"
 	hikarinagiImageBaseURL      = "https://imagesp.yurari.moe/"
 
-	hikarinagiOAuthClientIDEnv = "LUNABOX_HIKARINAGI_CLIENT_ID"
+	hikarinagiOAuthClientIDEnv = "YUKIHUB_HIKARINAGI_CLIENT_ID"
 	hikarinagiOAuthScopes      = "openid catalog:full user:read status:write offline_access"
 
 	hikarinagiOAuthCallbackPort = 14791

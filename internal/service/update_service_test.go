@@ -3,7 +3,7 @@ package service
 import (
 	"testing"
 
-	"lunabox/internal/version"
+	"yukihub/internal/version"
 )
 
 func TestGetUpdateURLs(t *testing.T) {

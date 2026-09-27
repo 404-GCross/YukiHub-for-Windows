@@ -11,10 +11,10 @@ importers:
       '@headlessui/react':
         specifier: ^2.2.9
         version: 2.2.9(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@lunabox/desktop-shell-react':
+      '@yukihub/desktop-shell-react':
         specifier: workspace:*
         version: link:packages/desktop-shell-react
-      '@lunabox/desktop-shell-wails':
+      '@yukihub/desktop-shell-wails':
         specifier: workspace:*
         version: link:packages/desktop-shell-wails
       '@ncdai/react-wheel-picker':
@@ -177,7 +177,7 @@ importers:
       '@headlessui/react':
         specifier: ^2.2.9
         version: 2.2.9(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@lunabox/desktop-shell-core':
+      '@yukihub/desktop-shell-core':
         specifier: workspace:*
         version: link:../desktop-shell-core
     devDependencies:
@@ -199,7 +199,7 @@ importers:
 
   packages/desktop-shell-wails:
     dependencies:
-      '@lunabox/desktop-shell-core':
+      '@yukihub/desktop-shell-core':
         specifier: workspace:*
         version: link:../desktop-shell-core
     devDependencies:

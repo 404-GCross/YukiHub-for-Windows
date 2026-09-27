@@ -3,24 +3,40 @@ package version
 import "strings"
 
 const (
-	userAgentPrefix = "Saramanda9988/LunaBox/"
-	userAgentSuffix = " (desktop) (https://github.com/Saramanda9988/LunaBox)"
+	userAgentPrefix = "xm486/YukiHub/"
+	userAgentSuffix = " (desktop) (https://github.com/xm486/YukiHub)"
 )
 
-// 版本信息，通过 ldflags 在编译时注入
+// 产品与来源信息。
+//
+// 界面"关于"面板与合规材料统一引用这里，避免同一条信息在多个文件里各写一份。
+// 修改这些值前请同步更新 NOTICE 与 docs/AGPL-COMPLIANCE.md。
+const (
+	AppDisplayName  = "YukiHub for Windows"
+	LicenseName     = "AGPL-3.0"
+	RepositoryURL   = "https://github.com/xm486/YukiHub"
+	UpstreamProject = "LunaBox"
+	UpstreamVersion = "v1.13.0"
+	UpstreamRepoURL = "https://github.com/Saramanda9988/LunaBox"
+)
+
+// 版本信息，通过 ldflags 在编译时注入。
+//
+// 说明：以下第三方服务的凭证必须由 YukiHub 自行申请，不复用上游 LunaBox 的凭据。
+// 留空表示"未配置"，相应功能会给出未配置提示而不是偷偷使用他人的应用身份。
 var (
-	Version                     = "1.1.1"                // 版本号，如 1.0.0
-	GitCommit                   = "unknown"              // Git commit hash
-	BuildTime                   = "unknown"              // 构建时间
-	BuildMode                   = "portable"             // 构建模式：portable、installer 或 appimage
-	UpdateServiceURL            = ""                     // 更新服务根地址，由正式构建注入
-	BangumiOAuthClientID        = ""                     // Bangumi OAuth Client ID
-	BangumiOAuthClientSecret    = ""                     // Bangumi OAuth Client Secret
-	HikarinagiOAuthClientID     = "hkn_r3H8xRovRYSSbwP0" // Hikarinagi public/native OAuth Client ID
-	HikarinagiOAuthClientSecret = ""                     // Hikarinagi OAuth Client Secret
-	UmbraOAuthClientID          = ""                     // Umbra public/native OAuth Client ID
-	UmbraRegistrationToken      = ""                     // Umbra device installation/registration token
-	TouchGalAPIToken            = ""                     // TouchGAL API Bearer token
+	Version                     = "0.1.0-dev" // 版本号，正式构建由 ldflags 覆盖
+	GitCommit                   = "unknown"   // Git commit hash
+	BuildTime                   = "unknown"   // 构建时间
+	BuildMode                   = "portable"  // 构建模式：portable、installer 或 appimage
+	UpdateServiceURL            = ""          // 更新服务根地址，由正式构建注入
+	BangumiOAuthClientID        = ""          // Bangumi OAuth Client ID
+	BangumiOAuthClientSecret    = ""          // Bangumi OAuth Client Secret
+	HikarinagiOAuthClientID     = ""          // Hikarinagi public/native OAuth Client ID
+	HikarinagiOAuthClientSecret = ""          // Hikarinagi OAuth Client Secret
+	UmbraOAuthClientID          = ""          // Umbra public/native OAuth Client ID
+	UmbraRegistrationToken      = ""          // Umbra device installation/registration token
+	TouchGalAPIToken            = ""          // TouchGAL API Bearer token
 )
 
 // GetVersion 返回版本信息

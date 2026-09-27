@@ -13,7 +13,7 @@ import (
 	"golang.org/x/sys/windows/registry"
 )
 
-const CLIExecutableName = "lunacli.exe"
+const CLIExecutableName = "yukihubcli.exe"
 
 const (
 	userEnvKeyPath  = `Environment`

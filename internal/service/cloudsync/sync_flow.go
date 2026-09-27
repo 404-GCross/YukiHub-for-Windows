@@ -3,9 +3,9 @@ package cloudsync
 import (
 	"errors"
 	"fmt"
-	"lunabox/internal/applog"
-	"lunabox/internal/service/cloudprovider"
 	"time"
+	"yukihub/internal/applog"
+	"yukihub/internal/service/cloudprovider"
 
 	"github.com/google/uuid"
 )

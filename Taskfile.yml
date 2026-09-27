@@ -1,7 +1,7 @@
 version: "3"
 
 vars:
-  APP_NAME: LunaBox
+  APP_NAME: YukiHub
   BIN_DIR: bin
   VITE_PORT: '{{.WAILS_VITE_PORT | default "9245"}}'
 
@@ -35,7 +35,7 @@ tasks:
         platforms: [linux]
 
   package:
-    summary: Creates the platform release packages through the LunaBox Wails v3 scripts
+    summary: Creates the platform release packages through the YukiHub Wails v3 scripts
     cmds:
       - cmd: 'scripts\build.bat all "{{.VERSION}}" "{{.ARCH}}"'
         platforms: [windows]
@@ -85,7 +85,7 @@ tasks:
       - pnpm dev --port {{.VITE_PORT}} --strictPort
 
   dev:
-    summary: Runs LunaBox in Wails v3 development mode
+    summary: Runs YukiHub in Wails v3 development mode
     cmds:
       - cmd: ./scripts/patch-wails-linux-tray.sh
         platforms: [linux]

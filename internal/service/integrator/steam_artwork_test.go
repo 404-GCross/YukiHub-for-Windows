@@ -6,10 +6,10 @@ import (
 	"image/color"
 	"image/jpeg"
 	"image/png"
-	"lunabox/internal/models"
 	"os"
 	"path/filepath"
 	"testing"
+	"yukihub/internal/models"
 )
 
 func TestImportSteamShortcutArtworkWritesCoverImages(t *testing.T) {

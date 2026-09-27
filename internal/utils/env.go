@@ -7,17 +7,17 @@ import (
 	"strings"
 
 	"github.com/joho/godotenv"
-	"lunabox/internal/version"
+	"yukihub/internal/version"
 )
 
 const (
-	bangumiClientIDEnv        = "LUNABOX_BANGUMI_CLIENT_ID"
-	bangumiClientSecretEnv    = "LUNABOX_BANGUMI_CLIENT_SECRET"
-	hikarinagiClientIDEnv     = "LUNABOX_HIKARINAGI_CLIENT_ID"
-	hikarinagiClientSecretEnv = "LUNABOX_HIKARINAGI_CLIENT_SECRET"
-	touchGalTokenEnv          = "LUNABOX_TOUCHGAL_TOKEN"
-	umbraClientIDEnv          = "LUNABOX_UMBRA_CLIENT_ID"
-	umbraRegistrationTokenEnv = "LUNABOX_UMBRA_REGISTRATION_TOKEN"
+	bangumiClientIDEnv        = "YUKIHUB_BANGUMI_CLIENT_ID"
+	bangumiClientSecretEnv    = "YUKIHUB_BANGUMI_CLIENT_SECRET"
+	hikarinagiClientIDEnv     = "YUKIHUB_HIKARINAGI_CLIENT_ID"
+	hikarinagiClientSecretEnv = "YUKIHUB_HIKARINAGI_CLIENT_SECRET"
+	touchGalTokenEnv          = "YUKIHUB_TOUCHGAL_TOKEN"
+	umbraClientIDEnv          = "YUKIHUB_UMBRA_CLIENT_ID"
+	umbraRegistrationTokenEnv = "YUKIHUB_UMBRA_REGISTRATION_TOKEN"
 )
 
 func LoadEnvFilesIfExists(filenames ...string) error {

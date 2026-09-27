@@ -7,8 +7,8 @@ import (
 	"runtime"
 	"strings"
 
-	"lunabox/internal/protocol"
-	"lunabox/internal/utils/apputils"
+	"yukihub/internal/protocol"
+	"yukihub/internal/utils/apputils"
 
 	"github.com/spf13/cobra"
 )
@@ -17,7 +17,7 @@ import (
 func NewCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "protocol",
-		Short: "Manage the local lunabox:// URL protocol handler",
+		Short: "Manage the local yukihub:// URL protocol handler",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return cmd.Help()
 		},
@@ -34,11 +34,11 @@ func newRegisterCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "register",
-		Short: "Register lunabox:// for a local build",
+		Short: "Register yukihub:// for a local build",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			if !supportsLocalProtocolRegistration() {
-				return fmt.Errorf("installed builds manage lunabox:// through the Wails installer")
+				return fmt.Errorf("installed builds manage yukihub:// through the Wails installer")
 			}
 			if exePath == "" {
 				var err error
@@ -50,7 +50,7 @@ func newRegisterCmd() *cobra.Command {
 			if err := protocol.RegisterPortableURLScheme(exePath); err != nil {
 				return err
 			}
-			fmt.Fprintln(cmd.OutOrStdout(), "lunabox:// protocol registered for this local build")
+			fmt.Fprintln(cmd.OutOrStdout(), "yukihub:// protocol registered for this local build")
 			return nil
 		},
 	}
@@ -62,22 +62,22 @@ func newRegisterCmd() *cobra.Command {
 func newStatusCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "status",
-		Short: "Show the local lunabox:// handler status",
+		Short: "Show the local yukihub:// handler status",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			if !supportsLocalProtocolRegistration() {
-				return fmt.Errorf("installed builds manage lunabox:// through the Wails installer")
+				return fmt.Errorf("installed builds manage yukihub:// through the Wails installer")
 			}
 			exePath, err := protocol.GetRegisteredURLSchemeExe()
 			if err != nil {
 				return err
 			}
 			if strings.TrimSpace(exePath) == "" {
-				fmt.Fprintln(cmd.OutOrStdout(), "lunabox:// protocol is not registered")
+				fmt.Fprintln(cmd.OutOrStdout(), "yukihub:// protocol is not registered")
 				return nil
 			}
 
-			fmt.Fprintf(cmd.OutOrStdout(), "lunabox:// protocol registered: %s\n", exePath)
+			fmt.Fprintf(cmd.OutOrStdout(), "yukihub:// protocol registered: %s\n", exePath)
 			if localPath, err := localProtocolExecutablePath(); err == nil {
 				if protocol.HandlerMatchesTarget(exePath, localPath) {
 					fmt.Fprintln(cmd.OutOrStdout(), "registered executable matches this local build")
@@ -93,16 +93,16 @@ func newStatusCmd() *cobra.Command {
 func newUnregisterCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "unregister",
-		Short: "Unregister the local lunabox:// handler",
+		Short: "Unregister the local yukihub:// handler",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			if !supportsLocalProtocolRegistration() {
-				return fmt.Errorf("installed builds manage lunabox:// through the Wails installer")
+				return fmt.Errorf("installed builds manage yukihub:// through the Wails installer")
 			}
 			if err := protocol.UnregisterPortableURLScheme(); err != nil {
 				return err
 			}
-			fmt.Fprintln(cmd.OutOrStdout(), "lunabox:// protocol unregistered for this local build")
+			fmt.Fprintln(cmd.OutOrStdout(), "yukihub:// protocol unregistered for this local build")
 			return nil
 		},
 	}
@@ -126,12 +126,12 @@ func siblingPortableGUIPath() (string, error) {
 	}
 	cliPath, err := os.Executable()
 	if err != nil {
-		return "", fmt.Errorf("get lunacli executable path: %w", err)
+		return "", fmt.Errorf("get yukihubcli executable path: %w", err)
 	}
 	guiPath := filepath.Join(filepath.Dir(cliPath), guiName)
 	info, err := os.Stat(guiPath)
 	if err != nil {
-		return "", fmt.Errorf("find portable %s next to lunacli: %w", guiName, err)
+		return "", fmt.Errorf("find portable %s next to yukihubcli: %w", guiName, err)
 	}
 	if info.IsDir() {
 		return "", fmt.Errorf("portable %s path is a directory: %s", guiName, guiPath)
@@ -142,9 +142,9 @@ func siblingPortableGUIPath() (string, error) {
 func portableGUIExecutableName() (string, error) {
 	switch runtime.GOOS {
 	case "windows":
-		return "LunaBox.exe", nil
+		return "YukiHub.exe", nil
 	case "linux":
-		return "LunaBox", nil
+		return "YukiHub", nil
 	default:
 		return "", fmt.Errorf("portable protocol registration is not supported on %s", runtime.GOOS)
 	}

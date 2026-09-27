@@ -1,37 +1,37 @@
-name: "lunabox"
+name: "yukihub"
 arch: "${GOARCH}"
 platform: "linux"
 version: "${VERSION}"
 section: "utils"
 priority: "optional"
 maintainer: "${MAINTAINER}"
-description: "LunaBox game library manager"
-vendor: "LunaBox"
-homepage: "https://github.com/Saramanda9988/LunaBox"
+description: "YukiHub game library manager"
+vendor: "YukiHub"
+homepage: "https://github.com/xm486/YukiHub"
 license: "MIT"
 release: "1"
 
 contents:
-  - src: "./build/bin/LunaBox-linux-launcher"
-    dst: "/usr/bin/LunaBox"
+  - src: "./build/bin/YukiHub-linux-launcher"
+    dst: "/usr/bin/YukiHub"
     file_info:
       mode: 0755
-  - src: "./build/bin/LunaBox"
-    dst: "/usr/lib/lunabox/LunaBox"
+  - src: "./build/bin/YukiHub"
+    dst: "/usr/lib/yukihub/YukiHub"
     file_info:
       mode: 0755
-  - src: "./build/bin/lunacli"
-    dst: "/usr/bin/lunacli"
+  - src: "./build/bin/yukihubcli"
+    dst: "/usr/bin/yukihubcli"
   - src: "./build/bin/7zz"
-    dst: "/usr/lib/lunabox/7zz"
+    dst: "/usr/lib/yukihub/7zz"
     file_info:
       mode: 0755
   - src: "./build/appicon.png"
-    dst: "/usr/share/icons/hicolor/512x512/apps/io.github.saramanda9988.lunabox.png"
+    dst: "/usr/share/icons/hicolor/512x512/apps/com.yukihub.desktop.png"
     file_info:
       mode: 0644
   - src: "./build/linux/desktop"
-    dst: "/usr/share/applications/io.github.saramanda9988.lunabox.desktop"
+    dst: "/usr/share/applications/com.yukihub.desktop.desktop"
 
 depends:
   - libgtk-4-1

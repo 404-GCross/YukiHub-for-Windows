@@ -20,7 +20,7 @@ func TestIsWALReplayError(t *testing.T) {
 	}{
 		{
 			name: "duckdb replaying wal",
-			err:  errors.New(`Failure while replaying WAL file "lunabox.db.wal"`),
+			err:  errors.New(`Failure while replaying WAL file "yukihub.db.wal"`),
 			want: true,
 		},
 		{
@@ -77,14 +77,14 @@ func TestOpenDuckDBWithWALRecoveryDeletesWALAndRetries(t *testing.T) {
 		return nil
 	}
 
-	_, err := OpenDuckDBWithWALRecovery(context.Background(), "C:/data/lunabox.db", nil)
+	_, err := OpenDuckDBWithWALRecovery(context.Background(), "C:/data/yukihub.db", nil)
 	if err != nil {
 		t.Fatalf("OpenDuckDBWithWALRecovery() error = %v", err)
 	}
 	if attempts != 2 {
 		t.Fatalf("open attempts = %d, want 2", attempts)
 	}
-	if removedPath != "C:/data/lunabox.db.wal" {
+	if removedPath != "C:/data/yukihub.db.wal" {
 		t.Fatalf("removed path = %q", removedPath)
 	}
 }
@@ -105,7 +105,7 @@ func TestOpenDuckDBWithWALRecoveryDoesNotDeleteForNonWALError(t *testing.T) {
 		return nil
 	}
 
-	_, err := OpenDuckDBWithWALRecovery(context.Background(), "lunabox.db", nil)
+	_, err := OpenDuckDBWithWALRecovery(context.Background(), "yukihub.db", nil)
 	if err == nil {
 		t.Fatal("OpenDuckDBWithWALRecovery() error = nil, want error")
 	}
@@ -126,7 +126,7 @@ func TestOpenDuckDBWithWALRecoveryFailsWhenWALMissing(t *testing.T) {
 		return nil, os.ErrNotExist
 	}
 
-	_, err := OpenDuckDBWithWALRecovery(context.Background(), "lunabox.db", nil)
+	_, err := OpenDuckDBWithWALRecovery(context.Background(), "yukihub.db", nil)
 	if err == nil {
 		t.Fatal("OpenDuckDBWithWALRecovery() error = nil, want error")
 	}

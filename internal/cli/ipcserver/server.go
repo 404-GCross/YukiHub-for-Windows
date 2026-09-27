@@ -5,13 +5,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"lunabox/internal/common/vo"
 	"net/http"
 	"time"
+	"yukihub/internal/common/vo"
 
-	"lunabox/internal/applog"
-	"lunabox/internal/cli"
-	"lunabox/internal/wailsruntime"
+	"yukihub/internal/applog"
+	"yukihub/internal/cli"
+	"yukihub/internal/wailsruntime"
 )
 
 // StartServer 启动 IPC 服务器 (在 GUI 进程中运行)
@@ -58,7 +58,7 @@ func StartServer(app *cli.CoreApp, runtime wailsruntime.Runtime) *http.Server {
 		json.NewEncoder(w).Encode(resp)
 	})
 
-	// /install: 接收来自新启动实例转发的 lunabox:// 安装请求
+	// /install: 接收来自新启动实例转发的 yukihub:// 安装请求
 	mux.HandleFunc("/install", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -76,7 +76,7 @@ func StartServer(app *cli.CoreApp, runtime wailsruntime.Runtime) *http.Server {
 		json.NewEncoder(w).Encode(InstallResponse{TaskID: ""})
 	})
 
-	// /launch: 接收来自新启动实例转发的 lunabox:// 启动请求
+	// /launch: 接收来自新启动实例转发的 yukihub:// 启动请求
 	mux.HandleFunc("/launch", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)

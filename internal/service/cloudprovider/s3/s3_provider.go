@@ -11,9 +11,9 @@ import (
 	"strings"
 	"time"
 
-	"lunabox/internal/utils/httputils"
-	"lunabox/internal/utils/proxyutils"
-	"lunabox/internal/version"
+	"yukihub/internal/utils/httputils"
+	"yukihub/internal/utils/proxyutils"
+	"yukihub/internal/version"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"

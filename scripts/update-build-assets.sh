@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Updates Wails platform metadata while preserving LunaBox's custom Linux assets.
+# Updates Wails platform metadata while preserving YukiHub's custom Linux assets.
 # Usage: bash scripts/update-build-assets.sh <version>
 
 set -euo pipefail
@@ -42,7 +42,7 @@ for required_file in "$CONFIG_PATH" "$LINUX_DESKTOP_PATH" "$LINUX_NFPM_PATH"; do
     fi
 done
 
-BACKUP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/lunabox-build-assets.XXXXXX")"
+BACKUP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/yukihub-build-assets.XXXXXX")"
 WAILS_UPDATED=0
 cp -p "$CONFIG_PATH" "$BACKUP_DIR/config.yml"
 cp -p "$LINUX_DESKTOP_PATH" "$BACKUP_DIR/desktop"
@@ -102,10 +102,10 @@ if ! awk -v version="$VERSION" '
 fi
 mv "$UPDATED_CONFIG" "$CONFIG_PATH"
 
-echo "Updating Wails build assets for LunaBox $VERSION..."
+echo "Updating Wails build assets for YukiHub $VERSION..."
 wails3 update build-assets \
-    -name LunaBox \
-    -binaryname LunaBox \
+    -name YukiHub \
+    -binaryname YukiHub \
     -config "$CONFIG_PATH" \
     -dir build
 WAILS_UPDATED=1

@@ -8,8 +8,8 @@ import (
 	"runtime"
 	"strings"
 
-	"lunabox/internal/protocol"
-	"lunabox/internal/utils/apputils"
+	"yukihub/internal/protocol"
+	"yukihub/internal/utils/apputils"
 )
 
 // PortableSetupService exposes setup helpers needed by portable and AppImage
@@ -28,7 +28,7 @@ func (s *PortableSetupService) Init(ctx context.Context) {
 	s.ctx = ctx
 }
 
-// PortableProtocolStatus describes the current lunabox:// scheme binding.
+// PortableProtocolStatus describes the current yukihub:// scheme binding.
 type PortableProtocolStatus struct {
 	Registered     bool   `json:"registered"`
 	RegisteredPath string `json:"registeredPath"`
@@ -36,7 +36,7 @@ type PortableProtocolStatus struct {
 	UpToDate       bool   `json:"upToDate"`
 }
 
-// PortableCLIStatus describes the lunacli presence and command registration.
+// PortableCLIStatus describes the yukihubcli presence and command registration.
 type PortableCLIStatus struct {
 	Available   bool   `json:"available"`
 	CLIPath     string `json:"cliPath"`
@@ -56,7 +56,7 @@ type PortableSetupStatus struct {
 	CLI            PortableCLIStatus      `json:"cli"`
 }
 
-// GetStatus returns the portable protocol and lunacli registration state.
+// GetStatus returns the portable protocol and yukihubcli registration state.
 func (s *PortableSetupService) GetStatus() (PortableSetupStatus, error) {
 	status := PortableSetupStatus{
 		BuildMode:  apputils.GetBuildMode(),
@@ -95,7 +95,7 @@ func (s *PortableSetupService) GetStatus() (PortableSetupStatus, error) {
 
 	cliExists, cliPath, cliErr := apputils.CLIExists()
 	if cliErr != nil {
-		return status, fmt.Errorf("probe lunacli: %w", cliErr)
+		return status, fmt.Errorf("probe yukihubcli: %w", cliErr)
 	}
 	status.CLI.Available = cliExists
 	status.CLI.CLIPath = cliPath
@@ -104,7 +104,7 @@ func (s *PortableSetupService) GetStatus() (PortableSetupStatus, error) {
 	}
 	installPath, err := apputils.GetCLIInstallPath()
 	if err != nil {
-		return status, fmt.Errorf("resolve lunacli install path: %w", err)
+		return status, fmt.Errorf("resolve yukihubcli install path: %w", err)
 	}
 	status.CLI.InstallPath = installPath
 	if installPath != "" {
@@ -126,7 +126,7 @@ func protocolRegistrationMatchesPath(registeredExe string, executablePath string
 	return protocol.HandlerMatchesTarget(registeredExe, executablePath)
 }
 
-// RegisterProtocol writes the lunabox:// association required by local builds.
+// RegisterProtocol writes the yukihub:// association required by local builds.
 // Installed builds are managed by Wails during packaging.
 func (s *PortableSetupService) RegisterProtocol() (PortableSetupStatus, error) {
 	if !supportsLocalIntegrationSetup() {
@@ -160,18 +160,18 @@ func (s *PortableSetupService) UnregisterProtocol() (PortableSetupStatus, error)
 	return s.GetStatus()
 }
 
-// RegisterCLIPath installs lunacli into the current user's command path.
+// RegisterCLIPath installs yukihubcli into the current user's command path.
 func (s *PortableSetupService) RegisterCLIPath() (PortableSetupStatus, error) {
 	if _, err := apputils.InstallCLI(); err != nil {
-		return PortableSetupStatus{}, fmt.Errorf("install lunacli: %w", err)
+		return PortableSetupStatus{}, fmt.Errorf("install yukihubcli: %w", err)
 	}
 	return s.GetStatus()
 }
 
-// UnregisterCLIPath removes the lunacli registration for the current platform.
+// UnregisterCLIPath removes the yukihubcli registration for the current platform.
 func (s *PortableSetupService) UnregisterCLIPath() (PortableSetupStatus, error) {
 	if _, err := apputils.UninstallCLI(); err != nil {
-		return PortableSetupStatus{}, fmt.Errorf("uninstall lunacli: %w", err)
+		return PortableSetupStatus{}, fmt.Errorf("uninstall yukihubcli: %w", err)
 	}
 	return s.GetStatus()
 }

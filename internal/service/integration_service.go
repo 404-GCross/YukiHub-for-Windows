@@ -4,14 +4,14 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"lunabox/internal/appconf"
-	"lunabox/internal/models"
-	"lunabox/internal/service/integrator"
-	"lunabox/internal/utils"
-	"lunabox/internal/utils/apputils"
-	"lunabox/internal/utils/dbutils"
-	"lunabox/internal/utils/protonutils"
 	"strings"
+	"yukihub/internal/appconf"
+	"yukihub/internal/models"
+	"yukihub/internal/service/integrator"
+	"yukihub/internal/utils"
+	"yukihub/internal/utils/apputils"
+	"yukihub/internal/utils/dbutils"
+	"yukihub/internal/utils/protonutils"
 )
 
 type SteamLaunchStatus struct {

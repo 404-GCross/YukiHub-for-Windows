@@ -5,13 +5,13 @@ package launcher
 import (
 	"context"
 	"fmt"
-	"lunabox/internal/appconf"
-	"lunabox/internal/models"
-	"lunabox/internal/utils/protonutils"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"yukihub/internal/appconf"
+	"yukihub/internal/models"
+	"yukihub/internal/utils/protonutils"
 )
 
 const (

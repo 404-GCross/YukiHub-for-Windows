@@ -6,7 +6,7 @@ import {
   GetGameReview,
   SaveGameReview,
   SyncGameReview,
-} from "../../../bindings/lunabox/internal/service/gamereviewservice";
+} from "../../../bindings/yukihub/internal/service/gamereviewservice";
 import {
   enums as modelEnums,
   models as modelTypes,

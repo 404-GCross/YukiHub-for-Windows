@@ -10,7 +10,7 @@ import (
 )
 
 func TestConfigureUpdateHelperCommandHidesConsole(t *testing.T) {
-	command := exec.Command("LunaBoxUpdater.exe")
+	command := exec.Command("YukiHubUpdater.exe")
 	configureUpdateHelperCommand(command)
 
 	if command.SysProcAttr == nil {

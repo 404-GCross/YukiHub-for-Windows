@@ -23,16 +23,16 @@ const (
 )
 
 var managedPaths = map[string]struct{}{
-	"lunabox.exe":        {},
-	"lunaboxupdater.exe": {},
-	"lunacli.exe":        {},
+	"yukihub.exe":        {},
+	"yukihubupdater.exe": {},
+	"yukihubcli.exe":     {},
 	"duckdb.dll":         {},
 	"7z/7z.exe":          {},
 	"7z/7z.dll":          {},
 }
 
 // ReleaseManifest describes the platform-specific update assets published with
-// a LunaBox release. Every channel contains complete-file fallbacks; patches are
+// a YukiHub release. Every channel contains complete-file fallbacks; patches are
 // optional accelerators for one exact source binary.
 type ReleaseManifest struct {
 	SchemaVersion int                       `json:"schema_version"`
@@ -67,8 +67,8 @@ type PatchArtifact struct {
 	SourceSHA256  string `json:"source_sha256"`
 }
 
-// Task is the local handoff contract between LunaBox and LunaBoxUpdater.
-// Network URLs are intentionally absent: LunaBox downloads and verifies every
+// Task is the local handoff contract between YukiHub and YukiHubUpdater.
+// Network URLs are intentionally absent: YukiHub downloads and verifies every
 // artifact before invoking the updater.
 type Task struct {
 	SchemaVersion int        `json:"schema_version"`
@@ -228,8 +228,8 @@ func (t *Task) Validate() error {
 	if err != nil {
 		return fmt.Errorf("restart path: %w", err)
 	}
-	if !strings.EqualFold(restartPath, "LunaBox.exe") {
-		return fmt.Errorf("restart path must be LunaBox.exe")
+	if !strings.EqualFold(restartPath, "YukiHub.exe") {
+		return fmt.Errorf("restart path must be YukiHub.exe")
 	}
 	t.RestartPath = restartPath
 	if len(t.Files) == 0 {

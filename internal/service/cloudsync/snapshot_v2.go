@@ -5,14 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"lunabox/internal/applog"
-	"lunabox/internal/service/cloudprovider"
-	"lunabox/internal/service/cloudprovider/batchupload"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
 	"time"
+	"yukihub/internal/applog"
+	"yukihub/internal/service/cloudprovider"
+	"yukihub/internal/service/cloudprovider/batchupload"
 )
 
 // ErrManifestNotFound 在远端未找到 manifest.json 时返回（区别于其他网络错误，便于上层走迁移分支）。
@@ -21,7 +21,7 @@ var ErrManifestNotFound = errors.New("cloud sync manifest not found")
 // ErrManifestSchemaTooNew 表示远端 manifest 的 schema_version 比当前客户端能识别的版本更新。
 // 触发条件：未来 v3+ 客户端写入新格式后，当前 v2 客户端读到 → 必须停止同步并提示用户升级，
 // 否则可能误覆盖远端高版本数据。
-var ErrManifestSchemaTooNew = errors.New("cloud sync manifest schema is newer than this client supports, please update LunaBox")
+var ErrManifestSchemaTooNew = errors.New("cloud sync manifest schema is newer than this client supports, please update YukiHub")
 
 // EnsureSyncDirs 在 SyncNow 启动时一次性确保所有 v2 子目录存在。
 // 这样后续上传桶不需要重复调用 EnsureDir（OneDrive 路径成本最大化收敛）。
@@ -344,7 +344,7 @@ func (h *Helper) downloadToBytes(provider cloudprovider.CloudStorageProvider, cl
 }
 
 func (h *Helper) downloadToBytesCtx(ctx context.Context, provider cloudprovider.CloudStorageProvider, cloudKey string) ([]byte, bool, error) {
-	tempFile, err := os.CreateTemp("", "lunabox_cloud_v2_*.json")
+	tempFile, err := os.CreateTemp("", "yukihub_cloud_v2_*.json")
 	if err != nil {
 		return nil, false, fmt.Errorf("create temp file: %w", err)
 	}
@@ -372,7 +372,7 @@ func (h *Helper) uploadBytes(provider cloudprovider.CloudStorageProvider, cloudK
 }
 
 func (h *Helper) uploadBytesCtx(ctx context.Context, provider cloudprovider.CloudStorageProvider, cloudKey string, payload []byte) error {
-	tempFile, err := os.CreateTemp("", "lunabox_cloud_v2_upload_*.json")
+	tempFile, err := os.CreateTemp("", "yukihub_cloud_v2_upload_*.json")
 	if err != nil {
 		return fmt.Errorf("create upload temp file: %w", err)
 	}
@@ -417,7 +417,7 @@ func (h *Helper) uploadFileItems(provider cloudprovider.CloudStorageProvider, it
 }
 
 func writeUploadTempFile(payload []byte) (string, error) {
-	tempFile, err := os.CreateTemp("", "lunabox_cloud_v2_upload_*.json")
+	tempFile, err := os.CreateTemp("", "yukihub_cloud_v2_upload_*.json")
 	if err != nil {
 		return "", fmt.Errorf("create upload temp file: %w", err)
 	}

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"lunabox/internal/cli/protocolcmd"
+	"yukihub/internal/cli/protocolcmd"
 )
 
 func runLocalCommand(args []string) error {

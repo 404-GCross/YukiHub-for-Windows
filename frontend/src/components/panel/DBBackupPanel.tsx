@@ -10,8 +10,8 @@ import {
   ScheduleDBRestore,
   ScheduleDBRestoreFromCloud,
   UploadDBBackupToCloud,
-} from "../../../bindings/lunabox/internal/service/backupservice";
-import { SafeQuit } from "../../../bindings/lunabox/internal/service/configservice";
+} from "../../../bindings/yukihub/internal/service/backupservice";
+import { SafeQuit } from "../../../bindings/yukihub/internal/service/configservice";
 import { useAppStore } from "../../store";
 import { isCloudProviderConfigured } from "../../utils/cloudSync";
 import { formatFileSize } from "../../utils/size";

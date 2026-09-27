@@ -5,13 +5,13 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"lunabox/internal/appconf"
-	"lunabox/internal/common/vo"
-	"lunabox/internal/utils/downloadutils"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
+	"yukihub/internal/appconf"
+	"yukihub/internal/common/vo"
+	"yukihub/internal/utils/downloadutils"
 
 	_ "github.com/duckdb/duckdb-go/v2"
 )
@@ -278,7 +278,7 @@ func TestDeleteFailedDownloadTaskPreservesExistingExtractDirectory(t *testing.T)
 func TestFinalizeDownloadExtractDirKeepsExistingDirectory(t *testing.T) {
 	root := t.TempDir()
 	preferredPath := filepath.Join(root, "game")
-	stagingPath := filepath.Join(root, "game.lunabox.extracting.task")
+	stagingPath := filepath.Join(root, "game.yukihub.extracting.task")
 	if err := os.MkdirAll(preferredPath, 0755); err != nil {
 		t.Fatalf("create existing destination: %v", err)
 	}

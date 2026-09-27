@@ -3,12 +3,12 @@ package imageutils
 import (
 	"fmt"
 	"io"
-	"lunabox/internal/utils/downloadutils"
-	"lunabox/internal/utils/proxyutils"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
+	"yukihub/internal/utils/downloadutils"
+	"yukihub/internal/utils/proxyutils"
 )
 
 const (

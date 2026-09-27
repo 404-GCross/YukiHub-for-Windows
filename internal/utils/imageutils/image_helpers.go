@@ -2,12 +2,12 @@ package imageutils
 
 import (
 	"io"
-	"lunabox/internal/utils/apputils"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
+	"yukihub/internal/utils/apputils"
 )
 
 var managedImageExtensions = []string{".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".avif"}

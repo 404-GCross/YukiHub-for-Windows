@@ -2,8 +2,8 @@ package timerutils
 
 import (
 	"context"
-	"lunabox/internal/utils/processutils"
 	"testing"
+	"yukihub/internal/utils/processutils"
 )
 
 func TestFocusUpdateIncludesCurrentProcess(t *testing.T) {

@@ -11,7 +11,7 @@ import (
 	"strings"
 	"sync"
 
-	"lunabox/internal/utils/apputils"
+	"yukihub/internal/utils/apputils"
 )
 
 const (
@@ -24,7 +24,7 @@ var (
 	installationIDLocks   sync.Map
 )
 
-// LoadOrCreateInstallationID returns LunaBox's persistent anonymous installation
+// LoadOrCreateInstallationID returns YukiHub's persistent anonymous installation
 // identifier. Existing Umbra and update telemetry identifiers are adopted once
 // so upgrades keep the same identity.
 func LoadOrCreateInstallationID() (string, error) {

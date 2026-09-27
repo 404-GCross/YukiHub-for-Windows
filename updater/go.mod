@@ -1,4 +1,4 @@
-module lunabox/updater
+module yukihub/updater
 
 go 1.26.3
 

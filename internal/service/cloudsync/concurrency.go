@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"sync"
 
-	"lunabox/internal/service/cloudprovider"
-	"lunabox/internal/service/cloudprovider/onedrive"
-	"lunabox/internal/service/cloudprovider/s3"
-	"lunabox/internal/service/cloudprovider/umbra"
+	"yukihub/internal/service/cloudprovider"
+	"yukihub/internal/service/cloudprovider/onedrive"
+	"yukihub/internal/service/cloudprovider/s3"
+	"yukihub/internal/service/cloudprovider/umbra"
 )
 
 // ConcurrencyFor 根据具体 provider 类型返回安全的并发上限。

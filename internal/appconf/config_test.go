@@ -1,9 +1,9 @@
 package appconf
 
 import (
-	enums2 "lunabox/internal/common/enums"
 	"reflect"
 	"testing"
+	enums2 "yukihub/internal/common/enums"
 )
 
 func TestNormalizeMetadataSourcesAcceptsOptInSources(t *testing.T) {

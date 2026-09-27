@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-uint32_t lunabox_frontmost_process_id(void) {
+uint32_t yukihub_frontmost_process_id(void) {
     @autoreleasepool {
         NSRunningApplication *application = NSWorkspace.sharedWorkspace.frontmostApplication;
         if (application == nil || application.processIdentifier <= 0) {
@@ -13,7 +13,7 @@ uint32_t lunabox_frontmost_process_id(void) {
     }
 }
 
-char *lunabox_frontmost_bundle_path(void) {
+char *yukihub_frontmost_bundle_path(void) {
     @autoreleasepool {
         NSURL *bundleURL = NSWorkspace.sharedWorkspace.frontmostApplication.bundleURL;
         const char *path = bundleURL.path.fileSystemRepresentation;

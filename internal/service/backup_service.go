@@ -7,18 +7,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"lunabox/internal/appconf"
-	"lunabox/internal/applog"
-	"lunabox/internal/common/vo"
-	"lunabox/internal/models"
-	"lunabox/internal/service/cloudprovider"
-	"lunabox/internal/service/cloudprovider/onedrive"
-	umbraprovider "lunabox/internal/service/cloudprovider/umbra"
-	"lunabox/internal/service/importer"
-	"lunabox/internal/utils"
-	"lunabox/internal/utils/apputils"
-	"lunabox/internal/utils/archiveutils"
-	"lunabox/internal/version"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -26,8 +14,20 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"yukihub/internal/appconf"
+	"yukihub/internal/applog"
+	"yukihub/internal/common/vo"
+	"yukihub/internal/models"
+	"yukihub/internal/service/cloudprovider"
+	"yukihub/internal/service/cloudprovider/onedrive"
+	umbraprovider "yukihub/internal/service/cloudprovider/umbra"
+	"yukihub/internal/service/importer"
+	"yukihub/internal/utils"
+	"yukihub/internal/utils/apputils"
+	"yukihub/internal/utils/archiveutils"
+	"yukihub/internal/version"
 
-	"lunabox/internal/wailsruntime"
+	"yukihub/internal/wailsruntime"
 )
 
 type BackupService struct {
@@ -182,7 +182,7 @@ func (s *BackupService) validateDBCloudKey(provider cloudprovider.CloudStoragePr
 // SelectBackupSavePath 选择全量备份保存路径
 func (s *BackupService) SelectBackupSavePath() (string, error) {
 	timestamp := time.Now().Format("2006-01-02T15-04-05")
-	defaultFileName := fmt.Sprintf("lunabox_full_%s.zip", timestamp)
+	defaultFileName := fmt.Sprintf("yukihub_full_%s.zip", timestamp)
 
 	selection, err := s.runtime.SaveFile(wailsruntime.SaveDialogOptions{
 		Title:    "选择全量备份保存位置",
@@ -1216,7 +1216,7 @@ func (s *BackupService) createDBBackup(ctx context.Context) (*vo.DBBackupInfo, e
 	}
 
 	// 打包整个目录
-	backupFileName := fmt.Sprintf("lunabox_%s.zip", timestamp)
+	backupFileName := fmt.Sprintf("yukihub_%s.zip", timestamp)
 	backupPath := filepath.Join(backupDir, backupFileName)
 
 	_, err = archiveutils.ZipDirectory(packDir, backupPath)
@@ -1359,7 +1359,7 @@ func (s *BackupService) CreateFullDataBackup(savePath string) error {
 	}
 
 	// 创建临时打包目录
-	tempDir, err := os.MkdirTemp("", "lunabox_full_backup_*")
+	tempDir, err := os.MkdirTemp("", "yukihub_full_backup_*")
 	if err != nil {
 		return fmt.Errorf("创建临时目录失败: %w", err)
 	}
@@ -1492,7 +1492,7 @@ func (s *BackupService) GetCloudDBBackups() ([]vo.CloudBackupItem, error) {
 		return nil, err
 	}
 
-	return s.parseCloudBackupItems(keys, "lunabox_"), nil
+	return s.parseCloudBackupItems(keys, "yukihub_"), nil
 }
 
 // DownloadCloudDBBackup 从云端下载数据库备份
@@ -1923,7 +1923,7 @@ func ExecuteFullDataRestore(config *appconf.AppConfig) (bool, error) {
 		return false, err
 	}
 
-	tempDir, err := os.MkdirTemp("", "lunabox_full_restore_*")
+	tempDir, err := os.MkdirTemp("", "yukihub_full_restore_*")
 	if err != nil {
 		return false, fmt.Errorf("创建临时目录失败: %w", err)
 	}
@@ -1934,9 +1934,9 @@ func ExecuteFullDataRestore(config *appconf.AppConfig) (bool, error) {
 	}
 
 	// 先恢复数据库
-	dbPath := filepath.Join(dataDir, "lunabox.db")
+	dbPath := filepath.Join(dataDir, "yukihub.db")
 	dbImportDir := filepath.Join(tempDir, "database")
-	rawDBPath := filepath.Join(tempDir, "lunabox.db")
+	rawDBPath := filepath.Join(tempDir, "yukihub.db")
 
 	os.Remove(dbPath)
 	os.Remove(dbPath + ".wal")
@@ -2032,7 +2032,7 @@ func ExecuteDBRestore(config *appconf.AppConfig) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	dbPath := filepath.Join(dataDir, "lunabox.db")
+	dbPath := filepath.Join(dataDir, "yukihub.db")
 
 	tempDir := filepath.Join(dataDir, "backups", "database", "restore_temp")
 	os.RemoveAll(tempDir)

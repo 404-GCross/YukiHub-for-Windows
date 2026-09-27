@@ -13,9 +13,9 @@ import (
 	"strings"
 	"time"
 
-	"lunabox/internal/utils/httputils"
-	"lunabox/internal/utils/proxyutils"
 	"resty.dev/v3"
+	"yukihub/internal/utils/httputils"
+	"yukihub/internal/utils/proxyutils"
 )
 
 // Config WebDAV 配置
@@ -424,5 +424,5 @@ func (p *Provider) mkcol(ctx context.Context, dirKey string) error {
 }
 
 func (p *Provider) GetCloudPath(userID, subPath string) string {
-	return fmt.Sprintf("LunaBox/v1/%s/%s", userID, subPath)
+	return fmt.Sprintf("YukiHub/v1/%s/%s", userID, subPath)
 }

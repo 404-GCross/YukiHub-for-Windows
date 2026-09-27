@@ -2,16 +2,16 @@ package importer
 
 import (
 	"fmt"
-	"lunabox/internal/applog"
-	"lunabox/internal/common/enums"
-	"lunabox/internal/common/vo"
-	"lunabox/internal/models"
-	"lunabox/internal/models/vnite"
-	"lunabox/internal/utils/imageutils"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
+	"yukihub/internal/applog"
+	"yukihub/internal/common/enums"
+	"yukihub/internal/common/vo"
+	"yukihub/internal/models"
+	"yukihub/internal/models/vnite"
+	"yukihub/internal/utils/imageutils"
 
 	"github.com/google/uuid"
 )

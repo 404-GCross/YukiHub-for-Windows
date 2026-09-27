@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"lunabox/internal/appconf"
-	"lunabox/internal/utils/metadata"
+	"yukihub/internal/appconf"
+	"yukihub/internal/utils/metadata"
 )
 
 func TestUpsertScrapedTagsKeepsOtherProviderTags(t *testing.T) {

@@ -5,8 +5,8 @@ import (
 	"database/sql"
 	"testing"
 
-	"lunabox/internal/common/enums"
-	"lunabox/internal/common/vo"
+	"yukihub/internal/common/enums"
+	"yukihub/internal/common/vo"
 
 	_ "github.com/duckdb/duckdb-go/v2"
 )

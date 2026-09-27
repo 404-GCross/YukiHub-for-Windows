@@ -36,7 +36,7 @@ export function useAppTheme(config: appconf.AppConfig | null) {
       });
     };
 
-    localStorage.setItem("lunabox-theme", config.theme);
+    localStorage.setItem("yukihub-theme", config.theme);
 
     if (config.theme === "system") {
       const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");

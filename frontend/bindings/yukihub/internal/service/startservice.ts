@@ -20,7 +20,7 @@ export function CleanupPendingSessions(): $CancellablePromise<void> {
 }
 
 /**
- * EndCurrentPlaySession manually ends LunaBox tracking for the active game.
+ * EndCurrentPlaySession manually ends YukiHub tracking for the active game.
  * It does not terminate the external game process; it finalizes the current
  * play session and stops monitoring so later process exit cannot write twice.
  */

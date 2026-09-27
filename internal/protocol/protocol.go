@@ -1,17 +1,17 @@
-// Package protocol handles the lunabox:// custom URL scheme.
+// Package protocol handles the yukihub:// custom URL scheme.
 package protocol
 
 import (
 	"fmt"
-	"lunabox/internal/common/vo"
-	"lunabox/internal/utils/downloadutils"
 	"net/url"
 	"strconv"
 	"strings"
 	"time"
+	"yukihub/internal/common/vo"
+	"yukihub/internal/utils/downloadutils"
 )
 
-const Scheme = "lunabox"
+const Scheme = "yukihub"
 const (
 	ActionInstall = "install"
 	ActionLaunch  = "launch"
@@ -28,7 +28,7 @@ func parseProtocolURL(rawURL string) (*url.URL, error) {
 	return u, nil
 }
 
-// ParseAction returns the supported lunabox:// action name.
+// ParseAction returns the supported yukihub:// action name.
 func ParseAction(rawURL string) (string, error) {
 	u, err := parseProtocolURL(rawURL)
 	if err != nil {
@@ -44,15 +44,15 @@ func ParseAction(rawURL string) (string, error) {
 	}
 }
 
-// ParseURL parses a lunabox://install URI into an InstallRequest.
-// Supports: lunabox://install?url=...&file_name=...&archive_format=...&checksum_algo=...&checksum=...&expires_at=...&install_subdir=...&strip_top_level=...
+// ParseURL parses a yukihub://install URI into an InstallRequest.
+// Supports: yukihub://install?url=...&file_name=...&archive_format=...&checksum_algo=...&checksum=...&expires_at=...&install_subdir=...&strip_top_level=...
 // checksum_algo and checksum are optional as a pair. When absent, file checksum
 // verification is skipped by the download service.
 func ParseURL(rawURL string) (*vo.InstallRequest, error) {
 	return ParseInstallURL(rawURL)
 }
 
-// ParseInstallURL parses a lunabox://install URI into an InstallRequest.
+// ParseInstallURL parses a yukihub://install URI into an InstallRequest.
 func ParseInstallURL(rawURL string) (*vo.InstallRequest, error) {
 	u, err := parseProtocolURL(rawURL)
 	if err != nil {
@@ -145,7 +145,7 @@ func ParseInstallURL(rawURL string) (*vo.InstallRequest, error) {
 	return req, nil
 }
 
-// ParseLaunchURL parses a lunabox://launch URI into a ProtocolLaunchRequest.
+// ParseLaunchURL parses a yukihub://launch URI into a ProtocolLaunchRequest.
 func ParseLaunchURL(rawURL string) (*vo.ProtocolLaunchRequest, error) {
 	u, err := parseProtocolURL(rawURL)
 	if err != nil {
@@ -166,7 +166,7 @@ func ParseLaunchURL(rawURL string) (*vo.ProtocolLaunchRequest, error) {
 	}, nil
 }
 
-// BuildLaunchURL returns a lunabox://launch URI for the given game ID.
+// BuildLaunchURL returns a yukihub://launch URI for the given game ID.
 func BuildLaunchURL(gameID string) (string, error) {
 	trimmedID := strings.TrimSpace(gameID)
 	if trimmedID == "" {
@@ -182,7 +182,7 @@ func BuildLaunchURL(gameID string) (string, error) {
 	}).String(), nil
 }
 
-// IsProtocolURL reports whether the string looks like a lunabox:// URL.
+// IsProtocolURL reports whether the string looks like a yukihub:// URL.
 func IsProtocolURL(s string) bool {
 	return strings.HasPrefix(strings.ToLower(strings.TrimSpace(s)), Scheme+"://")
 }

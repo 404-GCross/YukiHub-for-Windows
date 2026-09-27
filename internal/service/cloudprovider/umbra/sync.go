@@ -14,12 +14,12 @@ import (
 	"strings"
 
 	umbrsdk "github.com/Umbrae-Labs/umbra-sdk/umbra-go"
-	"lunabox/internal/service/cloudprovider/batchupload"
+	"yukihub/internal/service/cloudprovider/batchupload"
 )
 
 const (
 	syncSpaceName       = "library"
-	syncNamespace       = "lunabox.library"
+	syncNamespace       = "yukihub.library"
 	syncRootCollection  = "root"
 	syncSchemaVersion   = 1
 	syncPageLimit       = 500
@@ -317,5 +317,5 @@ func syncMutationID(key umbrsdk.SyncRecordKey, baseVersion uint64, payload []byt
 	hasher := sha256.New()
 	_, _ = fmt.Fprintf(hasher, "%s\x00%s\x00%s\x00%d\x00%s\x00", key.Namespace, key.Collection, key.RecordID, baseVersion, operation)
 	_, _ = hasher.Write(payload)
-	return "lunabox-" + hex.EncodeToString(hasher.Sum(nil))[:40]
+	return "yukihub-" + hex.EncodeToString(hasher.Sum(nil))[:40]
 }

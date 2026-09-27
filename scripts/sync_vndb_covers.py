@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-Download VNDB cover images for every VNDB-backed game in a LunaBox DuckDB database.
+Download VNDB cover images for every VNDB-backed game in a YukiHub DuckDB database.
 
 This script is intended to run on Linux where rsync is available:
 
   python3 -m pip install duckdb
-  python3 scripts/sync_vndb_covers.py --db /path/to/lunabox.db
+  python3 scripts/sync_vndb_covers.py --db /path/to/yukihub.db
 
 It extracts VNDB source IDs from games.source_id, fetches fresh image URLs from
 the VNDB API, then downloads only the referenced official image files. API image
@@ -18,7 +18,7 @@ The official VNDB rsync endpoint is asked for only those relative files:
   cv/51/96151.jpg
 
 Existing local covers are overwritten. The downloaded files are copied into the
-LunaBox covers directory as <game-id>.<ext>, and games.cover_url is updated to
+YukiHub covers directory as <game-id>.<ext>, and games.cover_url is updated to
 /local/covers/<game-id>.<ext>.
 """
 
@@ -167,7 +167,7 @@ def request_vndb_batch(source_ids: list[str], include_thumbnails: bool, retries:
             data=body,
             headers={
                 "Content-Type": "application/json",
-                "User-Agent": "LunaBox VNDB cover sync script",
+                "User-Agent": "YukiHub VNDB cover sync script",
             },
             method="POST",
         )
@@ -378,13 +378,13 @@ def update_database(db_path: Path, updates: dict[str, str]) -> None:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Refresh covers for every VNDB-backed LunaBox game and rewrite covers to local paths."
+        description="Refresh covers for every VNDB-backed YukiHub game and rewrite covers to local paths."
     )
-    parser.add_argument("--db", required=True, type=Path, help="Path to lunabox.db.")
+    parser.add_argument("--db", required=True, type=Path, help="Path to yukihub.db.")
     parser.add_argument(
         "--covers-dir",
         type=Path,
-        help="LunaBox covers directory. Defaults to <db parent>/covers.",
+        help="YukiHub covers directory. Defaults to <db parent>/covers.",
     )
     parser.add_argument(
         "--work-dir",

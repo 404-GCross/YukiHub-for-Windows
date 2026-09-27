@@ -19,9 +19,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"lunabox/internal/utils/httputils"
-	"lunabox/internal/utils/proxyutils"
-	"lunabox/internal/version"
+	"yukihub/internal/utils/httputils"
+	"yukihub/internal/utils/proxyutils"
+	"yukihub/internal/version"
 
 	grab "github.com/cavaliergopher/grab/v3"
 	"github.com/zeebo/blake3"
@@ -152,7 +152,7 @@ func (d *Downloader) Download(ctx context.Context, req TransferRequest) error {
 		return fmt.Errorf("create download placeholder: %w", err)
 	}
 
-	// 下载统一先写入 .lunabox.download 临时文件，校验通过后原子重命名到最终路径。
+	// 下载统一先写入 .yukihub.download 临时文件，校验通过后原子重命名到最终路径。
 	// 这样最终路径上只要文件存在就一定是完整且校验通过的，续传/校验逻辑也
 	// 永远不会把用户已有的同名文件当成部分下载去追加或删除。
 	session, ok := d.prepareMultipartSession(ctx, req)
@@ -620,13 +620,13 @@ func (d *Downloader) newGrabDownloadRequest(ctx context.Context, req TransferReq
 }
 
 func MultipartTempDir(destPath string) string {
-	return destPath + ".lunabox.parts"
+	return destPath + ".yukihub.parts"
 }
 
 // TempDownloadPath 下载过程中的临时文件路径（类似浏览器的 .crdownload/.part）。
 // 命名是确定性的，应用重启后依然能定位到同一个文件继续断点续传。
 func TempDownloadPath(destPath string) string {
-	return destPath + ".lunabox.download"
+	return destPath + ".yukihub.download"
 }
 
 func InspectResumeOffset(destPath string, expectedSize int64) int64 {

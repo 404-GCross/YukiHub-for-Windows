@@ -183,7 +183,7 @@ function AppContent() {
           <Avatar shape="square" size={36} style={{ background: designToken.colorPrimary }}>L</Avatar>
           {collapsed ? null : (
             <div>
-              <Typography.Text strong>LunaBox</Typography.Text>
+              <Typography.Text strong>YukiHub</Typography.Text>
               <Typography.Text type="secondary">更新控制台</Typography.Text>
             </div>
           )}

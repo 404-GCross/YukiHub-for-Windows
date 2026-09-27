@@ -3,7 +3,7 @@ package cloudprovider
 import (
 	"context"
 
-	"lunabox/internal/service/cloudprovider/batchupload"
+	"yukihub/internal/service/cloudprovider/batchupload"
 )
 
 type CloudStorageProvider interface {

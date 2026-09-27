@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"lunabox/internal/service/cloudsync"
+	"yukihub/internal/service/cloudsync"
 )
 
 func TestCloudSyncStateRoundTrip(t *testing.T) {

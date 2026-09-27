@@ -5,12 +5,12 @@ import (
 	"reflect"
 	"testing"
 
-	"lunabox/internal/appconf"
-	"lunabox/internal/common/enums"
-	"lunabox/internal/common/vo"
-	"lunabox/internal/models"
-	"lunabox/internal/service/gamehelper"
-	"lunabox/internal/utils/metadata"
+	"yukihub/internal/appconf"
+	"yukihub/internal/common/enums"
+	"yukihub/internal/common/vo"
+	"yukihub/internal/models"
+	"yukihub/internal/service/gamehelper"
+	"yukihub/internal/utils/metadata"
 )
 
 func TestApplyRemoteMetadataMergesAliases(t *testing.T) {

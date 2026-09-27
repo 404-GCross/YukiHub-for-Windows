@@ -4,15 +4,15 @@ import (
 	"context"
 	"encoding/json"
 	"io"
-	"lunabox/internal/appconf"
-	"lunabox/internal/common/enums"
-	"lunabox/internal/models"
-	"lunabox/internal/service"
 	"net/http"
 	"net/http/httptest"
 	"sync"
 	"testing"
 	"time"
+	"yukihub/internal/appconf"
+	"yukihub/internal/common/enums"
+	"yukihub/internal/models"
+	"yukihub/internal/service"
 )
 
 func TestGameReviewServiceSaveAndSync(t *testing.T) {

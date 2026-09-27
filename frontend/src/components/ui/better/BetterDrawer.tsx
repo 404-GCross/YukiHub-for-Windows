@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Transition, TransitionChild } from "@headlessui/react";
-import { DesktopModal, useDesktopInsets } from "@lunabox/desktop-shell-react";
+import { DesktopModal, useDesktopInsets } from "@yukihub/desktop-shell-react";
 import { useId } from "react";
 
 export type BetterDrawerPlacement = "bottom" | "right";

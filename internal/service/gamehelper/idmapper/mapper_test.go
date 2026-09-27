@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"testing"
 
-	"lunabox/internal/common/enums"
+	"yukihub/internal/common/enums"
 )
 
 func TestMapperResolvesHikarinagiID(t *testing.T) {

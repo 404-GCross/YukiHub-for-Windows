@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"lunabox/internal/utils/proxyutils"
-	"lunabox/internal/version"
+	"yukihub/internal/utils/proxyutils"
+	"yukihub/internal/version"
 )
 
 func TestNewClientSetsDefaultUserAgent(t *testing.T) {

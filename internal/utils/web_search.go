@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"lunabox/internal/utils/httputils"
-	"lunabox/internal/utils/proxyutils"
 	"resty.dev/v3"
+	"yukihub/internal/utils/httputils"
+	"yukihub/internal/utils/proxyutils"
 )
 
 const webSearchRetryCount = 3

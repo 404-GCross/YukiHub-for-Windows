@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"strings"
 
-	"lunabox/internal/appconf"
-	"lunabox/internal/service/cloudprovider/onedrive"
-	"lunabox/internal/service/cloudprovider/s3"
-	"lunabox/internal/service/cloudprovider/umbra"
-	"lunabox/internal/service/cloudprovider/webdav"
-	"lunabox/internal/version"
+	"yukihub/internal/appconf"
+	"yukihub/internal/service/cloudprovider/onedrive"
+	"yukihub/internal/service/cloudprovider/s3"
+	"yukihub/internal/service/cloudprovider/umbra"
+	"yukihub/internal/service/cloudprovider/webdav"
+	"yukihub/internal/version"
 )
 
 // ProviderType 云存储提供商类型

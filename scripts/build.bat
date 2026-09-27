@@ -1,7 +1,7 @@
 @echo off
 setlocal EnableExtensions EnableDelayedExpansion
 
-REM LunaBox Windows release builder for Wails v3.
+REM YukiHub Windows release builder for Wails v3.
 REM Usage: scripts\build.bat [portable|installer|installer-payload|installer-package|all] [version] [amd64|arm64]
 
 cd /d "%~dp0\.."
@@ -90,13 +90,13 @@ if not defined BUILD_ENV_FILE if exist ".env" set "BUILD_ENV_FILE=.env"
 
 if defined BUILD_ENV_FILE (
     for /f "usebackq tokens=1,* delims==" %%A in ("!BUILD_ENV_FILE!") do (
-        if /i "%%A"=="LUNABOX_BANGUMI_CLIENT_ID" if not defined LUNABOX_BANGUMI_CLIENT_ID set "LUNABOX_BANGUMI_CLIENT_ID=%%B"
-        if /i "%%A"=="LUNABOX_BANGUMI_CLIENT_SECRET" if not defined LUNABOX_BANGUMI_CLIENT_SECRET set "LUNABOX_BANGUMI_CLIENT_SECRET=%%B"
-        if /i "%%A"=="LUNABOX_HIKARINAGI_CLIENT_ID" if not defined LUNABOX_HIKARINAGI_CLIENT_ID set "LUNABOX_HIKARINAGI_CLIENT_ID=%%B"
-        if /i "%%A"=="LUNABOX_HIKARINAGI_CLIENT_SECRET" if not defined LUNABOX_HIKARINAGI_CLIENT_SECRET set "LUNABOX_HIKARINAGI_CLIENT_SECRET=%%B"
-        if /i "%%A"=="LUNABOX_TOUCHGAL_TOKEN" if not defined LUNABOX_TOUCHGAL_TOKEN set "LUNABOX_TOUCHGAL_TOKEN=%%B"
-        if /i "%%A"=="LUNABOX_UMBRA_CLIENT_ID" if not defined LUNABOX_UMBRA_CLIENT_ID set "LUNABOX_UMBRA_CLIENT_ID=%%B"
-        if /i "%%A"=="LUNABOX_UMBRA_REGISTRATION_TOKEN" if not defined LUNABOX_UMBRA_REGISTRATION_TOKEN set "LUNABOX_UMBRA_REGISTRATION_TOKEN=%%B"
+        if /i "%%A"=="YUKIHUB_BANGUMI_CLIENT_ID" if not defined YUKIHUB_BANGUMI_CLIENT_ID set "YUKIHUB_BANGUMI_CLIENT_ID=%%B"
+        if /i "%%A"=="YUKIHUB_BANGUMI_CLIENT_SECRET" if not defined YUKIHUB_BANGUMI_CLIENT_SECRET set "YUKIHUB_BANGUMI_CLIENT_SECRET=%%B"
+        if /i "%%A"=="YUKIHUB_HIKARINAGI_CLIENT_ID" if not defined YUKIHUB_HIKARINAGI_CLIENT_ID set "YUKIHUB_HIKARINAGI_CLIENT_ID=%%B"
+        if /i "%%A"=="YUKIHUB_HIKARINAGI_CLIENT_SECRET" if not defined YUKIHUB_HIKARINAGI_CLIENT_SECRET set "YUKIHUB_HIKARINAGI_CLIENT_SECRET=%%B"
+        if /i "%%A"=="YUKIHUB_TOUCHGAL_TOKEN" if not defined YUKIHUB_TOUCHGAL_TOKEN set "YUKIHUB_TOUCHGAL_TOKEN=%%B"
+        if /i "%%A"=="YUKIHUB_UMBRA_CLIENT_ID" if not defined YUKIHUB_UMBRA_CLIENT_ID set "YUKIHUB_UMBRA_CLIENT_ID=%%B"
+        if /i "%%A"=="YUKIHUB_UMBRA_REGISTRATION_TOKEN" if not defined YUKIHUB_UMBRA_REGISTRATION_TOKEN set "YUKIHUB_UMBRA_REGISTRATION_TOKEN=%%B"
     )
 )
 exit /b 0
@@ -217,60 +217,60 @@ set "HIKARINAGI_OAUTH_STATUS=disabled"
 set "TOUCHGAL_TOKEN_STATUS=disabled"
 set "UMBRA_REGISTRATION_STATUS=disabled"
 
-if defined LUNABOX_UPDATE_SERVICE_URL (
-    set "LDFLAGS_UPDATE_SERVICE= -X 'lunabox/internal/version.UpdateServiceURL=!LUNABOX_UPDATE_SERVICE_URL!'"
+if defined YUKIHUB_UPDATE_SERVICE_URL (
+    set "LDFLAGS_UPDATE_SERVICE= -X 'yukihub/internal/version.UpdateServiceURL=!YUKIHUB_UPDATE_SERVICE_URL!'"
 )
 
-if defined LUNABOX_BANGUMI_CLIENT_ID (
-    if not defined LUNABOX_BANGUMI_CLIENT_SECRET (
-        echo ERROR: LUNABOX_BANGUMI_CLIENT_ID and LUNABOX_BANGUMI_CLIENT_SECRET must be configured together.
+if defined YUKIHUB_BANGUMI_CLIENT_ID (
+    if not defined YUKIHUB_BANGUMI_CLIENT_SECRET (
+        echo ERROR: YUKIHUB_BANGUMI_CLIENT_ID and YUKIHUB_BANGUMI_CLIENT_SECRET must be configured together.
         exit /b 1
     )
-    set "LDFLAGS_BANGUMI= -X 'lunabox/internal/version.BangumiOAuthClientID=!LUNABOX_BANGUMI_CLIENT_ID!' -X 'lunabox/internal/version.BangumiOAuthClientSecret=!LUNABOX_BANGUMI_CLIENT_SECRET!'"
+    set "LDFLAGS_BANGUMI= -X 'yukihub/internal/version.BangumiOAuthClientID=!YUKIHUB_BANGUMI_CLIENT_ID!' -X 'yukihub/internal/version.BangumiOAuthClientSecret=!YUKIHUB_BANGUMI_CLIENT_SECRET!'"
     set "BANGUMI_OAUTH_STATUS=enabled"
-) else if defined LUNABOX_BANGUMI_CLIENT_SECRET (
-    echo ERROR: LUNABOX_BANGUMI_CLIENT_ID and LUNABOX_BANGUMI_CLIENT_SECRET must be configured together.
+) else if defined YUKIHUB_BANGUMI_CLIENT_SECRET (
+    echo ERROR: YUKIHUB_BANGUMI_CLIENT_ID and YUKIHUB_BANGUMI_CLIENT_SECRET must be configured together.
     exit /b 1
 )
 
-if defined LUNABOX_HIKARINAGI_CLIENT_ID (
-    set "LDFLAGS_HIKARINAGI= -X 'lunabox/internal/version.HikarinagiOAuthClientID=!LUNABOX_HIKARINAGI_CLIENT_ID!'"
-    if defined LUNABOX_HIKARINAGI_CLIENT_SECRET (
-        set "LDFLAGS_HIKARINAGI=!LDFLAGS_HIKARINAGI! -X 'lunabox/internal/version.HikarinagiOAuthClientSecret=!LUNABOX_HIKARINAGI_CLIENT_SECRET!'"
+if defined YUKIHUB_HIKARINAGI_CLIENT_ID (
+    set "LDFLAGS_HIKARINAGI= -X 'yukihub/internal/version.HikarinagiOAuthClientID=!YUKIHUB_HIKARINAGI_CLIENT_ID!'"
+    if defined YUKIHUB_HIKARINAGI_CLIENT_SECRET (
+        set "LDFLAGS_HIKARINAGI=!LDFLAGS_HIKARINAGI! -X 'yukihub/internal/version.HikarinagiOAuthClientSecret=!YUKIHUB_HIKARINAGI_CLIENT_SECRET!'"
     )
     set "HIKARINAGI_OAUTH_STATUS=enabled"
-) else if defined LUNABOX_HIKARINAGI_CLIENT_SECRET (
-    echo ERROR: LUNABOX_HIKARINAGI_CLIENT_SECRET requires LUNABOX_HIKARINAGI_CLIENT_ID.
+) else if defined YUKIHUB_HIKARINAGI_CLIENT_SECRET (
+    echo ERROR: YUKIHUB_HIKARINAGI_CLIENT_SECRET requires YUKIHUB_HIKARINAGI_CLIENT_ID.
     exit /b 1
 )
 
-if defined LUNABOX_TOUCHGAL_TOKEN (
-    set "LDFLAGS_TOUCHGAL= -X 'lunabox/internal/version.TouchGalAPIToken=!LUNABOX_TOUCHGAL_TOKEN!'"
+if defined YUKIHUB_TOUCHGAL_TOKEN (
+    set "LDFLAGS_TOUCHGAL= -X 'yukihub/internal/version.TouchGalAPIToken=!YUKIHUB_TOUCHGAL_TOKEN!'"
     set "TOUCHGAL_TOKEN_STATUS=enabled"
 )
 
-if defined LUNABOX_UMBRA_CLIENT_ID (
-    if not defined LUNABOX_UMBRA_REGISTRATION_TOKEN (
-        echo ERROR: LUNABOX_UMBRA_CLIENT_ID and LUNABOX_UMBRA_REGISTRATION_TOKEN must be configured together.
+if defined YUKIHUB_UMBRA_CLIENT_ID (
+    if not defined YUKIHUB_UMBRA_REGISTRATION_TOKEN (
+        echo ERROR: YUKIHUB_UMBRA_CLIENT_ID and YUKIHUB_UMBRA_REGISTRATION_TOKEN must be configured together.
         exit /b 1
     )
-    set "LDFLAGS_UMBRA= -X 'lunabox/internal/version.UmbraOAuthClientID=!LUNABOX_UMBRA_CLIENT_ID!' -X 'lunabox/internal/version.UmbraRegistrationToken=!LUNABOX_UMBRA_REGISTRATION_TOKEN!'"
+    set "LDFLAGS_UMBRA= -X 'yukihub/internal/version.UmbraOAuthClientID=!YUKIHUB_UMBRA_CLIENT_ID!' -X 'yukihub/internal/version.UmbraRegistrationToken=!YUKIHUB_UMBRA_REGISTRATION_TOKEN!'"
     set "UMBRA_REGISTRATION_STATUS=enabled"
-) else if defined LUNABOX_UMBRA_REGISTRATION_TOKEN (
-    echo ERROR: LUNABOX_UMBRA_CLIENT_ID and LUNABOX_UMBRA_REGISTRATION_TOKEN must be configured together.
+) else if defined YUKIHUB_UMBRA_REGISTRATION_TOKEN (
+    echo ERROR: YUKIHUB_UMBRA_CLIENT_ID and YUKIHUB_UMBRA_REGISTRATION_TOKEN must be configured together.
     exit /b 1
 )
 
-set "LDFLAGS_BASE=-s -w -X 'lunabox/internal/version.Version=%VERSION%' -X 'lunabox/internal/version.GitCommit=%GIT_COMMIT%' -X 'lunabox/internal/version.BuildTime=%BUILD_TIME%'!LDFLAGS_UPDATE_SERVICE!!LDFLAGS_BANGUMI!!LDFLAGS_HIKARINAGI!!LDFLAGS_TOUCHGAL!!LDFLAGS_UMBRA!"
-set "LDFLAGS_PORTABLE=!LDFLAGS_BASE! -X 'lunabox/internal/version.BuildMode=portable'"
-set "LDFLAGS_INSTALLER=!LDFLAGS_BASE! -X 'lunabox/internal/version.BuildMode=installer'"
+set "LDFLAGS_BASE=-s -w -X 'yukihub/internal/version.Version=%VERSION%' -X 'yukihub/internal/version.GitCommit=%GIT_COMMIT%' -X 'yukihub/internal/version.BuildTime=%BUILD_TIME%'!LDFLAGS_UPDATE_SERVICE!!LDFLAGS_BANGUMI!!LDFLAGS_HIKARINAGI!!LDFLAGS_TOUCHGAL!!LDFLAGS_UMBRA!"
+set "LDFLAGS_PORTABLE=!LDFLAGS_BASE! -X 'yukihub/internal/version.BuildMode=portable'"
+set "LDFLAGS_INSTALLER=!LDFLAGS_BASE! -X 'yukihub/internal/version.BuildMode=installer'"
 set "LDFLAGS_GUI_PORTABLE=!LDFLAGS_PORTABLE! -H windowsgui"
 set "LDFLAGS_GUI_INSTALLER=!LDFLAGS_INSTALLER! -H windowsgui"
 exit /b 0
 
 :print_build_info
 echo ========================================
-echo LunaBox Wails v3 Windows Build
+echo YukiHub Wails v3 Windows Build
 echo Build Mode: %BUILD_MODE%
 echo Target: windows/%TARGET_ARCH%
 echo Version: %VERSION%
@@ -340,29 +340,29 @@ exit /b 0
 :build_gui
 call :generate_windows_resources
 if errorlevel 1 exit /b 1
-powershell -NoProfile -Command "$ErrorActionPreference = 'Stop'; & go build -tags $env:GO_BUILD_TAGS -trimpath -buildvcs=false -ldflags $env:LUNABOX_GO_LDFLAGS -o $env:LUNABOX_GO_OUTPUT .; exit $LASTEXITCODE"
+powershell -NoProfile -Command "$ErrorActionPreference = 'Stop'; & go build -tags $env:GO_BUILD_TAGS -trimpath -buildvcs=false -ldflags $env:YUKIHUB_GO_LDFLAGS -o $env:YUKIHUB_GO_OUTPUT .; exit $LASTEXITCODE"
 set "GUI_BUILD_EXIT=!ERRORLEVEL!"
 if exist "!WAILS_SYSO!" del /q "!WAILS_SYSO!"
 if not "!GUI_BUILD_EXIT!"=="0" exit /b !GUI_BUILD_EXIT!
 exit /b 0
 
 :build_cli
-powershell -NoProfile -Command "$ErrorActionPreference = 'Stop'; & go build -tags $env:GO_BUILD_TAGS -trimpath -buildvcs=false -ldflags $env:LUNABOX_GO_LDFLAGS -o $env:LUNABOX_GO_OUTPUT ./cmd/lunacli; exit $LASTEXITCODE"
+powershell -NoProfile -Command "$ErrorActionPreference = 'Stop'; & go build -tags $env:GO_BUILD_TAGS -trimpath -buildvcs=false -ldflags $env:YUKIHUB_GO_LDFLAGS -o $env:YUKIHUB_GO_OUTPUT ./cmd/yukihubcli; exit $LASTEXITCODE"
 if errorlevel 1 exit /b 1
 exit /b 0
 
 :build_portable
 echo [portable 1/4] Building GUI...
-set "PORTABLE_GUI=build\bin\lunabox-%TARGET_ARCH%-portable.exe"
-set "LUNABOX_GO_OUTPUT=!PORTABLE_GUI!"
-set "LUNABOX_GO_LDFLAGS=!LDFLAGS_GUI_PORTABLE!"
+set "PORTABLE_GUI=build\bin\yukihub-%TARGET_ARCH%-portable.exe"
+set "YUKIHUB_GO_OUTPUT=!PORTABLE_GUI!"
+set "YUKIHUB_GO_LDFLAGS=!LDFLAGS_GUI_PORTABLE!"
 call :build_gui
 if errorlevel 1 exit /b 1
 
 echo [portable 2/4] Building CLI...
-set "PORTABLE_CLI=build\bin\lunabox-cli.exe"
-set "LUNABOX_GO_OUTPUT=!PORTABLE_CLI!"
-set "LUNABOX_GO_LDFLAGS=!LDFLAGS_PORTABLE!"
+set "PORTABLE_CLI=build\bin\yukihub-cli.exe"
+set "YUKIHUB_GO_OUTPUT=!PORTABLE_CLI!"
+set "YUKIHUB_GO_LDFLAGS=!LDFLAGS_PORTABLE!"
 call :build_cli
 if errorlevel 1 exit /b 1
 
@@ -371,7 +371,7 @@ call :build_updater
 if errorlevel 1 exit /b 1
 
 echo [portable 4/4] Creating ZIP...
-set "PORTABLE_DIR=build\bin\LunaBox-%VERSION%-windows-%TARGET_ARCH%-portable"
+set "PORTABLE_DIR=build\bin\YukiHub-%VERSION%-windows-%TARGET_ARCH%-portable"
 set "PORTABLE_ZIP=!PORTABLE_DIR!.zip"
 if exist "!PORTABLE_DIR!" rmdir /s /q "!PORTABLE_DIR!"
 mkdir "!PORTABLE_DIR!"
@@ -379,27 +379,27 @@ mkdir "!PORTABLE_DIR!\backups"
 mkdir "!PORTABLE_DIR!\covers"
 mkdir "!PORTABLE_DIR!\backgrounds"
 mkdir "!PORTABLE_DIR!\logs"
-copy /Y "!PORTABLE_GUI!" "!PORTABLE_DIR!\LunaBox.exe" >nul
-copy /Y "!PORTABLE_CLI!" "!PORTABLE_DIR!\lunacli.exe" >nul
-copy /Y "build\bin\LunaBoxUpdater.exe" "!PORTABLE_DIR!\LunaBoxUpdater.exe" >nul
+copy /Y "!PORTABLE_GUI!" "!PORTABLE_DIR!\YukiHub.exe" >nul
+copy /Y "!PORTABLE_CLI!" "!PORTABLE_DIR!\yukihubcli.exe" >nul
+copy /Y "build\bin\YukiHubUpdater.exe" "!PORTABLE_DIR!\YukiHubUpdater.exe" >nul
 if defined DUCKDB_DLL copy /Y "!DUCKDB_DLL!" "!PORTABLE_DIR!\duckdb.dll" >nul
 mkdir "!PORTABLE_DIR!\7z"
 copy /Y "!SEVENZIP_SOURCE_DIR!\7z.exe" "!PORTABLE_DIR!\7z\7z.exe" >nul
 copy /Y "!SEVENZIP_SOURCE_DIR!\7z.dll" "!PORTABLE_DIR!\7z\7z.dll" >nul
 
->"!PORTABLE_DIR!\README.txt" echo LunaBox Portable v%VERSION%
+>"!PORTABLE_DIR!\README.txt" echo YukiHub Portable v%VERSION%
 >>"!PORTABLE_DIR!\README.txt" echo.
 >>"!PORTABLE_DIR!\README.txt" echo This package contains:
->>"!PORTABLE_DIR!\README.txt" echo   - LunaBox.exe  : GUI version ^(double-click to launch^)
->>"!PORTABLE_DIR!\README.txt" echo   - lunacli.exe  : CLI version ^(use in a terminal^)
->>"!PORTABLE_DIR!\README.txt" echo   - LunaBoxUpdater.exe : standalone update helper
+>>"!PORTABLE_DIR!\README.txt" echo   - YukiHub.exe  : GUI version ^(double-click to launch^)
+>>"!PORTABLE_DIR!\README.txt" echo   - yukihubcli.exe  : CLI version ^(use in a terminal^)
+>>"!PORTABLE_DIR!\README.txt" echo   - YukiHubUpdater.exe : standalone update helper
 >>"!PORTABLE_DIR!\README.txt" echo.
 >>"!PORTABLE_DIR!\README.txt" echo CLI usage:
->>"!PORTABLE_DIR!\README.txt" echo   lunacli list
->>"!PORTABLE_DIR!\README.txt" echo   lunacli start ^<game-id^>
->>"!PORTABLE_DIR!\README.txt" echo   lunacli protocol register
->>"!PORTABLE_DIR!\README.txt" echo   lunacli protocol unregister
->>"!PORTABLE_DIR!\README.txt" echo   lunacli help
+>>"!PORTABLE_DIR!\README.txt" echo   yukihubcli list
+>>"!PORTABLE_DIR!\README.txt" echo   yukihubcli start ^<game-id^>
+>>"!PORTABLE_DIR!\README.txt" echo   yukihubcli protocol register
+>>"!PORTABLE_DIR!\README.txt" echo   yukihubcli protocol unregister
+>>"!PORTABLE_DIR!\README.txt" echo   yukihubcli help
 
 if exist "!PORTABLE_ZIP!" del /q "!PORTABLE_ZIP!"
 powershell -NoProfile -Command "Compress-Archive -LiteralPath '!PORTABLE_DIR!' -DestinationPath '!PORTABLE_ZIP!' -CompressionLevel Optimal"
@@ -410,7 +410,7 @@ echo.
 exit /b 0
 
 :build_updater
-powershell -NoProfile -Command "$ErrorActionPreference = 'Stop'; & go -C updater build -trimpath -buildvcs=false -ldflags '-s -w -H=windowsgui' -o '..\build\bin\LunaBoxUpdater.exe' ./cmd/lunabox-updater; exit $LASTEXITCODE"
+powershell -NoProfile -Command "$ErrorActionPreference = 'Stop'; & go -C updater build -trimpath -buildvcs=false -ldflags '-s -w -H=windowsgui' -o '..\build\bin\YukiHubUpdater.exe' ./cmd/yukihub-updater; exit $LASTEXITCODE"
 if errorlevel 1 exit /b 1
 exit /b 0
 
@@ -441,20 +441,20 @@ call :build_installer_payload
 if errorlevel 1 exit /b 1
 call :build_installer_package
 if errorlevel 1 exit /b 1
-if exist "build\bin\LunaBox-%VERSION%-windows-%TARGET_ARCH%-installer-payload.zip" del /q "build\bin\LunaBox-%VERSION%-windows-%TARGET_ARCH%-installer-payload.zip"
+if exist "build\bin\YukiHub-%VERSION%-windows-%TARGET_ARCH%-installer-payload.zip" del /q "build\bin\YukiHub-%VERSION%-windows-%TARGET_ARCH%-installer-payload.zip"
 exit /b 0
 
 :build_installer_payload
 if not exist "!WINDOWS_PAYLOAD_DIR!" mkdir "!WINDOWS_PAYLOAD_DIR!"
 echo [installer payload 1/4] Building CLI...
-set "LUNABOX_GO_OUTPUT=!WINDOWS_PAYLOAD_DIR!\lunacli.exe"
-set "LUNABOX_GO_LDFLAGS=!LDFLAGS_INSTALLER!"
+set "YUKIHUB_GO_OUTPUT=!WINDOWS_PAYLOAD_DIR!\yukihubcli.exe"
+set "YUKIHUB_GO_LDFLAGS=!LDFLAGS_INSTALLER!"
 call :build_cli
 if errorlevel 1 exit /b 1
 
 echo [installer payload 2/4] Building GUI...
-set "LUNABOX_GO_OUTPUT=!WINDOWS_PAYLOAD_DIR!\LunaBox.exe"
-set "LUNABOX_GO_LDFLAGS=!LDFLAGS_GUI_INSTALLER!"
+set "YUKIHUB_GO_OUTPUT=!WINDOWS_PAYLOAD_DIR!\YukiHub.exe"
+set "YUKIHUB_GO_LDFLAGS=!LDFLAGS_GUI_INSTALLER!"
 call :build_gui
 if errorlevel 1 exit /b 1
 call :prepare_installer_runtime
@@ -465,35 +465,35 @@ call :build_updater
 if errorlevel 1 exit /b 1
 
 echo [installer payload 4/4] Creating signing payload...
-set "INSTALLER_PAYLOAD_ZIP=build\bin\LunaBox-%VERSION%-windows-%TARGET_ARCH%-installer-payload.zip"
+set "INSTALLER_PAYLOAD_ZIP=build\bin\YukiHub-%VERSION%-windows-%TARGET_ARCH%-installer-payload.zip"
 if exist "!INSTALLER_PAYLOAD_ZIP!" del /q "!INSTALLER_PAYLOAD_ZIP!"
-powershell -NoProfile -Command "$Files = (Join-Path $env:WINDOWS_PAYLOAD_DIR 'LunaBox.exe'), (Join-Path $env:WINDOWS_PAYLOAD_DIR 'lunacli.exe'), (Join-Path $PWD 'build\bin\LunaBoxUpdater.exe'); Compress-Archive -LiteralPath $Files -DestinationPath '!INSTALLER_PAYLOAD_ZIP!' -CompressionLevel Optimal"
+powershell -NoProfile -Command "$Files = (Join-Path $env:WINDOWS_PAYLOAD_DIR 'YukiHub.exe'), (Join-Path $env:WINDOWS_PAYLOAD_DIR 'yukihubcli.exe'), (Join-Path $PWD 'build\bin\YukiHubUpdater.exe'); Compress-Archive -LiteralPath $Files -DestinationPath '!INSTALLER_PAYLOAD_ZIP!' -CompressionLevel Optimal"
 if errorlevel 1 exit /b 1
 echo Created: !INSTALLER_PAYLOAD_ZIP!
 echo.
 exit /b 0
 
 :build_installer_package
-if not exist "!WINDOWS_PAYLOAD_DIR!\LunaBox.exe" (
-    echo ERROR: Missing installer GUI payload: !WINDOWS_PAYLOAD_DIR!\LunaBox.exe
+if not exist "!WINDOWS_PAYLOAD_DIR!\YukiHub.exe" (
+    echo ERROR: Missing installer GUI payload: !WINDOWS_PAYLOAD_DIR!\YukiHub.exe
     exit /b 1
 )
-if not exist "!WINDOWS_PAYLOAD_DIR!\lunacli.exe" (
-    echo ERROR: Missing installer CLI payload: !WINDOWS_PAYLOAD_DIR!\lunacli.exe
+if not exist "!WINDOWS_PAYLOAD_DIR!\yukihubcli.exe" (
+    echo ERROR: Missing installer CLI payload: !WINDOWS_PAYLOAD_DIR!\yukihubcli.exe
     exit /b 1
 )
-if not exist "build\bin\LunaBoxUpdater.exe" (
-    echo ERROR: Missing signed standalone updater: build\bin\LunaBoxUpdater.exe
+if not exist "build\bin\YukiHubUpdater.exe" (
+    echo ERROR: Missing signed standalone updater: build\bin\YukiHubUpdater.exe
     exit /b 1
 )
-copy /Y "!WINDOWS_PAYLOAD_DIR!\lunacli.exe" "build\bin\lunacli.exe" >nul
+copy /Y "!WINDOWS_PAYLOAD_DIR!\yukihubcli.exe" "build\bin\yukihubcli.exe" >nul
 if errorlevel 1 exit /b 1
 call :prepare_installer_runtime
 if errorlevel 1 exit /b 1
 
 echo [installer package] Building NSIS installer...
-set "WAILS_BINARY_DEFINE=ARG_WAILS_AMD64_BINARY=..\payload\amd64\LunaBox.exe"
-if /i "%TARGET_ARCH%"=="arm64" set "WAILS_BINARY_DEFINE=ARG_WAILS_ARM64_BINARY=..\payload\arm64\LunaBox.exe"
+set "WAILS_BINARY_DEFINE=ARG_WAILS_AMD64_BINARY=..\payload\amd64\YukiHub.exe"
+if /i "%TARGET_ARCH%"=="arm64" set "WAILS_BINARY_DEFINE=ARG_WAILS_ARM64_BINARY=..\payload\arm64\YukiHub.exe"
 
 pushd "build\windows\nsis"
 makensis /D!WAILS_BINARY_DEFINE! project.nsi
@@ -501,12 +501,12 @@ set "MAKENSIS_EXIT=!ERRORLEVEL!"
 popd
 if not "!MAKENSIS_EXIT!"=="0" exit /b !MAKENSIS_EXIT!
 
-set "INSTALLER_OUTPUT=build\bin\LunaBox-%VERSION%-windows-%TARGET_ARCH%-setup.exe"
+set "INSTALLER_OUTPUT=build\bin\YukiHub-%VERSION%-windows-%TARGET_ARCH%-setup.exe"
 if exist "!INSTALLER_OUTPUT!" del /q "!INSTALLER_OUTPUT!"
-if exist "build\bin\LunaBox-%TARGET_ARCH%-installer.exe" (
-    move /Y "build\bin\LunaBox-%TARGET_ARCH%-installer.exe" "!INSTALLER_OUTPUT!" >nul
-) else if exist "build\bin\lunabox-%TARGET_ARCH%-installer.exe" (
-    move /Y "build\bin\lunabox-%TARGET_ARCH%-installer.exe" "!INSTALLER_OUTPUT!" >nul
+if exist "build\bin\YukiHub-%TARGET_ARCH%-installer.exe" (
+    move /Y "build\bin\YukiHub-%TARGET_ARCH%-installer.exe" "!INSTALLER_OUTPUT!" >nul
+) else if exist "build\bin\yukihub-%TARGET_ARCH%-installer.exe" (
+    move /Y "build\bin\yukihub-%TARGET_ARCH%-installer.exe" "!INSTALLER_OUTPUT!" >nul
 ) else (
     echo ERROR: NSIS output was not found for %TARGET_ARCH%.
     exit /b 1
@@ -518,13 +518,13 @@ exit /b 0
 :done
 echo ========================================
 echo Build completed successfully.
-if /i "%BUILD_MODE%"=="portable" echo Portable: build\bin\LunaBox-%VERSION%-windows-%TARGET_ARCH%-portable.zip
-if /i "%BUILD_MODE%"=="installer" echo Installer: build\bin\LunaBox-%VERSION%-windows-%TARGET_ARCH%-setup.exe
-if /i "%BUILD_MODE%"=="installer-payload" echo Payload: build\bin\LunaBox-%VERSION%-windows-%TARGET_ARCH%-installer-payload.zip
-if /i "%BUILD_MODE%"=="installer-package" echo Installer: build\bin\LunaBox-%VERSION%-windows-%TARGET_ARCH%-setup.exe
+if /i "%BUILD_MODE%"=="portable" echo Portable: build\bin\YukiHub-%VERSION%-windows-%TARGET_ARCH%-portable.zip
+if /i "%BUILD_MODE%"=="installer" echo Installer: build\bin\YukiHub-%VERSION%-windows-%TARGET_ARCH%-setup.exe
+if /i "%BUILD_MODE%"=="installer-payload" echo Payload: build\bin\YukiHub-%VERSION%-windows-%TARGET_ARCH%-installer-payload.zip
+if /i "%BUILD_MODE%"=="installer-package" echo Installer: build\bin\YukiHub-%VERSION%-windows-%TARGET_ARCH%-setup.exe
 if /i "%BUILD_MODE%"=="all" (
-    echo Portable: build\bin\LunaBox-%VERSION%-windows-%TARGET_ARCH%-portable.zip
-    echo Installer: build\bin\LunaBox-%VERSION%-windows-%TARGET_ARCH%-setup.exe
+    echo Portable: build\bin\YukiHub-%VERSION%-windows-%TARGET_ARCH%-portable.zip
+    echo Installer: build\bin\YukiHub-%VERSION%-windows-%TARGET_ARCH%-setup.exe
 )
 echo ========================================
 endlocal
@@ -537,6 +537,6 @@ exit /b 1
 
 :build_failed
 if defined WAILS_SYSO if exist "!WAILS_SYSO!" del /q "!WAILS_SYSO!"
-echo ERROR: LunaBox build failed.
+echo ERROR: YukiHub build failed.
 endlocal
 exit /b 1

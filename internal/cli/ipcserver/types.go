@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"lunabox/internal/cli/ipccore"
+	"yukihub/internal/cli/ipccore"
 )
 
 const (
@@ -21,7 +21,7 @@ func serverURLForPort(port int) string {
 }
 
 func endpointFilePath() string {
-	return filepath.Join(os.TempDir(), "lunabox_ipc_endpoint.json")
+	return filepath.Join(os.TempDir(), "yukihub_ipc_endpoint.json")
 }
 
 type endpointInfo struct {

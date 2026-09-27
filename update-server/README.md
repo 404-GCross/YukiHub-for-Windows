@@ -1,4 +1,4 @@
-# LunaBox Update Server
+# YukiHub Update Server
 
  Update service backed by Cloudflare Worker, R2 and D1.
 
@@ -44,7 +44,7 @@ detail from its table action. Release details include patch source-to-target
 relationships read from R2 manifests and event filters for status, channel,
 architecture, build mode, failure code, and failure reason.
 
-Clients persist a random installation UUID under the LunaBox local cache and
+Clients persist a random installation UUID under the YukiHub local cache and
 include it in update telemetry. No machine identifier or local path is sent.
 Older events without this field are counted by update transaction.
 
@@ -56,7 +56,7 @@ Build the administration assets and start the Worker in one terminal:
 pnpm install
 if (!(Test-Path .dev.vars)) { Copy-Item .dev.vars.example .dev.vars }
 pnpm build
-pnpm exec wrangler d1 migrations apply lunabox-updates-test --local --env test
+pnpm exec wrangler d1 migrations apply yukihub-updates-test --local --env test
 pnpm dev:worker
 ```
 
@@ -75,10 +75,10 @@ Worker on port 8787. The administration token is read from `.dev.vars`.
 pnpm install
 Copy-Item .dev.vars.example .dev.vars
 pnpm build
-pnpm exec wrangler d1 create lunabox-updates
-pnpm exec wrangler r2 bucket create lunabox-updates
+pnpm exec wrangler d1 create yukihub-updates
+pnpm exec wrangler r2 bucket create yukihub-updates
 pnpm exec wrangler secret put ADMIN_TOKEN --env production
-pnpm exec wrangler d1 migrations apply lunabox-updates --remote --env production
+pnpm exec wrangler d1 migrations apply yukihub-updates --remote --env production
 pnpm deploy
 ```
 

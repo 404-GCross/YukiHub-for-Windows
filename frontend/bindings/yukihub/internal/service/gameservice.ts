@@ -73,7 +73,7 @@ export function ExportCoverImage(gameID: string): $CancellablePromise<string> {
 }
 
 /**
- * ExportLaunchShortcut exports a per-game .url shortcut that re-enters LunaBox via protocol.
+ * ExportLaunchShortcut exports a per-game .url shortcut that re-enters YukiHub via protocol.
  */
 export function ExportLaunchShortcut(gameID: string): $CancellablePromise<string> {
     return $Call.ByID(1161923292, gameID);

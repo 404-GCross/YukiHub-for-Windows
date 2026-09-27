@@ -3,12 +3,12 @@ package metadata
 import (
 	"encoding/json"
 	"io"
-	"lunabox/internal/common/enums"
-	"lunabox/internal/version"
 	"net/http"
 	"reflect"
 	"strings"
 	"testing"
+	"yukihub/internal/common/enums"
+	"yukihub/internal/version"
 )
 
 func TestBuildSteamPortraitCoverURLsPrioritizesLanguage(t *testing.T) {

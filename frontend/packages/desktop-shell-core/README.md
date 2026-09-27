@@ -4,7 +4,7 @@ Framework-independent TypeScript and DOM primitives with zero runtime dependenci
 Exports window adapter types, semantic layers, and `mountModalScope`.
 
 ```ts
-import { mountModalScope } from "@lunabox/desktop-shell-core";
+import { mountModalScope } from "@yukihub/desktop-shell-core";
 
 const dispose = mountModalScope({
   host: overlayHost,

@@ -3,9 +3,9 @@
 package appconf
 
 import (
-	"lunabox/internal/applog"
 	"os"
 	"strings"
+	"yukihub/internal/applog"
 )
 
 var crossoverWineCandidates = []string{

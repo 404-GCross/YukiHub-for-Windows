@@ -6,7 +6,7 @@ import (
 	goruntime "runtime"
 	"strings"
 
-	"lunabox/internal/wailsruntime"
+	"yukihub/internal/wailsruntime"
 )
 
 // ExecutableDialogDirectory derives the initial directory for an executable

@@ -3,11 +3,11 @@ package cli
 import (
 	"fmt"
 	"io"
-	"lunabox/internal/applog"
-	"lunabox/internal/service/launcher"
 	"path/filepath"
 	goruntime "runtime"
 	"strings"
+	"yukihub/internal/applog"
+	"yukihub/internal/service/launcher"
 
 	"github.com/spf13/cobra"
 )

@@ -8,10 +8,10 @@ import (
 	"strings"
 	"sync"
 
-	"lunabox/internal/version"
+	"yukihub/internal/version"
 )
 
-const appName = "LunaBox"
+const appName = "YukiHub"
 
 var (
 	dataDir   string
@@ -37,7 +37,7 @@ func initDirs() error {
 
 // initPortableDirs 初始化便携版目录（程序目录）
 func initPortableDirs() error {
-	if portableRoot := os.Getenv("LUNABOX_PORTABLE_ROOT"); portableRoot != "" {
+	if portableRoot := os.Getenv("YUKIHUB_PORTABLE_ROOT"); portableRoot != "" {
 		portableRoot, err := filepath.Abs(filepath.Clean(portableRoot))
 		if err != nil {
 			return err
@@ -61,14 +61,14 @@ func initPortableDirs() error {
 
 // initInstallerDirs 初始化安装版目录（系统标准目录）
 func initInstallerDirs() error {
-	// 配置目录: %APPDATA%\LunaBox (Windows) 或 ~/.config/LunaBox (Linux/Mac)
+	// 配置目录: %APPDATA%\YukiHub (Windows) 或 ~/.config/YukiHub (Linux/Mac)
 	userConfigDir, err := os.UserConfigDir()
 	if err != nil {
 		return err
 	}
 	configDir = filepath.Join(userConfigDir, appName)
 
-	// 缓存目录: %LOCALAPPDATA%\LunaBox (Windows) 或 ~/.cache/LunaBox (Linux/Mac)
+	// 缓存目录: %LOCALAPPDATA%\YukiHub (Windows) 或 ~/.cache/YukiHub (Linux/Mac)
 	userCacheDir, err := os.UserCacheDir()
 	if err != nil {
 		return err
@@ -174,7 +174,7 @@ func GetLaunchExecutablePath() (string, error) {
 	}
 
 	if IsPortableMode() && runtime.GOOS == "linux" {
-		if portableRoot := strings.TrimSpace(os.Getenv("LUNABOX_PORTABLE_ROOT")); portableRoot != "" {
+		if portableRoot := strings.TrimSpace(os.Getenv("YUKIHUB_PORTABLE_ROOT")); portableRoot != "" {
 			launcherPath, err := filepath.Abs(filepath.Join(filepath.Clean(portableRoot), appName))
 			if err != nil {
 				return "", fmt.Errorf("resolve portable launcher path: %w", err)
@@ -190,7 +190,7 @@ func GetLaunchExecutablePath() (string, error) {
 
 // GetAppImagePath returns the outer AppImage file path for AppImage builds.
 func GetAppImagePath() (string, error) {
-	for _, envName := range []string{"LUNABOX_APPIMAGE_PATH", "APPIMAGE"} {
+	for _, envName := range []string{"YUKIHUB_APPIMAGE_PATH", "APPIMAGE"} {
 		if value := strings.TrimSpace(os.Getenv(envName)); value != "" {
 			appImagePath, err := filepath.Abs(filepath.Clean(value))
 			if err != nil {

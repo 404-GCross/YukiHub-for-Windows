@@ -8,15 +8,15 @@ import (
 	"strings"
 	"testing"
 
-	"lunabox/internal/version"
+	"yukihub/internal/version"
 )
 
 func TestGetLaunchExecutablePathUsesAppImageRuntimePath(t *testing.T) {
 	restoreBuildMode := setBuildModeForTest("appimage")
 	defer restoreBuildMode()
 
-	appImagePath := createExecutableFileForTest(t, filepath.Join(t.TempDir(), "LunaBox Test.AppImage"))
-	t.Setenv("LUNABOX_APPIMAGE_PATH", appImagePath)
+	appImagePath := createExecutableFileForTest(t, filepath.Join(t.TempDir(), "YukiHub Test.AppImage"))
+	t.Setenv("YUKIHUB_APPIMAGE_PATH", appImagePath)
 	t.Setenv("APPIMAGE", "")
 
 	got, err := GetLaunchExecutablePath()
@@ -33,9 +33,9 @@ func TestInstallCLIWritesAppImageWrapper(t *testing.T) {
 	defer restoreBuildMode()
 
 	home := t.TempDir()
-	appImagePath := createExecutableFileForTest(t, filepath.Join(t.TempDir(), "LunaBox's Test.AppImage"))
+	appImagePath := createExecutableFileForTest(t, filepath.Join(t.TempDir(), "YukiHub's Test.AppImage"))
 	t.Setenv("HOME", home)
-	t.Setenv("LUNABOX_APPIMAGE_PATH", appImagePath)
+	t.Setenv("YUKIHUB_APPIMAGE_PATH", appImagePath)
 	t.Setenv("APPIMAGE", "")
 
 	changed, err := InstallCLI()

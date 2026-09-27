@@ -14,19 +14,19 @@ import (
 	"strings"
 	"time"
 
-	"lunabox/internal/appconf"
-	"lunabox/internal/applog"
-	"lunabox/internal/utils/apputils"
-	"lunabox/internal/utils/downloadutils"
-	"lunabox/internal/utils/processutils"
-	"lunabox/updater/updateutils"
+	"yukihub/internal/appconf"
+	"yukihub/internal/applog"
+	"yukihub/internal/utils/apputils"
+	"yukihub/internal/utils/downloadutils"
+	"yukihub/internal/utils/processutils"
+	"yukihub/updater/updateutils"
 
 	"github.com/google/uuid"
 )
 
 const (
 	updateManifestMaxBytes = 4 * 1024 * 1024
-	updaterExecutableName  = "LunaBoxUpdater.exe"
+	updaterExecutableName  = "YukiHubUpdater.exe"
 	patchSelectionRatio    = 0.80
 )
 
@@ -98,11 +98,11 @@ func Apply(ctx context.Context, options Options) (*Result, error) {
 
 	executablePath, err := os.Executable()
 	if err != nil {
-		return nil, fmt.Errorf("resolve LunaBox executable: %w", err)
+		return nil, fmt.Errorf("resolve YukiHub executable: %w", err)
 	}
 	executablePath, err = filepath.Abs(executablePath)
 	if err != nil {
-		return nil, fmt.Errorf("resolve absolute LunaBox executable: %w", err)
+		return nil, fmt.Errorf("resolve absolute YukiHub executable: %w", err)
 	}
 	appDir := filepath.Dir(executablePath)
 	installedUpdater := filepath.Join(appDir, updaterExecutableName)
@@ -110,7 +110,7 @@ func Apply(ctx context.Context, options Options) (*Result, error) {
 		return nil, fmt.Errorf("%s is missing; download the full release for this update", updaterExecutableName)
 	}
 
-	workDir, err := os.MkdirTemp("", "LunaBox-update-"+safeUpdatePathPart(manifest.Version)+"-")
+	workDir, err := os.MkdirTemp("", "YukiHub-update-"+safeUpdatePathPart(manifest.Version)+"-")
 	if err != nil {
 		return nil, fmt.Errorf("create update transaction: %w", err)
 	}
@@ -162,7 +162,7 @@ func Apply(ctx context.Context, options Options) (*Result, error) {
 		WorkDir:       workDir,
 		WaitPID:       os.Getpid(),
 		WaitTimeout:   600,
-		RestartPath:   "LunaBox.exe",
+		RestartPath:   "YukiHub.exe",
 		Files:         make([]updateutils.TaskFile, 0, len(selected)),
 	}
 

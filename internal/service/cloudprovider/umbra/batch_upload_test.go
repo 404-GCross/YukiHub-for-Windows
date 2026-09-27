@@ -15,8 +15,8 @@ import (
 	"time"
 
 	umbrsdk "github.com/Umbrae-Labs/umbra-sdk/umbra-go"
-	"lunabox/internal/applog"
-	"lunabox/internal/service/cloudprovider/batchupload"
+	"yukihub/internal/applog"
+	"yukihub/internal/service/cloudprovider/batchupload"
 )
 
 func TestNewProviderUsesUmbraProfileID(t *testing.T) {

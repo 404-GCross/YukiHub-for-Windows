@@ -34,7 +34,7 @@ func serverURLForPort(port int) string {
 }
 
 func endpointFilePath() string {
-	return filepath.Join(os.TempDir(), "lunabox_ipc_endpoint.json")
+	return filepath.Join(os.TempDir(), "yukihub_ipc_endpoint.json")
 }
 
 func readSavedPort() (int, bool) {
@@ -106,18 +106,18 @@ func IsServerRunning() bool {
 func RemoteInstall(req interface{}) error {
 	serverURL, ok := findRunningServerURL()
 	if !ok {
-		return fmt.Errorf("failed to connect to LunaBox: IPC server not running")
+		return fmt.Errorf("failed to connect to YukiHub: IPC server not running")
 	}
 
 	jsonBody, _ := json.Marshal(req)
 	resp, err := http.Post(serverURL+"/install", "application/json", bytes.NewReader(jsonBody))
 	if err != nil {
-		return fmt.Errorf("failed to connect to LunaBox: %w", err)
+		return fmt.Errorf("failed to connect to YukiHub: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("LunaBox returned error status: %d", resp.StatusCode)
+		return fmt.Errorf("YukiHub returned error status: %d", resp.StatusCode)
 	}
 
 	return nil
@@ -126,18 +126,18 @@ func RemoteInstall(req interface{}) error {
 func RemoteLaunch(req interface{}) error {
 	serverURL, ok := findRunningServerURL()
 	if !ok {
-		return fmt.Errorf("failed to connect to LunaBox: IPC server not running")
+		return fmt.Errorf("failed to connect to YukiHub: IPC server not running")
 	}
 
 	jsonBody, _ := json.Marshal(req)
 	resp, err := http.Post(serverURL+"/launch", "application/json", bytes.NewReader(jsonBody))
 	if err != nil {
-		return fmt.Errorf("failed to connect to LunaBox: %w", err)
+		return fmt.Errorf("failed to connect to YukiHub: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("LunaBox returned error status: %d", resp.StatusCode)
+		return fmt.Errorf("YukiHub returned error status: %d", resp.StatusCode)
 	}
 
 	var launchResp LaunchResponse

@@ -7,7 +7,7 @@ import {
   CreateGameFilterPreset,
   DeleteGameFilterPreset,
   ListGameFilterPresets,
-} from "../../../bindings/lunabox/internal/service/gamefilterpresetservice";
+} from "../../../bindings/yukihub/internal/service/gamefilterpresetservice";
 import { enums } from "../../../src/bindings/models";
 import { sortOptions, statusOptions } from "../../consts/options";
 import { getTagDisplayName } from "../../utils/tagTranslation";

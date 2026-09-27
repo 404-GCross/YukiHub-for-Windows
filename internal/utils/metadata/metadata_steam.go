@@ -6,9 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"lunabox/internal/common/enums"
-	"lunabox/internal/models"
-	"lunabox/internal/version"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -16,6 +13,9 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"yukihub/internal/common/enums"
+	"yukihub/internal/models"
+	"yukihub/internal/version"
 
 	"github.com/PuerkitoBio/goquery"
 )

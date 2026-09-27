@@ -4,18 +4,18 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"lunabox/internal/appconf"
-	"lunabox/internal/applog"
-	"lunabox/internal/utils/apputils"
-	"lunabox/internal/utils/archiveutils"
-	"lunabox/internal/utils/imageutils"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
 	"time"
+	"yukihub/internal/appconf"
+	"yukihub/internal/applog"
+	"yukihub/internal/utils/apputils"
+	"yukihub/internal/utils/archiveutils"
+	"yukihub/internal/utils/imageutils"
 
-	"lunabox/internal/wailsruntime"
+	"yukihub/internal/wailsruntime"
 )
 
 type ConfigService struct {
@@ -88,7 +88,7 @@ func (s *ConfigService) SelectDirectory(title string) (string, error) {
 	return selection, nil
 }
 
-// OpenDataDirectory 在系统文件管理器中打开 LunaBox 数据目录。
+// OpenDataDirectory 在系统文件管理器中打开 YukiHub 数据目录。
 func (s *ConfigService) OpenDataDirectory() (string, error) {
 	dataDir, err := apputils.GetDataDir()
 	if err != nil {
@@ -113,7 +113,7 @@ func (s *ConfigService) ExportLogsZip() (string, error) {
 	}
 
 	timestamp := time.Now().Format("2006-01-02T15-04-05")
-	defaultFileName := fmt.Sprintf("lunabox_logs_%s.zip", timestamp)
+	defaultFileName := fmt.Sprintf("yukihub_logs_%s.zip", timestamp)
 	selection, err := s.runtime.SaveFile(wailsruntime.SaveDialogOptions{
 		Title:    "导出日志 ZIP",
 		Filename: defaultFileName,
@@ -135,7 +135,7 @@ func (s *ConfigService) ExportLogsZip() (string, error) {
 		selection += ".zip"
 	}
 
-	tempDir, err := os.MkdirTemp("", "lunabox_logs_export_*")
+	tempDir, err := os.MkdirTemp("", "yukihub_logs_export_*")
 	if err != nil {
 		return "", fmt.Errorf("创建临时目录失败: %w", err)
 	}

@@ -3,13 +3,13 @@ package importer
 import (
 	"compress/gzip"
 	"encoding/json"
-	"lunabox/internal/common/enums"
-	"lunabox/internal/models"
-	"lunabox/internal/models/yukihub"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
+	"yukihub/internal/common/enums"
+	"yukihub/internal/models"
+	"yukihub/internal/models/yukihub"
 )
 
 func TestYukiHubImporterPreviewAndImport(t *testing.T) {

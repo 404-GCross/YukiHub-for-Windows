@@ -86,8 +86,8 @@ func sanitizeShortcutIconCacheKey(value string) string {
 func extractAssociatedIconToICO(sourcePath string, destPath string) error {
 	script := `
 Add-Type -AssemblyName System.Drawing
-$source = $env:LUNABOX_SHORTCUT_ICON_SOURCE
-$dest = $env:LUNABOX_SHORTCUT_ICON_DEST
+$source = $env:YUKIHUB_SHORTCUT_ICON_SOURCE
+$dest = $env:YUKIHUB_SHORTCUT_ICON_DEST
 if ([string]::IsNullOrWhiteSpace($source)) { throw "icon source path is empty" }
 if ([string]::IsNullOrWhiteSpace($dest)) { throw "icon destination path is empty" }
 $icon = [System.Drawing.Icon]::ExtractAssociatedIcon($source)
@@ -107,8 +107,8 @@ try {
 
 	cmd := exec.Command("powershell.exe", "-NoProfile", "-NonInteractive", "-Command", script)
 	cmd.Env = append(os.Environ(),
-		"LUNABOX_SHORTCUT_ICON_SOURCE="+sourcePath,
-		"LUNABOX_SHORTCUT_ICON_DEST="+destPath,
+		"YUKIHUB_SHORTCUT_ICON_SOURCE="+sourcePath,
+		"YUKIHUB_SHORTCUT_ICON_DEST="+destPath,
 	)
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		HideWindow: true,

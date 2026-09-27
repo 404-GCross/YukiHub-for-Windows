@@ -5,8 +5,8 @@ import { useTranslation } from "react-i18next";
 import {
   DeletePlaySession,
   GetPlaySessions,
-} from "../../../bindings/lunabox/internal/service/sessionservice";
-import { GetGameStats } from "../../../bindings/lunabox/internal/service/statsservice";
+} from "../../../bindings/yukihub/internal/service/sessionservice";
+import { GetGameStats } from "../../../bindings/yukihub/internal/service/statsservice";
 import { enums } from "../../../src/bindings/models";
 import { useAppStore } from "../../store";
 import {

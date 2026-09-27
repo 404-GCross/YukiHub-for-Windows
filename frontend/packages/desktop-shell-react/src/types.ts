@@ -4,4 +4,4 @@ export type {
   DesktopPlatform,
   DesktopWindowAdapter,
   DesktopWindowState,
-} from "@lunabox/desktop-shell-core";
+} from "@yukihub/desktop-shell-core";

@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"lunabox/internal/common/enums"
-	"lunabox/internal/models"
+	"yukihub/internal/common/enums"
+	"yukihub/internal/models"
 )
 
 func IsSupportedMetadataSource(source enums.SourceType) bool {

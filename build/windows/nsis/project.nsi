@@ -8,7 +8,7 @@
 ## from outside of Wails for debugging and development of the installer.
 ##
 ## Refresh generated metadata and helper macros with:
-## > wails3 update build-assets -name LunaBox -binaryname LunaBox -config build/config.yml -dir build
+## > wails3 update build-assets -name YukiHub -binaryname YukiHub -config build/config.yml -dir build
 ## Then you can call makensis on this file with specifying the path to your binary:
 ## For a AMD64 only installer:
 ## > makensis -DARG_WAILS_AMD64_BINARY=..\..\bin\app.exe
@@ -118,11 +118,11 @@ Function .onInit
        StrCpy $INSTALL_CLI_TO_PATH "0"
    ${Else}
        # Registry flag not found (maybe older version or first install)
-       # Check if lunacli.exe exists in the target directory
+       # Check if yukihubcli.exe exists in the target directory
        # Need to find install location first
        ReadRegStr $1 HKLM "${UNINST_KEY}" "InstallLocation"
        ${If} $1 != ""
-           IfFileExists "$1\lunacli.exe" 0 +3
+           IfFileExists "$1\yukihubcli.exe" 0 +3
                StrCpy $INSTALL_CLI_TO_PATH "1"
                Goto cli_check_done
        ${EndIf}
@@ -161,12 +161,12 @@ Function .onInit
       IfSilent run_silent_uninstall
 
       # Ask user: Update or Cancel
-      MessageBox MB_YESNO|MB_ICONQUESTION "检测到 LunaBox 已安装版本 $0$\n$\n要更新到版本 ${INFO_PRODUCTVERSION} 吗$\n$\n是-自动更新保留数据$\n否-退出安装程序" IDYES run_uninstall IDNO cancel_update
+      MessageBox MB_YESNO|MB_ICONQUESTION "检测到 YukiHub 已安装版本 $0$\n$\n要更新到版本 ${INFO_PRODUCTVERSION} 吗$\n$\n是-自动更新保留数据$\n否-退出安装程序" IDYES run_uninstall IDNO cancel_update
 
       run_silent_uninstall:
       run_uninstall:
          # Check if process is running before uninstall
-         FindWindow $5 "" "LunaBox"
+         FindWindow $5 "" "YukiHub"
          ${If} $5 != 0
             # Terminate the process silently
             nsExec::ExecToStack 'taskkill /F /IM "${PRODUCT_EXECUTABLE}"'
@@ -200,14 +200,14 @@ Function .onInit
          Quit
    ${EndIf}
 
-   # Check if LunaBox is running
+   # Check if YukiHub is running
    check_process:
-   FindWindow $5 "" "LunaBox"
+   FindWindow $5 "" "YukiHub"
    ${If} $5 != 0
       IfSilent silent_kill ask_kill
 
       ask_kill:
-         MessageBox MB_RETRYCANCEL|MB_ICONEXCLAMATION '检测到 LunaBox 正在运行。$\n$\n请关闭 LunaBox 后点击"重试"继续安装，或点击"取消"退出安装程序。' IDRETRY check_process IDCANCEL cancel_install
+         MessageBox MB_RETRYCANCEL|MB_ICONEXCLAMATION '检测到 YukiHub 正在运行。$\n$\n请关闭 YukiHub 后点击"重试"继续安装，或点击"取消"退出安装程序。' IDRETRY check_process IDCANCEL cancel_install
 
       silent_kill:
          # Silent mode: automatically terminate the process
@@ -240,7 +240,7 @@ Function ShowCLIOptions
    nsDialogs::Create 1018
    Pop $0
 
-   ${NSD_CreateLabel} 0 0 100% 50u "LunaBox 提供命令行工具 (CLI) 支持，您可以在终端中使用 'lunacli' 命令来启动和管理游戏。"
+   ${NSD_CreateLabel} 0 0 100% 50u "YukiHub 提供命令行工具 (CLI) 支持，您可以在终端中使用 'yukihubcli' 命令来启动和管理游戏。"
    Pop $0
 
    ${NSD_CreateCheckbox} 15 65u 100% 15u "安装命令行工具 (CLI) 并添加到 PATH (推荐)"
@@ -253,7 +253,7 @@ Function ShowCLIOptions
       ${NSD_SetState} $CHECKBOX_CLI ${BST_UNCHECKED}
    ${EndIf}
 
-   ${NSD_CreateLabel} 30 85u 100% 20u "注意：添加到 PATH 后，您可以在任何位置的终端中直接使用 'lunacli' 命令。"
+   ${NSD_CreateLabel} 30 85u 100% 20u "注意：添加到 PATH 后，您可以在任何位置的终端中直接使用 'yukihubcli' 命令。"
    Pop $0
 
    nsDialogs::Show
@@ -275,7 +275,7 @@ Function BackupMachinePathBeforeUpdateUninstall
     InitPluginsDir
 
     StrCpy $7 "1"
-    StrCpy $9 "$PLUGINSDIR\lunabox-backup-path-before-update-uninstall.ps1"
+    StrCpy $9 "$PLUGINSDIR\yukihub-backup-path-before-update-uninstall.ps1"
     FileOpen $8 $9 w
     FileWrite $8 "$$ErrorActionPreference = 'Stop'$\r$\n"
     FileWrite $8 "$$keyPath = 'SYSTEM\CurrentControlSet\Control\Session Manager\Environment'$\r$\n"
@@ -283,7 +283,7 @@ Function BackupMachinePathBeforeUpdateUninstall
     FileWrite $8 "if ($$null -eq $$key) { throw 'Environment registry key not found' }$\r$\n"
     FileWrite $8 "try {$\r$\n"
     FileWrite $8 "  $$path = [string]$$key.GetValue('Path', '', [Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames)$\r$\n"
-    FileWrite $8 "  $$backupDir = Join-Path ([Environment]::GetFolderPath('CommonApplicationData')) 'LunaBox\environment-backups'$\r$\n"
+    FileWrite $8 "  $$backupDir = Join-Path ([Environment]::GetFolderPath('CommonApplicationData')) 'YukiHub\environment-backups'$\r$\n"
     FileWrite $8 "  [void][System.IO.Directory]::CreateDirectory($$backupDir)$\r$\n"
     FileWrite $8 "  $$backupFile = Join-Path $$backupDir ('machine-path-before-update-uninstall-' + (Get-Date -Format 'yyyyMMdd-HHmmss-fff') + '.txt')$\r$\n"
     FileWrite $8 "  [System.IO.File]::WriteAllText($$backupFile, $$path, [System.Text.Encoding]::UTF8)$\r$\n"
@@ -312,7 +312,7 @@ Function AddInstallDirToPath
     InitPluginsDir
 
     ${StrRep} $7 "$INSTDIR" "'" "''"
-    StrCpy $9 "$PLUGINSDIR\lunabox-add-path.ps1"
+    StrCpy $9 "$PLUGINSDIR\yukihub-add-path.ps1"
     FileOpen $8 $9 w
     FileWrite $8 "$$ErrorActionPreference = 'Stop'$\r$\n"
     FileWrite $8 "$$installDir = '$7'$\r$\n"
@@ -321,7 +321,7 @@ Function AddInstallDirToPath
     FileWrite $8 "if ($$null -eq $$key) { throw 'Environment registry key not found' }$\r$\n"
     FileWrite $8 "try {$\r$\n"
     FileWrite $8 "  $$path = [string]$$key.GetValue('Path', '', [Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames)$\r$\n"
-    FileWrite $8 "  $$backupDir = Join-Path ([Environment]::GetFolderPath('CommonApplicationData')) 'LunaBox\environment-backups'$\r$\n"
+    FileWrite $8 "  $$backupDir = Join-Path ([Environment]::GetFolderPath('CommonApplicationData')) 'YukiHub\environment-backups'$\r$\n"
     FileWrite $8 "  [void][System.IO.Directory]::CreateDirectory($$backupDir)$\r$\n"
     FileWrite $8 "  $$backupFile = Join-Path $$backupDir ('machine-path-before-install-' + (Get-Date -Format 'yyyyMMdd-HHmmss') + '.txt')$\r$\n"
     FileWrite $8 "  [System.IO.File]::WriteAllText($$backupFile, $$path, [System.Text.Encoding]::UTF8)$\r$\n"
@@ -358,7 +358,7 @@ Function un.RemoveInstallDirFromPath
     InitPluginsDir
 
     ${UnStrRep} $7 "$INSTDIR" "'" "''"
-    StrCpy $9 "$PLUGINSDIR\lunabox-remove-path.ps1"
+    StrCpy $9 "$PLUGINSDIR\yukihub-remove-path.ps1"
     FileOpen $8 $9 w
     FileWrite $8 "$$ErrorActionPreference = 'Stop'$\r$\n"
     FileWrite $8 "$$installDir = '$7'$\r$\n"
@@ -367,7 +367,7 @@ Function un.RemoveInstallDirFromPath
     FileWrite $8 "if ($$null -eq $$key) { throw 'Environment registry key not found' }$\r$\n"
     FileWrite $8 "try {$\r$\n"
     FileWrite $8 "  $$path = [string]$$key.GetValue('Path', '', [Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames)$\r$\n"
-    FileWrite $8 "  $$backupDir = Join-Path ([Environment]::GetFolderPath('CommonApplicationData')) 'LunaBox\environment-backups'$\r$\n"
+    FileWrite $8 "  $$backupDir = Join-Path ([Environment]::GetFolderPath('CommonApplicationData')) 'YukiHub\environment-backups'$\r$\n"
     FileWrite $8 "  [void][System.IO.Directory]::CreateDirectory($$backupDir)$\r$\n"
     FileWrite $8 "  $$backupFile = Join-Path $$backupDir ('machine-path-before-uninstall-' + (Get-Date -Format 'yyyyMMdd-HHmmss') + '.txt')$\r$\n"
     FileWrite $8 "  [System.IO.File]::WriteAllText($$backupFile, $$path, [System.Text.Encoding]::UTF8)$\r$\n"
@@ -409,7 +409,7 @@ Function un.ShowUserDataOptions
    nsDialogs::Create 1018
    Pop $0
 
-   ${NSD_CreateLabel} 0 0 100% 40u "是否要同时删除 LunaBox 的用户数据？$\n$\n用户数据包括:$\n  - 配置文件$\n  - 游戏数据库$\n  - 备份文件$\n$\n数据位置: $APPDATA\LunaBox 和 $LOCALAPPDATA\LunaBox"
+   ${NSD_CreateLabel} 0 0 100% 40u "是否要同时删除 YukiHub 的用户数据？$\n$\n用户数据包括:$\n  - 配置文件$\n  - 游戏数据库$\n  - 备份文件$\n$\n数据位置: $APPDATA\YukiHub 和 $LOCALAPPDATA\YukiHub"
    Pop $0
 
    ${NSD_CreateRadioButton} 15 60u 100% 15u "保留用户数据 (推荐)"
@@ -451,7 +451,7 @@ Section
     !insertmacro wails.files
 
     # Standalone updater runs from a temporary copy, so it can also replace its installed copy.
-    File "..\..\bin\LunaBoxUpdater.exe"
+    File "..\..\bin\YukiHubUpdater.exe"
 
     # ARM64 builds dynamically link DuckDB; include the runtime DLL when build/bin provides it.
     !if /FileExists "..\..\bin\duckdb.dll"
@@ -469,8 +469,8 @@ Section
 
     # Install CLI version and add to PATH only if user selected it
     ${If} $INSTALL_CLI_TO_PATH == "1"
-        # Install CLI version (lunacli.exe) for command-line usage
-        File "..\..\bin\lunacli.exe"
+        # Install CLI version (yukihubcli.exe) for command-line usage
+        File "..\..\bin\yukihubcli.exe"
 
         # Add install directory to system PATH (for CLI usage)
         Call AddInstallDirToPath
@@ -530,8 +530,8 @@ Section "uninstall"
     # Delete user data based on user's choice from the custom page
     ${If} $UN_DELETE_USERDATA == "1"
         SetShellVarContext current
-        RMDir /r "$APPDATA\LunaBox"
-        RMDir /r "$LOCALAPPDATA\LunaBox"
+        RMDir /r "$APPDATA\YukiHub"
+        RMDir /r "$LOCALAPPDATA\YukiHub"
         !insertmacro wails.setShellContext
     ${EndIf}
 

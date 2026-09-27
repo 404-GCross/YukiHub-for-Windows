@@ -10,7 +10,7 @@ func TestFailureKindOfFollowsWrappedErrors(t *testing.T) {
 	t.Parallel()
 
 	err := fmt.Errorf("prepare update: %w",
-		withFailureKind(FailureKindSignature, fmt.Errorf("verify Authenticode signature for %s: %w", "LunaBox.exe", errors.New("untrusted root"))))
+		withFailureKind(FailureKindSignature, fmt.Errorf("verify Authenticode signature for %s: %w", "YukiHub.exe", errors.New("untrusted root"))))
 	if kind := FailureKindOf(err); kind != FailureKindSignature {
 		t.Fatalf("expected %s, got %s", FailureKindSignature, kind)
 	}

@@ -2,7 +2,7 @@ package integrator
 
 import (
 	"context"
-	"lunabox/internal/models"
+	"yukihub/internal/models"
 )
 
 const (

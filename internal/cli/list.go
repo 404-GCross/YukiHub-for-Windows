@@ -2,10 +2,10 @@ package cli
 
 import (
 	"fmt"
-	"lunabox/internal/applog"
-	"lunabox/internal/common/enums"
-	"lunabox/internal/common/vo"
 	"strings"
+	"yukihub/internal/applog"
+	"yukihub/internal/common/enums"
+	"yukihub/internal/common/vo"
 
 	"github.com/mattn/go-runewidth"
 	"github.com/spf13/cobra"
@@ -101,7 +101,7 @@ func newListCmd(app *CoreApp) *cobra.Command {
 			fmt.Fprintln(w)
 			fmt.Fprintln(w, "Status Icons: · Not Started  ▶ Playing  ✓ Completed  ○ On Hold  ✗ Dropped")
 			fmt.Fprintln(w)
-			fmt.Fprintf(w, "Use 'lunacli start <game-id> or name' to start a game\n\n")
+			fmt.Fprintf(w, "Use 'yukihubcli start <game-id> or name' to start a game\n\n")
 			return nil
 		},
 	}

@@ -1,16 +1,16 @@
 //go:build ignore
 
-// repair_vndb_tags refreshes LunaBox VNDB tags from a VNDB database dump.
+// repair_vndb_tags refreshes YukiHub VNDB tags from a VNDB database dump.
 //
 // It supports two target shapes:
-//  1. A LunaBox DuckDB file (*.db): updates game_tags in a transaction.
-//  2. A LunaBox CSV database export directory: rewrites database/game_tags.csv
+//  1. A YukiHub DuckDB file (*.db): updates game_tags in a transaction.
+//  2. A YukiHub CSV database export directory: rewrites database/game_tags.csv
 //     and removes exported temp/orphan table COPY entries from load.sql.
 //
 // Usage:
 //
-//	go run scripts/repair_vndb_tags.go --target build/bin/lunabox.db --dump build/bin/vndb-db-2026-06-21.tar.zst --dry-run
-//	go run scripts/repair_vndb_tags.go --target build/bin/lunabox_2026-06-25T22-10-40 --dump build/bin/vndb-db-2026-06-21.tar.zst --apply
+//	go run scripts/repair_vndb_tags.go --target build/bin/yukihub.db --dump build/bin/vndb-db-2026-06-21.tar.zst --dry-run
+//	go run scripts/repair_vndb_tags.go --target build/bin/yukihub_2026-06-25T22-10-40 --dump build/bin/vndb-db-2026-06-21.tar.zst --apply
 package main
 
 import (
@@ -135,7 +135,7 @@ const (
 )
 
 func main() {
-	targetPath := flag.String("target", "", "LunaBox DuckDB file or LunaBox CSV export directory")
+	targetPath := flag.String("target", "", "YukiHub DuckDB file or YukiHub CSV export directory")
 	dumpPath := flag.String("dump", "", "VNDB near-complete dump, for example vndb-db-2026-06-21.tar.zst")
 	apply := flag.Bool("apply", false, "write changes; without this flag the script only prints a dry-run summary")
 	dryRun := flag.Bool("dry-run", false, "force dry-run mode")
@@ -272,7 +272,7 @@ func resolveTarget(rawPath string) (targetInfo, error) {
 	if len(dbCandidates) == 1 {
 		return targetInfo{kind: targetKindDuckDB, inputPath: abs, dbPath: dbCandidates[0]}, nil
 	}
-	return targetInfo{}, fmt.Errorf("target directory is neither a LunaBox CSV export nor a directory with exactly one .db file: %s", abs)
+	return targetInfo{}, fmt.Errorf("target directory is neither a YukiHub CSV export nor a directory with exactly one .db file: %s", abs)
 }
 
 func loadTargetData(ctx context.Context, target targetInfo) ([]gameRef, []existingTag, error) {
@@ -1348,7 +1348,7 @@ func formatCSVTime(t time.Time) string {
 func targetModeName(kind targetKind) string {
 	switch kind {
 	case targetKindCSVExport:
-		return "LunaBox CSV export"
+		return "YukiHub CSV export"
 	case targetKindDuckDB:
 		return "DuckDB database"
 	default:

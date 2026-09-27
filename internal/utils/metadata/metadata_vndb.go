@@ -6,12 +6,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"lunabox/internal/common/enums"
-	"lunabox/internal/models"
-	"lunabox/internal/version"
 	"net/http"
 	"strings"
 	"time"
+	"yukihub/internal/common/enums"
+	"yukihub/internal/models"
+	"yukihub/internal/version"
 )
 
 // VNDBInfoGetter 获取 VNDB 信息。

@@ -4,15 +4,15 @@ import (
 	"os"
 	"testing"
 
-	"lunabox/internal/version"
+	"yukihub/internal/version"
 )
 
 func TestLoadEnvFilesIfExists(t *testing.T) {
 	const (
-		fromBuildKey  = "LUNABOX_TEST_FROM_BUILD"
-		fromDotEnvKey = "LUNABOX_TEST_FROM_DOTENV"
-		sharedKey     = "LUNABOX_TEST_SHARED"
-		existingKey   = "LUNABOX_TEST_EXISTING"
+		fromBuildKey  = "YUKIHUB_TEST_FROM_BUILD"
+		fromDotEnvKey = "YUKIHUB_TEST_FROM_DOTENV"
+		sharedKey     = "YUKIHUB_TEST_SHARED"
+		existingKey   = "YUKIHUB_TEST_EXISTING"
 	)
 	preserveEnvKeys(t, fromBuildKey, fromDotEnvKey, sharedKey, existingKey)
 
@@ -20,15 +20,15 @@ func TestLoadEnvFilesIfExists(t *testing.T) {
 	t.Chdir(dir)
 
 	if err := os.WriteFile(".env.build", []byte(`
-LUNABOX_TEST_FROM_BUILD='build-value'
-LUNABOX_TEST_SHARED=build-shared
-LUNABOX_TEST_EXISTING=file-value
+YUKIHUB_TEST_FROM_BUILD='build-value'
+YUKIHUB_TEST_SHARED=build-shared
+YUKIHUB_TEST_EXISTING=file-value
 `), 0o600); err != nil {
 		t.Fatalf("写入 .env.build 失败: %v", err)
 	}
 	if err := os.WriteFile(".env", []byte(`
-LUNABOX_TEST_FROM_DOTENV=dotenv-value
-LUNABOX_TEST_SHARED=dotenv-shared
+YUKIHUB_TEST_FROM_DOTENV=dotenv-value
+YUKIHUB_TEST_SHARED=dotenv-shared
 `), 0o600); err != nil {
 		t.Fatalf("写入 .env 失败: %v", err)
 	}

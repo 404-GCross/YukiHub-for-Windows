@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"lunabox/internal/common/vo"
+	"yukihub/internal/common/vo"
 )
 
 func TestMCPGetGameRequestAcceptsStringOrNumberGameID(t *testing.T) {

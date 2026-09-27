@@ -10,7 +10,7 @@ import (
 	"strings"
 	"sync"
 
-	"lunabox/internal/common/enums"
+	"yukihub/internal/common/enums"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -118,7 +118,7 @@ func loadEmbeddedDatabase() (*Mapper, error) {
 		return nil, fmt.Errorf("read embedded game ID mapper: %w", err)
 	}
 
-	tempFile, err := os.CreateTemp("", "lunabox-game-id-mapper-*.db")
+	tempFile, err := os.CreateTemp("", "yukihub-game-id-mapper-*.db")
 	if err != nil {
 		return nil, fmt.Errorf("create temporary game ID mapper: %w", err)
 	}

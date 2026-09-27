@@ -3,13 +3,13 @@ package imageutils
 import (
 	"context"
 	"fmt"
-	"lunabox/internal/utils/apputils"
-	"lunabox/internal/utils/proxyutils"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
+	"yukihub/internal/utils/apputils"
+	"yukihub/internal/utils/proxyutils"
 
 	"resty.dev/v3"
 )

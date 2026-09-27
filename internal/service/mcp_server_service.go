@@ -14,11 +14,11 @@ import (
 	"sync"
 	"time"
 
-	"lunabox/internal/appconf"
-	"lunabox/internal/applog"
-	"lunabox/internal/common/enums"
-	"lunabox/internal/common/vo"
-	"lunabox/internal/version"
+	"yukihub/internal/appconf"
+	"yukihub/internal/applog"
+	"yukihub/internal/common/enums"
+	"yukihub/internal/common/vo"
+	"yukihub/internal/version"
 )
 
 const (
@@ -107,7 +107,7 @@ func (s *MCPServerService) startLocked(port int) error {
 	mux.Handle(mcpHTTPPath, newMCPHTTPHandler(s.readService))
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		fmt.Fprintf(w, "LunaBox MCP server is available at %s\n", mcpHTTPPath)
+		fmt.Fprintf(w, "YukiHub MCP server is available at %s\n", mcpHTTPPath)
 	})
 
 	server := &http.Server{
@@ -277,10 +277,10 @@ func (h *mcpHTTPHandler) handleRequest(req mcpJSONRPCRequest) mcpJSONRPCResponse
 					"tools": map[string]any{},
 				},
 				"serverInfo": map[string]any{
-					"name":    "lunabox",
+					"name":    "yukihub",
 					"version": version.Version,
 				},
-				"instructions": "LunaBox exposes read-only game data tools. Respect spoiler_context.global_level for spoiler-sensitive fields.",
+				"instructions": "YukiHub exposes read-only game data tools. Respect spoiler_context.global_level for spoiler-sensitive fields.",
 			},
 		}
 	case "ping":
@@ -370,7 +370,7 @@ func (h *mcpHTTPHandler) toolDefinitions() []mcpToolDefinition {
 	return []mcpToolDefinition{
 		{
 			Name:        "list_games",
-			Description: "List local LunaBox games using lightweight catalog fields only. This tool is read-only and excludes summaries, progress notes, routes, local paths, save paths, and process names.",
+			Description: "List local YukiHub games using lightweight catalog fields only. This tool is read-only and excludes summaries, progress notes, routes, local paths, save paths, and process names.",
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
@@ -391,13 +391,13 @@ func (h *mcpHTTPHandler) toolDefinitions() []mcpToolDefinition {
 		},
 		{
 			Name:        "get_game",
-			Description: "Get detailed local game context by stable LunaBox game_id string. The id is not a numeric index. Includes metadata, tags, the latest progress snapshot when present, and spoiler_context.global_level.",
+			Description: "Get detailed local game context by stable YukiHub game_id string. The id is not a numeric index. Includes metadata, tags, the latest progress snapshot when present, and spoiler_context.global_level.",
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
 					"game_id": map[string]any{
 						"type":        "string",
-						"description": "Stable LunaBox local game ID string, not a numeric index.",
+						"description": "Stable YukiHub local game ID string, not a numeric index.",
 					},
 				},
 				"required":             []string{"game_id"},
@@ -406,13 +406,13 @@ func (h *mcpHTTPHandler) toolDefinitions() []mcpToolDefinition {
 		},
 		{
 			Name:        "start_game",
-			Description: "Launch a local LunaBox game by stable game_id string using the same GUI backend flow as the app, including play-session tracking when launch succeeds.",
+			Description: "Launch a local YukiHub game by stable game_id string using the same GUI backend flow as the app, including play-session tracking when launch succeeds.",
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
 					"game_id": map[string]any{
 						"type":        "string",
-						"description": "Stable LunaBox local game ID string, not a numeric index.",
+						"description": "Stable YukiHub local game ID string, not a numeric index.",
 					},
 				},
 				"required":             []string{"game_id"},
@@ -427,7 +427,7 @@ func (h *mcpHTTPHandler) toolDefinitions() []mcpToolDefinition {
 				"properties": map[string]any{
 					"game_id": map[string]any{
 						"type":        "string",
-						"description": "Stable LunaBox local game ID string, not a numeric index.",
+						"description": "Stable YukiHub local game ID string, not a numeric index.",
 					},
 					"limit": map[string]any{
 						"type":        "integer",
@@ -447,7 +447,7 @@ func (h *mcpHTTPHandler) toolDefinitions() []mcpToolDefinition {
 		},
 		{
 			Name:        "search_metadata_by_name",
-			Description: "Search remote metadata by name using only metadata sources currently enabled in LunaBox configuration. Returns spoiler-sensitive fields together with spoiler_context.global_level.",
+			Description: "Search remote metadata by name using only metadata sources currently enabled in YukiHub configuration. Returns spoiler-sensitive fields together with spoiler_context.global_level.",
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
@@ -468,7 +468,7 @@ func (h *mcpHTTPHandler) toolDefinitions() []mcpToolDefinition {
 		},
 		{
 			Name:        "get_game_statistic",
-			Description: "Return structured play statistics aligned with LunaBox built-in AI summary data, without prompt generation, model calls, or WebSearch. Includes spoiler_context.global_level.",
+			Description: "Return structured play statistics aligned with YukiHub built-in AI summary data, without prompt generation, model calls, or WebSearch. Includes spoiler_context.global_level.",
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{

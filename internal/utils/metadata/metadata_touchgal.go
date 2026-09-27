@@ -5,13 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"lunabox/internal/common/enums"
-	"lunabox/internal/models"
-	"lunabox/internal/version"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
+	"yukihub/internal/common/enums"
+	"yukihub/internal/models"
+	"yukihub/internal/version"
 )
 
 type TouchGalInfoGetter struct {

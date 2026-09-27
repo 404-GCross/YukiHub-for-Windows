@@ -2,10 +2,10 @@ package launcher
 
 import (
 	"fmt"
-	"lunabox/internal/utils/processutils"
 	"runtime"
 	"strings"
 	"time"
+	"yukihub/internal/utils/processutils"
 )
 
 type DetectionLogger interface {

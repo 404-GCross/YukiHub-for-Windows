@@ -2,9 +2,9 @@ package service
 
 import (
 	"context"
-	"lunabox/internal/utils/audioutils"
-	"lunabox/internal/version"
 	"runtime"
+	"yukihub/internal/utils/audioutils"
+	"yukihub/internal/version"
 )
 
 type VersionService struct {
@@ -59,5 +59,11 @@ func (s *VersionService) GetVersionInfo() map[string]string {
 		"buildTime": version.BuildTime,
 		"buildMode": version.BuildMode,
 		"goos":      runtime.GOOS,
+		"appName":   version.AppDisplayName,
+		"license":   version.LicenseName,
+		"upstream":  version.UpstreamProject,
+		"upVersion": version.UpstreamVersion,
+		"upRepo":    version.UpstreamRepoURL,
+		"repo":      version.RepositoryURL,
 	}
 }

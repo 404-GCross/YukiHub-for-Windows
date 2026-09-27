@@ -33,9 +33,9 @@ export function CheckForUpdatesOnStartup(): $CancellablePromise<$models.UpdateCh
 }
 
 /**
- * DownloadAndApplyUpdate downloads verified update artifacts with LunaBox's
+ * DownloadAndApplyUpdate downloads verified update artifacts with YukiHub's
  * existing downloader, asks the standalone updater to prepare them, then starts
- * the updater in commit mode and enters the normal LunaBox shutdown flow.
+ * the updater in commit mode and enters the normal YukiHub shutdown flow.
  */
 export function DownloadAndApplyUpdate(manifestURL: string): $CancellablePromise<$models.UpdateApplyResult | null> {
     return $Call.ByID(1901531138, manifestURL).then(($result: any) => {

@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactNode } from "react";
-import { LayerPortal } from "@lunabox/desktop-shell-react";
+import { LayerPortal } from "@yukihub/desktop-shell-react";
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 
 export type BetterTooltipSide = "top" | "right" | "bottom" | "left";

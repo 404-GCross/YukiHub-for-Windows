@@ -5,12 +5,12 @@ import (
 	"context"
 	"errors"
 	"io"
-	"lunabox/internal/common/enums"
 	"net/http"
 	"reflect"
 	"strings"
 	"testing"
 	"time"
+	"yukihub/internal/common/enums"
 )
 
 func TestMetadataRateLimiterAppliesUpstreamWindow(t *testing.T) {

@@ -3,14 +3,14 @@ package importer
 import (
 	"context"
 	"fmt"
-	"lunabox/internal/applog"
-	"lunabox/internal/common/enums"
-	"lunabox/internal/common/importpath"
-	"lunabox/internal/common/vo"
-	"lunabox/internal/models"
-	"lunabox/internal/utils/metadata"
 	"strings"
 	"time"
+	"yukihub/internal/applog"
+	"yukihub/internal/common/enums"
+	"yukihub/internal/common/importpath"
+	"yukihub/internal/common/vo"
+	"yukihub/internal/models"
+	"yukihub/internal/utils/metadata"
 )
 
 // ImportResult 导入结果

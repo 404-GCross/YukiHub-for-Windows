@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"lunabox/internal/appconf"
-	"lunabox/internal/applog"
-	"lunabox/internal/service/cloudprovider/batchupload"
+	"yukihub/internal/appconf"
+	"yukihub/internal/applog"
+	"yukihub/internal/service/cloudprovider/batchupload"
 
 	_ "github.com/duckdb/duckdb-go/v2"
 )

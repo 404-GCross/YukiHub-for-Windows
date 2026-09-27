@@ -3,10 +3,10 @@
 package launcher
 
 import (
-	"lunabox/internal/utils/processutils"
-	"lunabox/internal/utils/timerutils/focusing"
 	"strings"
 	"time"
+	"yukihub/internal/utils/processutils"
+	"yukihub/internal/utils/timerutils/focusing"
 )
 
 // DetectStagedProcess resolves the actual game process behind a Windows launcher.

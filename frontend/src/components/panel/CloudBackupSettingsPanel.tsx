@@ -13,8 +13,8 @@ import {
   TestS3Connection,
   TestUmbraConnection,
   TestWebDAVConnection,
-} from "../../../bindings/lunabox/internal/service/backupservice";
-import { GetAppConfig } from "../../../bindings/lunabox/internal/service/configservice";
+} from "../../../bindings/yukihub/internal/service/backupservice";
+import { GetAppConfig } from "../../../bindings/yukihub/internal/service/configservice";
 import { formatFileSize } from "../../utils/size";
 import { PasswordInputModal } from "../modal/PasswordInputModal";
 import { BetterInput } from "../ui/better/BetterInput";
@@ -480,7 +480,7 @@ export function CloudBackupSettingsPanel({
                 name="s3_bucket"
                 value={formData.s3_bucket || ""}
                 onChange={handleChange}
-                placeholder="lunabox-backup"
+                placeholder="yukihub-backup"
               />
             </div>
           </div>

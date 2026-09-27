@@ -63,7 +63,7 @@ func FailureKindOf(err error) FailureKind {
 }
 
 // PrepareFailureFileName is the marker the updater writes when "prepare" fails.
-// LunaBox reads it to report the normalized reason; its absence means the
+// YukiHub reads it to report the normalized reason; its absence means the
 // updater process itself never got far enough to classify the failure.
 const PrepareFailureFileName = "prepare-failure.json"
 

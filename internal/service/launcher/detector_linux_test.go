@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"lunabox/internal/utils/processutils"
+	"yukihub/internal/utils/processutils"
 )
 
 func TestLinuxProcessCandidatePrefersTruncatedGameCommFromProtonTree(t *testing.T) {
@@ -127,11 +127,11 @@ func TestLinuxSuccessorCandidatesRejectProtonPythonWrapper(t *testing.T) {
 	details := []processutils.ProcessDetails{
 		{
 			ProcessInfo: processutils.ProcessInfo{Name: "python3", PID: 202},
-			CommandLine:  []string{"python3", "/home/u/.steam/steamapps/common/Proton 11.0/proton", "waitforexitandrun", gamePath},
+			CommandLine: []string{"python3", "/home/u/.steam/steamapps/common/Proton 11.0/proton", "waitforexitandrun", gamePath},
 		},
 		{
 			ProcessInfo: processutils.ProcessInfo{Name: "totsulover.exe", PID: 205},
-			CommandLine:  []string{"totsulover.exe"},
+			CommandLine: []string{"totsulover.exe"},
 		},
 	}
 

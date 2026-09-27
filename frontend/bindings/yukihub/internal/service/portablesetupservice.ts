@@ -17,7 +17,7 @@ import { Call as $Call, CancellablePromise as $CancellablePromise, Create as $Cr
 import * as $models from "./models.js";
 
 /**
- * GetStatus returns the portable protocol and lunacli registration state.
+ * GetStatus returns the portable protocol and yukihubcli registration state.
  */
 export function GetStatus(): $CancellablePromise<$models.PortableSetupStatus> {
     return $Call.ByID(1663595137).then(($result: any) => {
@@ -26,7 +26,7 @@ export function GetStatus(): $CancellablePromise<$models.PortableSetupStatus> {
 }
 
 /**
- * RegisterCLIPath installs lunacli into the current user's command path.
+ * RegisterCLIPath installs yukihubcli into the current user's command path.
  */
 export function RegisterCLIPath(): $CancellablePromise<$models.PortableSetupStatus> {
     return $Call.ByID(1398453521).then(($result: any) => {
@@ -35,7 +35,7 @@ export function RegisterCLIPath(): $CancellablePromise<$models.PortableSetupStat
 }
 
 /**
- * RegisterProtocol writes the lunabox:// association required by local builds.
+ * RegisterProtocol writes the yukihub:// association required by local builds.
  * Installed builds are managed by Wails during packaging.
  */
 export function RegisterProtocol(): $CancellablePromise<$models.PortableSetupStatus> {
@@ -45,7 +45,7 @@ export function RegisterProtocol(): $CancellablePromise<$models.PortableSetupSta
 }
 
 /**
- * UnregisterCLIPath removes the lunacli registration for the current platform.
+ * UnregisterCLIPath removes the yukihubcli registration for the current platform.
  */
 export function UnregisterCLIPath(): $CancellablePromise<$models.PortableSetupStatus> {
     return $Call.ByID(4277727328).then(($result: any) => {

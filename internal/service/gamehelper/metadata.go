@@ -4,10 +4,10 @@ import (
 	"reflect"
 	"strings"
 
-	"lunabox/internal/appconf"
-	enums2 "lunabox/internal/common/enums"
-	"lunabox/internal/models"
-	"lunabox/internal/utils/metadata"
+	"yukihub/internal/appconf"
+	enums2 "yukihub/internal/common/enums"
+	"yukihub/internal/models"
+	"yukihub/internal/utils/metadata"
 )
 
 func IsEmptyGame(game models.Game) bool {

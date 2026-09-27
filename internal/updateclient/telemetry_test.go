@@ -7,7 +7,7 @@ import (
 )
 
 func TestIsUpdateWorkDir(t *testing.T) {
-	workDir, err := os.MkdirTemp("", "LunaBox-update-test-")
+	workDir, err := os.MkdirTemp("", "YukiHub-update-test-")
 	if err != nil {
 		t.Fatal(err)
 	}

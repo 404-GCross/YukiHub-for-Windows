@@ -3,15 +3,15 @@ package service
 import (
 	"context"
 	"database/sql"
-	"lunabox/internal/appconf"
-	"lunabox/internal/applog"
-	"lunabox/internal/common/vo"
-	"lunabox/internal/service/cloudprovider"
-	"lunabox/internal/service/cloudsync"
 	"sync"
 	"time"
+	"yukihub/internal/appconf"
+	"yukihub/internal/applog"
+	"yukihub/internal/common/vo"
+	"yukihub/internal/service/cloudprovider"
+	"yukihub/internal/service/cloudsync"
 
-	"lunabox/internal/wailsruntime"
+	"yukihub/internal/wailsruntime"
 )
 
 const (

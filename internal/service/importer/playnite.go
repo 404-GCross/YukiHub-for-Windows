@@ -4,16 +4,16 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"lunabox/internal/applog"
-	"lunabox/internal/common/enums"
-	"lunabox/internal/common/vo"
-	"lunabox/internal/models"
-	"lunabox/internal/models/playnite"
-	"lunabox/internal/service/gamehelper"
-	"lunabox/internal/utils/imageutils"
 	"os"
 	"strings"
 	"time"
+	"yukihub/internal/applog"
+	"yukihub/internal/common/enums"
+	"yukihub/internal/common/vo"
+	"yukihub/internal/models"
+	"yukihub/internal/models/playnite"
+	"yukihub/internal/service/gamehelper"
+	"yukihub/internal/utils/imageutils"
 )
 
 type PlayniteImporter struct {
@@ -169,18 +169,18 @@ func (p *PlayniteImporter) convertToGameWithCover(pg playnite.PlayniteGame, game
 		gameID = pg.ID
 	}
 	game := models.Game{
-		ID:              gameID,
-		Name:            pg.Name,
-		Company:         pg.Company,
-		Summary:         pg.Summary,
-		Rating:          pg.Rating,
-		ReleaseDate:     pg.ReleaseDate,
-		Path:            pg.Path,
-		GameDirectory:   strings.TrimSpace(pg.GameDirectory),
-		ProcessName:     strings.TrimSpace(pg.ProcessName),
-		Status:          stringToGameStatus(pg.Status),
-		SourceType:      stringToSourceType(pg.SourceType),
-		SourceID:        pg.SourceID,
+		ID:                 gameID,
+		Name:               pg.Name,
+		Company:            pg.Company,
+		Summary:            pg.Summary,
+		Rating:             pg.Rating,
+		ReleaseDate:        pg.ReleaseDate,
+		Path:               pg.Path,
+		GameDirectory:      strings.TrimSpace(pg.GameDirectory),
+		ProcessName:        strings.TrimSpace(pg.ProcessName),
+		Status:             stringToGameStatus(pg.Status),
+		SourceType:         stringToSourceType(pg.SourceType),
+		SourceID:           pg.SourceID,
 		LaunchMode:         enums.NormalizeLaunchMode(enums.LaunchMode(pg.LaunchMode)),
 		SteamLaunchID:      strings.TrimSpace(pg.SteamLaunchID),
 		SteamLaunchKind:    strings.TrimSpace(pg.SteamLaunchKind),

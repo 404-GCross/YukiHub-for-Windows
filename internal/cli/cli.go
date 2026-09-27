@@ -4,8 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"io"
-	"lunabox/internal/appconf"
-	"lunabox/internal/service"
+	"yukihub/internal/appconf"
+	"yukihub/internal/service"
 
 	_ "github.com/duckdb/duckdb-go/v2"
 )

@@ -4,12 +4,12 @@ package launcher
 
 import (
 	"context"
-	"lunabox/internal/appconf"
-	"lunabox/internal/common/enums"
-	"lunabox/internal/models"
 	"os"
 	"path/filepath"
 	"testing"
+	"yukihub/internal/appconf"
+	"yukihub/internal/common/enums"
+	"yukihub/internal/models"
 )
 
 func TestWindowsLauncherStrategyNativePlan(t *testing.T) {

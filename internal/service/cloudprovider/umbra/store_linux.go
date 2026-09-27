@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	umbrsdk "github.com/Umbrae-Labs/umbra-sdk/umbra-go"
-	"lunabox/internal/utils/apputils"
+	"yukihub/internal/utils/apputils"
 )
 
 func newCredentialStores(cfg Config) (umbrsdk.TokenStore, umbrsdk.DeviceStore, error) {

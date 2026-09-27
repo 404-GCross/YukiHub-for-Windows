@@ -21,7 +21,7 @@ import {
   SelectVniteDirectory,
   SelectYukiHubBackup,
   SelectZipFile,
-} from "../../../bindings/lunabox/internal/service/importservice";
+} from "../../../bindings/yukihub/internal/service/importservice";
 import { vo } from "../../../src/bindings/models";
 import playniteIconUrl from "../../assets/importers/playnite.png";
 import potatovnIconUrl from "../../assets/importers/potatovn.png";

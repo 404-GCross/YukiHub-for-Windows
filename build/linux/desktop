@@ -1,11 +1,11 @@
 [Desktop Entry]
 Version=1.0
-Name=LunaBox
-Comment=LunaBox game library manager
-Exec=/usr/bin/LunaBox %u
+Name=YukiHub
+Comment=YukiHub game library manager
+Exec=/usr/bin/YukiHub %u
 Terminal=false
 Type=Application
-Icon=io.github.saramanda9988.lunabox
+Icon=com.yukihub.desktop
 Categories=Game;
-StartupWMClass=io.github.saramanda9988.lunabox
-MimeType=x-scheme-handler/lunabox;
+StartupWMClass=com.yukihub.desktop
+MimeType=x-scheme-handler/yukihub;

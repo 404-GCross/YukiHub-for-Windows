@@ -7,8 +7,8 @@ package focusing
 #include <stdint.h>
 #include <stdlib.h>
 
-uint32_t lunabox_frontmost_process_id(void);
-char *lunabox_frontmost_bundle_path(void);
+uint32_t yukihub_frontmost_process_id(void);
+char *yukihub_frontmost_bundle_path(void);
 */
 import "C"
 
@@ -127,7 +127,7 @@ func (ft *FocusTracker) isCurrentlyFocused() bool {
 
 // GetForegroundProcessID 返回当前 macOS 前台应用的进程 ID。
 func GetForegroundProcessID() (uint32, bool) {
-	pid := uint32(C.lunabox_frontmost_process_id())
+	pid := uint32(C.yukihub_frontmost_process_id())
 	if pid == 0 {
 		return 0, false
 	}
@@ -135,7 +135,7 @@ func GetForegroundProcessID() (uint32, bool) {
 }
 
 func GetForegroundBundlePath() (string, bool) {
-	rawPath := C.lunabox_frontmost_bundle_path()
+	rawPath := C.yukihub_frontmost_bundle_path()
 	if rawPath == nil {
 		return "", false
 	}

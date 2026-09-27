@@ -5,18 +5,18 @@ import (
 	"database/sql"
 	"encoding/base64"
 	"fmt"
-	"lunabox/internal/appconf"
-	"lunabox/internal/applog"
-	"lunabox/internal/common/enums"
-	"lunabox/internal/common/vo"
-	"lunabox/internal/utils/httputils"
 	"net/http"
 	"os"
 	"strings"
 	"time"
+	"yukihub/internal/appconf"
+	"yukihub/internal/applog"
+	"yukihub/internal/common/enums"
+	"yukihub/internal/common/vo"
+	"yukihub/internal/utils/httputils"
 
-	"lunabox/internal/wailsruntime"
 	"resty.dev/v3"
+	"yukihub/internal/wailsruntime"
 )
 
 type StatsService struct {
@@ -58,7 +58,7 @@ func (s *StatsService) ExportStatsImage(base64Data string) error {
 	}
 
 	filename, err := s.runtime.SaveFile(wailsruntime.SaveDialogOptions{
-		Filename: "lunabox-stats.png",
+		Filename: "yukihub-stats.png",
 		Title:    "Save Stats Image",
 		Filters: []wailsruntime.FileFilter{
 			{

@@ -17,7 +17,7 @@ import (
 
 	umbrsdk "github.com/Umbrae-Labs/umbra-sdk/umbra-go"
 	"golang.org/x/sys/windows"
-	"lunabox/internal/utils/apputils"
+	"yukihub/internal/utils/apputils"
 )
 
 const cryptProtectUIForbidden = 0x1

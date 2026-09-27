@@ -5,12 +5,12 @@ package launcher
 import (
 	"context"
 	"fmt"
-	"lunabox/internal/appconf"
-	"lunabox/internal/common/enums"
-	"lunabox/internal/models"
 	"os"
 	"path/filepath"
 	"strings"
+	"yukihub/internal/appconf"
+	"yukihub/internal/common/enums"
+	"yukihub/internal/models"
 
 	"golang.org/x/sys/windows/registry"
 )

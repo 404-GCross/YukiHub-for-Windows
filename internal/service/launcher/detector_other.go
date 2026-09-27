@@ -2,7 +2,7 @@
 
 package launcher
 
-import "lunabox/internal/utils/processutils"
+import "yukihub/internal/utils/processutils"
 
 // DetectStagedProcess keeps non-Windows staged detection conservative.
 // macOS launch strategies normally use DetectionLauncherOnly; if a staged plan

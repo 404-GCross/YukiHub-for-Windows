@@ -9,7 +9,7 @@ const { chromium } = await import(
   process.env.PLAYWRIGHT_MODULE ?? "playwright",
 );
 const browser = await chromium.launch({ channel: "chrome", headless: true });
-const artifacts = await mkdtemp(join(tmpdir(), "lunabox-desktop-shell-"));
+const artifacts = await mkdtemp(join(tmpdir(), "yukihub-desktop-shell-"));
 const failures = [];
 try {
   for (const viewport of [

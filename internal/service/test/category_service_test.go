@@ -2,12 +2,12 @@ package test
 
 import (
 	"context"
-	"lunabox/internal/appconf"
-	"lunabox/internal/common/enums"
-	"lunabox/internal/common/vo"
-	"lunabox/internal/service"
 	"testing"
 	"time"
+	"yukihub/internal/appconf"
+	"yukihub/internal/common/enums"
+	"yukihub/internal/common/vo"
+	"yukihub/internal/service"
 
 	_ "github.com/duckdb/duckdb-go/v2"
 )
