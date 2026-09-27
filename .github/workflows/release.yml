@@ -1,3 +1,17 @@
+# 发布流水线（自上游 LunaBox 继承，YukiHub for Windows 需重新配置后使用）。
+#
+# 触发方式：推送 v*.*.* 标签，或手动 workflow_dispatch。
+#
+# 使用前必须在 GitHub 仓库中配置以下 Variables / Secrets（详见 docs/fork-setup.md）：
+#   vars.UPDATE_PUBLIC_BASE_URL, vars.UPDATE_S3_ENDPOINT, vars.UPDATE_S3_REGION,
+#   vars.UPDATE_S3_BUCKET, vars.YUKIHUB_BANGUMI_CLIENT_ID, vars.YUKIHUB_HIKARINAGI_CLIENT_ID,
+#   vars.YUKIHUB_UMBRA_CLIENT_ID, vars.SIGNPATH_*
+#   secrets.UPDATE_S3_ACCESS_KEY_ID, secrets.UPDATE_S3_SECRET_ACCESS_KEY,
+#   secrets.YUKIHUB_BANGUMI_CLIENT_SECRET, secrets.YUKIHUB_TOUCHGAL_TOKEN,
+#   secrets.YUKIHUB_UMBRA_REGISTRATION_TOKEN, secrets.SIGNPATH_API_TOKEN
+#
+# 注意：代码签名目前依赖 SignPath 的开源项目免费签名。该资格属于上游项目，
+# YukiHub 必须自行申请（或改用自有代码签名证书），否则签名与更新校验环节会失败。
 name: Release
 
 on:
@@ -7,7 +21,7 @@ on:
   workflow_dispatch:
 
 env:
-  LUNABOX_UPDATE_SERVICE_URL: ${{ vars.UPDATE_PUBLIC_BASE_URL }}
+  YUKIHUB_UPDATE_SERVICE_URL: ${{ vars.UPDATE_PUBLIC_BASE_URL }}
 
 jobs:
   build-release:
@@ -110,18 +124,18 @@ jobs:
       - name: Build Portable with script
         if: matrix.mode == 'portable'
         env:
-          LUNABOX_BANGUMI_CLIENT_ID: ${{ vars.LUNABOX_BANGUMI_CLIENT_ID }}
-          LUNABOX_BANGUMI_CLIENT_SECRET: ${{ secrets.LUNABOX_BANGUMI_CLIENT_SECRET }}
-          LUNABOX_HIKARINAGI_CLIENT_ID: ${{ vars.LUNABOX_HIKARINAGI_CLIENT_ID }}
-          LUNABOX_TOUCHGAL_TOKEN: ${{ secrets.LUNABOX_TOUCHGAL_TOKEN }}
-          LUNABOX_UMBRA_CLIENT_ID: ${{ vars.LUNABOX_UMBRA_CLIENT_ID }}
-          LUNABOX_UMBRA_REGISTRATION_TOKEN: ${{ secrets.LUNABOX_UMBRA_REGISTRATION_TOKEN }}
+          YUKIHUB_BANGUMI_CLIENT_ID: ${{ vars.YUKIHUB_BANGUMI_CLIENT_ID }}
+          YUKIHUB_BANGUMI_CLIENT_SECRET: ${{ secrets.YUKIHUB_BANGUMI_CLIENT_SECRET }}
+          YUKIHUB_HIKARINAGI_CLIENT_ID: ${{ vars.YUKIHUB_HIKARINAGI_CLIENT_ID }}
+          YUKIHUB_TOUCHGAL_TOKEN: ${{ secrets.YUKIHUB_TOUCHGAL_TOKEN }}
+          YUKIHUB_UMBRA_CLIENT_ID: ${{ vars.YUKIHUB_UMBRA_CLIENT_ID }}
+          YUKIHUB_UMBRA_REGISTRATION_TOKEN: ${{ secrets.YUKIHUB_UMBRA_REGISTRATION_TOKEN }}
         run: |
           $ErrorActionPreference = "Stop"
           .\scripts\build.bat "portable" "${{ steps.get_version.outputs.VERSION }}" "${{ matrix.arch }}"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-          $Artifact = "build/bin/LunaBox-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-portable.zip"
+          $Artifact = "build/bin/YukiHub-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-portable.zip"
           if (!(Test-Path $Artifact)) {
             Get-ChildItem -Path "build/bin" -Recurse | ForEach-Object { Write-Host $_.FullName }
             throw "Build artifact not found: $Artifact"
@@ -131,30 +145,30 @@ jobs:
       - name: Build Installer Payload with script
         if: matrix.mode == 'installer'
         env:
-          LUNABOX_BANGUMI_CLIENT_ID: ${{ vars.LUNABOX_BANGUMI_CLIENT_ID }}
-          LUNABOX_BANGUMI_CLIENT_SECRET: ${{ secrets.LUNABOX_BANGUMI_CLIENT_SECRET }}
-          LUNABOX_HIKARINAGI_CLIENT_ID: ${{ vars.LUNABOX_HIKARINAGI_CLIENT_ID }}
-          LUNABOX_TOUCHGAL_TOKEN: ${{ secrets.LUNABOX_TOUCHGAL_TOKEN }}
-          LUNABOX_UMBRA_CLIENT_ID: ${{ vars.LUNABOX_UMBRA_CLIENT_ID }}
-          LUNABOX_UMBRA_REGISTRATION_TOKEN: ${{ secrets.LUNABOX_UMBRA_REGISTRATION_TOKEN }}
+          YUKIHUB_BANGUMI_CLIENT_ID: ${{ vars.YUKIHUB_BANGUMI_CLIENT_ID }}
+          YUKIHUB_BANGUMI_CLIENT_SECRET: ${{ secrets.YUKIHUB_BANGUMI_CLIENT_SECRET }}
+          YUKIHUB_HIKARINAGI_CLIENT_ID: ${{ vars.YUKIHUB_HIKARINAGI_CLIENT_ID }}
+          YUKIHUB_TOUCHGAL_TOKEN: ${{ secrets.YUKIHUB_TOUCHGAL_TOKEN }}
+          YUKIHUB_UMBRA_CLIENT_ID: ${{ vars.YUKIHUB_UMBRA_CLIENT_ID }}
+          YUKIHUB_UMBRA_REGISTRATION_TOKEN: ${{ secrets.YUKIHUB_UMBRA_REGISTRATION_TOKEN }}
         run: |
           $ErrorActionPreference = "Stop"
           .\scripts\build.bat "installer-payload" "${{ steps.get_version.outputs.VERSION }}" "${{ matrix.arch }}"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
           $PayloadDir = "build/windows/payload/${{ matrix.arch }}"
-          if (!(Test-Path "$PayloadDir/LunaBox.exe") -or !(Test-Path "$PayloadDir/lunacli.exe") -or !(Test-Path "build/bin/LunaBoxUpdater.exe")) {
+          if (!(Test-Path "$PayloadDir/YukiHub.exe") -or !(Test-Path "$PayloadDir/yukihubcli.exe") -or !(Test-Path "build/bin/YukiHubUpdater.exe")) {
             Get-ChildItem -Path $PayloadDir -Recurse | ForEach-Object { Write-Host $_.FullName }
             Get-ChildItem -Path "build/bin" -Recurse | ForEach-Object { Write-Host $_.FullName }
-            throw "Installer payload must contain LunaBox.exe, lunacli.exe, and LunaBoxUpdater.exe."
+            throw "Installer payload must contain YukiHub.exe, yukihubcli.exe, and YukiHubUpdater.exe."
           }
 
           $SigningDir = "build/signing/installer-payload"
           if (Test-Path $SigningDir) { Remove-Item $SigningDir -Recurse -Force }
           New-Item -ItemType Directory -Force -Path $SigningDir | Out-Null
-          Copy-Item -LiteralPath "$PayloadDir/LunaBox.exe" -Destination $SigningDir -Force
-          Copy-Item -LiteralPath "$PayloadDir/lunacli.exe" -Destination $SigningDir -Force
-          Copy-Item -LiteralPath "build/bin/LunaBoxUpdater.exe" -Destination $SigningDir -Force
+          Copy-Item -LiteralPath "$PayloadDir/YukiHub.exe" -Destination $SigningDir -Force
+          Copy-Item -LiteralPath "$PayloadDir/yukihubcli.exe" -Destination $SigningDir -Force
+          Copy-Item -LiteralPath "build/bin/YukiHubUpdater.exe" -Destination $SigningDir -Force
         shell: pwsh
 
       - name: Upload Unsigned Portable Artifact
@@ -162,8 +176,8 @@ jobs:
         if: matrix.mode == 'portable'
         uses: actions/upload-artifact@v4
         with:
-          name: unsigned-lunabox-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-portable
-          path: build/bin/LunaBox-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-portable.zip
+          name: unsigned-yukihub-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-portable
+          path: build/bin/YukiHub-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-portable.zip
           if-no-files-found: error
           retention-days: 1
 
@@ -185,20 +199,20 @@ jobs:
         if: matrix.mode == 'portable'
         run: |
           $ErrorActionPreference = "Stop"
-          $Artifact = "signed/LunaBox-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-portable.zip"
+          $Artifact = "signed/YukiHub-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-portable.zip"
           if (!(Test-Path $Artifact)) {
             Get-ChildItem -Path signed -Recurse | ForEach-Object { Write-Host $_.FullName }
             throw "Signed portable artifact not found: $Artifact"
           }
 
-          $ExtractDir = Join-Path $env:RUNNER_TEMP "lunabox-signed-portable"
+          $ExtractDir = Join-Path $env:RUNNER_TEMP "yukihub-signed-portable"
           if (Test-Path $ExtractDir) { Remove-Item $ExtractDir -Recurse -Force }
           Expand-Archive -Path $Artifact -DestinationPath $ExtractDir -Force
-          $PayloadDir = (Get-ChildItem $ExtractDir -Filter "LunaBox.exe" -Recurse | Select-Object -First 1).Directory.FullName
+          $PayloadDir = (Get-ChildItem $ExtractDir -Filter "YukiHub.exe" -Recurse | Select-Object -First 1).Directory.FullName
           if ([string]::IsNullOrWhiteSpace($PayloadDir)) {
-            throw "Signed portable archive does not contain LunaBox.exe."
+            throw "Signed portable archive does not contain YukiHub.exe."
           }
-          foreach ($Name in @("LunaBox.exe", "lunacli.exe", "LunaBoxUpdater.exe")) {
+          foreach ($Name in @("YukiHub.exe", "yukihubcli.exe", "YukiHubUpdater.exe")) {
             $Path = Join-Path $PayloadDir $Name
             if (!(Test-Path $Path)) { throw "Signed portable archive is missing $Name." }
             $Signature = Get-AuthenticodeSignature $Path
@@ -210,7 +224,7 @@ jobs:
           $RuntimeDir = Join-Path $PWD "update-runtime"
           if (Test-Path $RuntimeDir) { Remove-Item $RuntimeDir -Recurse -Force }
           New-Item -ItemType Directory -Force -Path $RuntimeDir | Out-Null
-          foreach ($Name in @("LunaBox.exe", "lunacli.exe", "LunaBoxUpdater.exe", "duckdb.dll")) {
+          foreach ($Name in @("YukiHub.exe", "yukihubcli.exe", "YukiHubUpdater.exe", "duckdb.dll")) {
             $Source = Join-Path $PayloadDir $Name
             if (Test-Path $Source) { Copy-Item $Source -Destination $RuntimeDir -Force }
           }
@@ -223,8 +237,8 @@ jobs:
         if: matrix.mode == 'portable'
         uses: actions/upload-artifact@v4
         with:
-          name: lunabox-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-portable
-          path: signed/LunaBox-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-portable.zip
+          name: yukihub-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-portable
+          path: signed/YukiHub-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-portable.zip
           if-no-files-found: error
 
       - name: Upload Unsigned Installer Payload
@@ -232,7 +246,7 @@ jobs:
         if: matrix.mode == 'installer'
         uses: actions/upload-artifact@v4
         with:
-          name: unsigned-lunabox-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-installer-payload
+          name: unsigned-yukihub-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-installer-payload
           path: build/signing/installer-payload/
           if-no-files-found: error
           retention-days: 1
@@ -255,12 +269,12 @@ jobs:
         if: matrix.mode == 'installer'
         run: |
           $ErrorActionPreference = "Stop"
-          $SignedGui = "signed-payload/LunaBox.exe"
-          $SignedCli = "signed-payload/lunacli.exe"
-          $SignedUpdater = "signed-payload/LunaBoxUpdater.exe"
+          $SignedGui = "signed-payload/YukiHub.exe"
+          $SignedCli = "signed-payload/yukihubcli.exe"
+          $SignedUpdater = "signed-payload/YukiHubUpdater.exe"
           if (!(Test-Path $SignedGui) -or !(Test-Path $SignedCli) -or !(Test-Path $SignedUpdater)) {
             Get-ChildItem -Path signed-payload -Recurse | ForEach-Object { Write-Host $_.FullName }
-            throw "Signed installer payload must contain LunaBox.exe, lunacli.exe, and LunaBoxUpdater.exe."
+            throw "Signed installer payload must contain YukiHub.exe, yukihubcli.exe, and YukiHubUpdater.exe."
           }
           foreach ($Path in @($SignedGui, $SignedCli, $SignedUpdater)) {
             $Signature = Get-AuthenticodeSignature $Path
@@ -270,14 +284,14 @@ jobs:
           }
 
           $PayloadDir = "build/windows/payload/${{ matrix.arch }}"
-          Copy-Item $SignedGui -Destination "$PayloadDir/LunaBox.exe" -Force
-          Copy-Item $SignedCli -Destination "$PayloadDir/lunacli.exe" -Force
-          Copy-Item $SignedUpdater -Destination "build/bin/LunaBoxUpdater.exe" -Force
+          Copy-Item $SignedGui -Destination "$PayloadDir/YukiHub.exe" -Force
+          Copy-Item $SignedCli -Destination "$PayloadDir/yukihubcli.exe" -Force
+          Copy-Item $SignedUpdater -Destination "build/bin/YukiHubUpdater.exe" -Force
 
           .\scripts\build.bat "installer-package" "${{ steps.get_version.outputs.VERSION }}" "${{ matrix.arch }}"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-          $Artifact = "build/bin/LunaBox-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-setup.exe"
+          $Artifact = "build/bin/YukiHub-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-setup.exe"
           if (!(Test-Path $Artifact)) {
             Get-ChildItem -Path "build/bin" -Recurse | ForEach-Object { Write-Host $_.FullName }
             throw "Installer artifact not found: $Artifact"
@@ -286,11 +300,11 @@ jobs:
           $RuntimeDir = Join-Path $PWD "update-runtime"
           if (Test-Path $RuntimeDir) { Remove-Item $RuntimeDir -Recurse -Force }
           New-Item -ItemType Directory -Force -Path $RuntimeDir | Out-Null
-          foreach ($Name in @("LunaBoxUpdater.exe", "duckdb.dll")) {
+          foreach ($Name in @("YukiHubUpdater.exe", "duckdb.dll")) {
             $Source = Join-Path "build/bin" $Name
             if (Test-Path $Source) { Copy-Item $Source -Destination $RuntimeDir -Force }
           }
-          foreach ($Name in @("LunaBox.exe", "lunacli.exe")) {
+          foreach ($Name in @("YukiHub.exe", "yukihubcli.exe")) {
             $Source = Join-Path $PayloadDir $Name
             if (Test-Path $Source) { Copy-Item $Source -Destination $RuntimeDir -Force }
           }
@@ -311,8 +325,8 @@ jobs:
         if: matrix.mode == 'installer'
         uses: actions/upload-artifact@v4
         with:
-          name: unsigned-lunabox-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-installer
-          path: build/bin/LunaBox-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-setup.exe
+          name: unsigned-yukihub-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-installer
+          path: build/bin/YukiHub-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-setup.exe
           if-no-files-found: error
           retention-days: 1
 
@@ -334,7 +348,7 @@ jobs:
         if: matrix.mode == 'installer'
         run: |
           $ErrorActionPreference = "Stop"
-          $Artifact = "signed-installer/LunaBox-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-setup.exe"
+          $Artifact = "signed-installer/YukiHub-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-setup.exe"
           if (!(Test-Path $Artifact)) {
             Get-ChildItem -Path signed-installer -Recurse | ForEach-Object { Write-Host $_.FullName }
             throw "Signed installer artifact not found: $Artifact"
@@ -345,8 +359,8 @@ jobs:
         if: matrix.mode == 'installer'
         uses: actions/upload-artifact@v4
         with:
-          name: lunabox-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-installer
-          path: signed-installer/LunaBox-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-setup.exe
+          name: yukihub-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-installer
+          path: signed-installer/YukiHub-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-setup.exe
           if-no-files-found: error
 
   build-macos:
@@ -451,23 +465,23 @@ jobs:
       - name: Build app bundle and DMG
         shell: bash
         env:
-          LUNABOX_BANGUMI_CLIENT_ID: ${{ vars.LUNABOX_BANGUMI_CLIENT_ID }}
-          LUNABOX_BANGUMI_CLIENT_SECRET: ${{ secrets.LUNABOX_BANGUMI_CLIENT_SECRET }}
-          LUNABOX_HIKARINAGI_CLIENT_ID: ${{ vars.LUNABOX_HIKARINAGI_CLIENT_ID }}
-          LUNABOX_TOUCHGAL_TOKEN: ${{ secrets.LUNABOX_TOUCHGAL_TOKEN }}
-          LUNABOX_UMBRA_CLIENT_ID: ${{ vars.LUNABOX_UMBRA_CLIENT_ID }}
-          LUNABOX_UMBRA_REGISTRATION_TOKEN: ${{ secrets.LUNABOX_UMBRA_REGISTRATION_TOKEN }}
+          YUKIHUB_BANGUMI_CLIENT_ID: ${{ vars.YUKIHUB_BANGUMI_CLIENT_ID }}
+          YUKIHUB_BANGUMI_CLIENT_SECRET: ${{ secrets.YUKIHUB_BANGUMI_CLIENT_SECRET }}
+          YUKIHUB_HIKARINAGI_CLIENT_ID: ${{ vars.YUKIHUB_HIKARINAGI_CLIENT_ID }}
+          YUKIHUB_TOUCHGAL_TOKEN: ${{ secrets.YUKIHUB_TOUCHGAL_TOKEN }}
+          YUKIHUB_UMBRA_CLIENT_ID: ${{ vars.YUKIHUB_UMBRA_CLIENT_ID }}
+          YUKIHUB_UMBRA_REGISTRATION_TOKEN: ${{ secrets.YUKIHUB_UMBRA_REGISTRATION_TOKEN }}
         run: |
           set -euo pipefail
           chmod +x scripts/build.sh
           ./scripts/build.sh installer '${{ steps.get_version.outputs.VERSION }}' '${{ matrix.arch }}'
-          test -f 'build/bin/LunaBox-${{ steps.get_version.outputs.VERSION }}-macos-${{ matrix.arch }}.dmg'
+          test -f 'build/bin/YukiHub-${{ steps.get_version.outputs.VERSION }}-macos-${{ matrix.arch }}.dmg'
 
       - name: Upload DMG
         uses: actions/upload-artifact@v4
         with:
-          name: lunabox-${{ steps.get_version.outputs.VERSION }}-macos-${{ matrix.arch }}
-          path: build/bin/LunaBox-${{ steps.get_version.outputs.VERSION }}-macos-${{ matrix.arch }}.dmg
+          name: yukihub-${{ steps.get_version.outputs.VERSION }}-macos-${{ matrix.arch }}
+          path: build/bin/YukiHub-${{ steps.get_version.outputs.VERSION }}-macos-${{ matrix.arch }}.dmg
           if-no-files-found: error
 
   build-linux:
@@ -565,29 +579,29 @@ jobs:
       - name: Build Linux packages
         shell: bash
         env:
-          LUNABOX_BANGUMI_CLIENT_ID: ${{ vars.LUNABOX_BANGUMI_CLIENT_ID }}
-          LUNABOX_BANGUMI_CLIENT_SECRET: ${{ secrets.LUNABOX_BANGUMI_CLIENT_SECRET }}
-          LUNABOX_HIKARINAGI_CLIENT_ID: ${{ vars.LUNABOX_HIKARINAGI_CLIENT_ID }}
-          LUNABOX_TOUCHGAL_TOKEN: ${{ secrets.LUNABOX_TOUCHGAL_TOKEN }}
-          LUNABOX_UMBRA_CLIENT_ID: ${{ vars.LUNABOX_UMBRA_CLIENT_ID }}
-          LUNABOX_UMBRA_REGISTRATION_TOKEN: ${{ secrets.LUNABOX_UMBRA_REGISTRATION_TOKEN }}
+          YUKIHUB_BANGUMI_CLIENT_ID: ${{ vars.YUKIHUB_BANGUMI_CLIENT_ID }}
+          YUKIHUB_BANGUMI_CLIENT_SECRET: ${{ secrets.YUKIHUB_BANGUMI_CLIENT_SECRET }}
+          YUKIHUB_HIKARINAGI_CLIENT_ID: ${{ vars.YUKIHUB_HIKARINAGI_CLIENT_ID }}
+          YUKIHUB_TOUCHGAL_TOKEN: ${{ secrets.YUKIHUB_TOUCHGAL_TOKEN }}
+          YUKIHUB_UMBRA_CLIENT_ID: ${{ vars.YUKIHUB_UMBRA_CLIENT_ID }}
+          YUKIHUB_UMBRA_REGISTRATION_TOKEN: ${{ secrets.YUKIHUB_UMBRA_REGISTRATION_TOKEN }}
           APPIMAGE_EXTRACT_AND_RUN: "1"
         run: |
           set -euo pipefail
           chmod +x scripts/build.sh
           ./scripts/build.sh all '${{ steps.get_version.outputs.VERSION }}' '${{ matrix.arch }}'
-          test "$(find build/bin -maxdepth 1 -type f -name 'LunaBox-*-linux-${{ matrix.arch }}.deb' | wc -l | tr -d ' ')" -eq 1
-          test "$(find build/bin -maxdepth 1 -type f -name 'LunaBox-*-linux-${{ matrix.arch }}.rpm' | wc -l | tr -d ' ')" -eq 1
-          test "$(find build/bin -maxdepth 1 -type f -name 'LunaBox-*-linux-${{ matrix.arch }}.AppImage' | wc -l | tr -d ' ')" -eq 1
+          test "$(find build/bin -maxdepth 1 -type f -name 'YukiHub-*-linux-${{ matrix.arch }}.deb' | wc -l | tr -d ' ')" -eq 1
+          test "$(find build/bin -maxdepth 1 -type f -name 'YukiHub-*-linux-${{ matrix.arch }}.rpm' | wc -l | tr -d ' ')" -eq 1
+          test "$(find build/bin -maxdepth 1 -type f -name 'YukiHub-*-linux-${{ matrix.arch }}.AppImage' | wc -l | tr -d ' ')" -eq 1
 
       - name: Upload Linux packages
         uses: actions/upload-artifact@v4
         with:
-          name: lunabox-${{ steps.get_version.outputs.VERSION }}-linux-${{ matrix.arch }}
+          name: yukihub-${{ steps.get_version.outputs.VERSION }}-linux-${{ matrix.arch }}
           path: |
-            build/bin/LunaBox-*-linux-${{ matrix.arch }}.deb
-            build/bin/LunaBox-*-linux-${{ matrix.arch }}.rpm
-            build/bin/LunaBox-*-linux-${{ matrix.arch }}.AppImage
+            build/bin/YukiHub-*-linux-${{ matrix.arch }}.deb
+            build/bin/YukiHub-*-linux-${{ matrix.arch }}.rpm
+            build/bin/YukiHub-*-linux-${{ matrix.arch }}.AppImage
           if-no-files-found: error
 
   create-release:
@@ -620,7 +634,7 @@ jobs:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
-          pattern: lunabox-*
+          pattern: yukihub-*
           path: ./artifacts
           merge-multiple: true
 
@@ -663,7 +677,7 @@ jobs:
               ./previous-update-assets/ \
               --recursive \
               --exclude "*" \
-              --include "LunaBox-${PREVIOUS_VERSION}-windows-*-LunaBox.exe.zst" \
+              --include "YukiHub-${PREVIOUS_VERSION}-windows-*-YukiHub.exe.zst" \
               --endpoint-url "$UPDATE_S3_ENDPOINT" || true
           fi
 
@@ -691,8 +705,8 @@ jobs:
           if [ -n "$PREVIOUS_VERSION" ]; then
             ARGS+=(--previous-version "$PREVIOUS_VERSION")
           fi
-          go -C updater run ./cmd/lunabox-update-builder "${ARGS[@]}"
-          jq empty "update-assets/LunaBox-${VERSION}-update-manifest.json"
+          go -C updater run ./cmd/yukihub-update-builder "${ARGS[@]}"
+          jq empty "update-assets/YukiHub-${VERSION}-update-manifest.json"
           ls -lh ./update-assets
 
       - name: Generate update version source
@@ -727,7 +741,7 @@ jobs:
             --include "*.zsdiff" \
             --cache-control "public,max-age=31536000,immutable" \
             --endpoint-url "$UPDATE_S3_ENDPOINT"
-          aws s3 cp "update-assets/LunaBox-${VERSION}-update-manifest.json" "$PREFIX/manifest.json" \
+          aws s3 cp "update-assets/YukiHub-${VERSION}-update-manifest.json" "$PREFIX/manifest.json" \
             --content-type "application/json" \
             --cache-control "public,max-age=31536000,immutable" \
             --endpoint-url "$UPDATE_S3_ENDPOINT"
@@ -779,7 +793,7 @@ jobs:
           # 如果没有从 CHANGELOG.md 提取到内容，使用默认模板
           if [ ! -f "release_notes.md" ]; then
             cat << EOF > release_notes.md
-          ## LunaBox ${{ steps.get_version.outputs.VERSION }}
+          ## YukiHub ${{ steps.get_version.outputs.VERSION }}
 
           ### 📝 更新内容
 
@@ -796,8 +810,8 @@ jobs:
           echo "| 文件 | 说明 |" >> release_notes.md
           echo "|------|------|" >> release_notes.md
           echo "| \`*-windows-*-portable.zip\` | Windows 便携版，解压即用，数据存储在程序目录 |" >> release_notes.md
-          echo "| \`*-windows-*-setup.exe\` | Windows 安装版，数据存储在 %APPDATA%\\\\LunaBox |" >> release_notes.md
-          echo "| \`*-macos-*.dmg\` | macOS 磁盘映像，将 LunaBox 拖入 Applications |" >> release_notes.md
+          echo "| \`*-windows-*-setup.exe\` | Windows 安装版，数据存储在 %APPDATA%\\\\YukiHub |" >> release_notes.md
+          echo "| \`*-macos-*.dmg\` | macOS 磁盘映像，将 YukiHub 拖入 Applications |" >> release_notes.md
           echo "| \`*-linux-*.AppImage\` | Linux AppImage，依赖系统 GTK4 / WebKitGTK 6.0 运行库 |" >> release_notes.md
           echo "| \`*-linux-*.deb\` | Linux Debian/Ubuntu 安装包 |" >> release_notes.md
           echo "| \`*-linux-*.rpm\` | Linux Fedora/RHEL/openSUSE 安装包 |" >> release_notes.md
