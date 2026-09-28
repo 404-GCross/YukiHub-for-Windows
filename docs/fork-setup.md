@@ -126,3 +126,78 @@ wails3 build
 
 > 注意：仓库目录名包含空格（`YukiHub for Windows`），部分脚本对含空格路径敏感。
 > 如果构建脚本报路径错误，可把仓库检出到无空格路径下（例如 `D:\work\yukihub`）。
+
+## 本机构建安装包（WorkBuddy 沙箱环境）
+
+CI 上直接跑 `scripts/build.bat installer <version> amd64` 即可。
+但**本机无法直接运行该脚本**，原因有两个环境限制：
+
+1. 脚本会执行 `pnpm --dir frontend install --frozen-lockfile`，而本机的
+   WorkBuddy 安全删除 shim（`genie-trash`）在 pnpm 清理 store 时超时：
+   `[safe-delete] 操作失败: ... ETIMEDOUT`
+2. 安全策略把 `wmic.exe` 列入程序黑名单，并明确**禁止绕过**
+
+依赖已用 `pnpm install --ignore-scripts` 装好，因此可跳过 install 步骤，
+手动执行等价流程（以下命令均在仓库根目录）：
+
+```bash
+export PATH="<go>/bin:<wails3>/bin:<mingw>/bin:<nsis>/bin:<node>:$PATH"
+export GOROOT=... GOPATH=... GOMODCACHE=... GOCACHE=...
+export CGO_ENABLED=1 CC=<mingw>/gcc.exe
+export GOPROXY=off   # 强制离线：缺东西立即报错，而不是静默下载
+
+VERSION=0.1.0
+COMMIT=$(git rev-parse --short HEAD)
+BASE="-s -w -X 'yukihub/internal/version.Version=$VERSION' \
+      -X 'yukihub/internal/version.GitCommit=$COMMIT' \
+      -X 'yukihub/internal/version.BuildTime=<时间>' \
+      -X 'yukihub/internal/version.BuildMode=installer'"
+
+# 1. 绑定与前端
+wails3 generate bindings -clean=true -ts
+pnpm --dir frontend build        # 只跑 typecheck 发现不了失效的资源引用
+
+# 2. GUI（installer 模式需要 -H windowsgui）
+wails3 generate syso -arch amd64 -icon build/windows/icon.ico \
+  -manifest build/windows/wails.exe.manifest \
+  -info build/windows/info.json -out wails_windows_amd64.syso
+go build -tags production -trimpath -buildvcs=false \
+  -ldflags "$BASE -H windowsgui" -o build/windows/payload/amd64/YukiHub.exe .
+rm -f wails_windows_amd64.syso
+
+# 3. CLI 与独立更新器
+go build -tags production -trimpath -buildvcs=false -ldflags "$BASE" \
+  -o build/windows/payload/amd64/yukihubcli.exe ./cmd/yukihubcli
+go -C updater build -trimpath -buildvcs=false \
+  -ldflags "-s -w -H windowsgui" -o "../build/bin/YukiHubUpdater.exe" ./cmd/yukihub-updater
+
+# 4. 运行库
+rm -rf build/bin/7z && mkdir -p build/bin/7z
+cp lib/winamd64/7z/7z.exe lib/winamd64/7z/7z.dll build/bin/7z/
+# project.nsi 还会从 build/bin 取 CLI，手动构建时容易漏
+cp build/windows/payload/amd64/yukihubcli.exe build/bin/yukihubcli.exe
+
+# 5. WebView2 引导器（内嵌在 wails3 二进制里，不需要联网）
+wails3 generate webview2bootstrapper -dir build/windows/webview2bootstrapper
+cp build/windows/webview2bootstrapper/MicrosoftEdgeWebview2Setup.exe build/windows/nsis/
+
+# 6. 打包
+cd build/windows/nsis
+MSYS2_ARG_CONV_EXCL='*' makensis \
+  '/DARG_WAILS_AMD64_BINARY=..\payload\amd64\YukiHub.exe' project.nsi
+cd ../../..
+mv -f build/bin/YukiHub-amd64-installer.exe \
+      "build/bin/YukiHub-$VERSION-windows-amd64-setup.exe"
+```
+
+三个必须注意的坑：
+
+1. **`/D` 参数会被 git-bash 做路径转换**：`/DARG_...=..\payload\...` 里的反斜杠
+   会被转成正斜杠，makensis 收不到正确路径而报 `no files found`。
+   用 `MSYS2_ARG_CONV_EXCL='*'` 只对这一条命令排除转换。
+   **不要**全局 `export MSYS_NO_PATHCONV=1`——那会把传给 node 的 PATH
+   也搞坏，导致 `MODULE_NOT_FOUND`。
+2. **`build/bin` 下三样东西都要在**：`YukiHubUpdater.exe`、`yukihubcli.exe`、
+   `7z/{7z.exe,7z.dll}`。CI 上由 `build.bat` 自动准备，手动构建最容易漏 CLI。
+3. **`duckdb.dll` 对 amd64 不是必需的**：amd64 走 DuckDB 静态链接，
+   `project.nsi` 用 `!if /FileExists` 判断，缺失不会报错。

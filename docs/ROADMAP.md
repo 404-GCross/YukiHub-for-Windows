@@ -30,8 +30,20 @@
 2. `go test ./... -count=1` 与 `cd updater && go test ./... -count=1` 全部通过。**（已验证通过）**
    - 失效用例允许删除，但必须在提交信息中说明原因；不允许跳过或标记为 Skip 来"凑绿"。
 3. `wails3 build` 在本机与 CI 上成功产出可执行文件。**（本机已验证通过）**
+   - 注：初次验证只跑到 `wails3 build`，**没跑完整的 `pnpm run build`**。
+     后来构建安装包时才发现 `AddGameModal.tsx` 引用了已被重命名的品牌图片
+     （`luna1/luna2.webp` → `brand-1/brand-2.webp`，去品牌化时改名却没同步引用），
+     导致 `vite build` 报 `Could not resolve`。**CI 的 `pnpm run build`
+     步骤同样会失败**，属必现问题。已修复（提交 `53e08d3`），
+     并用脚本扫描确认全部 36 个相对资源引用中仅这 2 处失效。
 4. NSIS 安装包可以完成"安装 → 启动 → 卸载"，且卸载后用户数据目录按预期处理。
-   **（待 NSIS 就位后验证）**
+   **（安装包已生成，待实测）**
+   - 产物：`build/bin/YukiHub-0.1.0-windows-amd64-setup.exe`（37.9 MB）
+   - 本机无法直接运行 `scripts/build.bat`（安全策略拦截 `wmic.exe`，
+     且 `pnpm install` 触发安全删除 shim 超时），已用等价的分步脚本完成构建，
+     流程与坑记录在 `docs/fork-setup.md`
+   - 待验证：实际安装 → 启动 → 卸载，以及卸载后 `%APPDATA%\YukiHub`
+     与 `%LOCALAPPDATA%\YukiHub` 的处理
 5. macOS / iOS / Linux 相关代码与 CI 矩阵移除完毕。**（已完成，见下方）**
 6. 界面上的"通用跨平台"表述与残留的上游素材占位清理完毕。**（进行中）**
    - [x] `PortableSetupPanel`（5 处三元 + 1 处条件渲染）、`GameSettingsPanel`、
