@@ -50,6 +50,12 @@
 - 上游的多语言 README（`README.zh-CN.md`、`README.ja.md`），
   改为 `README.md`（中文）与 `README.en.md`（English）；
   历史版本仍可在 git 历史中查阅
+- 全部 macOS / iOS / Linux 平台代码、构建资源与发布链路（本项目仅面向 Windows）：
+  - 64 个 Windows 构建不参与的 Go 文件（darwin / linux 实现与对应测试）
+  - `build/darwin`、`build/ios`、`build/linux`、`lib/{linuxamd64,linuxarm64,macarm64}`
+  - `scripts/build.sh`、`scripts/patch-wails-linux-tray.sh`
+  - `release.yml` / `autobuild.yml` 中的 macOS 与 Linux 构建作业
+  - `Taskfile.yml` 中的 darwin / linux 构建、打包与补丁步骤
 
 ### 已知问题
 

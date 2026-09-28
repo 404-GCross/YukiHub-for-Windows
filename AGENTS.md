@@ -4,9 +4,14 @@
 
 ## 项目概况
 
-Wails v3 Alpha 桌面应用（仅 Windows）。
+Wails v3 Alpha 桌面应用（**仅 Windows**）。
 前端：React + TypeScript + UnoCSS（presetWind3）+ Zustand + TanStack Router。
 后端：Go + DuckDB + 自研 migrations。
+
+macOS / iOS / Linux 的平台实现、构建资源与发布作业已全部移除。
+**新增代码 MUST NOT 引入非 Windows 的平台分支**——不要写 `runtime.GOOS` 的
+darwin / linux 分支，也不要用 `//go:build darwin` 之类的标签。
+`docs/ROADMAP.md` 阶段 1 列出了尚未清理干净的少数遗留点。
 
 ## 项目身份（影响每一次改动）
 

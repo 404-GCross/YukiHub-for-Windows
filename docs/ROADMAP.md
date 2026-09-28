@@ -31,14 +31,37 @@
    - 失效用例允许删除，但必须在提交信息中说明原因；不允许跳过或标记为 Skip 来"凑绿"。
 3. `wails3 build` 在本机与 CI 上成功产出可执行文件。
 4. NSIS 安装包可以完成"安装 → 启动 → 卸载"，且卸载后用户数据目录按预期处理。
-5. macOS / iOS / Linux 相关代码与 CI 矩阵移除完毕：
-   - `build/darwin/**`、`build/ios/**`、`build/linux/**`
-   - `internal/platform/` 的非 Windows 实现、`internal/protocol/registry_{linux,darwin}.go`
-   - `internal/service/launcher/strategy_{darwin,linux}.go` 等平台策略
-   - 依赖 Wine / Proton / CrossOver / AppImage 的配置项与界面入口
+5. macOS / iOS / Linux 相关代码与 CI 矩阵移除完毕。**（已完成，见下方）**
 6. 界面上的"通用跨平台"表述与残留的上游素材占位清理完毕。
 
-注意：第 5 项会删除大量文件，**必须在第 2 项测试全绿之后再做**，否则无法判断回归。
+已完成的部分：
+
+- [x] 删除 64 个 Windows 构建不参与的 Go 文件（darwin / linux 实现与对应测试）
+- [x] 删除 `build/darwin`、`build/ios`、`build/linux` 与 `lib/{linuxamd64,linuxarm64,macarm64}`
+- [x] 删除 `scripts/build.sh`、`scripts/patch-wails-linux-tray.sh`
+- [x] `release.yml` / `autobuild.yml` 移除 macOS 与 Linux 构建作业，产物断言收敛为 4 个 Windows 产物
+- [x] `Taskfile.yml` 移除 darwin / linux 分支，`.gitignore` 清理失效路径
+- [x] `docs/workflow.md` 移除 Linux 渲染验证与 macOS 透明窗口两节
+
+剩余的部分（需要在有 C 编译器的环境验证后再做）：
+
+- [ ] `internal/utils/protonutils` 整包删除，并移除 `integration_service.go` 中的
+      `LocalProtonTool` / `localProtonToolsFromUtils`
+- [ ] `appconf.AppConfig` 移除 `WineRunnerPath`、`WinePrefix`、`WinetricksPath`、
+      `ProtontricksPath`、`CrossOverRunnerPath`、`CrossOverBottle` 六个字段，
+      以及 `wine_detect_*.go`、`LoadConfig`/`normalize`/`sanitize`/`ConfigService.UpdateAppConfig`
+      中的对应分支
+- [ ] 前端移除 `GameLaunchPanel`、`GameSettingsPanel`、`game.tsx`、
+      `useAppRuntimeEffects.ts` 与四语言文案中的 Wine / Proton / CrossOver 入口
+- [ ] 上述改动完成后重新执行 `wails3 generate bindings -clean=true -ts`，
+      并确认 `pnpm build` 的 typecheck 通过
+- [ ] 清除共享代码中的死分支：`gamehelper/dialog.go`、`portable_setup_service.go`
+      （含 AppImage 集成）、`cli/start.go`、`cli/protocolcmd/protocol.go`、
+      `config_game_library.go`、`import_service.go`、`launcher/detector.go` 中的
+      `runtime.GOOS` 非 Windows 分支
+
+注意：第 2 项（测试全绿）必须先于上述代码改动完成，否则无法判断回归。
+本轮已完成的文件级裁剪是安全的——删掉的文件在 Windows 构建中本来就不参与编译。
 
 ## 阶段 2：领域模型统一与双向数据迁移
 
