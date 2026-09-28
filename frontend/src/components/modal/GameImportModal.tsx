@@ -174,12 +174,25 @@ function previewGameKey(game: service.PreviewGame, index: number) {
   ].join("\0");
 }
 
+// YukiHub 快照条目没有路径，标题命中即视为同一条目（与后端纯标题匹配对齐），
+// 因此这类来源的 name_path 冲突同样适用"同路径"的合并选择。
+function isSamePathConflict(
+  game: service.PreviewGame,
+  includeTitleMatches: boolean,
+) {
+  if (game.conflict_type === "same_path") {
+    return true;
+  }
+  return includeTitleMatches && game.conflict_type === "name_path";
+}
+
 function isPreviewGameActionable(
   game: service.PreviewGame,
   skipNoPath: boolean,
   samePathAction: SamePathAction,
+  includeTitleMatches: boolean,
 ) {
-  if (game.conflict_type === "same_path") {
+  if (isSamePathConflict(game, includeTitleMatches)) {
     return samePathAction !== "skip";
   }
   if (game.exists) {
@@ -242,7 +255,7 @@ export function GameImportModal({
               nextPreviewGames
                 .map((game, index) => ({ game, index }))
                 .filter(({ game }) =>
-                  isPreviewGameActionable(game, nextSkipNoPath, samePathAction),
+                  isPreviewGameActionable(game, nextSkipNoPath, samePathAction, source === "yukihub"),
                 )
                 .map(({ game, index }) => previewGameKey(game, index)),
             ),
@@ -280,7 +293,7 @@ export function GameImportModal({
           previewGames.filter(
             (game, index) =>
               selectedPreviewKeys.has(previewGameKey(game, index))
-              && isPreviewGameActionable(game, skipNoPath, samePathAction),
+              && isPreviewGameActionable(game, skipNoPath, samePathAction, source === "yukihub"),
           ),
         ),
       );
@@ -315,12 +328,13 @@ export function GameImportModal({
     onClose();
   };
 
-  const samePathGamesCount = previewGames.filter(
-    g => g.conflict_type === "same_path",
+  const includeTitleMatches = source === "yukihub";
+  const samePathGamesCount = previewGames.filter(g =>
+    isSamePathConflict(g, includeTitleMatches),
   ).length;
   const shouldMergeSamePath = samePathAction !== "skip";
   const isRowActionable = (game: service.PreviewGame) =>
-    isPreviewGameActionable(game, skipNoPath, samePathAction);
+    isPreviewGameActionable(game, skipNoPath, samePathAction, source === "yukihub");
   const isRowSelected = (game: service.PreviewGame, index: number) =>
     selectedPreviewKeys.has(previewGameKey(game, index));
   const newGamesCount = previewGames.filter(
@@ -329,12 +343,12 @@ export function GameImportModal({
   const updateGamesCount = previewGames.filter(
     (g, index) =>
       shouldMergeSamePath
-      && g.conflict_type === "same_path"
+      && isSamePathConflict(g, includeTitleMatches)
       && isRowSelected(g, index),
   ).length;
   const actionableGamesCount = newGamesCount + updateGamesCount;
   const existingGamesCount = previewGames.filter(
-    g => g.exists && g.conflict_type !== "same_path",
+    g => g.exists && !isSamePathConflict(g, includeTitleMatches),
   ).length;
   const noPathGamesCount = previewGames.filter(
     g => !g.has_path && !g.exists,
@@ -440,7 +454,8 @@ export function GameImportModal({
       cellClassName: "text-center",
       render: (game) => {
         const willBeUpdated
-          = game.conflict_type === "same_path" && shouldMergeSamePath;
+          = isSamePathConflict(game, includeTitleMatches)
+            && shouldMergeSamePath;
         if (game.exists) {
           return (
             <span
