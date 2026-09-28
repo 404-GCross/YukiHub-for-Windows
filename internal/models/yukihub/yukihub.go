@@ -19,27 +19,46 @@ type Game struct {
 	LocalID         int64  `json:"local_id"`
 	Title           string `json:"title"`
 	OriginalTitle   string `json:"original_title"`
-	Description     string `json:"description"`
-	Tags            string `json:"tags"`
-	PlayStatus      string `json:"play_status"`
-	NSFW            bool   `json:"nsfw"`
-	TotalPlayTime   int64  `json:"total_play_time"`
-	LastPlayedAt    int64  `json:"last_played_at"`
-	PlaytimeResetAt int64  `json:"playtime_reset_at"` // 清零时间点（Unix 毫秒），0 表示从未清零
-	CreatedAt       int64  `json:"created_at"`
-	UpdatedAt       int64  `json:"updated_at"`
-	Hidden          bool   `json:"hidden"`
-	Favorite        bool   `json:"favorite"`
+	Engine          string `json:"engine"`
+	RootUri         string `json:"root_uri"`
+	CoverUri        string `json:"cover_uri"`
+	CoverPersistUri string `json:"cover_persist_uri"`
+	CoverSourceType int    `json:"cover_source_type"`
+	// 以下三个字段是 Android 侧的启动方式，桌面端没有对应概念，导出时恒为空串。
+	EmulatorPackage    string `json:"emulator_package"`
+	LaunchTarget       string `json:"launch_target"`
+	WinlatorLaunchMode string `json:"winlator_launch_mode"`
+	Description        string `json:"description"`
+	Tags               string `json:"tags"`
+	// GamehubLocalGameId 是 Android 侧无本地目录条目的身份键，桌面端没有对应概念。
+	GamehubLocalGameId string `json:"gamehub_local_game_id"`
+	GamehubLaunchMode  string `json:"gamehub_launch_mode"`
+	PlayStatus         string `json:"play_status"`
+	TotalPlayTime      int64  `json:"total_play_time"`
+	LastPlayedAt       int64  `json:"last_played_at"`
+	PlaytimeResetAt    int64  `json:"playtime_reset_at"` // 清零时间点（Unix 毫秒），0 表示从未清零
+	CreatedAt          int64  `json:"created_at"`
+	UpdatedAt          int64  `json:"updated_at"`
+	Hidden             bool   `json:"hidden"`
+	Favorite           bool   `json:"favorite"`
+	NSFW               bool   `json:"nsfw"`
 }
 
 type PlaySession struct {
-	SessionUUID string `json:"session_uuid"`
-	GameLocalID int64  `json:"game_local_id"`
-	StartTime   int64  `json:"start_time"`
-	EndTime     int64  `json:"end_time"`
-	Duration    int64  `json:"duration"`
-	CreatedAt   int64  `json:"created_at"`
-	UpdatedAt   int64  `json:"updated_at"`
+	SessionUUID         string `json:"session_uuid"`
+	GameLocalID         int64  `json:"game_local_id"`
+	GameRootUri         string `json:"game_root_uri"`
+	GamehubLocalGameId  string `json:"gamehub_local_game_id"`
+	GameTitle           string `json:"game_title"`
+	GameEngine          string `json:"game_engine"`
+	GameEmulatorPackage string `json:"game_emulator_package"`
+	StartTime           int64  `json:"start_time"`
+	EndTime             int64  `json:"end_time"`
+	Duration            int64  `json:"duration"` // 毫秒
+	LaunchType          string `json:"launch_type"`
+	DeviceID            string `json:"device_id"`
+	CreatedAt           int64  `json:"created_at"`
+	UpdatedAt           int64  `json:"updated_at"`
 }
 
 type MetadataCache struct {

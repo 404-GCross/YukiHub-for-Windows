@@ -175,9 +175,14 @@ Wine / Proton / CrossOver 工具链清理（2026-09-28 完成）：
       **均为毫秒**（原文误写为"duration 是秒、两者单位不同"），已按手机版
       `GameRepository` 源码更正并补记 Android 侧的清零过滤行为
 - [ ] 统一领域模型（三语标题 / 别名 / NSFW / 五态 / 标签 / 封面来源 / 元数据来源）复核
-- [ ] 导出方向：桌面版数据导出为 Android 版可识别的备份格式（**尚未开始**）
-- [ ] 合并语义测试：总时长取最大值、清零语义、会话 UUID 幂等、时区与单位
-- [ ] SAF 树 URI 与 Windows 绝对路径的映射与不可达降级
+- [x] 导出方向：`internal/service/exporter/yukihub.go` 产出 schema 5 快照
+      （`Build()` + gzip `Export()`）。单位毫秒换算、清零过滤、每游戏 30 条会话上限、
+      6→5 态映射、`favorite` / `hidden` / `nsfw` / `local_id` 回填；
+      `root_uri` 恒空（理由见迁移文档），无标题条目跳过。
+      测试：单测 8 项 + 集成 3 项（含**导出→导入往返**，用真实 importer 消费快照）
+- [ ] 合并语义测试：总时长取最大值、会话 UUID 幂等（导出侧已覆盖幂等与清零语义）
+- [x] SAF 树 URI 与 Windows 绝对路径的映射与不可达降级：导出侧不写 Windows 路径
+      （`root_uri` 恒空 → 对端按标题匹配）。遗留 `legacy_root_uri` 回填见迁移文档
 - [ ] 万级样例导入性能与 0 丢失验证
 
 **原阻塞项已决策**（见 [ADR-0002](../decisions/0002-android-authoritative-and-sync-backend.md)）：

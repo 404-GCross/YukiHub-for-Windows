@@ -179,7 +179,33 @@ Android 侧的 `root_uri` 可能是 `content://` 形式（SAF 树 URI），需�
 
 当 Android 侧只有 `games.total_play_time` 而没有对应明细会话时（历史数据），
 需要生成一条"聚合会话"，否则总时长会在同步过程中丢失。
-现有导入器已经实现了这一点（用确定性 UUID 生成），导出方向需要对称实现。
+现有导入器已经实现了这一点（用确定性 UUID 生成）。
+
+### 导出方向（桌面端 → Android）
+
+落点：`internal/service/exporter/yukihub.go`（`Build()` 生成快照、`Export()` 写 gzip 文件）。
+
+- 单位：桌面端 `play_sessions.duration` 是秒，导出时 × 1000 写入 `duration`；
+  `games.total_play_time` 由清零之后的会话求和后同样换算为毫秒。
+- 清零过滤：与 Android 侧 `exportPlaySessionsJson()` 对称，只导出
+  `COALESCE(end_time, start_time) >= playtime_reset_at` 的会话，避免清零历史复活。
+- 条数上限：每个游戏只导出最新的 30 条会话；`total_play_time` 仍按全部（清零之后）会话统计。
+- **`root_uri` 恒为空串**，不写 Windows 绝对路径。对端 Android 会走
+  `findByTitleForEmptyRoot` 按标题匹配；这与导入方向对称（桌面端导入 Android 备份时
+  同样不把对端的 `content://` 路径写进 `path` / `game_directory`）。
+  *遗留*：Android 源生条目（本地 `root_uri` 非空）经桌面端回导时仍可能在对端产生重复，
+  彻底解决需新增 `legacy_root_uri` 列保存对端原始路径并在导出时回填。
+- 无标题条目（`name` 去掉空白后为空）跳过导出：对端会把空标题落成"未命名游戏"，
+  只会制造无法匹配的占位记录。
+- `local_id` 由 `games.legacy_local_id` 还原（保留的 Android 整数 ID），非法或缺失时为 0。
+- `original_title` 取第一个非空别名；`tags` 用英文逗号拼接。
+- `play_status` 做 6 → 5 态映射：Android 没有"想玩"，`want_to_play` 降级为 `unplayed`。
+- `cover_uri` 只写 `http(s)://` 开头的网络封面，本地封面不迁移。
+- `favorite` 由系统收藏分类（`game_categories` 中的 `system:favorites`）导出。
+- `metadata_cache` 暂不导出：桌面端的元数据存储结构与 Android 侧的 `VnMetadata` JSON blob 不同，
+  待两端结构统一后再补。
+- 游玩记录另写入 `launch_type = "external"`、`device_id = "desktop"`，
+  `game_root_uri` 与游戏条目保持一致（空）。
 
 ## 六、封面
 
