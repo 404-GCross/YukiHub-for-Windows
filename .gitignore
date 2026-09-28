@@ -6,8 +6,6 @@ build/windows/nsis/*.exe
 build/windows/nsis/Output/
 build/windows/payload/
 build/windows/webview2bootstrapper/
-build/darwin/icons.icns
-build/linux/appimage/
 build/*.db
 node_modules
 frontend/dist
