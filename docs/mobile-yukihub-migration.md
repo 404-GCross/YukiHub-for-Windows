@@ -175,6 +175,68 @@ Android 侧的 `root_uri` 可能是 `content://` 形式（SAF 树 URI），需�
 | 清零语义 | `playtime_reset_at` 之前的历史会话不计入统计，但记录本身保留 |
 | 冲突方向 | 由同一套算法裁决，不允许两端各有一份实现 |
 
+### 现状核对（2026-09-28，导入侧合并已落地后更新）
+
+上表是**目标语义**。逐条核对桌面端实现与目标语义的差距：
+
+**① 「取最大值」——导入方向已落地（`merge` / `merge_sessions` 动作）**
+
+桌面端没有游戏级 `total_play_time` 列，总时长由会话聚合而来，"取最大值"
+由两个机制组合实现：
+
+1. **会话并集去重**：合并导入把快照会话写入已有游戏，按
+   `(game_id, start_time, end_time)` 去重（`addImportedItemSessions` 的
+   `NOT EXISTS`），两端相同的物理会话只留一份；
+2. **聚合补偿**：快照 `total_play_time` 超过已录会话总和的差额，
+   补成一条确定性 UUID 的聚合会话（`convertYukiHubSessions`）。
+
+最终桌面总时长 = max(桌面已录时长, 快照 total_play_time)。
+测试：`TestYukiHubImportMergeSessionsTakesMaxPlaytime`。
+
+注意：`skip`（默认）动作下命中条目仍整条跳过，记录不写入——这是用户选择，
+不算语义缺口。导入器此前丢弃 `samePathAction` 参数（无合并路径）已修复。
+
+**② 标题匹配与预览/导入不一致——已修复**
+
+Android 侧 `root_uri` 为空时走 `findByTitleForEmptyRoot` **纯标题匹配**，
+不管本地游戏有没有路径。桌面端导入器此前有两处偏差：
+
+- `findExistingGameConflict` 的 NameAndPath 分支要求路径相等，
+  桌面端**有本机路径**的同名游戏不命中 → 快照被导入成**重复条目**；
+- `PreviewYukiHubImport` 早已做纯标题匹配，导入却新建 —— 预览显示
+  "已存在"、实际却重复导入，两处行为矛盾。
+
+修复：YukiHub 导入器在通用判定未命中时追加纯标题匹配
+（`existingNames` 命中即视为同一条目），与 Android 侧语义和预览行为对齐。
+副作用：skip 动作下，桌面端手动添加的同名游戏（带路径）也会被跳过——
+这是标题匹配语义的固有代价，Android 侧同样如此。
+
+**③ 会话幂等的实际保证是"条目级"而非"键级"**
+
+契约要求以 `session_uuid` 为幂等键。实际实现是两层近似：
+条目被跳过（skip 或 merge 之外的路径）时会话根本不会写入；
+条目合并时按 `(game_id, start_time, end_time)` 去重。数据库层没有
+`session_uuid` 唯一约束，`play_sessions.id`（= session_uuid）是主键但
+去重判断不查它。正常流程下等价；极端情况（同 UUID 不同时间戳的手工数据）
+会插入重复。记录在案，暂不修——需要唯一约束级别的保证时再上。
+
+**④ 游玩状态（play_status）在 merge 动作下不更新**
+
+`updateImportedItemMetadata` 的 UPDATE 不含 `status` 列，合并元数据时
+桌面端游玩状态保持不变。这是通用导入路径的既有行为（PotatoVN 相同）。
+Android 为权威源的状态合并是否要覆盖，待决策。
+
+**⑤ "想玩"在往返后消失（契约层面的信息损失）**
+
+桌面端 6 态、Android 5 态：导入方向 `unplayed` 无法区分"想玩"与"未开始"
+（落 `not_started`）；导出方向 `want_to_play` 降级为 `unplayed`。
+双向都无法还原。若要保守语义，快照需额外携带对端原始状态。暂不处理。
+
+**⑥ 导入时不重复下载封面**
+
+`convertYukiHubGame` 把 `cover_source_url` 也设为网络封面地址，
+命中的条目会被"整条跳过"——即封面已在本地时不会重新下载，符合契约。
+
 ### 聚合补偿
 
 当 Android 侧只有 `games.total_play_time` 而没有对应明细会话时（历史数据），

@@ -100,9 +100,10 @@ func (y *YukiHubImporter) Import(backupPath string, skipNoPath bool, samePathAct
 	return y.ImportSelected(backupPath, skipNoPath, samePathAction, nil)
 }
 
-func (y *YukiHubImporter) ImportSelected(backupPath string, skipNoPath bool, _ string, selections []vo.ImportSelection) (ImportResult, error) {
+func (y *YukiHubImporter) ImportSelected(backupPath string, skipNoPath bool, samePathAction string, selections []vo.ImportSelection) (ImportResult, error) {
 	result := newImportResult()
 	selectionFilter := newImportSelectionFilter(selections)
+	samePathAction = NormalizeSamePathAction(samePathAction)
 
 	backup, err := loadYukiHubBackup(backupPath)
 	if err != nil {
@@ -135,23 +136,67 @@ func (y *YukiHubImporter) ImportSelected(backupPath string, skipNoPath bool, _ s
 			result.SkippedNames = append(result.SkippedNames, gameName+" (无路径)")
 			continue
 		}
-		if skipExistingGame(y.deps.Ctx, "ImportFromYukiHub", &result, existingGames, existingNames, existingPaths, gameName, "") {
-			continue
+
+		// 与 PotatoVN 导入器对称：命中已有条目时按用户选择跳过或合并。
+		// 合并会话是「总时长取最大值」的落地路径——两端会话取并集去重后，
+		// 聚合补偿机制会把 total_play_time 与已录会话的差额补成一条聚合会话。
+		action := ImportActionCreate
+		existingGameID := ""
+		conflict, conflictExists := findExistingGameConflict(existingGames, existingNames, existingPaths, gameName, "")
+		if !conflictExists {
+			// 与 Android 侧 findByTitleForEmptyRoot 对齐：快照条目没有路径，
+			// 纯标题命中即视为同一条目（即使桌面端游戏带有本机路径）。
+			// 通用判定的 NameAndPath 分支要求路径相等，会漏掉这种情况并产生重复条目。
+			if existingID, ok := existingNames[strings.ToLower(gameName)]; ok {
+				for _, game := range existingGames {
+					if game.ID == existingID {
+						conflict = existingGameConflict{Type: ConflictTypeNameAndPath, Game: game}
+						conflictExists = true
+						break
+					}
+				}
+			}
+		}
+		if conflictExists {
+			mergeable := conflict.Type == ConflictTypeSamePath || conflict.Type == ConflictTypeNameAndPath
+			if !mergeable || !IsSamePathMergeAction(samePathAction) {
+				result.Skipped++
+				if conflict.Type == ConflictTypeNameAndPath {
+					result.SkippedNames = append(result.SkippedNames, gameName+" (已存在)")
+				} else {
+					result.SkippedNames = append(result.SkippedNames, gameName+" (路径已存在: "+conflict.Game.Name+")")
+				}
+				continue
+			}
+			action = ImportActionUpdateExisting
+			if samePathAction == SamePathActionMergeSessions {
+				action = ImportActionMergeSessions
+			}
+			existingGameID = conflict.Game.ID
 		}
 
 		game, sessions, tags := convertYukiHubGame(sourceGame, metadataItems, primary, sessionsByGame[sourceGame.LocalID], backup.CreatedAt)
+		if TargetsExistingGame(action) {
+			game.ID = existingGameID
+			for i := range sessions {
+				sessions[i].GameID = existingGameID
+			}
+		}
 		items = append(items, ImportItem{
 			Source: vo.GameMetadataFromWebVO{
 				Source: game.SourceType,
 				Game:   game,
 				Tags:   tagsFromNames(tags),
 			},
-			Sessions:    sessions,
-			DisplayName: gameName,
-			Action:      ImportActionCreate,
+			Sessions:       sessions,
+			DisplayName:    gameName,
+			Action:         action,
+			ExistingGameID: existingGameID,
 		})
-		updateExistingIndexes(existingNames, existingPaths, game, gameName, "")
-		existingGames = append(existingGames, game)
+		if action == ImportActionCreate {
+			updateExistingIndexes(existingNames, existingPaths, game, gameName, "")
+			existingGames = append(existingGames, game)
+		}
 	}
 
 	batchResult, err := addImportedItems(y.deps, items)
