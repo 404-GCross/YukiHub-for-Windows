@@ -165,6 +165,27 @@ Wine / Proton / CrossOver 工具链清理（2026-09-28 完成）：
 
 设计细节见 [mobile-yukihub-migration.md](mobile-yukihub-migration.md)。
 
+### 进展
+
+- [x] 契约字段落地（迁移 177，导入方向）：`legacy_local_id`、`source_device_id`、
+      `playtime_reset_at`、`hidden` 四个列与 `models.Game` 字段，贯穿
+      建表 / INSERT / SELECT / UPDATE / 云同步快照 / 测试 helper；导入器正确填充，
+      `playtime_reset_at` 为 0 时落 NULL（提交 e520b1e）
+- [x] 修正契约文档的单位错误：`play_sessions.duration` 与 `games.total_play_time`
+      **均为毫秒**（原文误写为"duration 是秒、两者单位不同"），已按手机版
+      `GameRepository` 源码更正并补记 Android 侧的清零过滤行为
+- [ ] 统一领域模型（三语标题 / 别名 / NSFW / 五态 / 标签 / 封面来源 / 元数据来源）复核
+- [ ] 导出方向：桌面版数据导出为 Android 版可识别的备份格式（**尚未开始**）
+- [ ] 合并语义测试：总时长取最大值、清零语义、会话 UUID 幂等、时区与单位
+- [ ] SAF 树 URI 与 Windows 绝对路径的映射与不可达降级
+- [ ] 冲突裁决收敛为一套实现（与 待决策问题 3 相关，需先决策）
+- [ ] 万级样例导入性能与 0 丢失验证
+
+**阻塞项**：`docs/mobile-yukihub-migration.md` 第七节有 4 个待决策问题
+（权威源、是否复用 Android 同步服务、自有云同步去留、元数据缓存结构）。
+其中第 3 项（云同步算法择一）会决定"冲突裁决一套实现"怎么做，需要产品决策。
+文件级导入导出（验收 2、3）不依赖这些决策，可先行。
+
 ## 阶段 3：产品层重建
 
 目标：界面与交互是 YukiHub，而不是"改了名字的 LunaBox"。

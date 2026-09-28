@@ -36,6 +36,11 @@
 - 默认云备份后端由上游绑定的托管服务改为 WebDAV（用户自持存储）
 - 应用图标与界面品牌素材：EXE/ICO/启动窗口采用手机版 YukiHub 图标，
   侧边栏 logo 与托盘图标改为雪花标识（SVG 组件与位图同一几何参数生成）
+- Android 版数据契约字段落地（迁移 177）：`legacy_local_id`、`source_device_id`、
+  `playtime_reset_at`、`hidden` 四个列，导入 Android 备份时正确持久化
+  （此前会静默丢弃，导致清零历史复活、跨设备去重退化）
+- 契约文档更正：Android 的 `play_sessions.duration` 与 `games.total_play_time`
+  均为毫秒（原文档误写为"duration 是秒"），已按手机版源码核实更正
 - 版本号起点为 0.1.0，与上游版本线解耦
 - 全仓库 Go 代码重新执行 `gofmt`（模块改名会影响导入排序）
 
