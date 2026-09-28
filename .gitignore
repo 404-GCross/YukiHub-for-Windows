@@ -31,3 +31,6 @@ yukihub-docs
 openspec
 .windsurf/
 参考项目
+
+# Wails 生成的 Windows 资源对象（构建期产物）
+*.syso
