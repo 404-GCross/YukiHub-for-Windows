@@ -828,92 +828,6 @@ export class SteamBatchImportResult {
     }
 }
 
-export class SteamCompatibilityInfo {
-    "supported": boolean;
-    "steam_installed": boolean;
-    "steam_root": string;
-    "app_id": string;
-    "proton_prefix": string;
-    "current_tool": string;
-    "default_tool": string;
-    "tools": SteamCompatibilityTool[];
-
-    /** Creates a new SteamCompatibilityInfo instance. */
-    constructor($$source: Partial<SteamCompatibilityInfo> = {}) {
-        if (!("supported" in $$source)) {
-            this["supported"] = false;
-        }
-        if (!("steam_installed" in $$source)) {
-            this["steam_installed"] = false;
-        }
-        if (!("steam_root" in $$source)) {
-            this["steam_root"] = "";
-        }
-        if (!("app_id" in $$source)) {
-            this["app_id"] = "";
-        }
-        if (!("proton_prefix" in $$source)) {
-            this["proton_prefix"] = "";
-        }
-        if (!("current_tool" in $$source)) {
-            this["current_tool"] = "";
-        }
-        if (!("default_tool" in $$source)) {
-            this["default_tool"] = "";
-        }
-        if (!("tools" in $$source)) {
-            this["tools"] = [];
-        }
-
-        Object.assign(this, $$source);
-    }
-
-    /**
-     * Creates a new SteamCompatibilityInfo instance from a string or object.
-     */
-    static createFrom($$source: any = {}): SteamCompatibilityInfo {
-        const $$createField7_0 = $$createType14;
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        if ("tools" in $$parsedSource) {
-            $$parsedSource["tools"] = $$createField7_0($$parsedSource["tools"]);
-        }
-        return new SteamCompatibilityInfo($$parsedSource as Partial<SteamCompatibilityInfo>);
-    }
-}
-
-export class SteamCompatibilityTool {
-    "name": string;
-    "display_name": string;
-    "path": string;
-    "built_in": boolean;
-
-    /** Creates a new SteamCompatibilityTool instance. */
-    constructor($$source: Partial<SteamCompatibilityTool> = {}) {
-        if (!("name" in $$source)) {
-            this["name"] = "";
-        }
-        if (!("display_name" in $$source)) {
-            this["display_name"] = "";
-        }
-        if (!("path" in $$source)) {
-            this["path"] = "";
-        }
-        if (!("built_in" in $$source)) {
-            this["built_in"] = false;
-        }
-
-        Object.assign(this, $$source);
-    }
-
-    /**
-     * Creates a new SteamCompatibilityTool instance from a string or object.
-     */
-    static createFrom($$source: any = {}): SteamCompatibilityTool {
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        return new SteamCompatibilityTool($$parsedSource as Partial<SteamCompatibilityTool>);
-    }
-}
-
 export class SteamImportResult {
     "status": SteamLaunchStatus;
     "imported": boolean;
@@ -1096,7 +1010,7 @@ export class UpdateCheckResult {
      */
     static createFrom($$source: any = {}): UpdateCheckResult {
         const $$createField4_0 = $$createType7;
-        const $$createField5_0 = $$createType15;
+        const $$createField5_0 = $$createType13;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("changelog" in $$parsedSource) {
             $$parsedSource["changelog"] = $$createField4_0($$parsedSource["changelog"]);
@@ -1122,6 +1036,4 @@ const $$createType9 = PortableCLIStatus.createFrom;
 const $$createType10 = SteamLaunchStatus.createFrom;
 const $$createType11 = SteamBatchImportItemResult.createFrom;
 const $$createType12 = $Create.Array($$createType11);
-const $$createType13 = SteamCompatibilityTool.createFrom;
-const $$createType14 = $Create.Array($$createType13);
-const $$createType15 = $Create.Map($Create.Any, $Create.Any);
+const $$createType13 = $Create.Map($Create.Any, $Create.Any);

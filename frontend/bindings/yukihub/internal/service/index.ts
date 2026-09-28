@@ -72,8 +72,6 @@ export {
     StartupFailure,
     SteamBatchImportItemResult,
     SteamBatchImportResult,
-    SteamCompatibilityInfo,
-    SteamCompatibilityTool,
     SteamImportResult,
     SteamLaunchStatus,
     UpdateApplyResult,

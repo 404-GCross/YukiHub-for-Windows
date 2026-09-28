@@ -383,7 +383,6 @@ function LibraryPage() {
   );
   const patchLiveConfig = useAppStore(state => state.patchLiveConfig);
   const fetchHomeData = useAppStore(state => state.fetchHomeData);
-  const platformGOOS = useAppStore(state => state.platformGOOS);
   const handleShowSortFieldChange = useCallback(
     (value: boolean) => {
       void patchLiveConfig({ show_sort_field_on_cover: value });
@@ -1254,33 +1253,31 @@ function LibraryPage() {
             )}
             batchActions={(
               <>
-                {platformGOOS === "windows" && (
-                  <button
-                    type="button"
-                    aria-label={t("library.batchImportToSteam")}
-                    onClick={handleBatchImportToSteam}
-                    disabled={
-                      selectedGameIds.length === 0 || isBatchImportingToSteam
-                    }
-                    className={`glass-panel flex items-center gap-2 px-3 py-2 text-sm
+                <button
+                  type="button"
+                  aria-label={t("library.batchImportToSteam")}
+                  onClick={handleBatchImportToSteam}
+                  disabled={
+                    selectedGameIds.length === 0 || isBatchImportingToSteam
+                  }
+                  className={`glass-panel flex items-center gap-2 px-3 py-2 text-sm
                           bg-white dark:bg-brand-800 border border-brand-200 dark:border-brand-700
                           rounded-lg hover:bg-brand-100 dark:hover:bg-brand-700 text-brand-700 dark:text-brand-300
                           ${
-                  selectedGameIds.length === 0
-                  || isBatchImportingToSteam
-                    ? "opacity-50 cursor-not-allowed"
-                    : ""
-                  }`}
-                  >
-                    <div
-                      className={`${
-                        isBatchImportingToSteam
-                          ? "i-mdi-loading animate-spin"
-                          : "i-mdi-steam"
-                      } text-lg`}
-                    />
-                  </button>
-                )}
+              selectedGameIds.length === 0
+              || isBatchImportingToSteam
+                ? "opacity-50 cursor-not-allowed"
+                : ""
+              }`}
+                >
+                  <div
+                    className={`${
+                      isBatchImportingToSteam
+                        ? "i-mdi-loading animate-spin"
+                        : "i-mdi-steam"
+                    } text-lg`}
+                  />
+                </button>
                 {/* 批量更新状态 */}
                 <BetterDropdownMenu
                   title={t("library.setStatus")}

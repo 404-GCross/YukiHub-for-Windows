@@ -180,7 +180,6 @@ function GameDetailPage() {
   const navigate = useNavigate();
   const { gameId } = Route.useParams();
   const config = useAppStore(state => state.config);
-  const platformGOOS = useAppStore(state => state.platformGOOS);
   const startGame = useAppStore(state => state.startGame);
   const fetchHomeData = useAppStore(state => state.fetchHomeData);
   const gameRuntime = useAppStore(state => state.gameRuntimes[gameId]);
@@ -1305,18 +1304,9 @@ function GameDetailPage() {
       icon: "i-mdi-steam",
     });
   }
-  if (platformGOOS === "darwin") {
-    launchOptions.splice(1, 0, {
-      key: enums.LaunchMode.LaunchModeCompatibility,
-      label: t("gameCard.startWithCompatibility"),
-      description: t("gameCard.compatibilityLaunchDesc"),
-      icon: "i-mdi-application-brackets-outline",
-    });
-  }
+  // 「兼容模式」是 macOS 的 Wine 启动；历史数据若带入该值，回落为普通启动。
   const selectedLaunchMode
-    = (launchMode === enums.LaunchMode.LaunchModeSteam && !supportsSteamLaunch)
-      || (launchMode === enums.LaunchMode.LaunchModeCompatibility
-        && platformGOOS !== "darwin")
+    = launchMode === enums.LaunchMode.LaunchModeCompatibility
       || (launchMode === enums.LaunchMode.LaunchModeAdmin && !supportsAdminLaunch)
       ? enums.LaunchMode.LaunchModeNormal
       : launchMode;
@@ -1659,7 +1649,6 @@ function GameDetailPage() {
         <GameLaunchPanel
           game={game}
           config={config || undefined}
-          goos={platformGOOS}
           onGameChange={updateGameState}
           onLaunchModeChange={handleDefaultLaunchModeChange}
           onRefreshSteamSettings={handleRefreshSteamSettings}

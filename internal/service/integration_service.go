@@ -9,7 +9,6 @@ import (
 	"yukihub/internal/models"
 	"yukihub/internal/service/integrator"
 	"yukihub/internal/utils"
-	"yukihub/internal/utils/apputils"
 	"yukihub/internal/utils/dbutils"
 )
 
@@ -43,24 +42,6 @@ type SteamBatchImportResult struct {
 	ExistingCount int                          `json:"existing_count"`
 	FailedCount   int                          `json:"failed_count"`
 	BackupPath    string                       `json:"backup_path"`
-}
-
-type SteamCompatibilityTool struct {
-	Name        string `json:"name"`
-	DisplayName string `json:"display_name"`
-	Path        string `json:"path"`
-	BuiltIn     bool   `json:"built_in"`
-}
-
-type SteamCompatibilityInfo struct {
-	Supported      bool                     `json:"supported"`
-	SteamInstalled bool                     `json:"steam_installed"`
-	SteamRoot      string                   `json:"steam_root"`
-	AppID          string                   `json:"app_id"`
-	ProtonPrefix   string                   `json:"proton_prefix"`
-	CurrentTool    string                   `json:"current_tool"`
-	DefaultTool    string                   `json:"default_tool"`
-	Tools          []SteamCompatibilityTool `json:"tools"`
 }
 
 type IntegrationService struct {
@@ -229,63 +210,6 @@ func (s *IntegrationService) BatchImportGamesToSteam(gameIDs []string) (SteamBat
 		return SteamBatchImportResult{}, err
 	}
 	return response, nil
-}
-
-func (s *IntegrationService) GetGameSteamCompatibility(gameID string) (SteamCompatibilityInfo, error) {
-	game, err := s.getGame(gameID)
-	if err != nil {
-		return SteamCompatibilityInfo{}, err
-	}
-	info, err := integrator.GetSteamCompatibilityInfo(s.ctx, game)
-	if err != nil {
-		return SteamCompatibilityInfo{}, err
-	}
-	return steamCompatibilityInfoFromIntegrator(info), nil
-}
-
-func (s *IntegrationService) SetGameSteamCompatibilityTool(gameID string, toolName string) (SteamCompatibilityInfo, error) {
-	game, err := s.getGame(gameID)
-	if err != nil {
-		return SteamCompatibilityInfo{}, err
-	}
-	info, err := integrator.SetSteamCompatibilityTool(s.ctx, game, toolName)
-	if err != nil {
-		return SteamCompatibilityInfo{}, err
-	}
-	return steamCompatibilityInfoFromIntegrator(info), nil
-}
-
-func (s *IntegrationService) RestartSteamClient() error {
-	return integrator.RestartSteamClient(s.ctx)
-}
-
-func (s *IntegrationService) OpenGameSteamProtonPrefix(gameID string) (string, error) {
-	game, err := s.getGame(gameID)
-	if err != nil {
-		return "", err
-	}
-	info, err := integrator.GetSteamCompatibilityInfo(s.ctx, game)
-	if err != nil {
-		return "", err
-	}
-	if !info.Supported {
-		return "", fmt.Errorf("Steam Proton Prefix 目录仅支持 Linux")
-	}
-	if !info.SteamInstalled {
-		return "", fmt.Errorf("未检测到 Linux Steam 客户端")
-	}
-	if strings.TrimSpace(info.AppID) == "" {
-		return "", fmt.Errorf("该游戏尚未关联 Steam")
-	}
-
-	prefix := strings.TrimSpace(info.ProtonPrefix)
-	if prefix == "" {
-		return "", fmt.Errorf("未找到该游戏的 Proton Prefix 目录，请先通过 Steam 启动一次游戏")
-	}
-	if err := apputils.OpenDirectory(prefix); err != nil {
-		return "", fmt.Errorf("打开 Proton Prefix 目录失败: %w", err)
-	}
-	return prefix, nil
 }
 
 func (s *IntegrationService) getGame(gameID string) (models.Game, error) {
@@ -462,27 +386,5 @@ func steamLaunchStatusFromIntegrator(status integrator.SteamLaunchStatus) SteamL
 		LaunchKind:     status.LaunchKind,
 		UserID:         status.UserID,
 		ProtonPrefix:   status.ProtonPrefix,
-	}
-}
-
-func steamCompatibilityInfoFromIntegrator(info integrator.SteamCompatibilityInfo) SteamCompatibilityInfo {
-	tools := make([]SteamCompatibilityTool, 0, len(info.Tools))
-	for _, tool := range info.Tools {
-		tools = append(tools, SteamCompatibilityTool{
-			Name:        tool.Name,
-			DisplayName: tool.DisplayName,
-			Path:        tool.Path,
-			BuiltIn:     tool.BuiltIn,
-		})
-	}
-	return SteamCompatibilityInfo{
-		Supported:      info.Supported,
-		SteamInstalled: info.SteamInstalled,
-		SteamRoot:      info.SteamRoot,
-		AppID:          info.AppID,
-		ProtonPrefix:   info.ProtonPrefix,
-		CurrentTool:    info.CurrentTool,
-		DefaultTool:    info.DefaultTool,
-		Tools:          tools,
 	}
 }
