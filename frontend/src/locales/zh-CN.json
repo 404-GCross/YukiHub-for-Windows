@@ -1043,12 +1043,10 @@
     },
     "portableSetup": {
       "description": "便携版和 AppImage 需要单独注册 yukihub://；可在这里为当前用户注册协议并安装 yukihubcli，无需管理员权限。",
-      "descriptionMac": "yukihub:// 由 App 包与 LaunchServices 管理；可在这里把 yukihubcli 安装为用户级符号链接。",
       "loading": "正在读取状态...",
       "statusLabel": "状态",
       "protocolTitle": "yukihub:// 协议处理器",
       "protocolHint": "把协议注册到当前 YukiHub 启动入口；移动便携版目录或 AppImage 文件后需要重新注册。",
-      "protocolHintMac": "系统根据 App 包信息管理 yukihub://，无需手动写入注册表。",
       "registeredPathLabel": "已注册路径",
       "currentPathLabel": "当前可执行文件",
       "registerProtocol": "注册协议",
@@ -1056,16 +1054,13 @@
       "unregisterProtocol": "取消注册",
       "cliTitle": "yukihubcli 命令行工具",
       "cliHint": "把 yukihubcli 安装到用户命令路径，便于在终端中直接执行 yukihubcli 命令。",
-      "cliHintMac": "创建 ~/.local/bin/yukihubcli 符号链接，指向 App 包内的 yukihubcli。",
       "cliPathLabel": "yukihubcli 路径",
       "cliInstallPathLabel": "安装位置",
       "cliMissingHint": "未在当前应用包中找到 yukihubcli，请确认包已完整解压或完整构建。",
-      "cliMissingHintMac": "未在 App 包内找到 yukihubcli，请确认 macOS 构建已包含 Contents/Resources/bin/yukihubcli。",
       "registerCli": "添加到 PATH",
       "reregisterCli": "重新添加",
       "unregisterCli": "从 PATH 移除",
       "pathReopenHint": "PATH 变更后，已打开的终端需要重新启动才会生效。",
-      "pathReopenHintMac": "如果终端仍无法直接执行 yukihubcli，请确认 ~/.local/bin 已加入 PATH。",
       "status": {
         "registered": "已注册",
         "notRegistered": "未注册",
@@ -1159,8 +1154,7 @@
         "magpieSelectFailed": "选择 Magpie 失败"
       },
       "muteInBackground": "游戏在后台时静音",
-      "muteInBackgroundHint": "启用后，通过 YukiHub 启动的游戏失去前台焦点时会静音，返回游戏时恢复声音。",
-      "muteInBackgroundHintMacOS": "启用后，通过 YukiHub 启动的游戏失去前台焦点时会静音，返回游戏时恢复声音。macOS 首次使用时可能请求系统音频录制权限。"
+      "muteInBackgroundHint": "启用后，通过 YukiHub 启动的游戏失去前台焦点时会静音，返回游戏时恢复声音。"
     },
     "metadata": {
       "sourceTitle": "元数据拉取来源",

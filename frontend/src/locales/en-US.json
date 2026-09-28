@@ -1043,12 +1043,10 @@
     },
     "portableSetup": {
       "description": "Portable and AppImage builds must register yukihub:// separately. Register it for the current user and install yukihubcli here without admin privileges.",
-      "descriptionMac": "The app bundle and LaunchServices manage yukihub://. You can also install yukihubcli as a user-level symlink here.",
       "loading": "Loading status...",
       "statusLabel": "Status",
       "protocolTitle": "yukihub:// Protocol Handler",
       "protocolHint": "Register the protocol to the current YukiHub launch entry. Register it again after moving the portable directory or AppImage file.",
-      "protocolHintMac": "The system manages yukihub:// from the app bundle metadata; no registry action is needed.",
       "registeredPathLabel": "Registered path",
       "currentPathLabel": "Current executable",
       "registerProtocol": "Register protocol",
@@ -1056,16 +1054,13 @@
       "unregisterProtocol": "Unregister",
       "cliTitle": "yukihubcli Command-Line Tool",
       "cliHint": "Installs yukihubcli into your user command path so you can run `yukihubcli` directly from a terminal.",
-      "cliHintMac": "Creates a ~/.local/bin/yukihubcli symlink pointing to the yukihubcli binary inside the app bundle.",
       "cliPathLabel": "yukihubcli path",
       "cliInstallPathLabel": "Install path",
       "cliMissingHint": "yukihubcli was not found in the current app package. Make sure the package was extracted or built in full.",
-      "cliMissingHintMac": "yukihubcli was not found inside the app bundle. Make sure the macOS build includes Contents/Resources/bin/yukihubcli.",
       "registerCli": "Add to PATH",
       "reregisterCli": "Add again",
       "unregisterCli": "Remove from PATH",
       "pathReopenHint": "PATH changes only apply to terminals opened after this action.",
-      "pathReopenHintMac": "If your terminal still cannot run yukihubcli directly, make sure ~/.local/bin is in PATH.",
       "status": {
         "registered": "Registered",
         "notRegistered": "Not registered",
@@ -1159,8 +1154,7 @@
         "magpieSelectFailed": "Failed to select Magpie"
       },
       "muteInBackground": "Mute Games in the Background",
-      "muteInBackgroundHint": "Mutes games launched through YukiHub when they lose foreground focus and restores sound when you return to them.",
-      "muteInBackgroundHintMacOS": "Mutes games launched through YukiHub when they lose foreground focus and restores sound when you return to them. macOS may request System Audio Recording permission on first use."
+      "muteInBackgroundHint": "Mutes games launched through YukiHub when they lose foreground focus and restores sound when you return to them."
     },
     "metadata": {
       "sourceTitle": "Metadata Sources",

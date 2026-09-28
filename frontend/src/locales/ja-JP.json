@@ -1043,12 +1043,10 @@
     },
     "portableSetup": {
       "description": "ポータブル版と AppImage では yukihub:// を個別に登録する必要があります。ここから現在のユーザー用に登録し、管理者権限なしで yukihubcli をインストールできます。",
-      "descriptionMac": "yukihub:// はアプリバンドルと LaunchServices が管理します。ここから yukihubcli をユーザー用シンボリックリンクとしてインストールできます。",
       "loading": "状態を読み込み中...",
       "statusLabel": "状態",
       "protocolTitle": "yukihub:// プロトコルハンドラー",
       "protocolHint": "現在の YukiHub 起動エントリにプロトコルを登録します。ポータブルディレクトリまたは AppImage ファイルを移動した場合は再登録してください。",
-      "protocolHintMac": "システムがアプリバンドル情報から yukihub:// を管理するため、手動登録は不要です。",
       "registeredPathLabel": "登録済みパス",
       "currentPathLabel": "現在の実行ファイル",
       "registerProtocol": "プロトコルを登録",
@@ -1056,16 +1054,13 @@
       "unregisterProtocol": "登録を解除",
       "cliTitle": "yukihubcli コマンドラインツール",
       "cliHint": "yukihubcli をユーザーのコマンドパスにインストールし、ターミナルから直接実行できるようにします。",
-      "cliHintMac": "アプリバンドル内の yukihubcli を指す ~/.local/bin/yukihubcli シンボリックリンクを作成します。",
       "cliPathLabel": "yukihubcli のパス",
       "cliInstallPathLabel": "インストール先",
       "cliMissingHint": "現在のアプリパッケージ内に yukihubcli が見つかりません。パッケージが完全に展開またはビルドされていることを確認してください。",
-      "cliMissingHintMac": "アプリバンドル内に yukihubcli が見つかりません。macOS ビルドに Contents/Resources/bin/yukihubcli が含まれていることを確認してください。",
       "registerCli": "PATH に追加",
       "reregisterCli": "再追加",
       "unregisterCli": "PATH から削除",
       "pathReopenHint": "PATH の変更はこの後に開くターミナルにのみ反映されます。",
-      "pathReopenHintMac": "ターミナルで yukihubcli を直接実行できない場合は、~/.local/bin が PATH に含まれているか確認してください。",
       "status": {
         "registered": "登録済み",
         "notRegistered": "未登録",
@@ -1159,8 +1154,7 @@
         "magpieSelectFailed": "Magpie の選択に失敗しました"
       },
       "muteInBackground": "バックグラウンドのゲームをミュート",
-      "muteInBackgroundHint": "YukiHub から起動したゲームが前面のフォーカスを失うとミュートし、ゲームに戻ると音声を復元します。",
-      "muteInBackgroundHintMacOS": "YukiHub から起動したゲームが前面のフォーカスを失うとミュートし、ゲームに戻ると音声を復元します。初回使用時に macOS がシステムオーディオ録音の許可を求める場合があります。"
+      "muteInBackgroundHint": "YukiHub から起動したゲームが前面のフォーカスを失うとミュートし、ゲームに戻ると音声を復元します。"
     },
     "metadata": {
       "sourceTitle": "メタデータ取得ソース",

@@ -239,13 +239,8 @@ function GameDetailPage() {
   const latestGameData = useRef<models.Game | null>(null);
   const skipNextAutoSave = useRef(false);
   latestGameData.current = game;
-  const supportsAdminLaunch = platformGOOS === "windows";
-  const supportsSteamLaunch
-    = platformGOOS === "windows"
-      || platformGOOS === "linux"
-      || (platformGOOS === "darwin"
-        && game?.steam_launch_kind === "native"
-        && Boolean(game?.steam_launch_id));
+  const supportsAdminLaunch = true;
+  const supportsSteamLaunch = true;
 
   const updateGameState = useCallback(
     (
@@ -1744,7 +1739,7 @@ function GameDetailPage() {
         status={steamStatus}
         isChecking={isCheckingSteam}
         isImporting={isImportingSteam}
-        canRestartSteam={platformGOOS === "linux"}
+        canRestartSteam={false}
         onClose={handleCloseSteamModal}
         onImport={handleImportGameToSteam}
         onRetry={handleRetrySteamStatus}

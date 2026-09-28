@@ -11,18 +11,15 @@ const PROCESS_DETECTION_TIMEOUT_SECONDS = [60, 120, 180, 300, 600] as const;
 interface GameSettingsPanelProps {
   formData: appconf.AppConfig;
   onChange: (data: appconf.AppConfig) => void;
-  goos?: string;
   backgroundProcessMuteSupported?: boolean;
 }
 
 export function GameSettingsPanel({
   formData,
   onChange,
-  goos,
   backgroundProcessMuteSupported = false,
 }: GameSettingsPanelProps) {
   const { t } = useTranslation();
-  const isDarwin = goos === "darwin";
   const processDetectionTimeoutOptions = PROCESS_DETECTION_TIMEOUT_SECONDS.map(
     seconds => ({
       value: String(seconds),
@@ -95,11 +92,7 @@ export function GameSettingsPanel({
                 {t("settings.game.muteInBackground")}
               </label>
               <p className="text-xs text-brand-500 dark:text-brand-400">
-                {t(
-                  isDarwin
-                    ? "settings.game.muteInBackgroundHintMacOS"
-                    : "settings.game.muteInBackgroundHint",
-                )}
+                {t("settings.game.muteInBackgroundHint")}
               </p>
             </div>
             <BetterSwitch

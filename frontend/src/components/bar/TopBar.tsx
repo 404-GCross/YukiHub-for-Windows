@@ -22,8 +22,7 @@ export function TopBar() {
   const isMaximizedRef = useRef(isMaximized);
   isMaximizedRef.current = isMaximized;
 
-  const isMac = platform === "macos";
-  const showWindowControls = platform !== null && !isMac;
+  const showWindowControls = platform !== null;
 
   function scheduleForcedWindowStateSync() {
     for (const delay of WINDOW_STATE_DRAG_SYNC_DELAYS_MS) {

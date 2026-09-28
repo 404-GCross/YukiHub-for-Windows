@@ -33,7 +33,14 @@
 4. NSIS 安装包可以完成"安装 → 启动 → 卸载"，且卸载后用户数据目录按预期处理。
    **（待 NSIS 就位后验证）**
 5. macOS / iOS / Linux 相关代码与 CI 矩阵移除完毕。**（已完成，见下方）**
-6. 界面上的"通用跨平台"表述与残留的上游素材占位清理完毕。
+6. 界面上的"通用跨平台"表述与残留的上游素材占位清理完毕。**（进行中）**
+   - [x] `PortableSetupPanel`（5 处三元 + 1 处条件渲染）、`GameSettingsPanel`、
+         `TopBar`、`routes/__root.tsx`、`routes/game.tsx`、`routes/settings.tsx`
+         的平台分支；四语言删除 6 个 macOS 专属孤儿键
+   - [ ] `GameLaunchPanel` 约 20 处 `isDarwin` / `isLinux` 及配套的 Wine runner
+         选择 UI（Windows 上这些分支恒不命中、UI 恒不渲染）
+   - [ ] `UpdateDialog` 的 3 个平台变量与恒不显示的下载按钮区块
+   - [ ] 复查是否还有上游素材占位残留
 
 ### 阶段 1 验证记录（2026-09-28）
 
