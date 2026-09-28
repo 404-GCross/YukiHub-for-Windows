@@ -90,12 +90,14 @@ Wine / Proton / CrossOver 工具链清理（2026-09-28 完成）：
 
 剩余的部分：
 
-- [ ] 执行 `wails3 generate bindings -clean=true -ts` 重新生成绑定。
-      **当前被环境阻塞**：`go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.24`
-      在本机失败——它的 `github.com/konoui/lipo` 与 `github.com/leaanthony/winicon`
-      两个依赖在可用镜像上解析不到，报 "module found but does not contain package"。
-      在这之前 `frontend/bindings/yukihub/**` 会保留已删除的符号（陈旧但无害，
-      `tsc` 仍通过）。**注意：CI 会在构建前重新生成绑定，因此这一步的实际验证以 CI 为准。**
+- [x] 执行 `wails3 generate bindings -clean=true -ts` 重新生成绑定 —— **已完成**。
+      处理 601 个包 / 24 个服务 / 240 个方法 / 11 个枚举 / 96 个模型；
+      已删除的 Wine、Proton 符号全部清除，`appconf/models.ts` 减少 30 行，
+      `pnpm run typecheck` 通过。
+      （上一轮记为"上游依赖有问题"是**误判**：真实原因是本机 Go 模块缓存被
+      "半截解压"污染——zip 完整、解压目录只写了一半，因此报错会在不同包之间跳。
+      清理后 `go install wails3@v3.0.0-beta.24` 仅 47 秒完成。
+      排查脚本见 `~/.workbuddy/tools/gocheck/check_modcache.py`。）
 - [ ] 清除共享代码中的死分支：`gamehelper/dialog.go`、`portable_setup_service.go`
       （含 AppImage 集成）、`cli/start.go`、`cli/protocolcmd/protocol.go`、
       `config_game_library.go`、`import_service.go`、`launcher/detector.go` 中的
