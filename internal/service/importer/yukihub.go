@@ -304,6 +304,11 @@ func convertYukiHubGame(
 	if !strings.HasPrefix(coverURL, "https://") && !strings.HasPrefix(coverURL, "http://") {
 		coverURL = ""
 	}
+	// 清零时间为 Unix 毫秒，0 表示从未清零，必须落成 NULL 而不是 1970 年时间戳。
+	var playtimeResetAt *time.Time
+	if resetAt := yukiHubTime(source.PlaytimeResetAt); !resetAt.IsZero() {
+		playtimeResetAt = &resetAt
+	}
 	game := models.Game{
 		ID:              gameID,
 		Name:            strings.TrimSpace(source.Title),
@@ -322,6 +327,11 @@ func convertYukiHubGame(
 		CachedAt:        updatedAt,
 		CreatedAt:       createdAt,
 		UpdatedAt:       updatedAt,
+		LegacyLocalID:   yukiHubLocalID(source.LocalID),
+		// Android 备份的 profile 里没有可用的设备标识，保持空值，不编造来源设备。
+		SourceDeviceID:  "",
+		PlaytimeResetAt: playtimeResetAt,
+		Hidden:          source.Hidden,
 	}
 
 	tags := parseYukiHubTags(source.Tags)
@@ -506,6 +516,14 @@ func firstYukiHubString(values ...string) string {
 		}
 	}
 	return ""
+}
+
+// yukiHubLocalID 把 Android 侧的整数 local_id 保留为十进制字符串，0 视为缺失。
+func yukiHubLocalID(localID int64) string {
+	if localID <= 0 {
+		return ""
+	}
+	return strconv.FormatInt(localID, 10)
 }
 
 func yukiHubTime(milliseconds int64) time.Time {

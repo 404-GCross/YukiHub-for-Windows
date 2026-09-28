@@ -422,7 +422,7 @@ func (h *Helper) applyMergedSnapshotTransaction(snapshot Snapshot, coverURLs map
 }
 
 func (h *Helper) listGames() ([]models.Game, error) {
-	rows, err := h.db.QueryContext(h.ctx, `SELECT id, name, COALESCE(aliases, '[]'), COALESCE(cover_source_url, ''), COALESCE(company, ''), COALESCE(summary, ''), COALESCE(rating, 0), COALESCE(release_date, ''), COALESCE(status, 'not_started'), COALESCE(source_type, ''), COALESCE(source_id, ''), COALESCE(wine_runner, ''), COALESCE(wine_args, ''), COALESCE(wine_prefix, ''), COALESCE(is_nsfw, FALSE), COALESCE(metadata_locked, FALSE), created_at, COALESCE(updated_at, created_at, cached_at) FROM games`)
+	rows, err := h.db.QueryContext(h.ctx, `SELECT id, name, COALESCE(aliases, '[]'), COALESCE(cover_source_url, ''), COALESCE(company, ''), COALESCE(summary, ''), COALESCE(rating, 0), COALESCE(release_date, ''), COALESCE(status, 'not_started'), COALESCE(source_type, ''), COALESCE(source_id, ''), COALESCE(wine_runner, ''), COALESCE(wine_args, ''), COALESCE(wine_prefix, ''), COALESCE(is_nsfw, FALSE), COALESCE(metadata_locked, FALSE), COALESCE(legacy_local_id, ''), COALESCE(source_device_id, ''), playtime_reset_at, COALESCE(hidden, FALSE), created_at, COALESCE(updated_at, created_at, cached_at) FROM games`)
 	if err != nil {
 		return nil, fmt.Errorf("query games for cloud sync: %w", err)
 	}
@@ -433,8 +433,13 @@ func (h *Helper) listGames() ([]models.Game, error) {
 		var status string
 		var sourceType string
 		var aliasesJSON string
-		if err := rows.Scan(&item.ID, &item.Name, &aliasesJSON, &item.CoverSourceURL, &item.Company, &item.Summary, &item.Rating, &item.ReleaseDate, &status, &sourceType, &item.SourceID, &item.WineRunner, &item.WineArgs, &item.WinePrefix, &item.IsNSFW, &item.MetadataLocked, &item.CreatedAt, &item.UpdatedAt); err != nil {
+		var playtimeResetAt sql.NullTime
+		if err := rows.Scan(&item.ID, &item.Name, &aliasesJSON, &item.CoverSourceURL, &item.Company, &item.Summary, &item.Rating, &item.ReleaseDate, &status, &sourceType, &item.SourceID, &item.WineRunner, &item.WineArgs, &item.WinePrefix, &item.IsNSFW, &item.MetadataLocked, &item.LegacyLocalID, &item.SourceDeviceID, &playtimeResetAt, &item.Hidden, &item.CreatedAt, &item.UpdatedAt); err != nil {
 			return nil, fmt.Errorf("scan game for cloud sync: %w", err)
+		}
+		if playtimeResetAt.Valid {
+			resetAt := playtimeResetAt.Time
+			item.PlaytimeResetAt = &resetAt
 		}
 		item.Aliases, err = gamehelper.DecodeAliases(aliasesJSON)
 		if err != nil {
@@ -709,8 +714,9 @@ func (h *Helper) upsertGame(tx *sql.Tx, game models.Game) error {
 			id, name, aliases, cover_url, cover_source_url, company, summary, rating,
 			release_date, path, game_directory, save_path, process_name, status,
 			source_type, cached_at, source_id, wine_runner, wine_args, wine_prefix,
-			created_at, updated_at, use_locale_emulator, use_magpie, is_nsfw, metadata_locked
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, '', '', '', '', ?, ?, CURRENT_TIMESTAMP, ?, ?, ?, ?, ?, ?, FALSE, FALSE, ?, ?)
+			created_at, updated_at, use_locale_emulator, use_magpie, is_nsfw, metadata_locked,
+			legacy_local_id, source_device_id, playtime_reset_at, hidden
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, '', '', '', '', ?, ?, CURRENT_TIMESTAMP, ?, ?, ?, ?, ?, ?, FALSE, FALSE, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT (id) DO UPDATE SET
 			name = EXCLUDED.name,
 			aliases = EXCLUDED.aliases,
@@ -728,6 +734,10 @@ func (h *Helper) upsertGame(tx *sql.Tx, game models.Game) error {
 			wine_prefix = EXCLUDED.wine_prefix,
 			is_nsfw = EXCLUDED.is_nsfw,
 			metadata_locked = EXCLUDED.metadata_locked,
+			legacy_local_id = EXCLUDED.legacy_local_id,
+			source_device_id = EXCLUDED.source_device_id,
+			playtime_reset_at = EXCLUDED.playtime_reset_at,
+			hidden = EXCLUDED.hidden,
 			created_at = EXCLUDED.created_at,
 			updated_at = EXCLUDED.updated_at
 		WHERE (games.updated_at IS NULL OR EXCLUDED.updated_at >= games.updated_at)
@@ -747,9 +757,13 @@ func (h *Helper) upsertGame(tx *sql.Tx, game models.Game) error {
 		   OR games.wine_prefix IS DISTINCT FROM EXCLUDED.wine_prefix
 		   OR games.is_nsfw IS DISTINCT FROM EXCLUDED.is_nsfw
 		   OR games.metadata_locked IS DISTINCT FROM EXCLUDED.metadata_locked
+		   OR games.legacy_local_id IS DISTINCT FROM EXCLUDED.legacy_local_id
+		   OR games.source_device_id IS DISTINCT FROM EXCLUDED.source_device_id
+		   OR games.playtime_reset_at IS DISTINCT FROM EXCLUDED.playtime_reset_at
+		   OR games.hidden IS DISTINCT FROM EXCLUDED.hidden
 		   OR games.created_at IS DISTINCT FROM EXCLUDED.created_at
 		   OR games.updated_at IS DISTINCT FROM EXCLUDED.updated_at)
-	`, game.ID, game.Name, aliasesJSON, game.CoverURL, game.CoverSourceURL, game.Company, game.Summary, game.Rating, game.ReleaseDate, game.Status, game.SourceType, game.SourceID, game.WineRunner, game.WineArgs, game.WinePrefix, game.CreatedAt, game.UpdatedAt, game.IsNSFW, game.MetadataLocked)
+	`, game.ID, game.Name, aliasesJSON, game.CoverURL, game.CoverSourceURL, game.Company, game.Summary, game.Rating, game.ReleaseDate, game.Status, game.SourceType, game.SourceID, game.WineRunner, game.WineArgs, game.WinePrefix, game.CreatedAt, game.UpdatedAt, game.IsNSFW, game.MetadataLocked, game.LegacyLocalID, game.SourceDeviceID, game.PlaytimeResetAt, game.Hidden)
 	if err != nil {
 		return fmt.Errorf("upsert synced game %s: %w", game.ID, err)
 	}

@@ -318,7 +318,11 @@ func QueryGameList(ctx context.Context, db *sql.DB, req vo.GameListRequest, scop
 			COALESCE(g.use_locale_emulator, FALSE) AS use_locale_emulator,
 			COALESCE(g.use_magpie, FALSE) AS use_magpie,
 			COALESCE(g.is_nsfw, FALSE) AS is_nsfw,
-			COALESCE(g.metadata_locked, FALSE) AS metadata_locked
+			COALESCE(g.metadata_locked, FALSE) AS metadata_locked,
+			COALESCE(g.legacy_local_id, '') AS legacy_local_id,
+			COALESCE(g.source_device_id, '') AS source_device_id,
+			g.playtime_reset_at,
+			COALESCE(g.hidden, FALSE) AS hidden
 		FROM games g
 		%s
 		LEFT JOIN (
@@ -361,6 +365,7 @@ func scanGameListRow(scanner gameScanner) (models.Game, error) {
 	var launchMode string
 	var aliasesJSON string
 	var lastPlayedAt sql.NullTime
+	var playtimeResetAt sql.NullTime
 	err := scanner.Scan(
 		&game.ID,
 		&game.Name,
@@ -394,6 +399,10 @@ func scanGameListRow(scanner gameScanner) (models.Game, error) {
 		&game.UseMagpie,
 		&game.IsNSFW,
 		&game.MetadataLocked,
+		&game.LegacyLocalID,
+		&game.SourceDeviceID,
+		&playtimeResetAt,
+		&game.Hidden,
 	)
 	if err != nil {
 		return game, fmt.Errorf("scan game list row: %w", err)
@@ -408,6 +417,10 @@ func scanGameListRow(scanner gameScanner) (models.Game, error) {
 	if lastPlayedAt.Valid {
 		lastPlayed := lastPlayedAt.Time
 		game.LastPlayedAt = &lastPlayed
+	}
+	if playtimeResetAt.Valid {
+		resetAt := playtimeResetAt.Time
+		game.PlaytimeResetAt = &resetAt
 	}
 	return game, nil
 }

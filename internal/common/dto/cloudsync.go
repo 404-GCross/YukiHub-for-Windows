@@ -20,24 +20,28 @@ type CloudSyncSnapshot struct {
 }
 
 type CloudSyncGame struct {
-	ID             string    `json:"id"`
-	Name           string    `json:"name"`
-	Aliases        []string  `json:"aliases,omitempty"`
-	CoverSourceURL string    `json:"cover_source_url,omitempty"`
-	Company        string    `json:"company"`
-	Summary        string    `json:"summary"`
-	Rating         float64   `json:"rating"`
-	ReleaseDate    string    `json:"release_date"`
-	Status         string    `json:"status"`
-	SourceType     string    `json:"source_type"`
-	SourceID       string    `json:"source_id"`
-	WineRunner     string    `json:"wine_runner,omitempty"`
-	WineArgs       string    `json:"wine_args,omitempty"`
-	WinePrefix     string    `json:"wine_prefix,omitempty"`
-	IsNSFW         bool      `json:"is_nsfw"`
-	MetadataLocked bool      `json:"metadata_locked"`
-	CreatedAt      time.Time `json:"created_at"`
-	UpdatedAt      time.Time `json:"updated_at"`
+	ID              string     `json:"id"`
+	Name            string     `json:"name"`
+	Aliases         []string   `json:"aliases,omitempty"`
+	CoverSourceURL  string     `json:"cover_source_url,omitempty"`
+	Company         string     `json:"company"`
+	Summary         string     `json:"summary"`
+	Rating          float64    `json:"rating"`
+	ReleaseDate     string     `json:"release_date"`
+	Status          string     `json:"status"`
+	SourceType      string     `json:"source_type"`
+	SourceID        string     `json:"source_id"`
+	WineRunner      string     `json:"wine_runner,omitempty"`
+	WineArgs        string     `json:"wine_args,omitempty"`
+	WinePrefix      string     `json:"wine_prefix,omitempty"`
+	IsNSFW          bool       `json:"is_nsfw"`
+	MetadataLocked  bool       `json:"metadata_locked"`
+	LegacyLocalID   string     `json:"legacy_local_id,omitempty"`   // 手机版 YukiHub 的整数 local_id，跨设备身份
+	SourceDeviceID  string     `json:"source_device_id,omitempty"`  // 条目来源设备，跨设备身份
+	PlaytimeResetAt *time.Time `json:"playtime_reset_at,omitempty"` // 清零时间点，合并语义
+	Hidden          bool       `json:"hidden"`                      // 手机版 YukiHub 的隐藏标记
+	CreatedAt       time.Time  `json:"created_at"`
+	UpdatedAt       time.Time  `json:"updated_at"`
 }
 
 type CloudSyncGameMetadataSource struct {

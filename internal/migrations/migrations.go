@@ -853,6 +853,26 @@ func migration176(tx *sql.Tx) error {
 	return nil
 }
 
+// migration177 adds the mobile YukiHub contract columns to games: legacy local
+// identity, source device, playtime reset point and the Android hidden flag.
+func migration177(tx *sql.Tx) error {
+	columns := []struct {
+		name string
+		sql  string
+	}{
+		{"legacy_local_id", `ALTER TABLE games ADD COLUMN IF NOT EXISTS legacy_local_id TEXT DEFAULT ''`},
+		{"source_device_id", `ALTER TABLE games ADD COLUMN IF NOT EXISTS source_device_id TEXT DEFAULT ''`},
+		{"playtime_reset_at", `ALTER TABLE games ADD COLUMN IF NOT EXISTS playtime_reset_at TIMESTAMPTZ`},
+		{"hidden", `ALTER TABLE games ADD COLUMN IF NOT EXISTS hidden BOOLEAN DEFAULT FALSE`},
+	}
+	for _, column := range columns {
+		if _, err := tx.Exec(column.sql); err != nil {
+			return fmt.Errorf("failed to add %s column to games: %w", column.name, err)
+		}
+	}
+	return nil
+}
+
 // 所有迁移按版本号顺序排列
 var migrations = []Migration{
 	{
@@ -994,6 +1014,11 @@ var migrations = []Migration{
 		Version:     176,
 		Description: "Add secondary sorting preferences to game filter presets",
 		Up:          migration176,
+	},
+	{
+		Version:     177,
+		Description: "Add mobile YukiHub contract columns (legacy_local_id, source_device_id, playtime_reset_at, hidden) to games",
+		Up:          migration177,
 	},
 	// {
 	// 	Version:     114,

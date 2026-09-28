@@ -142,6 +142,93 @@ func TestYukiHubImporterPreviewAndImport(t *testing.T) {
 	}
 }
 
+func TestYukiHubImportKeepsMobileContractFields(t *testing.T) {
+	t.Parallel()
+
+	createdAt := time.Date(2026, time.August, 14, 10, 0, 0, 0, time.Local)
+	resetAt := createdAt.Add(24 * time.Hour)
+	backupPath := writeYukiHubTestBackup(t, yukihub.Backup{
+		App:    "YukiHub",
+		Schema: 5,
+		Games: []yukihub.Game{
+			{
+				LocalID:         42,
+				Title:           "清零过的游戏",
+				PlayStatus:      "playing",
+				PlaytimeResetAt: resetAt.UnixMilli(),
+				// favorite 由系统收藏分类承载，不落库；这里只是确认它不会串到 hidden 上。
+				Hidden:    true,
+				Favorite:  true,
+				CreatedAt: createdAt.UnixMilli(),
+				UpdatedAt: createdAt.Add(time.Hour).UnixMilli(),
+			},
+			{
+				LocalID:   7,
+				Title:     "未清零的游戏",
+				CreatedAt: createdAt.UnixMilli(),
+				UpdatedAt: createdAt.UnixMilli(),
+			},
+		},
+	}, true)
+
+	var captured []ImportItem
+	service := NewYukiHubImporter(Dependencies{
+		ListGames: func() ([]models.Game, error) { return nil, nil },
+		AddItems: func(items []ImportItem) (ImportResult, error) {
+			captured = items
+			return ImportResult{Success: len(items)}, nil
+		},
+	})
+
+	if _, err := service.Import(backupPath, false, SamePathActionSkip); err != nil {
+		t.Fatalf("Import returned an error: %v", err)
+	}
+	if len(captured) != 2 {
+		t.Fatalf("Captured item count = %d, want 2", len(captured))
+	}
+
+	resetGame := captured[0].Source.Game
+	if resetGame.LegacyLocalID != "42" {
+		t.Errorf("LegacyLocalID = %q, want \"42\"", resetGame.LegacyLocalID)
+	}
+	if resetGame.PlaytimeResetAt == nil || !resetGame.PlaytimeResetAt.Equal(resetAt) {
+		t.Errorf("PlaytimeResetAt = %v, want %v", resetGame.PlaytimeResetAt, resetAt)
+	}
+	if !resetGame.Hidden {
+		t.Error("Hidden flag was not imported")
+	}
+	if resetGame.SourceDeviceID != "" {
+		t.Errorf("SourceDeviceID = %q, want empty (Android backup has no device id)", resetGame.SourceDeviceID)
+	}
+
+	plainGame := captured[1].Source.Game
+	if plainGame.LegacyLocalID != "7" {
+		t.Errorf("LegacyLocalID = %q, want \"7\"", plainGame.LegacyLocalID)
+	}
+	if plainGame.PlaytimeResetAt != nil {
+		t.Errorf("PlaytimeResetAt = %v, want nil for a zero playtime_reset_at", plainGame.PlaytimeResetAt)
+	}
+	if plainGame.Hidden {
+		t.Error("Hidden must stay false when the backup does not set it")
+	}
+}
+
+func TestYukiHubLocalIDOnlyEncodesPositiveIDs(t *testing.T) {
+	t.Parallel()
+
+	cases := map[int64]string{
+		0:    "",
+		-1:   "",
+		1:    "1",
+		1024: "1024",
+	}
+	for input, want := range cases {
+		if got := yukiHubLocalID(input); got != want {
+			t.Errorf("yukiHubLocalID(%d) = %q, want %q", input, got, want)
+		}
+	}
+}
+
 func TestLoadYukiHubBackupSupportsPlainJSONAndRejectsOtherApps(t *testing.T) {
 	t.Parallel()
 

@@ -16,17 +16,20 @@ type BackupSettings struct {
 }
 
 type Game struct {
-	LocalID       int64  `json:"local_id"`
-	Title         string `json:"title"`
-	OriginalTitle string `json:"original_title"`
-	Description   string `json:"description"`
-	Tags          string `json:"tags"`
-	PlayStatus    string `json:"play_status"`
-	NSFW          bool   `json:"nsfw"`
-	TotalPlayTime int64  `json:"total_play_time"`
-	LastPlayedAt  int64  `json:"last_played_at"`
-	CreatedAt     int64  `json:"created_at"`
-	UpdatedAt     int64  `json:"updated_at"`
+	LocalID         int64  `json:"local_id"`
+	Title           string `json:"title"`
+	OriginalTitle   string `json:"original_title"`
+	Description     string `json:"description"`
+	Tags            string `json:"tags"`
+	PlayStatus      string `json:"play_status"`
+	NSFW            bool   `json:"nsfw"`
+	TotalPlayTime   int64  `json:"total_play_time"`
+	LastPlayedAt    int64  `json:"last_played_at"`
+	PlaytimeResetAt int64  `json:"playtime_reset_at"` // 清零时间点（Unix 毫秒），0 表示从未清零
+	CreatedAt       int64  `json:"created_at"`
+	UpdatedAt       int64  `json:"updated_at"`
+	Hidden          bool   `json:"hidden"`
+	Favorite        bool   `json:"favorite"`
 }
 
 type PlaySession struct {

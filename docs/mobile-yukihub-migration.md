@@ -110,11 +110,27 @@ Android 版只有 5 态，桌面版（上游）有 6 态：
 
 ### 时间与单位
 
-- Android 的 `play_sessions.duration` 为**秒**；Android 的 `games.total_play_time` 为**毫秒**。
-  两者单位不同，是历史上最容易出错的地方，必须有专门测试。
+- Android 的 `play_sessions.duration` 与 `games.total_play_time` **均为毫秒**（不是秒）。
+  证据（手机版 `data/GameRepository.java`）：
+  - `finishPlaySession()`：`rawDuration = max(0, end - start)`，`start/end` 取自
+    `System.currentTimeMillis()`；随后 `UPDATE games SET total_play_time = total_play_time + ?`
+    累加的正是该 duration。
+  - `exportGamesJson()` / `exportPlaySessionsJson()`：两个字段均**原值写入 JSON**，无换算。
+  桌面端导入器 `durationSeconds := durationMillis / 1000` 与之一致，**不要改成不换算**。
 - 时间戳为 Unix 毫秒。
 - 桌面端数据库使用 `TIMESTAMPTZ`，写入前需按用户配置的时区归一化。
-- 桌面端导出到 Android 时，时间必须写成 Android 可解析的格式。
+- 桌面端导出到 Android 时，时间必须写成 Android 可解析的格式（Unix 毫秒整数）。
+
+> 澄清：本文件此前曾写成"会话 duration 为秒、total_play_time 为毫秒、两者单位不同"，
+> 与手机版源码不符，已于 2026-09-28 按上述证据更正。
+
+### Android 侧已完成的过滤
+
+`exportPlaySessionsJson()` 的 SQL 自带条件
+`COALESCE(ps.end_time, ps.start_time, 0) >= IFNULL(g.playtime_reset_at, 0)`，
+即**导出的会话已排除清零前的记录**。桌面端导入时只需正确持久化 `playtime_reset_at`，
+不需要二次过滤；但桌面端自身导出到 Android 时必须施加同样的过滤，否则清零历史会在
+Android 侧复活。
 
 ## 四、身份与去重（最关键的部分）
 

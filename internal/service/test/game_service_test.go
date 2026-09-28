@@ -124,6 +124,87 @@ func TestGameService_GetGameByID(t *testing.T) {
 	})
 }
 
+// TestGameService_PersistsMobileYukiHubContractFields 覆盖手机版 YukiHub 契约字段
+// （legacy_local_id / source_device_id / playtime_reset_at / hidden）的落库与回读。
+func TestGameService_PersistsMobileYukiHubContractFields(t *testing.T) {
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	gameService := service.NewGameService()
+	gameService.Init(context.Background(), db, &appconf.AppConfig{})
+
+	resetAt := time.Date(2026, time.August, 20, 12, 0, 0, 0, time.Local)
+	resetGame := createTestGame()
+	resetGame.ID = "mobile-contract-reset"
+	resetGame.LegacyLocalID = "42"
+	resetGame.SourceDeviceID = "pixel-8"
+	resetGame.PlaytimeResetAt = &resetAt
+	resetGame.Hidden = true
+
+	if err := addGameViaMetadata(gameService, resetGame); err != nil {
+		t.Fatalf("添加游戏失败: %v", err)
+	}
+	savedReset, err := gameService.GetGameByID(resetGame.ID)
+	if err != nil {
+		t.Fatalf("获取游戏失败: %v", err)
+	}
+	if savedReset.LegacyLocalID != "42" {
+		t.Errorf("legacy_local_id = %q, 期望 %q", savedReset.LegacyLocalID, "42")
+	}
+	if savedReset.SourceDeviceID != "pixel-8" {
+		t.Errorf("source_device_id = %q, 期望 %q", savedReset.SourceDeviceID, "pixel-8")
+	}
+	if savedReset.PlaytimeResetAt == nil || !savedReset.PlaytimeResetAt.Equal(resetAt) {
+		t.Errorf("playtime_reset_at = %v, 期望 %v", savedReset.PlaytimeResetAt, resetAt)
+	}
+	if !savedReset.Hidden {
+		t.Error("hidden 未被持久化")
+	}
+
+	// 未清零的条目必须落成 NULL，而不是 1970 年时间戳。
+	plainGame := createTestGame()
+	plainGame.ID = "mobile-contract-plain"
+	if err := addGameViaMetadata(gameService, plainGame); err != nil {
+		t.Fatalf("添加游戏失败: %v", err)
+	}
+	savedPlain, err := gameService.GetGameByID(plainGame.ID)
+	if err != nil {
+		t.Fatalf("获取游戏失败: %v", err)
+	}
+	if savedPlain.PlaytimeResetAt != nil {
+		t.Errorf("playtime_reset_at = %v, 期望 nil", savedPlain.PlaytimeResetAt)
+	}
+	if savedPlain.Hidden {
+		t.Error("hidden 默认为 false，实际为 true")
+	}
+	if savedPlain.LegacyLocalID != "" || savedPlain.SourceDeviceID != "" {
+		t.Errorf("legacy_local_id/source_device_id 应为空，实际 %q/%q", savedPlain.LegacyLocalID, savedPlain.SourceDeviceID)
+	}
+
+	// UPDATE 必须同步写入这四个字段，不能被后续更新抹掉。
+	savedReset.Hidden = false
+	savedReset.LegacyLocalID = "99"
+	savedReset.SourceDeviceID = "desktop-pc"
+	clearedAt := resetAt.Add(48 * time.Hour)
+	savedReset.PlaytimeResetAt = &clearedAt
+	if err := gameService.UpdateGame(savedReset); err != nil {
+		t.Fatalf("更新游戏失败: %v", err)
+	}
+	updated, err := gameService.GetGameByID(resetGame.ID)
+	if err != nil {
+		t.Fatalf("获取游戏失败: %v", err)
+	}
+	if updated.LegacyLocalID != "99" || updated.SourceDeviceID != "desktop-pc" {
+		t.Errorf("更新后契约字段 = %q/%q, 期望 %q/%q", updated.LegacyLocalID, updated.SourceDeviceID, "99", "desktop-pc")
+	}
+	if updated.PlaytimeResetAt == nil || !updated.PlaytimeResetAt.Equal(clearedAt) {
+		t.Errorf("更新后 playtime_reset_at = %v, 期望 %v", updated.PlaytimeResetAt, clearedAt)
+	}
+	if updated.Hidden {
+		t.Error("更新后 hidden 应为 false")
+	}
+}
+
 func TestGameService_FindGameGuideDocuments(t *testing.T) {
 	db, cleanup := setupTestDB(t)
 	defer cleanup()

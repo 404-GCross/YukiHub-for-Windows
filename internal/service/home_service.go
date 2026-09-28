@@ -96,7 +96,11 @@ func (s *HomeService) GetHomePageData() (vo.HomePageData, error) {
 			COALESCE(g.use_locale_emulator, FALSE) as use_locale_emulator,
 			COALESCE(g.use_magpie, FALSE) as use_magpie,
 			COALESCE(g.is_nsfw, FALSE) as is_nsfw,
-			COALESCE(g.metadata_locked, FALSE) as metadata_locked
+			COALESCE(g.metadata_locked, FALSE) as metadata_locked,
+			COALESCE(g.legacy_local_id, '') as legacy_local_id,
+			COALESCE(g.source_device_id, '') as source_device_id,
+			g.playtime_reset_at,
+			COALESCE(g.hidden, FALSE) as hidden
 		FROM games g
 		JOIN session_rollup rollup ON rollup.game_id = g.id
 		JOIN latest_sessions latest ON latest.game_id = g.id AND latest.row_num = 1
@@ -121,6 +125,7 @@ func (s *HomeService) GetHomePageData() (vo.HomePageData, error) {
 		var lastPlayedDur int
 		var isPlaying bool
 		var totalPlayedDur int
+		var playtimeResetAt sql.NullTime
 
 		if err := rows.Scan(
 			&game.ID,
@@ -158,8 +163,16 @@ func (s *HomeService) GetHomePageData() (vo.HomePageData, error) {
 			&game.UseMagpie,
 			&game.IsNSFW,
 			&game.MetadataLocked,
+			&game.LegacyLocalID,
+			&game.SourceDeviceID,
+			&playtimeResetAt,
+			&game.Hidden,
 		); err != nil {
 			return data, fmt.Errorf("scan recent played game: %w", err)
+		}
+		if playtimeResetAt.Valid {
+			resetAt := playtimeResetAt.Time
+			game.PlaytimeResetAt = &resetAt
 		}
 		game.Aliases, err = gamehelper.DecodeAliases(aliasesJSON)
 		if err != nil {

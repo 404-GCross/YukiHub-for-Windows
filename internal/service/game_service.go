@@ -284,8 +284,9 @@ func (s *GameService) addGameWithTags(game models.Game, tags []metadata.TagItem,
 		id, name, aliases, cover_url, cover_source_url, company, summary, rating, release_date, path, game_directory,
 		save_path, process_name, launch_mode, steam_launch_id, steam_launch_kind, steam_user_id, steam_launch_options,
 		status, source_type, cached_at, source_id, created_at, updated_at,
-		use_locale_emulator, use_magpie, is_nsfw, metadata_locked, wine_runner, wine_args, wine_prefix
-	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+		use_locale_emulator, use_magpie, is_nsfw, metadata_locked, wine_runner, wine_args, wine_prefix,
+		legacy_local_id, source_device_id, playtime_reset_at, hidden
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
 	err := dbutils.WithDuckDBWriteLock(s.db, func() error {
 		return dbutils.RetryDuckDBWriteConflict(s.ctx, func() error {
@@ -327,6 +328,10 @@ func (s *GameService) addGameWithTags(game models.Game, tags []metadata.TagItem,
 				game.WineRunner,
 				game.WineArgs,
 				game.WinePrefix,
+				game.LegacyLocalID,
+				game.SourceDeviceID,
+				game.PlaytimeResetAt,
+				game.Hidden,
 			); err != nil {
 				return fmt.Errorf("插入游戏失败: %w", err)
 			}
@@ -742,7 +747,11 @@ func (s *GameService) GetGameByID(id string) (models.Game, error) {
 		COALESCE(g.use_locale_emulator, FALSE) as use_locale_emulator,
 		COALESCE(g.use_magpie, FALSE) as use_magpie,
 		COALESCE(g.is_nsfw, FALSE) as is_nsfw,
-		COALESCE(g.metadata_locked, FALSE) as metadata_locked
+		COALESCE(g.metadata_locked, FALSE) as metadata_locked,
+		COALESCE(g.legacy_local_id, '') as legacy_local_id,
+		COALESCE(g.source_device_id, '') as source_device_id,
+		g.playtime_reset_at,
+		COALESCE(g.hidden, FALSE) as hidden
 	FROM games g
 	LEFT JOIN (
 		SELECT game_id, MAX(start_time) as last_played_at
@@ -757,6 +766,7 @@ func (s *GameService) GetGameByID(id string) (models.Game, error) {
 	var launchMode string
 	var aliasesJSON string
 	var lastPlayedAt sql.NullTime
+	var playtimeResetAt sql.NullTime
 
 	err := s.db.QueryRowContext(s.ctx, query, id).Scan(
 		&game.ID,
@@ -791,6 +801,10 @@ func (s *GameService) GetGameByID(id string) (models.Game, error) {
 		&game.UseMagpie,
 		&game.IsNSFW,
 		&game.MetadataLocked,
+		&game.LegacyLocalID,
+		&game.SourceDeviceID,
+		&playtimeResetAt,
+		&game.Hidden,
 	)
 
 	if errors.Is(err, sql.ErrNoRows) {
@@ -816,6 +830,10 @@ func (s *GameService) GetGameByID(id string) (models.Game, error) {
 	if lastPlayedAt.Valid {
 		lastPlayed := lastPlayedAt.Time
 		game.LastPlayedAt = &lastPlayed
+	}
+	if playtimeResetAt.Valid {
+		resetAt := playtimeResetAt.Time
+		game.PlaytimeResetAt = &resetAt
 	}
 	return game, nil
 }
@@ -991,7 +1009,11 @@ func (s *GameService) updateGameRecord(game models.Game) (models.Game, error) {
 		use_locale_emulator = ?,
 		use_magpie = ?,
 		is_nsfw = ?,
-		metadata_locked = ?
+		metadata_locked = ?,
+		legacy_local_id = ?,
+		source_device_id = ?,
+		playtime_reset_at = ?,
+		hidden = ?
 	WHERE id = ?`
 
 	result, err := s.db.ExecContext(s.ctx, query,
@@ -1024,6 +1046,10 @@ func (s *GameService) updateGameRecord(game models.Game) (models.Game, error) {
 		game.UseMagpie,
 		game.IsNSFW,
 		game.MetadataLocked,
+		game.LegacyLocalID,
+		game.SourceDeviceID,
+		game.PlaytimeResetAt,
+		game.Hidden,
 		game.ID,
 	)
 
