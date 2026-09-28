@@ -1,12 +1,8 @@
 import type { appconf } from "../../../src/bindings/models";
 import { toast } from "react-hot-toast";
 import { useTranslation } from "react-i18next";
-import {
-  SelectGameExecutable,
-  SelectWineRunnerExecutable,
-} from "../../../bindings/yukihub/internal/service/gameservice";
+import { SelectGameExecutable } from "../../../bindings/yukihub/internal/service/gameservice";
 import { BetterActionInput } from "../ui/better/BetterActionInput";
-import { BetterInput } from "../ui/better/BetterInput";
 import { BetterSelect } from "../ui/better/BetterSelect";
 import { BetterSwitch } from "../ui/better/BetterSwitch";
 
@@ -27,8 +23,6 @@ export function GameSettingsPanel({
 }: GameSettingsPanelProps) {
   const { t } = useTranslation();
   const isDarwin = goos === "darwin";
-  const isLinux = goos === "linux";
-  const supportsWineLaunch = isDarwin || isLinux;
   const processDetectionTimeoutOptions = PROCESS_DETECTION_TIMEOUT_SECONDS.map(
     seconds => ({
       value: String(seconds),
@@ -66,25 +60,6 @@ export function GameSettingsPanel({
     catch (error) {
       console.error("Failed to select Magpie:", error);
       toast.error(t("settings.game.toast.magpieSelectFailed"));
-    }
-  };
-
-  const handleSelectCompatibilityRunnerPath = async (
-    field:
-      | "wine_runner_path"
-      | "crossover_runner_path"
-      | "winetricks_path"
-      | "protontricks_path",
-  ) => {
-    try {
-      const path = await SelectWineRunnerExecutable(formData[field] || "");
-      if (path) {
-        onChange({ ...formData, [field]: path } as appconf.AppConfig);
-      }
-    }
-    catch (error) {
-      console.error("Failed to select Wine runner:", error);
-      toast.error(t("settings.game.toast.wineSelectFailed"));
     }
   };
 
@@ -180,266 +155,87 @@ export function GameSettingsPanel({
         </div>
 
         <div className="space-y-4">
-          {supportsWineLaunch ? (
-            <div className="space-y-5">
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
-                    {t("settings.game.wineRunnerPath")}
-                  </label>
-                  <BetterActionInput
-                    value={formData.wine_runner_path || ""}
-                    onChange={e =>
-                      onChange({
-                        ...formData,
-                        wine_runner_path: e.target.value,
-                      } as appconf.AppConfig)}
-                    placeholder={t("settings.game.wineRunnerPathPlaceholder")}
-                    className="font-mono"
-                    actions={[
-                      {
-                        ariaLabel: t("settings.game.selectBtn"),
-                        icon: "i-mdi-file-search-outline",
-                        onClick: () =>
-                          handleSelectCompatibilityRunnerPath(
-                            "wine_runner_path",
-                          ),
-                      },
-                    ]}
-                  />
-                  <p className="text-xs text-brand-500 dark:text-brand-400">
-                    {t("settings.game.wineRunnerPathHint")}
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
-                    {t("settings.game.winePrefix")}
-                  </label>
-                  <BetterInput
-                    type="text"
-                    value={formData.wine_prefix || ""}
-                    onChange={e =>
-                      onChange({
-                        ...formData,
-                        wine_prefix: e.target.value,
-                      } as appconf.AppConfig)}
-                    placeholder={t("settings.game.winePrefixPlaceholder")}
-                    className="font-mono"
-                  />
-                  <p className="text-xs text-brand-500 dark:text-brand-400">
-                    {t("settings.game.winePrefixHint")}
-                  </p>
-                </div>
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
+              {t("settings.game.lePath")}
+            </label>
+            <BetterActionInput
+              value={formData.locale_emulator_path || ""}
+              onChange={e =>
+                onChange({
+                  ...formData,
+                  locale_emulator_path: e.target.value,
+                } as appconf.AppConfig)}
+              placeholder={t("settings.game.lePathPlaceholder")}
+              actions={[
+                {
+                  ariaLabel: t("settings.game.selectBtn"),
+                  icon: "i-mdi-file-search-outline",
+                  onClick: handleSelectLocaleEmulatorPath,
+                },
+              ]}
+            />
+            <p className="text-xs text-brand-500 dark:text-brand-400">
+              {t("settings.game.lePathHint")}
+            </p>
+            <div className="flex items-center justify-between gap-4 pt-2">
+              <div className="flex-1 space-y-2">
+                <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
+                  {t("settings.game.defaultUseLe")}
+                </label>
               </div>
-              {isLinux ? (
-                <div className="space-y-4 border-t border-brand-200 pt-5 dark:border-brand-700">
-                  <div className="mb-1 block text-sm font-semibold text-brand-700 dark:text-brand-300">
-                    {t("settings.game.tricksTools")}
-                  </div>
-                  <div className="space-y-2">
-                    <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
-                      {t("settings.game.winetricksPath")}
-                    </label>
-                    <BetterActionInput
-                      value={formData.winetricks_path || ""}
-                      onChange={e =>
-                        onChange({
-                          ...formData,
-                          winetricks_path: e.target.value,
-                        } as appconf.AppConfig)}
-                      placeholder={t("settings.game.winetricksPathPlaceholder")}
-                      className="font-mono"
-                      actions={[
-                        {
-                          ariaLabel: t("settings.game.selectBtn"),
-                          icon: "i-mdi-file-search-outline",
-                          onClick: () =>
-                            handleSelectCompatibilityRunnerPath(
-                              "winetricks_path",
-                            ),
-                        },
-                      ]}
-                    />
-                    <p className="text-xs text-brand-500 dark:text-brand-400">
-                      {t("settings.game.winetricksPathHint")}
-                    </p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
-                      {t("settings.game.protontricksPath")}
-                    </label>
-                    <BetterActionInput
-                      value={formData.protontricks_path || ""}
-                      onChange={e =>
-                        onChange({
-                          ...formData,
-                          protontricks_path: e.target.value,
-                        } as appconf.AppConfig)}
-                      placeholder={t(
-                        "settings.game.protontricksPathPlaceholder",
-                      )}
-                      className="font-mono"
-                      actions={[
-                        {
-                          ariaLabel: t("settings.game.selectBtn"),
-                          icon: "i-mdi-file-search-outline",
-                          onClick: () =>
-                            handleSelectCompatibilityRunnerPath(
-                              "protontricks_path",
-                            ),
-                        },
-                      ]}
-                    />
-                    <p className="text-xs text-brand-500 dark:text-brand-400">
-                      {t("settings.game.protontricksPathHint")}
-                    </p>
-                  </div>
-                </div>
-              ) : null}
-              {isDarwin ? (
-                <div className="space-y-4 border-t border-brand-200 pt-5 dark:border-brand-700">
-                  <div className="space-y-2">
-                    <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
-                      {t("settings.game.crossoverRunnerPath")}
-                    </label>
-                    <BetterActionInput
-                      value={formData.crossover_runner_path || ""}
-                      onChange={e =>
-                        onChange({
-                          ...formData,
-                          crossover_runner_path: e.target.value,
-                        } as appconf.AppConfig)}
-                      placeholder={t(
-                        "settings.game.crossoverRunnerPathPlaceholder",
-                      )}
-                      className="font-mono"
-                      actions={[
-                        {
-                          ariaLabel: t("settings.game.selectBtn"),
-                          icon: "i-mdi-file-search-outline",
-                          onClick: () =>
-                            handleSelectCompatibilityRunnerPath(
-                              "crossover_runner_path",
-                            ),
-                        },
-                      ]}
-                    />
-                    <p className="text-xs text-brand-500 dark:text-brand-400">
-                      {t("settings.game.crossoverRunnerPathHint")}
-                    </p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
-                      {t("settings.game.crossoverBottle")}
-                    </label>
-                    <BetterInput
-                      type="text"
-                      value={formData.crossover_bottle || ""}
-                      onChange={e =>
-                        onChange({
-                          ...formData,
-                          crossover_bottle: e.target.value,
-                        } as appconf.AppConfig)}
-                      placeholder={t(
-                        "settings.game.crossoverBottlePlaceholder",
-                      )}
-                      className="font-mono"
-                    />
-                    <p className="text-xs text-brand-500 dark:text-brand-400">
-                      {t("settings.game.crossoverBottleHint")}
-                    </p>
-                  </div>
-                </div>
-              ) : null}
+              <BetterSwitch
+                id="default_use_locale_emulator"
+                checked={formData.default_use_locale_emulator ?? false}
+                onCheckedChange={checked =>
+                  onChange({
+                    ...formData,
+                    default_use_locale_emulator: checked,
+                  } as appconf.AppConfig)}
+              />
             </div>
-          ) : (
-            <>
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
-                  {t("settings.game.lePath")}
-                </label>
-                <BetterActionInput
-                  value={formData.locale_emulator_path || ""}
-                  onChange={e =>
-                    onChange({
-                      ...formData,
-                      locale_emulator_path: e.target.value,
-                    } as appconf.AppConfig)}
-                  placeholder={t("settings.game.lePathPlaceholder")}
-                  actions={[
-                    {
-                      ariaLabel: t("settings.game.selectBtn"),
-                      icon: "i-mdi-file-search-outline",
-                      onClick: handleSelectLocaleEmulatorPath,
-                    },
-                  ]}
-                />
-                <p className="text-xs text-brand-500 dark:text-brand-400">
-                  {t("settings.game.lePathHint")}
-                </p>
-                <div className="flex items-center justify-between gap-4 pt-2">
-                  <div className="flex-1 space-y-2">
-                    <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
-                      {t("settings.game.defaultUseLe")}
-                    </label>
-                  </div>
-                  <BetterSwitch
-                    id="default_use_locale_emulator"
-                    checked={formData.default_use_locale_emulator ?? false}
-                    onCheckedChange={checked =>
-                      onChange({
-                        ...formData,
-                        default_use_locale_emulator: checked,
-                      } as appconf.AppConfig)}
-                  />
-                </div>
-              </div>
+          </div>
 
-              <div className="space-y-2">
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
+              {t("settings.game.magpiePath")}
+            </label>
+            <BetterActionInput
+              value={formData.magpie_path || ""}
+              onChange={e =>
+                onChange({
+                  ...formData,
+                  magpie_path: e.target.value,
+                } as appconf.AppConfig)}
+              placeholder={t("settings.game.magpiePathPlaceholder")}
+              actions={[
+                {
+                  ariaLabel: t("settings.game.selectBtn"),
+                  icon: "i-mdi-file-search-outline",
+                  onClick: handleSelectMagpiePath,
+                },
+              ]}
+            />
+            <p className="text-xs text-brand-500 dark:text-brand-400">
+              {t("settings.game.magpiePathHint")}
+            </p>
+            <div className="flex items-center justify-between gap-4 pt-2">
+              <div className="flex-1 space-y-2">
                 <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
-                  {t("settings.game.magpiePath")}
+                  {t("settings.game.defaultUseMagpie")}
                 </label>
-                <BetterActionInput
-                  value={formData.magpie_path || ""}
-                  onChange={e =>
-                    onChange({
-                      ...formData,
-                      magpie_path: e.target.value,
-                    } as appconf.AppConfig)}
-                  placeholder={t("settings.game.magpiePathPlaceholder")}
-                  actions={[
-                    {
-                      ariaLabel: t("settings.game.selectBtn"),
-                      icon: "i-mdi-file-search-outline",
-                      onClick: handleSelectMagpiePath,
-                    },
-                  ]}
-                />
-                <p className="text-xs text-brand-500 dark:text-brand-400">
-                  {t("settings.game.magpiePathHint")}
-                </p>
-                <div className="flex items-center justify-between gap-4 pt-2">
-                  <div className="flex-1 space-y-2">
-                    <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
-                      {t("settings.game.defaultUseMagpie")}
-                    </label>
-                  </div>
-                  <BetterSwitch
-                    id="default_use_magpie"
-                    checked={formData.default_use_magpie ?? false}
-                    onCheckedChange={checked =>
-                      onChange({
-                        ...formData,
-                        default_use_magpie: checked,
-                      } as appconf.AppConfig)}
-                  />
-                </div>
               </div>
-            </>
-          )}
+              <BetterSwitch
+                id="default_use_magpie"
+                checked={formData.default_use_magpie ?? false}
+                onCheckedChange={checked =>
+                  onChange({
+                    ...formData,
+                    default_use_magpie: checked,
+                  } as appconf.AppConfig)}
+              />
+            </div>
+          </div>
         </div>
       </div>
     </>

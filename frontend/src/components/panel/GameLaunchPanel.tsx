@@ -1,19 +1,12 @@
 import type { appconf, models, service } from "../../../src/bindings/models";
-import type {
-  GameCompatibilityToolsInfo,
-  LocalProtonTool,
-  SteamCompatibilityInfo,
-} from "../../bindings/integration";
+import type { SteamCompatibilityInfo } from "../../bindings/integration";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 import { OpenLocalPath } from "../../../bindings/yukihub/internal/service/gameservice";
 import { enums } from "../../../src/bindings/models";
 import {
-  GetGameCompatibilityTools,
   GetGameSteamCompatibility,
-  GetLocalProtonTools,
-  OpenGameCompatibilityTool,
   OpenGameSteamProtonPrefix,
   RestartSteamClient,
   SetGameSteamCompatibilityTool,
@@ -64,33 +57,6 @@ const steamLaunchOptionPresets = [
 ] as const;
 
 const wineLaunchOptionPresets = localeLaunchOptionPresets;
-
-const compatibilityToolActions = [
-  {
-    action: "prefix_dir",
-    icon: "i-mdi-folder-outline",
-  },
-  {
-    action: "drive_c",
-    icon: "i-mdi-folder-open-outline",
-  },
-  {
-    action: "regedit",
-    icon: "i-mdi-database-cog-outline",
-  },
-  {
-    action: "winecfg",
-    icon: "i-mdi-tune-variant",
-  },
-  {
-    action: "explorer",
-    icon: "i-mdi-file-tree-outline",
-  },
-  {
-    action: "winecmd",
-    icon: "i-mdi-console",
-  },
-] as const;
 
 function getSteamLaunchOptions(game: models.Game): string {
   return (game as GameWithSteamLaunchOptions).steam_launch_options || "";
@@ -201,12 +167,8 @@ export function GameLaunchPanel({
     = configuredWineRunner || (defaultsToSystemWineRunner ? "system" : "");
   const isProtonRunner = isProtonRunnerValue(selectedWineRunner);
   const hasWineCompatibilityLayer = selectedWineRunner !== "";
-  const shouldLoadCompatibilityTools
-    = isLinux && (isSteamLaunch || hasWineCompatibilityLayer);
   const effectiveWinePrefixPath
-    = selectedWineRunner === "crossover"
-      ? ""
-      : game.wine_prefix || config?.wine_prefix || "";
+    = selectedWineRunner === "crossover" ? "" : game.wine_prefix || "";
   const supportsSteamCompatibility = isLinux;
   const [steamCompatibility, setSteamCompatibility]
     = useState<SteamCompatibilityInfo | null>(null);
@@ -222,18 +184,6 @@ export function GameLaunchPanel({
   const [isSteamRestartConfirmOpen, setIsSteamRestartConfirmOpen]
     = useState(false);
   const [steamCompatibilityError, setSteamCompatibilityError] = useState("");
-  const [localProtonTools, setLocalProtonTools] = useState<LocalProtonTool[]>(
-    [],
-  );
-  const [localProtonToolsError, setLocalProtonToolsError] = useState("");
-  const [gameCompatibilityTools, setGameCompatibilityTools]
-    = useState<GameCompatibilityToolsInfo | null>(null);
-  const [isGameCompatibilityToolsLoading, setIsGameCompatibilityToolsLoading]
-    = useState(false);
-  const [gameCompatibilityToolsError, setGameCompatibilityToolsError]
-    = useState("");
-  const [openingCompatibilityAction, setOpeningCompatibilityAction]
-    = useState("");
   const steamLaunchOptions = getSteamLaunchOptions(game);
 
   const handleRefreshSteamSettings = async () => {
@@ -308,85 +258,6 @@ export function GameLaunchPanel({
     game.steam_launch_id,
     game.steam_launch_kind,
     supportsSteamCompatibility,
-  ]);
-
-  useEffect(() => {
-    let cancelled = false;
-    async function run() {
-      if (!isLinux) {
-        setLocalProtonTools([]);
-        setLocalProtonToolsError("");
-        return;
-      }
-      try {
-        const tools = await GetLocalProtonTools();
-        if (!cancelled) {
-          setLocalProtonTools(tools);
-          setLocalProtonToolsError("");
-        }
-      }
-      catch (error) {
-        if (!cancelled) {
-          console.error("Failed to load local Proton tools:", error);
-          setLocalProtonTools([]);
-          setLocalProtonToolsError(errorMessage(error));
-        }
-      }
-    }
-    run();
-    return () => {
-      cancelled = true;
-    };
-  }, [isLinux]);
-
-  useEffect(() => {
-    let cancelled = false;
-    async function run() {
-      if (!shouldLoadCompatibilityTools) {
-        setGameCompatibilityTools(null);
-        setGameCompatibilityToolsError("");
-        setIsGameCompatibilityToolsLoading(false);
-        return;
-      }
-      setIsGameCompatibilityToolsLoading(true);
-      setGameCompatibilityToolsError("");
-      try {
-        const info = await GetGameCompatibilityTools(game.id);
-        if (!cancelled) {
-          setGameCompatibilityTools(info);
-        }
-      }
-      catch (error) {
-        if (!cancelled) {
-          console.error("Failed to load game compatibility tools:", error);
-          setGameCompatibilityTools(null);
-          setGameCompatibilityToolsError(errorMessage(error));
-        }
-      }
-      finally {
-        if (!cancelled) {
-          setIsGameCompatibilityToolsLoading(false);
-        }
-      }
-    }
-    run();
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    config?.protontricks_path,
-    config?.wine_prefix,
-    config?.wine_runner_path,
-    config?.winetricks_path,
-    game.id,
-    game.launch_mode,
-    game.path,
-    game.source_id,
-    game.steam_launch_id,
-    game.steam_launch_kind,
-    game.wine_prefix,
-    game.wine_runner,
-    shouldLoadCompatibilityTools,
   ]);
 
   useEffect(() => {
@@ -473,31 +344,6 @@ export function GameLaunchPanel({
     }
     catch {
       toast.error(t("gameEdit.openPathFailed"));
-    }
-  };
-
-  const handleOpenCompatibilityTool = async (action: string) => {
-    if (openingCompatibilityAction) {
-      return;
-    }
-    setOpeningCompatibilityAction(action);
-    try {
-      await OpenGameCompatibilityTool(game.id, action);
-      toast.success(t("gameLaunch.toast.compatibilityToolOpened"));
-      const info = await GetGameCompatibilityTools(game.id);
-      setGameCompatibilityTools(info);
-      setGameCompatibilityToolsError("");
-    }
-    catch (error) {
-      console.error("Failed to open compatibility tool:", error);
-      toast.error(
-        t("gameLaunch.toast.compatibilityToolOpenFailed", {
-          error: errorMessage(error),
-        }),
-      );
-    }
-    finally {
-      setOpeningCompatibilityAction("");
     }
   };
 
@@ -591,23 +437,8 @@ export function GameLaunchPanel({
     }
     onGameChange({ ...game, use_magpie: checked } as models.Game);
   };
-  const localProtonToolOptions = localProtonTools.map((tool) => {
-    const label
-      = tool.display_name && tool.display_name !== tool.name
-        ? `${tool.display_name} (${tool.name})`
-        : tool.display_name || tool.name;
-    return {
-      value: `proton:${tool.id}`,
-      label: `${label} · ${tool.source}`,
-    };
-  });
   const selectedProtonFallbackOption
-    = isLinux
-      && isProtonRunner
-      && selectedWineRunner !== "proton"
-      && !localProtonToolOptions.some(
-        option => option.value === selectedWineRunner,
-      )
+    = isLinux && isProtonRunner && selectedWineRunner !== "proton"
       ? [{ value: selectedWineRunner, label: selectedWineRunner }]
       : [];
   const wineRunnerOptions = [
@@ -622,7 +453,6 @@ export function GameLaunchPanel({
       ? [
           { value: "custom", label: t("gameLaunch.wineRunnerCustom") },
           { value: "proton", label: t("gameLaunch.wineRunnerProtonAuto") },
-          ...localProtonToolOptions,
           ...selectedProtonFallbackOption,
         ]
       : []),
@@ -702,41 +532,6 @@ export function GameLaunchPanel({
       ? t("gameLaunch.compatibilityToolsSteamHint")
       : t("gameLaunch.steamToolsHint")
     : t("gameLaunch.compatibilityToolsWineHint");
-  const compatibilityToolsNotice = isGameCompatibilityToolsLoading
-    ? t("gameLaunch.compatibilityQuickToolsLoading")
-    : gameCompatibilityToolsError
-      ? t("gameLaunch.compatibilityQuickToolsError", {
-          error: gameCompatibilityToolsError,
-        })
-      : gameCompatibilityTools?.message || "";
-  const compatibilityToolsNoticeIsError
-    = Boolean(gameCompatibilityToolsError)
-      || Boolean(gameCompatibilityTools && !gameCompatibilityTools.supported);
-  const isCompatibilityActionAvailable = (action: string) =>
-    Boolean(gameCompatibilityTools?.actions.includes(action));
-  const isProtonCompatibilityRunner
-    = gameCompatibilityTools?.runner_kind === "proton"
-      || gameCompatibilityTools?.runner_kind === "steam-proton";
-  const compatibilityActionLabel = (action: string) => {
-    if (action === "winecfg" && isProtonCompatibilityRunner) {
-      return t("gameLaunch.compatibilityActionProtoncfg");
-    }
-    switch (action) {
-      case "prefix_dir":
-        return t("gameLaunch.compatibilityActionPrefix");
-      case "drive_c":
-        return t("gameLaunch.compatibilityActionDriveC");
-      case "regedit":
-        return t("gameLaunch.compatibilityActionRegedit");
-      case "winecfg":
-        return t("gameLaunch.compatibilityActionWinecfg");
-      case "explorer":
-        return t("gameLaunch.compatibilityActionExplorer");
-      case "winecmd":
-        return t("gameLaunch.compatibilityActionWinecmd");
-    }
-    return action;
-  };
 
   return (
     <div className="space-y-6">
@@ -1030,13 +825,6 @@ export function GameLaunchPanel({
                   <p className="text-xs text-brand-500 dark:text-brand-400">
                     {wineRunnerHint}
                   </p>
-                  {localProtonToolsError && (
-                    <p className="text-xs text-error-500 dark:text-error-400">
-                      {t("gameLaunch.localProtonToolsError", {
-                        error: localProtonToolsError,
-                      })}
-                    </p>
-                  )}
                 </div>
 
                 {hasWineCompatibilityLayer && (
@@ -1106,58 +894,6 @@ export function GameLaunchPanel({
                   </div>
                 )}
               </>
-            )}
-
-            {isLinux && shouldLoadCompatibilityTools && (
-              <div className="glass-panel rounded-xl border border-brand-200/80 bg-brand-50/70 p-4 dark:border-brand-700 dark:bg-brand-900/30">
-                <div className="space-y-3">
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-brand-800 dark:text-brand-200">
-                      {t("gameLaunch.compatibilityQuickTools")}
-                    </p>
-                    <p
-                      className={[
-                        "mt-1 break-all text-xs",
-                        compatibilityToolsNoticeIsError
-                          ? "text-error-500 dark:text-error-400"
-                          : "text-brand-500 dark:text-brand-400",
-                      ].join(" ")}
-                    >
-                      {compatibilityToolsNotice
-                        || gameCompatibilityTools?.prefix_path
-                        || t("gameLaunch.compatibilityQuickToolsReady")}
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {compatibilityToolActions.map(item => (
-                      <BetterButton
-                        key={item.action}
-                        variant="secondary"
-                        size="sm"
-                        icon={item.icon}
-                        onClick={() =>
-                          void handleOpenCompatibilityTool(item.action)}
-                        isLoading={openingCompatibilityAction === item.action}
-                        disabled={
-                          isGameCompatibilityToolsLoading
-                          || !isCompatibilityActionAvailable(item.action)
-                          || (!!openingCompatibilityAction
-                            && openingCompatibilityAction !== item.action)
-                        }
-                      >
-                        {compatibilityActionLabel(item.action)}
-                      </BetterButton>
-                    ))}
-                  </div>
-                  {gameCompatibilityTools?.runner_kind && (
-                    <p className="text-xs text-brand-400 dark:text-brand-500">
-                      {t("gameLaunch.compatibilityQuickToolsRunner", {
-                        runner: gameCompatibilityTools.runner_kind,
-                      })}
-                    </p>
-                  )}
-                </div>
-              </div>
             )}
           </div>
         </div>

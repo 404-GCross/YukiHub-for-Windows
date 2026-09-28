@@ -61,25 +61,46 @@
 - [x] `Taskfile.yml` 移除 darwin / linux 分支，`.gitignore` 清理失效路径
 - [x] `docs/workflow.md` 移除 Linux 渲染验证与 macOS 透明窗口两节
 
-剩余的部分（需要在有 C 编译器的环境验证后再做）：
+Wine / Proton / CrossOver 工具链清理（2026-09-28 完成）：
 
-- [ ] `internal/utils/protonutils` 整包删除，并移除 `integration_service.go` 中的
-      `LocalProtonTool` / `localProtonToolsFromUtils`
-- [ ] `appconf.AppConfig` 移除 `WineRunnerPath`、`WinePrefix`、`WinetricksPath`、
+- [x] 删除 `internal/utils/protonutils/` 整包
+- [x] 删除 `internal/service/compattools/` 整包
+- [x] 删除 `internal/service/compatibility_tools.go`
+      （`GameCompatibilityToolsInfo`、`GetGameCompatibilityTools`、`OpenGameCompatibilityTool`）
+- [x] `integration_service.go` 移除 `LocalProtonTool` / `localProtonToolsFromUtils` /
+      `GetLocalProtonTools`
+- [x] `appconf.AppConfig` 移除 `WineRunnerPath`、`WinePrefix`、`WinetricksPath`、
       `ProtontricksPath`、`CrossOverRunnerPath`、`CrossOverBottle` 六个字段，
-      以及 `wine_detect_*.go`、`LoadConfig`/`normalize`/`sanitize`/`ConfigService.UpdateAppConfig`
-      中的对应分支
-- [ ] 前端移除 `GameLaunchPanel`、`GameSettingsPanel`、`game.tsx`、
-      `useAppRuntimeEffects.ts` 与四语言文案中的 Wine / Proton / CrossOver 入口
-- [ ] 上述改动完成后重新执行 `wails3 generate bindings -clean=true -ts`，
-      并确认 `pnpm build` 的 typecheck 通过
+      删除 `MigrateLegacyCompatibilityConfig` 与 `wine_detect_*.go`
+- [x] 删除 `launcher/strategy.go` 中已无调用者的 `newStrategyError`（Wine 缺配置错误路径的遗留）
+- [x] 前端移除对应入口：`GameLaunchPanel` 的 Proton 工具发现与兼容层快捷工具面板、
+      `GameSettingsPanel` 的 Wine / CrossOver / winetricks / protontricks 设置块、
+      `useAppRuntimeEffects` 的 `wine_runner` 事件分支、`bindings/integration.ts` 的包装函数
+- [x] 四语言文案清理 36 个孤儿键，四份文件键结构保持一致
+
+明确保留（有意为之，不是遗漏）：
+
+- `models.Game` 上的游戏级 `wine_runner` / `wine_args` / `wine_prefix`，以及对应的
+  数据库列与 `cloudsync` 快照字段。它们是**数据契约**的一部分：导入 Playnite /
+  PotatoVN / Vnite 等来源时可能带上这些值，云同步与备份也依赖这些字段做往返。
+  删除它们属于数据语义变更，需要按 `docs/mobile-yukihub-migration.md` 的要求两端评审，
+  不属于本轮范围。
+- Steam 相关能力（`GetGameSteamCompatibility`、`SetGameSteamCompatibilityTool`、
+  `OpenGameSteamProtonPrefix`、`RestartSteamClient`）在 Windows 上仍然有效，全部保留。
+
+剩余的部分：
+
+- [ ] 执行 `wails3 generate bindings -clean=true -ts` 重新生成绑定。
+      **当前被环境阻塞**：`go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.24`
+      在本机失败——它的 `github.com/konoui/lipo` 与 `github.com/leaanthony/winicon`
+      两个依赖在可用镜像上解析不到，报 "module found but does not contain package"。
+      在这之前 `frontend/bindings/yukihub/**` 会保留已删除的符号（陈旧但无害，
+      `tsc` 仍通过）。**注意：CI 会在构建前重新生成绑定，因此这一步的实际验证以 CI 为准。**
 - [ ] 清除共享代码中的死分支：`gamehelper/dialog.go`、`portable_setup_service.go`
       （含 AppImage 集成）、`cli/start.go`、`cli/protocolcmd/protocol.go`、
       `config_game_library.go`、`import_service.go`、`launcher/detector.go` 中的
       `runtime.GOOS` 非 Windows 分支
-
-注意：第 2 项（测试全绿）必须先于上述代码改动完成，否则无法判断回归。
-本轮已完成的文件级裁剪是安全的——删掉的文件在 Windows 构建中本来就不参与编译。
+- [ ] 复核游戏级 `wine_*` 字段在 Windows-only 语境下的存废（见上方"明确保留"说明）
 
 ## 阶段 2：领域模型统一与双向数据迁移
 

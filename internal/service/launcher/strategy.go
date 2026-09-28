@@ -91,15 +91,6 @@ func (e *StrategyError) Error() string {
 	return e.UserMessage
 }
 
-func newStrategyError(kind string, configKey string, userMessage string, detail string) *StrategyError {
-	return &StrategyError{
-		Kind:        strings.TrimSpace(kind),
-		ConfigKey:   strings.TrimSpace(configKey),
-		UserMessage: strings.TrimSpace(userMessage),
-		Detail:      strings.TrimSpace(detail),
-	}
-}
-
 func SelectLauncherStrategy(game *models.Game, opts LaunchOptions, cfg *appconf.AppConfig) (LauncherStrategy, error) {
 	if game == nil {
 		return nil, fmt.Errorf("game is nil")

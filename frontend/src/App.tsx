@@ -1,8 +1,8 @@
 import type { vo } from "../src/bindings/models";
 import type { QuitSyncRequest } from "./hooks/useAppRuntimeEffects";
+import { createRouter, RouterProvider } from "@tanstack/react-router";
 import { DesktopShellProvider } from "@yukihub/desktop-shell-react";
 import { createWailsDesktopAdapter } from "@yukihub/desktop-shell-wails";
-import { createRouter, RouterProvider } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { SafeQuit } from "../bindings/yukihub/internal/service/configservice";
@@ -72,13 +72,6 @@ function App() {
   const showTimezoneModal = Boolean(
     config && (!config.time_zone || config.time_zone === ""),
   );
-  const openGameLaunchSettings = (gameID: string) => {
-    void router.navigate({ to: "/game/$gameId", params: { gameId: gameID } });
-    window.setTimeout(() => {
-      window.location.hash = "launch";
-      window.dispatchEvent(new HashChangeEvent("hashchange"));
-    }, 0);
-  };
 
   useEffect(() => {
     fetchConfig();
@@ -111,7 +104,6 @@ function App() {
     refreshHomeData: fetchHomeData,
     setInstallRequest,
     setQuitSyncRequest,
-    openGameLaunchSettings,
   });
   useExitSyncToast({ quitSyncRequest });
   useDownloadNotifications(i18n);
