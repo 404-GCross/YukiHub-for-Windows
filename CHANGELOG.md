@@ -67,6 +67,16 @@
   - `scripts/build.sh`、`scripts/patch-wails-linux-tray.sh`
   - `release.yml` / `autobuild.yml` 中的 macOS 与 Linux 构建作业
   - `Taskfile.yml` 中的 darwin / linux 构建、打包与补丁步骤
+- Wine / Proton / CrossOver 工具链（Windows 上不存在对应概念）：
+  - Go：`internal/utils/protonutils`、`internal/service/compattools`、
+    `internal/service/compatibility_tools.go`，以及 `IntegrationService` 的
+    `GetLocalProtonTools`、`AppConfig` 的 6 个全局 Wine/CrossOver 字段
+  - 前端：游戏启动面板的 Proton 工具发现与兼容层快捷工具、游戏设置面板的
+    Wine / CrossOver / winetricks / protontricks 设置块、`wine_runner` 事件分支
+  - 四语言文案清理 36 个孤儿键
+
+保留说明：游戏级的 `wine_runner` / `wine_args` / `wine_prefix` 属于导入与云同步的
+数据契约，仍保留在数据模型与快照中；Steam 相关能力在 Windows 上有效，全部保留。
 
 ### 已知问题
 
