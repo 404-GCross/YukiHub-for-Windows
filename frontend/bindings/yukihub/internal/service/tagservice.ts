@@ -13,21 +13,21 @@ import * as models$0 from "../models/models.js";
  * AddUserTag 用户手动添加 tag
  */
 export function AddUserTag(gameID: string, tagName: string): $CancellablePromise<void> {
-    return $Call.ByID(2883956385, gameID, tagName);
+    return $Call.ByID(1561166307, gameID, tagName);
 }
 
 /**
  * DeleteTag 删除 tag。自动刮削 tag 允许手动删除，但重新刮削后可能再次出现。
  */
 export function DeleteTag(tagID: string): $CancellablePromise<void> {
-    return $Call.ByID(1950708638, tagID);
+    return $Call.ByID(3785987292, tagID);
 }
 
 /**
  * FilterExistingTagNames 返回输入中已经存在于库内的 tag 名称，保留输入顺序。
  */
 export function FilterExistingTagNames(names: string[]): $CancellablePromise<string[]> {
-    return $Call.ByID(4144521986, names).then(($result: any) => {
+    return $Call.ByID(1166454840, names).then(($result: any) => {
         return $$createType0($result);
     });
 }
@@ -36,7 +36,7 @@ export function FilterExistingTagNames(names: string[]): $CancellablePromise<str
  * GetGameIDsByTag 获取包含指定 tag 的所有游戏 ID（用于游戏库筛选）
  */
 export function GetGameIDsByTag(tagName: string): $CancellablePromise<string[]> {
-    return $Call.ByID(2804317908, tagName).then(($result: any) => {
+    return $Call.ByID(2685363522, tagName).then(($result: any) => {
         return $$createType0($result);
     });
 }
@@ -45,7 +45,7 @@ export function GetGameIDsByTag(tagName: string): $CancellablePromise<string[]> 
  * GetTagsByGame 获取指定游戏的所有 tag
  */
 export function GetTagsByGame(gameID: string): $CancellablePromise<models$0.GameTag[]> {
-    return $Call.ByID(2070915021, gameID).then(($result: any) => {
+    return $Call.ByID(3329506995, gameID).then(($result: any) => {
         return $$createType2($result);
     });
 }
@@ -54,7 +54,7 @@ export function GetTagsByGame(gameID: string): $CancellablePromise<models$0.Game
  * SearchTagsInLibrary 搜索库中匹配的 tag 名称（用于游戏库筛选）
  */
 export function SearchTagsInLibrary(query: string): $CancellablePromise<string[]> {
-    return $Call.ByID(1765206402, query).then(($result: any) => {
+    return $Call.ByID(2215057616, query).then(($result: any) => {
         return $$createType0($result);
     });
 }

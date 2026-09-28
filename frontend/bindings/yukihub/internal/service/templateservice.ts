@@ -13,21 +13,21 @@ import * as vo$0 from "../common/vo/models.js";
  * ExportRenderedHTML 导出渲染后的HTML为图片
  */
 export function ExportRenderedHTML(base64Data: string): $CancellablePromise<void> {
-    return $Call.ByID(3733653289, base64Data);
+    return $Call.ByID(2594640723, base64Data);
 }
 
 /**
  * GetTemplate 获取模板内容
  */
 export function GetTemplate(templateID: string): $CancellablePromise<string> {
-    return $Call.ByID(3768933407, templateID);
+    return $Call.ByID(806181357, templateID);
 }
 
 /**
  * ListTemplates 列出所有可用模板
  */
 export function ListTemplates(): $CancellablePromise<vo$0.TemplateInfo[]> {
-    return $Call.ByID(3204524770).then(($result: any) => {
+    return $Call.ByID(4042195892).then(($result: any) => {
         return $$createType1($result);
     });
 }
@@ -36,14 +36,14 @@ export function ListTemplates(): $CancellablePromise<vo$0.TemplateInfo[]> {
  * OpenTemplatesDir 打开模板目录
  */
 export function OpenTemplatesDir(): $CancellablePromise<void> {
-    return $Call.ByID(3056950749);
+    return $Call.ByID(1491669571);
 }
 
 /**
  * PrepareExportData 准备导出数据（处理图片等）
  */
 export function PrepareExportData(stats: vo$0.PeriodStats, aiSummary: string): $CancellablePromise<vo$0.StatsExportData> {
-    return $Call.ByID(552851136, stats, aiSummary).then(($result: any) => {
+    return $Call.ByID(1303793778, stats, aiSummary).then(($result: any) => {
         return $$createType2($result);
     });
 }
@@ -52,7 +52,7 @@ export function PrepareExportData(stats: vo$0.PeriodStats, aiSummary: string): $
  * RenderTemplate 渲染模板
  */
 export function RenderTemplate(req: vo$0.RenderTemplateRequest): $CancellablePromise<vo$0.RenderTemplateResponse> {
-    return $Call.ByID(507833409, req).then(($result: any) => {
+    return $Call.ByID(2882820427, req).then(($result: any) => {
         return $$createType3($result);
     });
 }

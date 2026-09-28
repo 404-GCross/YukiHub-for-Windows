@@ -20,7 +20,7 @@ import * as $models from "./models.js";
  * GetStatus returns the portable protocol and yukihubcli registration state.
  */
 export function GetStatus(): $CancellablePromise<$models.PortableSetupStatus> {
-    return $Call.ByID(1663595137).then(($result: any) => {
+    return $Call.ByID(1196311803).then(($result: any) => {
         return $$createType0($result);
     });
 }
@@ -29,7 +29,7 @@ export function GetStatus(): $CancellablePromise<$models.PortableSetupStatus> {
  * RegisterCLIPath installs yukihubcli into the current user's command path.
  */
 export function RegisterCLIPath(): $CancellablePromise<$models.PortableSetupStatus> {
-    return $Call.ByID(1398453521).then(($result: any) => {
+    return $Call.ByID(810421819).then(($result: any) => {
         return $$createType0($result);
     });
 }
@@ -39,7 +39,7 @@ export function RegisterCLIPath(): $CancellablePromise<$models.PortableSetupStat
  * Installed builds are managed by Wails during packaging.
  */
 export function RegisterProtocol(): $CancellablePromise<$models.PortableSetupStatus> {
-    return $Call.ByID(883375188).then(($result: any) => {
+    return $Call.ByID(854825170).then(($result: any) => {
         return $$createType0($result);
     });
 }
@@ -48,7 +48,7 @@ export function RegisterProtocol(): $CancellablePromise<$models.PortableSetupSta
  * UnregisterCLIPath removes the yukihubcli registration for the current platform.
  */
 export function UnregisterCLIPath(): $CancellablePromise<$models.PortableSetupStatus> {
-    return $Call.ByID(4277727328).then(($result: any) => {
+    return $Call.ByID(1590275518).then(($result: any) => {
         return $$createType0($result);
     });
 }
@@ -58,7 +58,7 @@ export function UnregisterCLIPath(): $CancellablePromise<$models.PortableSetupSt
  * build.
  */
 export function UnregisterProtocol(): $CancellablePromise<$models.PortableSetupStatus> {
-    return $Call.ByID(1163952871).then(($result: any) => {
+    return $Call.ByID(351153089).then(($result: any) => {
         return $$createType0($result);
     });
 }

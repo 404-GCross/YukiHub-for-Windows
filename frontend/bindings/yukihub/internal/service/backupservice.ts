@@ -19,14 +19,14 @@ import * as models$0 from "../models/models.js";
  * CancelUmbraAuth 取消当前正在等待回调的 Umbra 授权流程。
  */
 export function CancelUmbraAuth(): $CancellablePromise<boolean> {
-    return $Call.ByID(4124339916);
+    return $Call.ByID(2311801878);
 }
 
 /**
  * CreateAndUploadDBBackup 创建数据库备份并上传到云端
  */
 export function CreateAndUploadDBBackup(): $CancellablePromise<vo$0.DBBackupInfo | null> {
-    return $Call.ByID(318228197).then(($result: any) => {
+    return $Call.ByID(4126157163).then(($result: any) => {
         return $$createType1($result);
     });
 }
@@ -35,7 +35,7 @@ export function CreateAndUploadDBBackup(): $CancellablePromise<vo$0.DBBackupInfo
  * CreateAndUploadDBBackupForQuit 创建数据库备份并上传到云端（退出流程专用）
  */
 export function CreateAndUploadDBBackupForQuit(): $CancellablePromise<vo$0.DBBackupInfo | null> {
-    return $Call.ByID(4221204111).then(($result: any) => {
+    return $Call.ByID(3296568453).then(($result: any) => {
         return $$createType1($result);
     });
 }
@@ -44,7 +44,7 @@ export function CreateAndUploadDBBackupForQuit(): $CancellablePromise<vo$0.DBBac
  * CreateBackup 创建游戏存档备份
  */
 export function CreateBackup(gameID: string): $CancellablePromise<models$0.GameBackup | null> {
-    return $Call.ByID(2311526085, gameID).then(($result: any) => {
+    return $Call.ByID(3022703363, gameID).then(($result: any) => {
         return $$createType3($result);
     });
 }
@@ -53,7 +53,7 @@ export function CreateBackup(gameID: string): $CancellablePromise<models$0.GameB
  * CreateDBBackup 创建数据库备份（包含 covers 文件夹）
  */
 export function CreateDBBackup(): $CancellablePromise<vo$0.DBBackupInfo | null> {
-    return $Call.ByID(1398985643).then(($result: any) => {
+    return $Call.ByID(4206064637).then(($result: any) => {
         return $$createType1($result);
     });
 }
@@ -63,28 +63,28 @@ export function CreateDBBackup(): $CancellablePromise<vo$0.DBBackupInfo | null> 
  * savePath: 用户选择的保存路径（完整的 .zip 文件路径）
  */
 export function CreateFullDataBackup(savePath: string): $CancellablePromise<void> {
-    return $Call.ByID(2215611452, savePath);
+    return $Call.ByID(2342486302, savePath);
 }
 
 /**
  * DeleteBackup 删除备份（参数改为备份路径）
  */
 export function DeleteBackup(backupPath: string): $CancellablePromise<void> {
-    return $Call.ByID(3941192730, backupPath);
+    return $Call.ByID(3686778992, backupPath);
 }
 
 /**
  * DeleteDBBackup 删除数据库备份
  */
 export function DeleteDBBackup(backupPath: string): $CancellablePromise<void> {
-    return $Call.ByID(2837492688, backupPath);
+    return $Call.ByID(706075218, backupPath);
 }
 
 /**
  * DownloadCloudBackup 从云端下载备份
  */
 export function DownloadCloudBackup(cloudKey: string, gameID: string): $CancellablePromise<string> {
-    return $Call.ByID(3598055478, cloudKey, gameID);
+    return $Call.ByID(427143152, cloudKey, gameID);
 }
 
 /**
@@ -92,28 +92,28 @@ export function DownloadCloudBackup(cloudKey: string, gameID: string): $Cancella
  * TODO: 前端提供此功能的按钮
  */
 export function DownloadCloudDBBackup(cloudKey: string): $CancellablePromise<string> {
-    return $Call.ByID(3171093956, cloudKey);
+    return $Call.ByID(4177841618, cloudKey);
 }
 
 /**
  * ExchangeOneDriveCode 用授权码换取 OneDrive token
  */
 export function ExchangeOneDriveCode(code: string): $CancellablePromise<string> {
-    return $Call.ByID(3107263687, code);
+    return $Call.ByID(280531933, code);
 }
 
 /**
  * GetBackupDir 获取备份根目录
  */
 export function GetBackupDir(): $CancellablePromise<string> {
-    return $Call.ByID(3424793154);
+    return $Call.ByID(1082141632);
 }
 
 /**
  * GetCloudBackupStatus 获取云备份状态
  */
 export function GetCloudBackupStatus(): $CancellablePromise<vo$0.CloudBackupStatus> {
-    return $Call.ByID(3586917374).then(($result: any) => {
+    return $Call.ByID(1252855160).then(($result: any) => {
         return $$createType4($result);
     });
 }
@@ -122,7 +122,7 @@ export function GetCloudBackupStatus(): $CancellablePromise<vo$0.CloudBackupStat
  * GetCloudDBBackups 获取云端数据库备份列表
  */
 export function GetCloudDBBackups(): $CancellablePromise<vo$0.CloudBackupItem[]> {
-    return $Call.ByID(2214957703).then(($result: any) => {
+    return $Call.ByID(3368131477).then(($result: any) => {
         return $$createType6($result);
     });
 }
@@ -131,7 +131,7 @@ export function GetCloudDBBackups(): $CancellablePromise<vo$0.CloudBackupItem[]>
  * GetCloudGameBackups 获取云端游戏备份列表
  */
 export function GetCloudGameBackups(gameID: string): $CancellablePromise<vo$0.CloudBackupItem[]> {
-    return $Call.ByID(2938299527, gameID).then(($result: any) => {
+    return $Call.ByID(2663020157, gameID).then(($result: any) => {
         return $$createType6($result);
     });
 }
@@ -140,14 +140,14 @@ export function GetCloudGameBackups(gameID: string): $CancellablePromise<vo$0.Cl
  * GetDBBackupDir 获取数据库备份目录
  */
 export function GetDBBackupDir(): $CancellablePromise<string> {
-    return $Call.ByID(1098316844);
+    return $Call.ByID(4103478110);
 }
 
 /**
  * GetDBBackups 获取数据库备份列表
  */
 export function GetDBBackups(): $CancellablePromise<vo$0.DBBackupStatus | null> {
-    return $Call.ByID(3429105738).then(($result: any) => {
+    return $Call.ByID(682911076).then(($result: any) => {
         return $$createType8($result);
     });
 }
@@ -156,14 +156,14 @@ export function GetDBBackups(): $CancellablePromise<vo$0.DBBackupStatus | null> 
  * GetFullBackupDir 获取全量数据备份目录
  */
 export function GetFullBackupDir(): $CancellablePromise<string> {
-    return $Call.ByID(1506906653);
+    return $Call.ByID(2553323071);
 }
 
 /**
  * GetGameBackups 获取游戏的备份历史（直接读取文件夹，不使用数据库）
  */
 export function GetGameBackups(gameID: string): $CancellablePromise<models$0.GameBackup[]> {
-    return $Call.ByID(3817794926, gameID).then(($result: any) => {
+    return $Call.ByID(2696888352, gameID).then(($result: any) => {
         return $$createType9($result);
     });
 }
@@ -172,14 +172,14 @@ export function GetGameBackups(gameID: string): $CancellablePromise<models$0.Gam
  * GetOneDriveAuthURL 获取 OneDrive 授权 URL
  */
 export function GetOneDriveAuthURL(): $CancellablePromise<string> {
-    return $Call.ByID(3691447260);
+    return $Call.ByID(2488125766);
 }
 
 /**
  * GetUmbraUserProfile 获取当前授权的 Umbra 账户与存储空间信息。
  */
 export function GetUmbraUserProfile(config: appconf$0.AppConfig): $CancellablePromise<vo$0.UmbraUserProfile | null> {
-    return $Call.ByID(13310426, config).then(($result: any) => {
+    return $Call.ByID(2219422648, config).then(($result: any) => {
         return $$createType11($result);
     });
 }
@@ -188,42 +188,42 @@ export function GetUmbraUserProfile(config: appconf$0.AppConfig): $CancellablePr
  * LogoutUmbra 撤销 Umbra OAuth 并清除本机加密凭据。
  */
 export function LogoutUmbra(config: appconf$0.AppConfig): $CancellablePromise<void> {
-    return $Call.ByID(2481514718, config);
+    return $Call.ByID(4261985232, config);
 }
 
 /**
  * OpenBackupFolder 打开备份文件夹
  */
 export function OpenBackupFolder(gameID: string): $CancellablePromise<void> {
-    return $Call.ByID(3868003897, gameID);
+    return $Call.ByID(809366387, gameID);
 }
 
 /**
  * RestoreBackup 恢复备份到指定时间点（参数改为备份路径）
  */
 export function RestoreBackup(backupPath: string): $CancellablePromise<void> {
-    return $Call.ByID(1433619077, backupPath);
+    return $Call.ByID(898053887, backupPath);
 }
 
 /**
  * RestoreFromCloud 从云端恢复备份
  */
 export function RestoreFromCloud(cloudKey: string, gameID: string): $CancellablePromise<void> {
-    return $Call.ByID(957684424, cloudKey, gameID);
+    return $Call.ByID(2443634478, cloudKey, gameID);
 }
 
 /**
  * ScheduleDBRestore 安排数据库恢复（下次启动时执行）
  */
 export function ScheduleDBRestore(backupPath: string): $CancellablePromise<void> {
-    return $Call.ByID(410699654, backupPath);
+    return $Call.ByID(1527192336, backupPath);
 }
 
 /**
  * ScheduleDBRestoreFromCloud 从云端下载并安排数据库恢复
  */
 export function ScheduleDBRestoreFromCloud(cloudKey: string): $CancellablePromise<void> {
-    return $Call.ByID(1769435831, cloudKey);
+    return $Call.ByID(1903410193, cloudKey);
 }
 
 /**
@@ -231,35 +231,35 @@ export function ScheduleDBRestoreFromCloud(cloudKey: string): $CancellablePromis
  * backupPath: 用户选择的备份文件完整路径
  */
 export function ScheduleFullDataRestore(backupPath: string): $CancellablePromise<void> {
-    return $Call.ByID(3731679279, backupPath);
+    return $Call.ByID(2374721969, backupPath);
 }
 
 /**
  * SelectBackupRestorePath 选择要恢复的全量备份文件
  */
 export function SelectBackupRestorePath(): $CancellablePromise<string> {
-    return $Call.ByID(2034047298);
+    return $Call.ByID(1612682428);
 }
 
 /**
  * SelectBackupSavePath 选择全量备份保存路径
  */
 export function SelectBackupSavePath(): $CancellablePromise<string> {
-    return $Call.ByID(106305111);
+    return $Call.ByID(189037661);
 }
 
 /**
  * SetupCloudBackup 设置云备份密码（只能设置一次）
  */
 export function SetupCloudBackup(password: string): $CancellablePromise<string> {
-    return $Call.ByID(3285131195, password);
+    return $Call.ByID(1069058669, password);
 }
 
 /**
  * StartOneDriveAuth 启动 OneDrive 授权流程（使用本地回调服务器）
  */
 export function StartOneDriveAuth(clientID: string): $CancellablePromise<string> {
-    return $Call.ByID(2675534199, clientID);
+    return $Call.ByID(2540112237, clientID);
 }
 
 /**
@@ -267,49 +267,49 @@ export function StartOneDriveAuth(clientID: string): $CancellablePromise<string>
  * OAuth client ID 与安装令牌由发行构建注入，不接受用户手动填写。
  */
 export function StartUmbraAuth(config: appconf$0.AppConfig): $CancellablePromise<void> {
-    return $Call.ByID(2998801040, config);
+    return $Call.ByID(1207138402, config);
 }
 
 /**
  * TestOneDriveConnection 测试 OneDrive 连接
  */
 export function TestOneDriveConnection(config: appconf$0.AppConfig): $CancellablePromise<void> {
-    return $Call.ByID(260269571, config);
+    return $Call.ByID(1002022997, config);
 }
 
 /**
  * TestS3Connection 测试 S3 连接
  */
 export function TestS3Connection(config: appconf$0.AppConfig): $CancellablePromise<void> {
-    return $Call.ByID(386048853, config);
+    return $Call.ByID(577967583, config);
 }
 
 /**
  * TestUmbraConnection 测试 Umbra OAuth、设备签名与备份 API。
  */
 export function TestUmbraConnection(config: appconf$0.AppConfig): $CancellablePromise<void> {
-    return $Call.ByID(1870410996, config);
+    return $Call.ByID(1322001178, config);
 }
 
 /**
  * TestWebDAVConnection 测试 WebDAV 连接
  */
 export function TestWebDAVConnection(config: appconf$0.AppConfig): $CancellablePromise<void> {
-    return $Call.ByID(3937884146, config);
+    return $Call.ByID(1816400480, config);
 }
 
 /**
  * UploadDBBackupToCloud 上传数据库备份到云端
  */
 export function UploadDBBackupToCloud(backupPath: string): $CancellablePromise<void> {
-    return $Call.ByID(2563288224, backupPath);
+    return $Call.ByID(723985718, backupPath);
 }
 
 /**
  * UploadGameBackupToCloud 上传游戏存档到云端（参数改为 backupPath）
  */
 export function UploadGameBackupToCloud(gameID: string, backupPath: string): $CancellablePromise<void> {
-    return $Call.ByID(3053588496, gameID, backupPath);
+    return $Call.ByID(115710222, gameID, backupPath);
 }
 
 // Private type creation functions

@@ -16,7 +16,7 @@ import * as launcher$0 from "./launcher/models.js";
  * CleanupPendingSessions 清理所有待定的游戏会话。
  */
 export function CleanupPendingSessions(): $CancellablePromise<void> {
-    return $Call.ByID(2007778259);
+    return $Call.ByID(3915846993);
 }
 
 /**
@@ -25,14 +25,14 @@ export function CleanupPendingSessions(): $CancellablePromise<void> {
  * play session and stops monitoring so later process exit cannot write twice.
  */
 export function EndCurrentPlaySession(gameID: string): $CancellablePromise<void> {
-    return $Call.ByID(2030850023, gameID);
+    return $Call.ByID(129124077, gameID);
 }
 
 /**
  * HandleProtocolLaunch validates and dispatches a protocol-triggered game launch.
  */
 export function HandleProtocolLaunch(req: vo$0.ProtocolLaunchRequest): $CancellablePromise<void> {
-    return $Call.ByID(3180632300, req);
+    return $Call.ByID(1374541574, req);
 }
 
 /**
@@ -40,7 +40,7 @@ export function HandleProtocolLaunch(req: vo$0.ProtocolLaunchRequest): $Cancella
  * 供 CLI 调用，支持覆盖 LE 和 Magpie 设置
  */
 export function StartGameWithOptions(gameID: string, options: launcher$0.LaunchOptions): $CancellablePromise<boolean> {
-    return $Call.ByID(2779033485, gameID, options);
+    return $Call.ByID(2421902535, gameID, options);
 }
 
 /**
@@ -48,5 +48,5 @@ export function StartGameWithOptions(gameID: string, options: launcher$0.LaunchO
  * 当游戏进程退出时，自动保存游玩记录到数据库
  */
 export function StartGameWithTracking(gameID: string): $CancellablePromise<boolean> {
-    return $Call.ByID(59990884, gameID);
+    return $Call.ByID(3839832302, gameID);
 }

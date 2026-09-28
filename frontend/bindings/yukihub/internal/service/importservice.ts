@@ -20,7 +20,7 @@ import * as $models from "./models.js";
  * BatchImportGames 批量导入游戏
  */
 export function BatchImportGames(candidates: vo$0.BatchImportCandidate[]): $CancellablePromise<$models.ImportResult> {
-    return $Call.ByID(2272546492, candidates).then(($result: any) => {
+    return $Call.ByID(3799739794, candidates).then(($result: any) => {
         return $$createType0($result);
     });
 }
@@ -29,7 +29,7 @@ export function BatchImportGames(candidates: vo$0.BatchImportCandidate[]): $Canc
  * CheckImportMetadataDuplicates 批量检查元数据 source/id 是否已存在。
  */
 export function CheckImportMetadataDuplicates(requests: vo$0.ImportMetadataDuplicateRequest[]): $CancellablePromise<vo$0.ImportMetadataDuplicateResult[]> {
-    return $Call.ByID(3232680694, requests).then(($result: any) => {
+    return $Call.ByID(3023356412, requests).then(($result: any) => {
         return $$createType2($result);
     });
 }
@@ -38,7 +38,7 @@ export function CheckImportMetadataDuplicates(requests: vo$0.ImportMetadataDupli
  * FetchMetadataForCandidate 为单个候选项获取元数据（带限流）
  */
 export function FetchMetadataForCandidate(searchName: string): $CancellablePromise<vo$0.BatchImportCandidate> {
-    return $Call.ByID(2917695493, searchName).then(($result: any) => {
+    return $Call.ByID(3254766843, searchName).then(($result: any) => {
         return $$createType3($result);
     });
 }
@@ -49,7 +49,7 @@ export function FetchMetadataForCandidate(searchName: string): $CancellablePromi
  * used as the reference for every enabled source.
  */
 export function FetchMetadataForCandidateWithPreference(searchName: string, preferredSource: enums$0.SourceType): $CancellablePromise<vo$0.BatchImportMetadataMatchResult> {
-    return $Call.ByID(1340429536, searchName, preferredSource).then(($result: any) => {
+    return $Call.ByID(2130067174, searchName, preferredSource).then(($result: any) => {
         return $$createType4($result);
     });
 }
@@ -58,19 +58,19 @@ export function FetchMetadataForCandidateWithPreference(searchName: string, pref
  * ImportFromPlaynite 从 Playnite 导出的 JSON 文件导入数据
  */
 export function ImportFromPlaynite(jsonPath: string, skipNoPath: boolean): $CancellablePromise<$models.ImportResult> {
-    return $Call.ByID(407725221, jsonPath, skipNoPath).then(($result: any) => {
+    return $Call.ByID(1722603939, jsonPath, skipNoPath).then(($result: any) => {
         return $$createType0($result);
     });
 }
 
 export function ImportFromPlayniteWithOptions(jsonPath: string, skipNoPath: boolean, samePathAction: string): $CancellablePromise<$models.ImportResult> {
-    return $Call.ByID(2716991313, jsonPath, skipNoPath, samePathAction).then(($result: any) => {
+    return $Call.ByID(2510264655, jsonPath, skipNoPath, samePathAction).then(($result: any) => {
         return $$createType0($result);
     });
 }
 
 export function ImportFromPlayniteWithSelection(jsonPath: string, skipNoPath: boolean, samePathAction: string, selections: vo$0.ImportSelection[]): $CancellablePromise<$models.ImportResult> {
-    return $Call.ByID(3115797393, jsonPath, skipNoPath, samePathAction, selections).then(($result: any) => {
+    return $Call.ByID(1136602975, jsonPath, skipNoPath, samePathAction, selections).then(($result: any) => {
         return $$createType0($result);
     });
 }
@@ -79,19 +79,19 @@ export function ImportFromPlayniteWithSelection(jsonPath: string, skipNoPath: bo
  * ImportFromPotatoVN 从 PotatoVN 导出的 ZIP 文件导入数据
  */
 export function ImportFromPotatoVN(zipPath: string, skipNoPath: boolean): $CancellablePromise<$models.ImportResult> {
-    return $Call.ByID(2195766462, zipPath, skipNoPath).then(($result: any) => {
+    return $Call.ByID(1797603728, zipPath, skipNoPath).then(($result: any) => {
         return $$createType0($result);
     });
 }
 
 export function ImportFromPotatoVNWithOptions(zipPath: string, skipNoPath: boolean, samePathAction: string): $CancellablePromise<$models.ImportResult> {
-    return $Call.ByID(3975548404, zipPath, skipNoPath, samePathAction).then(($result: any) => {
+    return $Call.ByID(1933769878, zipPath, skipNoPath, samePathAction).then(($result: any) => {
         return $$createType0($result);
     });
 }
 
 export function ImportFromPotatoVNWithSelection(zipPath: string, skipNoPath: boolean, samePathAction: string, selections: vo$0.ImportSelection[]): $CancellablePromise<$models.ImportResult> {
-    return $Call.ByID(1528923484, zipPath, skipNoPath, samePathAction, selections).then(($result: any) => {
+    return $Call.ByID(1350935398, zipPath, skipNoPath, samePathAction, selections).then(($result: any) => {
         return $$createType0($result);
     });
 }
@@ -100,19 +100,19 @@ export function ImportFromPotatoVNWithSelection(zipPath: string, skipNoPath: boo
  * ImportFromReinaManager 从 ReinaManager SQLite 数据库备份导入数据。
  */
 export function ImportFromReinaManager(dbPath: string, skipNoPath: boolean): $CancellablePromise<$models.ImportResult> {
-    return $Call.ByID(726358553, dbPath, skipNoPath).then(($result: any) => {
+    return $Call.ByID(3979779183, dbPath, skipNoPath).then(($result: any) => {
         return $$createType0($result);
     });
 }
 
 export function ImportFromReinaManagerWithOptions(dbPath: string, skipNoPath: boolean, samePathAction: string): $CancellablePromise<$models.ImportResult> {
-    return $Call.ByID(2434128349, dbPath, skipNoPath, samePathAction).then(($result: any) => {
+    return $Call.ByID(1017010595, dbPath, skipNoPath, samePathAction).then(($result: any) => {
         return $$createType0($result);
     });
 }
 
 export function ImportFromReinaManagerWithSelection(dbPath: string, skipNoPath: boolean, samePathAction: string, selections: vo$0.ImportSelection[]): $CancellablePromise<$models.ImportResult> {
-    return $Call.ByID(4135033037, dbPath, skipNoPath, samePathAction, selections).then(($result: any) => {
+    return $Call.ByID(2469669747, dbPath, skipNoPath, samePathAction, selections).then(($result: any) => {
         return $$createType0($result);
     });
 }
@@ -121,19 +121,19 @@ export function ImportFromReinaManagerWithSelection(dbPath: string, skipNoPath: 
  * ImportFromSteamLocal 从本机 Steam 库导入已安装游戏。
  */
 export function ImportFromSteamLocal(skipNoPath: boolean): $CancellablePromise<$models.ImportResult> {
-    return $Call.ByID(597689546, skipNoPath).then(($result: any) => {
+    return $Call.ByID(4290077536, skipNoPath).then(($result: any) => {
         return $$createType0($result);
     });
 }
 
 export function ImportFromSteamLocalWithOptions(skipNoPath: boolean, samePathAction: string): $CancellablePromise<$models.ImportResult> {
-    return $Call.ByID(885223224, skipNoPath, samePathAction).then(($result: any) => {
+    return $Call.ByID(688352614, skipNoPath, samePathAction).then(($result: any) => {
         return $$createType0($result);
     });
 }
 
 export function ImportFromSteamLocalWithSelection(skipNoPath: boolean, samePathAction: string, selections: vo$0.ImportSelection[]): $CancellablePromise<$models.ImportResult> {
-    return $Call.ByID(467187792, skipNoPath, samePathAction, selections).then(($result: any) => {
+    return $Call.ByID(780248342, skipNoPath, samePathAction, selections).then(($result: any) => {
         return $$createType0($result);
     });
 }
@@ -142,19 +142,19 @@ export function ImportFromSteamLocalWithSelection(skipNoPath: boolean, samePathA
  * ImportFromVnite 从 Vnite 导出的数据库目录导入数据
  */
 export function ImportFromVnite(vniteDir: string, skipNoPath: boolean): $CancellablePromise<$models.ImportResult> {
-    return $Call.ByID(4287218471, vniteDir, skipNoPath).then(($result: any) => {
+    return $Call.ByID(1000579021, vniteDir, skipNoPath).then(($result: any) => {
         return $$createType0($result);
     });
 }
 
 export function ImportFromVniteWithOptions(vniteDir: string, skipNoPath: boolean, samePathAction: string): $CancellablePromise<$models.ImportResult> {
-    return $Call.ByID(3991927723, vniteDir, skipNoPath, samePathAction).then(($result: any) => {
+    return $Call.ByID(853057033, vniteDir, skipNoPath, samePathAction).then(($result: any) => {
         return $$createType0($result);
     });
 }
 
 export function ImportFromVniteWithSelection(vniteDir: string, skipNoPath: boolean, samePathAction: string, selections: vo$0.ImportSelection[]): $CancellablePromise<$models.ImportResult> {
-    return $Call.ByID(4100496827, vniteDir, skipNoPath, samePathAction, selections).then(($result: any) => {
+    return $Call.ByID(1283728713, vniteDir, skipNoPath, samePathAction, selections).then(($result: any) => {
         return $$createType0($result);
     });
 }
@@ -163,19 +163,19 @@ export function ImportFromVniteWithSelection(vniteDir: string, skipNoPath: boole
  * ImportFromYukiHub 从 YukiHub 备份导入游戏与游玩记录。
  */
 export function ImportFromYukiHub(backupPath: string, skipNoPath: boolean): $CancellablePromise<$models.ImportResult> {
-    return $Call.ByID(3046190802, backupPath, skipNoPath).then(($result: any) => {
+    return $Call.ByID(1863276104, backupPath, skipNoPath).then(($result: any) => {
         return $$createType0($result);
     });
 }
 
 export function ImportFromYukiHubWithOptions(backupPath: string, skipNoPath: boolean, samePathAction: string): $CancellablePromise<$models.ImportResult> {
-    return $Call.ByID(502280432, backupPath, skipNoPath, samePathAction).then(($result: any) => {
+    return $Call.ByID(3463872286, backupPath, skipNoPath, samePathAction).then(($result: any) => {
         return $$createType0($result);
     });
 }
 
 export function ImportFromYukiHubWithSelection(backupPath: string, skipNoPath: boolean, samePathAction: string, selections: vo$0.ImportSelection[]): $CancellablePromise<$models.ImportResult> {
-    return $Call.ByID(1236415592, backupPath, skipNoPath, samePathAction, selections).then(($result: any) => {
+    return $Call.ByID(3373703918, backupPath, skipNoPath, samePathAction, selections).then(($result: any) => {
         return $$createType0($result);
     });
 }
@@ -184,7 +184,7 @@ export function ImportFromYukiHubWithSelection(backupPath: string, skipNoPath: b
  * PreviewImport 预览 PotatoVN 导入内容（不实际导入）
  */
 export function PreviewImport(zipPath: string): $CancellablePromise<$models.PreviewGame[]> {
-    return $Call.ByID(2403517769, zipPath).then(($result: any) => {
+    return $Call.ByID(507045495, zipPath).then(($result: any) => {
         return $$createType6($result);
     });
 }
@@ -193,7 +193,7 @@ export function PreviewImport(zipPath: string): $CancellablePromise<$models.Prev
  * PreviewPlayniteImport 预览 Playnite 导入内容（不实际导入）
  */
 export function PreviewPlayniteImport(jsonPath: string): $CancellablePromise<$models.PreviewGame[]> {
-    return $Call.ByID(4107361765, jsonPath).then(($result: any) => {
+    return $Call.ByID(2104232847, jsonPath).then(($result: any) => {
         return $$createType6($result);
     });
 }
@@ -202,7 +202,7 @@ export function PreviewPlayniteImport(jsonPath: string): $CancellablePromise<$mo
  * PreviewReinaManagerImport 预览 ReinaManager 数据库备份中的游戏。
  */
 export function PreviewReinaManagerImport(dbPath: string): $CancellablePromise<$models.PreviewGame[]> {
-    return $Call.ByID(461304041, dbPath).then(($result: any) => {
+    return $Call.ByID(1751137987, dbPath).then(($result: any) => {
         return $$createType6($result);
     });
 }
@@ -211,7 +211,7 @@ export function PreviewReinaManagerImport(dbPath: string): $CancellablePromise<$
  * PreviewSteamLocalImport 扫描本机已安装 Steam 游戏并预览导入内容。
  */
 export function PreviewSteamLocalImport(): $CancellablePromise<$models.PreviewGame[]> {
-    return $Call.ByID(1217506118).then(($result: any) => {
+    return $Call.ByID(1021271472).then(($result: any) => {
         return $$createType6($result);
     });
 }
@@ -220,7 +220,7 @@ export function PreviewSteamLocalImport(): $CancellablePromise<$models.PreviewGa
  * PreviewVniteImport 预览 Vnite 导入内容（不实际导入）
  */
 export function PreviewVniteImport(vniteDir: string): $CancellablePromise<$models.PreviewGame[]> {
-    return $Call.ByID(3206604861, vniteDir).then(($result: any) => {
+    return $Call.ByID(1185164399, vniteDir).then(($result: any) => {
         return $$createType6($result);
     });
 }
@@ -229,7 +229,7 @@ export function PreviewVniteImport(vniteDir: string): $CancellablePromise<$model
  * PreviewYukiHubImport 预览 YukiHub 备份中的游戏。
  */
 export function PreviewYukiHubImport(backupPath: string): $CancellablePromise<$models.PreviewGame[]> {
-    return $Call.ByID(566310536, backupPath).then(($result: any) => {
+    return $Call.ByID(1415542562, backupPath).then(($result: any) => {
         return $$createType6($result);
     });
 }
@@ -239,7 +239,7 @@ export function PreviewYukiHubImport(backupPath: string): $CancellablePromise<$m
  * 返回候选游戏列表供前端展示和确认
  */
 export function ProcessDroppedPaths(paths: string[]): $CancellablePromise<vo$0.BatchImportScanResult> {
-    return $Call.ByID(2364795639, paths).then(($result: any) => {
+    return $Call.ByID(321094969, paths).then(($result: any) => {
         return $$createType7($result);
     });
 }
@@ -248,7 +248,7 @@ export function ProcessDroppedPaths(paths: string[]): $CancellablePromise<vo$0.B
  * ProcessDroppedPathsWithOptions 处理拖拽导入的路径，并复用批量导入的扫描命名选项。
  */
 export function ProcessDroppedPathsWithOptions(paths: string[], options: vo$0.BatchImportScanOptions): $CancellablePromise<vo$0.BatchImportScanResult> {
-    return $Call.ByID(865702907, paths, options).then(($result: any) => {
+    return $Call.ByID(426975613, paths, options).then(($result: any) => {
         return $$createType7($result);
     });
 }
@@ -257,7 +257,7 @@ export function ProcessDroppedPathsWithOptions(paths: string[], options: vo$0.Ba
  * ScanLibraryDirectory 扫描游戏库目录，返回默认待导入候选项和路径阶段跳过项。
  */
 export function ScanLibraryDirectory(libraryPath: string): $CancellablePromise<vo$0.BatchImportScanResult> {
-    return $Call.ByID(3828536207, libraryPath).then(($result: any) => {
+    return $Call.ByID(2192617837, libraryPath).then(($result: any) => {
         return $$createType7($result);
     });
 }
@@ -266,7 +266,7 @@ export function ScanLibraryDirectory(libraryPath: string): $CancellablePromise<v
  * ScanLibraryDirectoryWithOptions 按指定模式扫描游戏库目录。
  */
 export function ScanLibraryDirectoryWithOptions(libraryPath: string, options: vo$0.BatchImportScanOptions): $CancellablePromise<vo$0.BatchImportScanResult> {
-    return $Call.ByID(334794435, libraryPath, options).then(($result: any) => {
+    return $Call.ByID(3462014889, libraryPath, options).then(($result: any) => {
         return $$createType7($result);
     });
 }
@@ -275,14 +275,14 @@ export function ScanLibraryDirectoryWithOptions(libraryPath: string, options: vo
  * SelectJSONFile 选择要导入的 JSON 文件
  */
 export function SelectJSONFile(): $CancellablePromise<string> {
-    return $Call.ByID(2819581164);
+    return $Call.ByID(1235757262);
 }
 
 /**
  * SelectLibraryDirectory 选择游戏库目录，并仅将当前系统可访问的目录用于初始化对话框。
  */
 export function SelectLibraryDirectory(initialDirectory: string): $CancellablePromise<$models.LibraryDirectorySelection> {
-    return $Call.ByID(3578812674, initialDirectory).then(($result: any) => {
+    return $Call.ByID(675902908, initialDirectory).then(($result: any) => {
         return $$createType8($result);
     });
 }
@@ -291,28 +291,28 @@ export function SelectLibraryDirectory(initialDirectory: string): $CancellablePr
  * SelectReinaManagerDatabase 选择 ReinaManager 导出的 SQLite 数据库备份。
  */
 export function SelectReinaManagerDatabase(): $CancellablePromise<string> {
-    return $Call.ByID(2679041269);
+    return $Call.ByID(4226037823);
 }
 
 /**
  * SelectVniteDirectory 选择 Vnite 导出的数据库目录
  */
 export function SelectVniteDirectory(): $CancellablePromise<string> {
-    return $Call.ByID(3736503863);
+    return $Call.ByID(2993686053);
 }
 
 /**
  * SelectYukiHubBackup 选择 YukiHub 导出的备份文件。
  */
 export function SelectYukiHubBackup(): $CancellablePromise<string> {
-    return $Call.ByID(2200677895);
+    return $Call.ByID(3404693645);
 }
 
 /**
  * SelectZipFile 选择要导入的 ZIP 文件
  */
 export function SelectZipFile(): $CancellablePromise<string> {
-    return $Call.ByID(2300022041);
+    return $Call.ByID(1685332107);
 }
 
 // Private type creation functions

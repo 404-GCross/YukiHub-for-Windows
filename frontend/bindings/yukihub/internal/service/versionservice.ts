@@ -9,42 +9,42 @@ import { Call as $Call, CancellablePromise as $CancellablePromise, Create as $Cr
  * GetBuildMode 返回构建模式
  */
 export function GetBuildMode(): $CancellablePromise<string> {
-    return $Call.ByID(2173952530);
+    return $Call.ByID(153473188);
 }
 
 /**
  * GetBuildTime 返回构建时间
  */
 export function GetBuildTime(): $CancellablePromise<string> {
-    return $Call.ByID(4066483684);
+    return $Call.ByID(2653118450);
 }
 
 /**
  * GetFullVersion 返回完整版本信息
  */
 export function GetFullVersion(): $CancellablePromise<string> {
-    return $Call.ByID(1762605110);
+    return $Call.ByID(3869880536);
 }
 
 /**
  * GetGOOS 返回当前运行平台。
  */
 export function GetGOOS(): $CancellablePromise<string> {
-    return $Call.ByID(1065535239);
+    return $Call.ByID(1753739893);
 }
 
 /**
  * GetVersion 返回版本号
  */
 export function GetVersion(): $CancellablePromise<string> {
-    return $Call.ByID(2155983121);
+    return $Call.ByID(3660551071);
 }
 
 /**
  * GetVersionInfo 返回版本信息对象
  */
 export function GetVersionInfo(): $CancellablePromise<{ [_ in string]?: string }> {
-    return $Call.ByID(1795860873).then(($result: any) => {
+    return $Call.ByID(4024408811).then(($result: any) => {
         return $$createType0($result);
     });
 }
@@ -54,7 +54,7 @@ export function GetVersionInfo(): $CancellablePromise<{ [_ in string]?: string }
  * provides the per-process audio controls required by background game mute.
  */
 export function SupportsBackgroundProcessMute(): $CancellablePromise<boolean> {
-    return $Call.ByID(2584431943);
+    return $Call.ByID(2438934921);
 }
 
 // Private type creation functions

@@ -26,33 +26,33 @@ import * as $models from "./models.js";
  * AddGameFromWebMetadata 用于接收前端/导入流程中的完整刮削结果（含 tags）并一次性入库。
  */
 export function AddGameFromWebMetadata(meta: vo$0.GameMetadataFromWebVO): $CancellablePromise<void> {
-    return $Call.ByID(1984455319, meta);
+    return $Call.ByID(3188808793, meta);
 }
 
 /**
  * BatchUpdateStatus 批量更新多个游戏的游玩状态
  */
 export function BatchUpdateStatus(ids: string[], status: string): $CancellablePromise<void> {
-    return $Call.ByID(3920669870, ids, status);
+    return $Call.ByID(1939642532, ids, status);
 }
 
 export function DeleteGame(id: string): $CancellablePromise<void> {
-    return $Call.ByID(3870112898, id);
+    return $Call.ByID(2461646920, id);
 }
 
 export function DeleteGameMetadataSource(gameID: string, source: enums$0.SourceType): $CancellablePromise<void> {
-    return $Call.ByID(1099719170, gameID, source);
+    return $Call.ByID(3048937664, gameID, source);
 }
 
 export function DeleteGames(ids: string[]): $CancellablePromise<void> {
-    return $Call.ByID(330755939, ids);
+    return $Call.ByID(896113889, ids);
 }
 
 /**
  * DownloadCoverImage 下载远程封面图片并替换为本地托管路径。
  */
 export function DownloadCoverImage(gameID: string, coverURL: string): $CancellablePromise<string> {
-    return $Call.ByID(2159062323, gameID, coverURL);
+    return $Call.ByID(2705768161, gameID, coverURL);
 }
 
 /**
@@ -60,7 +60,7 @@ export function DownloadCoverImage(gameID: string, coverURL: string): $Cancellab
  * metadata sources for games whose default source is one of those providers.
  */
 export function EnrichLegacyGameMetadataSourceIDs(): $CancellablePromise<$models.GameIDEnrichmentResult> {
-    return $Call.ByID(3768292703).then(($result: any) => {
+    return $Call.ByID(1823305825).then(($result: any) => {
         return $$createType0($result);
     });
 }
@@ -69,30 +69,30 @@ export function EnrichLegacyGameMetadataSourceIDs(): $CancellablePromise<$models
  * ExportCoverImage opens a save dialog and copies the game's cover image to the selected location.
  */
 export function ExportCoverImage(gameID: string): $CancellablePromise<string> {
-    return $Call.ByID(3615449089, gameID);
+    return $Call.ByID(3086126831, gameID);
 }
 
 /**
  * ExportLaunchShortcut exports a per-game .url shortcut that re-enters YukiHub via protocol.
  */
 export function ExportLaunchShortcut(gameID: string): $CancellablePromise<string> {
-    return $Call.ByID(1161923292, gameID);
+    return $Call.ByID(3666205118, gameID);
 }
 
 export function FetchMetadata(req: vo$0.MetadataRequest): $CancellablePromise<models$0.Game> {
-    return $Call.ByID(3526283416, req).then(($result: any) => {
+    return $Call.ByID(2732404318, req).then(($result: any) => {
         return $$createType1($result);
     });
 }
 
 export function FetchMetadataByName(name: string): $CancellablePromise<vo$0.GameMetadataFromWebVO[]> {
-    return $Call.ByID(1725328630, name).then(($result: any) => {
+    return $Call.ByID(3303674484, name).then(($result: any) => {
         return $$createType3($result);
     });
 }
 
 export function FetchMetadataFromWeb(req: vo$0.MetadataRequest): $CancellablePromise<vo$0.GameMetadataFromWebVO> {
-    return $Call.ByID(3772898958, req).then(($result: any) => {
+    return $Call.ByID(728716540, req).then(($result: any) => {
         return $$createType2($result);
     });
 }
@@ -101,25 +101,25 @@ export function FetchMetadataFromWeb(req: vo$0.MetadataRequest): $CancellablePro
  * FindGameGuideDocuments 递归查找游戏目录中的说明文档。
  */
 export function FindGameGuideDocuments(gameID: string): $CancellablePromise<vo$0.GameGuideDocument[]> {
-    return $Call.ByID(680290004, gameID).then(($result: any) => {
+    return $Call.ByID(4183576222, gameID).then(($result: any) => {
         return $$createType5($result);
     });
 }
 
 export function GetGameByID(id: string): $CancellablePromise<models$0.Game> {
-    return $Call.ByID(870918487, id).then(($result: any) => {
+    return $Call.ByID(3154479601, id).then(($result: any) => {
         return $$createType1($result);
     });
 }
 
 export function GetGameMetadataSources(gameID: string): $CancellablePromise<models$0.GameMetadataSource[]> {
-    return $Call.ByID(1857994916, gameID).then(($result: any) => {
+    return $Call.ByID(2877647658, gameID).then(($result: any) => {
         return $$createType7($result);
     });
 }
 
 export function GetGames(req: vo$0.GameListRequest): $CancellablePromise<vo$0.GameListResponse> {
-    return $Call.ByID(3248875236, req).then(($result: any) => {
+    return $Call.ByID(2074870666, req).then(($result: any) => {
         return $$createType8($result);
     });
 }
@@ -128,7 +128,7 @@ export function GetGames(req: vo$0.GameListRequest): $CancellablePromise<vo$0.Ga
  * GetRunningProcesses 获取系统中正在运行的进程列表（过滤掉系统进程）
  */
 export function GetRunningProcesses(): $CancellablePromise<processutils$0.ProcessInfo[]> {
-    return $Call.ByID(3550673093).then(($result: any) => {
+    return $Call.ByID(1124921291).then(($result: any) => {
         return $$createType10($result);
     });
 }
@@ -137,14 +137,14 @@ export function GetRunningProcesses(): $CancellablePromise<processutils$0.Proces
  * OpenGameGuideDocument 使用系统默认应用打开指定的游戏说明文档。
  */
 export function OpenGameGuideDocument(gameID: string, relativePath: string): $CancellablePromise<void> {
-    return $Call.ByID(4040939950, gameID, relativePath);
+    return $Call.ByID(2538227664, gameID, relativePath);
 }
 
 /**
  * OpenLocalPath 打开指定的本地文件或目录（通过资源管理器）
  */
 export function OpenLocalPath(path: string): $CancellablePromise<void> {
-    return $Call.ByID(4293749381, path);
+    return $Call.ByID(958861979, path);
 }
 
 /**
@@ -152,31 +152,31 @@ export function OpenLocalPath(path: string): $CancellablePromise<void> {
  * without modifying the user's library.
  */
 export function PreviewLegacyGameMetadataSourceIDs(): $CancellablePromise<$models.GameIDEnrichmentPreview> {
-    return $Call.ByID(2034554070).then(($result: any) => {
+    return $Call.ByID(928219716).then(($result: any) => {
         return $$createType11($result);
     });
 }
 
 export function RefreshAllGamesMetadata(): $CancellablePromise<vo$0.MetadataRefreshResult> {
-    return $Call.ByID(3664175033).then(($result: any) => {
+    return $Call.ByID(2761252055).then(($result: any) => {
         return $$createType12($result);
     });
 }
 
 export function RefreshAllGamesMetadataWithFields(fields: enums$0.MetadataUpdateField[]): $CancellablePromise<vo$0.MetadataRefreshResult> {
-    return $Call.ByID(1585598116, fields).then(($result: any) => {
+    return $Call.ByID(3625736150, fields).then(($result: any) => {
         return $$createType12($result);
     });
 }
 
 export function RefreshGamesMetadata(gameIDs: string[]): $CancellablePromise<vo$0.MetadataRefreshResult> {
-    return $Call.ByID(839615256, gameIDs).then(($result: any) => {
+    return $Call.ByID(700545834, gameIDs).then(($result: any) => {
         return $$createType12($result);
     });
 }
 
 export function RefreshGamesMetadataWithFields(gameIDs: string[], fields: enums$0.MetadataUpdateField[]): $CancellablePromise<vo$0.MetadataRefreshResult> {
-    return $Call.ByID(2614311709, gameIDs, fields).then(($result: any) => {
+    return $Call.ByID(1297801843, gameIDs, fields).then(($result: any) => {
         return $$createType12($result);
     });
 }
@@ -187,58 +187,58 @@ export function RefreshGamesMetadataWithFields(gameIDs: string[], fields: enums$
  * - 如果是目录，弹出文件选择器让用户手动选择可执行文件
  */
 export function ResolveExecutablePathForImport(path: string): $CancellablePromise<string> {
-    return $Call.ByID(3170117500, path);
+    return $Call.ByID(2735323202, path);
 }
 
 /**
  * SaveCoverImageDataURL 保存前端剪贴板读取到的图片 data URL。
  */
 export function SaveCoverImageDataURL(gameID: string, dataURL: string): $CancellablePromise<string> {
-    return $Call.ByID(1501613755, gameID, dataURL);
+    return $Call.ByID(2974093025, gameID, dataURL);
 }
 
 /**
  * SelectCoverImage 选择封面图片并保存到 covers 目录
  */
 export function SelectCoverImage(gameID: string): $CancellablePromise<string> {
-    return $Call.ByID(3815698927, gameID);
+    return $Call.ByID(132776213, gameID);
 }
 
 /**
  * SelectCoverImageWithTempID 选择封面图片并使用临时ID保存（用于新增游戏时）
  */
 export function SelectCoverImageWithTempID(): $CancellablePromise<string> {
-    return $Call.ByID(2386568324);
+    return $Call.ByID(3880830030);
 }
 
 export function SelectGameDirectory(currentPath: string): $CancellablePromise<string> {
-    return $Call.ByID(2257419900, currentPath);
+    return $Call.ByID(456843702, currentPath);
 }
 
 export function SelectGameExecutable(currentPath: string): $CancellablePromise<string> {
-    return $Call.ByID(1819772025, currentPath);
+    return $Call.ByID(1188050431, currentPath);
 }
 
 /**
  * SelectSaveDirectory 选择存档目录
  */
 export function SelectSaveDirectory(rootPath: string): $CancellablePromise<string> {
-    return $Call.ByID(1684294165, rootPath);
+    return $Call.ByID(317927955, rootPath);
 }
 
 /**
  * SelectSaveFile 选择存档文件
  */
 export function SelectSaveFile(rootPath: string): $CancellablePromise<string> {
-    return $Call.ByID(503879528, rootPath);
+    return $Call.ByID(2408812998, rootPath);
 }
 
 export function SelectWineRunnerExecutable(currentPath: string): $CancellablePromise<string> {
-    return $Call.ByID(2993135908, currentPath);
+    return $Call.ByID(2559326662, currentPath);
 }
 
 export function SetDefaultMetadataSource(gameID: string, source: enums$0.SourceType): $CancellablePromise<void> {
-    return $Call.ByID(2476714738, gameID, source);
+    return $Call.ByID(3919185436, gameID, source);
 }
 
 /**
@@ -246,32 +246,32 @@ export function SetDefaultMetadataSource(gameID: string, source: enums$0.SourceT
  * whose current cover URL still points to a remote image.
  */
 export function StartRemoteCoverImageDownloadTask(): $CancellablePromise<string> {
-    return $Call.ByID(1394229022);
+    return $Call.ByID(1410543464);
 }
 
 export function UpdateGame(game: models$0.Game): $CancellablePromise<void> {
-    return $Call.ByID(340448976, game);
+    return $Call.ByID(4009221246, game);
 }
 
 /**
  * UpdateGameFromRemote 从远程数据源更新游戏信息
  */
 export function UpdateGameFromRemote(gameID: string): $CancellablePromise<void> {
-    return $Call.ByID(768690102, gameID);
+    return $Call.ByID(2263524144, gameID);
 }
 
 /**
  * UpdateGameFromRemoteBySource refreshes a game from one explicitly linked provider.
  */
 export function UpdateGameFromRemoteBySource(gameID: string, source: enums$0.SourceType): $CancellablePromise<void> {
-    return $Call.ByID(3791053690, gameID, source);
+    return $Call.ByID(3528197024, gameID, source);
 }
 
 /**
  * UpdateGameFromRemoteWithFields 从远程数据源更新指定字段。
  */
 export function UpdateGameFromRemoteWithFields(gameID: string, fields: enums$0.MetadataUpdateField[]): $CancellablePromise<void> {
-    return $Call.ByID(1596043423, gameID, fields);
+    return $Call.ByID(2367644949, gameID, fields);
 }
 
 /**
@@ -279,11 +279,11 @@ export function UpdateGameFromRemoteWithFields(gameID: string, fields: enums$0.M
  * 当用户选择了实际的游戏进程时调用
  */
 export function UpdateGameProcessName(gameID: string, processName: string): $CancellablePromise<void> {
-    return $Call.ByID(2069268558, gameID, processName);
+    return $Call.ByID(1705920312, gameID, processName);
 }
 
 export function UpsertGameMetadataSource(gameID: string, source: enums$0.SourceType, sourceID: string): $CancellablePromise<void> {
-    return $Call.ByID(81280994, gameID, source, sourceID);
+    return $Call.ByID(3925881704, gameID, source, sourceID);
 }
 
 // Private type creation functions

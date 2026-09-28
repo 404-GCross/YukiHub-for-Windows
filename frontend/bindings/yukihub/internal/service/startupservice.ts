@@ -16,7 +16,7 @@ import { Call as $Call, CancellablePromise as $CancellablePromise, Create as $Cr
 import * as $models from "./models.js";
 
 export function GetFailure(): $CancellablePromise<$models.StartupFailure> {
-    return $Call.ByID(879165574).then(($result: any) => {
+    return $Call.ByID(2220347068).then(($result: any) => {
         return $$createType0($result);
     });
 }

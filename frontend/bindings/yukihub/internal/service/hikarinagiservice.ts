@@ -10,31 +10,31 @@ import { Call as $Call, CancellablePromise as $CancellablePromise, Create as $Cr
 import * as vo$0 from "../common/vo/models.js";
 
 export function Disconnect(): $CancellablePromise<vo$0.HikarinagiAuthStatus> {
-    return $Call.ByID(104554032).then(($result: any) => {
+    return $Call.ByID(3945843942).then(($result: any) => {
         return $$createType0($result);
     });
 }
 
 export function GetAuthStatus(): $CancellablePromise<vo$0.HikarinagiAuthStatus> {
-    return $Call.ByID(3781905042).then(($result: any) => {
+    return $Call.ByID(3290855640).then(($result: any) => {
         return $$createType0($result);
     });
 }
 
 export function GetProfile(): $CancellablePromise<vo$0.HikarinagiProfile> {
-    return $Call.ByID(2292117527).then(($result: any) => {
+    return $Call.ByID(657357917).then(($result: any) => {
         return $$createType1($result);
     });
 }
 
 export function StartAuth(): $CancellablePromise<vo$0.HikarinagiAuthStatus> {
-    return $Call.ByID(110026484).then(($result: any) => {
+    return $Call.ByID(113157710).then(($result: any) => {
         return $$createType0($result);
     });
 }
 
 export function SyncAllGameStatuses(): $CancellablePromise<vo$0.RemoteStatusSyncProgress> {
-    return $Call.ByID(2989962652).then(($result: any) => {
+    return $Call.ByID(2986226138).then(($result: any) => {
         return $$createType2($result);
     });
 }

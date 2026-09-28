@@ -10,25 +10,25 @@ import { Call as $Call, CancellablePromise as $CancellablePromise, Create as $Cr
 import * as vo$0 from "../common/vo/models.js";
 
 export function GetCloudSyncStatus(): $CancellablePromise<vo$0.CloudSyncStatus> {
-    return $Call.ByID(31011959).then(($result: any) => {
+    return $Call.ByID(3349534789).then(($result: any) => {
         return $$createType0($result);
     });
 }
 
 export function RunStartupSync(): $CancellablePromise<void> {
-    return $Call.ByID(3952022258);
+    return $Call.ByID(1451300052);
 }
 
 export function StartScheduledSync(): $CancellablePromise<void> {
-    return $Call.ByID(537075623);
+    return $Call.ByID(1485956193);
 }
 
 export function StopScheduledSync(): $CancellablePromise<void> {
-    return $Call.ByID(253775729);
+    return $Call.ByID(473355311);
 }
 
 export function SyncNow(): $CancellablePromise<vo$0.CloudSyncStatus> {
-    return $Call.ByID(1737241588).then(($result: any) => {
+    return $Call.ByID(2130198398).then(($result: any) => {
         return $$createType0($result);
     });
 }

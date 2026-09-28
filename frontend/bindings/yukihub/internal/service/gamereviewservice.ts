@@ -16,19 +16,19 @@ import * as vo$0 from "../common/vo/models.js";
 import * as models$0 from "../models/models.js";
 
 export function GetGameReview(gameID: string): $CancellablePromise<models$0.GameReview | null> {
-    return $Call.ByID(1333778931, gameID).then(($result: any) => {
+    return $Call.ByID(3776513905, gameID).then(($result: any) => {
         return $$createType1($result);
     });
 }
 
 export function SaveGameReview(review: models$0.GameReview): $CancellablePromise<models$0.GameReview | null> {
-    return $Call.ByID(3751796484, review).then(($result: any) => {
+    return $Call.ByID(4026672410, review).then(($result: any) => {
         return $$createType1($result);
     });
 }
 
 export function SyncGameReview(gameID: string, providers: enums$0.SourceType[]): $CancellablePromise<vo$0.GameReviewSyncResult> {
-    return $Call.ByID(4022764938, gameID, providers).then(($result: any) => {
+    return $Call.ByID(2186657172, gameID, providers).then(($result: any) => {
         return $$createType2($result);
     });
 }

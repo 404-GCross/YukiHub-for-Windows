@@ -18,7 +18,7 @@ import * as $models from "./models.js";
  * CheckForUpdates 手动检查更新（忽略跳过版本设置，总是检查最新版本）
  */
 export function CheckForUpdates(): $CancellablePromise<$models.UpdateCheckResult | null> {
-    return $Call.ByID(1711338931).then(($result: any) => {
+    return $Call.ByID(410659377).then(($result: any) => {
         return $$createType1($result);
     });
 }
@@ -27,7 +27,7 @@ export function CheckForUpdates(): $CancellablePromise<$models.UpdateCheckResult
  * CheckForUpdatesOnStartup 启动时自动检查更新
  */
 export function CheckForUpdatesOnStartup(): $CancellablePromise<$models.UpdateCheckResult | null> {
-    return $Call.ByID(2742727795).then(($result: any) => {
+    return $Call.ByID(3850207581).then(($result: any) => {
         return $$createType1($result);
     });
 }
@@ -38,7 +38,7 @@ export function CheckForUpdatesOnStartup(): $CancellablePromise<$models.UpdateCh
  * the updater in commit mode and enters the normal YukiHub shutdown flow.
  */
 export function DownloadAndApplyUpdate(manifestURL: string): $CancellablePromise<$models.UpdateApplyResult | null> {
-    return $Call.ByID(1901531138, manifestURL).then(($result: any) => {
+    return $Call.ByID(3817299644, manifestURL).then(($result: any) => {
         return $$createType3($result);
     });
 }
@@ -47,14 +47,14 @@ export function DownloadAndApplyUpdate(manifestURL: string): $CancellablePromise
  * OpenDownloadURL 打开下载页面（已废弃，请在前端使用 @wailsio/runtime 的 Browser.OpenURL）。
  */
 export function OpenDownloadURL(url: string): $CancellablePromise<void> {
-    return $Call.ByID(3576158613, url);
+    return $Call.ByID(3591669403, url);
 }
 
 /**
  * SkipVersion 跳过指定版本的更新
  */
 export function SkipVersion(ver: string): $CancellablePromise<void> {
-    return $Call.ByID(2435461893, ver);
+    return $Call.ByID(3051655083, ver);
 }
 
 // Private type creation functions

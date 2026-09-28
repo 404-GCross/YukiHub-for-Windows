@@ -16,7 +16,7 @@ import * as vo$0 from "../common/vo/models.js";
  * AISummarize 生成AI锐评总结
  */
 export function AISummarize(req: vo$0.AISummaryRequest): $CancellablePromise<vo$0.AISummaryResponse> {
-    return $Call.ByID(2441663770, req).then(($result: any) => {
+    return $Call.ByID(3344870808, req).then(($result: any) => {
         return $$createType0($result);
     });
 }
@@ -25,7 +25,7 @@ export function AISummarize(req: vo$0.AISummaryRequest): $CancellablePromise<vo$
  * GetPromptPresets 返回内置 AI 提示词，并让 Wails v3 为 PromptType 生成绑定。
  */
 export function GetPromptPresets(): $CancellablePromise<enums$0.PromptType[]> {
-    return $Call.ByID(1864436781).then(($result: any) => {
+    return $Call.ByID(3603899811).then(($result: any) => {
         return $$createType1($result);
     });
 }

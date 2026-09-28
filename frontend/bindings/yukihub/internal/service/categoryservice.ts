@@ -13,71 +13,71 @@ import * as vo$0 from "../common/vo/models.js";
 import * as models$0 from "../models/models.js";
 
 export function AddCategory(name: string, emoji: string): $CancellablePromise<void> {
-    return $Call.ByID(96734224, name, emoji);
+    return $Call.ByID(4002515730, name, emoji);
 }
 
 export function AddGameToCategory(gameID: string, categoryID: string): $CancellablePromise<void> {
-    return $Call.ByID(2869666819, gameID, categoryID);
+    return $Call.ByID(1802483149, gameID, categoryID);
 }
 
 export function AddGamesToCategories(gameIDs: string[], categoryIDs: string[]): $CancellablePromise<void> {
-    return $Call.ByID(2232460214, gameIDs, categoryIDs);
+    return $Call.ByID(584812412, gameIDs, categoryIDs);
 }
 
 export function DeleteCategories(ids: string[]): $CancellablePromise<void> {
-    return $Call.ByID(1378412918, ids);
+    return $Call.ByID(2813888768, ids);
 }
 
 export function DeleteCategory(id: string): $CancellablePromise<void> {
-    return $Call.ByID(1373643822, id);
+    return $Call.ByID(1669073908, id);
 }
 
 export function GetCategories(): $CancellablePromise<vo$0.CategoryVO[]> {
-    return $Call.ByID(1785011151).then(($result: any) => {
+    return $Call.ByID(40752617).then(($result: any) => {
         return $$createType1($result);
     });
 }
 
 export function GetCategoriesByGame(gameID: string): $CancellablePromise<vo$0.CategoryVO[]> {
-    return $Call.ByID(2732097256, gameID).then(($result: any) => {
+    return $Call.ByID(1609682474, gameID).then(($result: any) => {
         return $$createType1($result);
     });
 }
 
 export function GetCategoryByID(id: string): $CancellablePromise<vo$0.CategoryVO> {
-    return $Call.ByID(2287025583, id).then(($result: any) => {
+    return $Call.ByID(2373074057, id).then(($result: any) => {
         return $$createType0($result);
     });
 }
 
 export function GetCategoryGames(req: vo$0.CategoryGameListRequest): $CancellablePromise<vo$0.GameListResponse> {
-    return $Call.ByID(2213215242, req).then(($result: any) => {
+    return $Call.ByID(30108332, req).then(($result: any) => {
         return $$createType2($result);
     });
 }
 
 export function GetGamesByCategory(categoryID: string): $CancellablePromise<models$0.Game[]> {
-    return $Call.ByID(1277058931, categoryID).then(($result: any) => {
+    return $Call.ByID(1976290905, categoryID).then(($result: any) => {
         return $$createType4($result);
     });
 }
 
 export function RemoveGameFromCategory(gameID: string, categoryID: string): $CancellablePromise<void> {
-    return $Call.ByID(2468876459, gameID, categoryID);
+    return $Call.ByID(3079862373, gameID, categoryID);
 }
 
 export function RemoveGamesFromCategory(gameIDs: string[], categoryID: string): $CancellablePromise<void> {
-    return $Call.ByID(513014272, gameIDs, categoryID);
+    return $Call.ByID(329596186, gameIDs, categoryID);
 }
 
 export function SearchCategoryGameCandidates(req: vo$0.CategoryGameCandidateRequest): $CancellablePromise<vo$0.GameListResponse> {
-    return $Call.ByID(1151965877, req).then(($result: any) => {
+    return $Call.ByID(1827994831, req).then(($result: any) => {
         return $$createType2($result);
     });
 }
 
 export function UpdateCategory(id: string, name: string, emoji: string): $CancellablePromise<void> {
-    return $Call.ByID(3719671512, id, name, emoji);
+    return $Call.ByID(1359372518, id, name, emoji);
 }
 
 // Private type creation functions

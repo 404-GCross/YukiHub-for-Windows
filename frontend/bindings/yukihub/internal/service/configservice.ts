@@ -14,7 +14,7 @@ import * as appconf$0 from "../appconf/models.js";
 import * as $models from "./models.js";
 
 export function ApplyGameLibraryPathChange(newPath: string, syncPaths: boolean): $CancellablePromise<$models.GameLibraryPathChangeResult> {
-    return $Call.ByID(2302747573, newPath, syncPaths).then(($result: any) => {
+    return $Call.ByID(3720449595, newPath, syncPaths).then(($result: any) => {
         return $$createType0($result);
     });
 }
@@ -23,11 +23,11 @@ export function ApplyGameLibraryPathChange(newPath: string, syncPaths: boolean):
  * ExportLogsZip 将 logs 目录导出为 ZIP 压缩包。
  */
 export function ExportLogsZip(): $CancellablePromise<string> {
-    return $Call.ByID(2112339621);
+    return $Call.ByID(3359730563);
 }
 
 export function GetAppConfig(): $CancellablePromise<appconf$0.AppConfig> {
-    return $Call.ByID(1842078622).then(($result: any) => {
+    return $Call.ByID(2829845904).then(($result: any) => {
         return $$createType1($result);
     });
 }
@@ -36,11 +36,11 @@ export function GetAppConfig(): $CancellablePromise<appconf$0.AppConfig> {
  * OpenDataDirectory 在系统文件管理器中打开 YukiHub 数据目录。
  */
 export function OpenDataDirectory(): $CancellablePromise<string> {
-    return $Call.ByID(2980986610);
+    return $Call.ByID(2324380672);
 }
 
 export function PreviewGameLibraryPathChange(newPath: string): $CancellablePromise<$models.GameLibraryPathChangePreview> {
-    return $Call.ByID(3454055613, newPath).then(($result: any) => {
+    return $Call.ByID(3507124007, newPath).then(($result: any) => {
         return $$createType2($result);
     });
 }
@@ -49,7 +49,7 @@ export function PreviewGameLibraryPathChange(newPath: string): $CancellablePromi
  * SafeQuit 安全退出应用（绕过托盘最小化逻辑）
  */
 export function SafeQuit(): $CancellablePromise<void> {
-    return $Call.ByID(1997131465);
+    return $Call.ByID(3067098483);
 }
 
 /**
@@ -57,36 +57,36 @@ export function SafeQuit(): $CancellablePromise<void> {
  * srcPath 应为 /local/backgrounds/temp_bg_xxx.png 格式的路径
  */
 export function SaveCroppedBackgroundImage(srcPath: string, x: number, y: number, width: number, height: number): $CancellablePromise<string> {
-    return $Call.ByID(812601970, srcPath, x, y, width, height);
+    return $Call.ByID(2250148296, srcPath, x, y, width, height);
 }
 
 /**
  * SelectAndCropBackgroundImage 打开文件选择对话框选择背景图片，复制到临时目录并返回 /local/ 路径供前端裁剪
  */
 export function SelectAndCropBackgroundImage(): $CancellablePromise<string> {
-    return $Call.ByID(2708947883);
+    return $Call.ByID(3605670101);
 }
 
 /**
  * SelectBackgroundImage 打开文件选择对话框选择背景图片，并保存到应用目录
  */
 export function SelectBackgroundImage(): $CancellablePromise<string> {
-    return $Call.ByID(1768685136);
+    return $Call.ByID(2037683390);
 }
 
 /**
  * SelectDirectory 打开目录选择对话框
  */
 export function SelectDirectory(title: string): $CancellablePromise<string> {
-    return $Call.ByID(2840589822, title);
+    return $Call.ByID(145890116, title);
 }
 
 export function ShouldShowMainWindowOnReady(): $CancellablePromise<boolean> {
-    return $Call.ByID(1504236708);
+    return $Call.ByID(2939380254);
 }
 
 export function UpdateAppConfig(newConfig: appconf$0.AppConfig): $CancellablePromise<void> {
-    return $Call.ByID(3160634607, newConfig);
+    return $Call.ByID(917175337, newConfig);
 }
 
 // Private type creation functions

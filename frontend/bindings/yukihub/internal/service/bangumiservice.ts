@@ -10,31 +10,31 @@ import { Call as $Call, CancellablePromise as $CancellablePromise, Create as $Cr
 import * as vo$0 from "../common/vo/models.js";
 
 export function Disconnect(): $CancellablePromise<vo$0.BangumiAuthStatus> {
-    return $Call.ByID(3081268836).then(($result: any) => {
+    return $Call.ByID(1755739842).then(($result: any) => {
         return $$createType0($result);
     });
 }
 
 export function GetAuthStatus(): $CancellablePromise<vo$0.BangumiAuthStatus> {
-    return $Call.ByID(108553198).then(($result: any) => {
+    return $Call.ByID(550966812).then(($result: any) => {
         return $$createType0($result);
     });
 }
 
 export function GetProfile(): $CancellablePromise<vo$0.BangumiProfile> {
-    return $Call.ByID(1724367731).then(($result: any) => {
+    return $Call.ByID(640623969).then(($result: any) => {
         return $$createType1($result);
     });
 }
 
 export function StartAuth(): $CancellablePromise<vo$0.BangumiAuthStatus> {
-    return $Call.ByID(713098480).then(($result: any) => {
+    return $Call.ByID(986139826).then(($result: any) => {
         return $$createType0($result);
     });
 }
 
 export function SyncAllGameStatuses(): $CancellablePromise<vo$0.RemoteStatusSyncProgress> {
-    return $Call.ByID(3929253992).then(($result: any) => {
+    return $Call.ByID(3487430398).then(($result: any) => {
         return $$createType2($result);
     });
 }

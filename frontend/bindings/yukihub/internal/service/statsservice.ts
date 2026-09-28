@@ -13,21 +13,21 @@ import * as vo$0 from "../common/vo/models.js";
  * ExportStatsImage TODO:不是好做法，应该使用wails本地缓存机制缓存图片到本地，而不是现获取
  */
 export function ExportStatsImage(base64Data: string): $CancellablePromise<void> {
-    return $Call.ByID(3237417804, base64Data);
+    return $Call.ByID(1303382570, base64Data);
 }
 
 export function FetchImageAsBase64(url: string): $CancellablePromise<string> {
-    return $Call.ByID(3357312444, url);
+    return $Call.ByID(3091783882, url);
 }
 
 export function GetGameStats(req: vo$0.GameStatsRequest): $CancellablePromise<vo$0.GameDetailStats> {
-    return $Call.ByID(2839910899, req).then(($result: any) => {
+    return $Call.ByID(438545253, req).then(($result: any) => {
         return $$createType0($result);
     });
 }
 
 export function GetGlobalPeriodStats(req: vo$0.PeriodStatsRequest): $CancellablePromise<vo$0.PeriodStats> {
-    return $Call.ByID(1688767815, req).then(($result: any) => {
+    return $Call.ByID(3798122593, req).then(($result: any) => {
         return $$createType1($result);
     });
 }

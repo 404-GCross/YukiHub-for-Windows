@@ -13,23 +13,23 @@ import * as vo$0 from "../common/vo/models.js";
 import * as models$0 from "../models/models.js";
 
 export function CreateGameFilterPreset(req: vo$0.SaveGameFilterPresetRequest): $CancellablePromise<models$0.GameFilterPreset> {
-    return $Call.ByID(2381435689, req).then(($result: any) => {
+    return $Call.ByID(2522888063, req).then(($result: any) => {
         return $$createType0($result);
     });
 }
 
 export function DeleteGameFilterPreset(id: string): $CancellablePromise<void> {
-    return $Call.ByID(2947034398, id);
+    return $Call.ByID(2038052868, id);
 }
 
 export function ListGameFilterPresets(): $CancellablePromise<models$0.GameFilterPreset[]> {
-    return $Call.ByID(1109001118).then(($result: any) => {
+    return $Call.ByID(94111248).then(($result: any) => {
         return $$createType1($result);
     });
 }
 
 export function UpdateGameFilterPreset(id: string, req: vo$0.SaveGameFilterPresetRequest): $CancellablePromise<models$0.GameFilterPreset> {
-    return $Call.ByID(2487581808, id, req).then(($result: any) => {
+    return $Call.ByID(2827060054, id, req).then(($result: any) => {
         return $$createType0($result);
     });
 }
