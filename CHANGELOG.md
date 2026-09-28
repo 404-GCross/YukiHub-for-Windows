@@ -41,6 +41,17 @@
 
 - CI 中 Go 测试此前实际只编译不执行（`go test -run '^$'`），现已改为真实执行
 - 应用内更新检查不再默认请求上游更新服务地址
+- `main.go` 的 `//go:embed` 移除对已删除 macOS 资源的引用
+  （否则 main 包无法编译）
+- 消除 `internal/utils/processutils` 中 `unsafe.Pointer` 的 uintptr 往返转换，
+  `go vet ./...` 现在无任何告警
+
+### 验证
+
+- `gofmt -l .` 无输出；`go vet ./...` 无输出；`go build ./...` 通过
+- `go test ./... -count=1`：29 个含测试的包全部通过，0 失败
+- `cd updater && go test ./... -count=1`：通过
+- 上游遗留的 114 个测试文件首次被真实执行，结果全绿
 
 ### 移除
 
