@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 	"sort"
 	"strings"
 	"sync"
@@ -265,24 +264,39 @@ func HasVisibleTopLevelWindow(pid uint32) bool {
 	return visibleWindowPIDs(map[uint32]bool{pid: true})[pid]
 }
 
+// enumWindowsMu / enumWindowsState 用于把枚举状态传给 Win32 回调。
+//
+// EnumWindows 在调用线程上同步回调，但 Go 注册的回调只能收到一个 uintptr 参数。
+// 把 Go 指针经 uintptr 往返会被 go vet 判为不安全（unsafeptr：对象可能在转换期间
+// 被回收或移动），因此改为通过受锁保护的包级变量传递状态。
+var (
+	enumWindowsMu    sync.Mutex
+	enumWindowsState *windowEnumState
+)
+
 func visibleWindowPIDs(allowedPIDs map[uint32]bool) map[uint32]bool {
 	result := make(map[uint32]bool)
 	if len(allowedPIDs) == 0 {
 		return result
 	}
 
-	state := &windowEnumState{
+	enumWindowsMu.Lock()
+	enumWindowsState = &windowEnumState{
 		allowed: allowedPIDs,
 		pids:    result,
 	}
+	procEnumWindows.Call(visibleWindowEnumCallback, 0)
+	enumWindowsState = nil
+	enumWindowsMu.Unlock()
 
-	procEnumWindows.Call(visibleWindowEnumCallback, uintptr(unsafe.Pointer(state)))
-	runtime.KeepAlive(state)
 	return result
 }
 
-func visibleWindowEnumProc(hwnd uintptr, lparam uintptr) uintptr {
-	enumState := (*windowEnumState)(unsafe.Pointer(lparam))
+func visibleWindowEnumProc(hwnd uintptr, _ uintptr) uintptr {
+	enumState := enumWindowsState
+	if enumState == nil {
+		return 1
+	}
 	if !isVisibleTopLevelWindow(hwnd) {
 		return 1
 	}
