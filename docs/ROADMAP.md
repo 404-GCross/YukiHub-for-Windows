@@ -51,16 +51,21 @@
    - [ ] 用重新构建的安装包复测启动
    - [ ] 卸载流程，以及卸载后 `%APPDATA%\YukiHub` 与 `%LOCALAPPDATA%\YukiHub` 的处理
 5. macOS / iOS / Linux 相关代码与 CI 矩阵移除完毕。**（已完成，见下方）**
-6. 界面上的"通用跨平台"表述与残留的上游素材占位清理完毕。**（进行中）**
+6. 界面上的"通用跨平台"表述与残留的上游素材占位清理完毕。**（已完成）**
    - [x] `PortableSetupPanel`（5 处三元 + 1 处条件渲染）、`GameSettingsPanel`、
          `TopBar`、`routes/__root.tsx`、`routes/game.tsx`、`routes/settings.tsx`
          的平台分支；四语言删除 6 个 macOS 专属孤儿键
-   - [ ] `GameLaunchPanel` 约 20 处 `isDarwin` / `isLinux` 及配套的 Wine runner
-         选择 UI（Windows 上这些分支恒不命中、UI 恒不渲染）
-   - [ ] `UpdateDialog` 的 3 个平台变量与恒不显示的下载按钮区块
-   - [ ] 替换上游品牌素材（文本替换覆盖不到的二进制资源）：
-         `appicon.png` / `appicon-dark.png`（月牙图标）、`brand-1.webp` / `brand-2.webp`（插画）。
-         文字 logo（`topbar-title*.png`）已删除，改为代码渲染 "YukiHub"。
+   - [x] `GameLaunchPanel` 约 20 处 `isDarwin` / `isLinux` 及配套的 Wine runner
+         选择 UI——连同 Go 侧 Linux 专属的 Steam Proton 兼容层整链删除
+         （提交 12e1337，982 行重写为 360 行，四语言再清 49 个孤儿键）
+   - [x] `UpdateDialog` 的 3 个平台变量与恒不显示的下载按钮区块
+   - [x] 替换上游品牌素材（文本替换覆盖不到的二进制资源）：
+         `appicon.png` / `appicon-dark.png` 与 `build/windows/icon.ico`
+         已换成手机版 YukiHub 图标（提交 17629df）；
+         文字 logo（`topbar-title*.png`）已删除，改为代码渲染 "YukiHub"；
+         侧边栏 logo 与托盘图标改为雪花标识。
+   - [ ] 添加游戏弹窗插画 `brand-1.webp` / `brand-2.webp`（上游素材，
+         不含品牌文字，优先级低，待替换或删除）
    - [ ] 复查是否还有其它上游素材占位残留
 
 ### 阶段 1 验证记录（2026-09-28）

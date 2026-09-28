@@ -34,6 +34,8 @@
 - 构建期环境变量 `LUNABOX_*` → `YUKIHUB_*`
 - User-Agent 改为 YukiHub 自有标识，不再沿用上游仓库地址
 - 默认云备份后端由上游绑定的托管服务改为 WebDAV（用户自持存储）
+- 应用图标与界面品牌素材：EXE/ICO/启动窗口采用手机版 YukiHub 图标，
+  侧边栏 logo 与托盘图标改为雪花标识（SVG 组件与位图同一几何参数生成）
 - 版本号起点为 0.1.0，与上游版本线解耦
 - 全仓库 Go 代码重新执行 `gofmt`（模块改名会影响导入排序）
 
@@ -90,8 +92,19 @@
   - `internal/utils/tricksutils` 整包（上一轮移除 compattools 后已无调用者，
     因 Go 不检查未使用的包而被遗漏）
 
+- Linux 专属的 Steam Proton 兼容层（Windows 上全部为桩实现或恒报错）：
+  - Go：`GetGameSteamCompatibility` / `SetGameSteamCompatibilityTool` /
+    `RestartSteamClient` / `OpenGameSteamProtonPrefix` 四个服务方法，
+    `integrator/steam_compat_other.go` 桩实现，相关类型与转换器
+  - 前端：游戏启动面板的 Wine runner 选择 UI（982 行重写为 360 行）、
+    Steam Proton 版本选择、Proton prefix 目录、重启 Steam 确认弹窗，
+    更新弹窗的 macOS/Linux 手动下载区块
+  - 四语言清理 49 个孤儿键；启动方式列表不再出现「兼容层启动」，
+    历史数据带入该值时回落为普通启动
+
 保留说明：游戏级的 `wine_runner` / `wine_args` / `wine_prefix` 属于导入与云同步的
-数据契约，仍保留在数据模型与快照中；Steam 相关能力在 Windows 上有效，全部保留。
+数据契约，仍保留在数据模型与快照中；Steam 的 Windows 有效能力
+（Steam 导入、启动状态、启动参数写入）全部保留。
 
 ### 已知问题
 
