@@ -48,12 +48,6 @@ var assets embed.FS
 //go:embed build/appicon.png
 var appIcon []byte
 
-//go:embed build/darwin/appicon.png
-var darwinAppIcon []byte
-
-//go:embed build/darwin/tray-template.png
-var darwinTrayIcon []byte
-
 //go:embed build/windows/tray.png
 var windowsTrayIcon []byte
 
@@ -293,24 +287,13 @@ func (s *lifecycleState) ConfigureTray(showStartupErrorPreview func()) {
 	})
 
 	tray := app.SystemTray.New()
-	if goruntime.GOOS == "linux" {
-		tray.SetLabel("YukiHub")
-	}
 	tray.SetMenu(menu)
 	tray.SetTooltip("YukiHub")
-	if goruntime.GOOS == "darwin" {
-		tray.SetTemplateIcon(darwinTrayIcon)
-	} else if goruntime.GOOS == "linux" {
-		tray.SetIcon(appIcon)
-		tray.OnClick(s.ShowMainWindow)
-		tray.OnDoubleClick(s.ShowMainWindow)
-	} else {
-		// Wails v3 alpha passes a complete ICO container to an API that expects
-		// one image resource. Use the extracted 32x32 ICO frame for the tray.
-		tray.SetIcon(windowsTrayIcon)
-		tray.OnClick(s.ShowMainWindow)
-		tray.OnDoubleClick(s.ShowMainWindow)
-	}
+	// Wails v3 alpha passes a complete ICO container to an API that expects
+	// one image resource. Use the extracted 32x32 ICO frame for the tray.
+	tray.SetIcon(windowsTrayIcon)
+	tray.OnClick(s.ShowMainWindow)
+	tray.OnDoubleClick(s.ShowMainWindow)
 	s.trayAvailable.Store(true)
 }
 
@@ -812,15 +795,10 @@ func runGUI(
 		appLogger.Info(fmt.Sprintf("shutdown completed (total elapsed: %s)", time.Since(shutdownStartedAt)))
 	}
 
-	applicationIcon := appIcon
-	if goruntime.GOOS == "darwin" {
-		applicationIcon = darwinAppIcon
-	}
-
 	wailsApp := application.New(application.Options{
 		Name:        "YukiHub",
 		Description: "YukiHub game library manager",
-		Icon:        applicationIcon,
+		Icon:        appIcon,
 		Logger:      appLogger.Slog(),
 		LogLevel:    applicationLogLevel,
 		SingleInstance: &application.SingleInstanceOptions{
