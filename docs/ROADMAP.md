@@ -29,8 +29,9 @@
 1. `gofmt -l .` 输出为空；`go vet ./...` 无错误。**（已验证通过）**
 2. `go test ./... -count=1` 与 `cd updater && go test ./... -count=1` 全部通过。**（已验证通过）**
    - 失效用例允许删除，但必须在提交信息中说明原因；不允许跳过或标记为 Skip 来"凑绿"。
-3. `wails3 build` 在本机与 CI 上成功产出可执行文件。
+3. `wails3 build` 在本机与 CI 上成功产出可执行文件。**（本机已验证通过）**
 4. NSIS 安装包可以完成"安装 → 启动 → 卸载"，且卸载后用户数据目录按预期处理。
+   **（待 NSIS 就位后验证）**
 5. macOS / iOS / Linux 相关代码与 CI 矩阵移除完毕。**（已完成，见下方）**
 6. 界面上的"通用跨平台"表述与残留的上游素材占位清理完毕。
 
@@ -43,8 +44,14 @@
 | `gofmt -l .` | 无输出 |
 | `go vet ./...` | 无输出（修复了 1 处上游遗留的 unsafeptr 告警） |
 | `go build ./...` | 通过（含 DuckDB 的 CGO 与 Wails） |
-| `go test ./... -count=1` | 29 个含测试的包全部 `ok`，0 个 FAIL |
+| `go test ./... -count=1` | 28 个含测试的包全部 `ok`，0 个 FAIL |
 | `cd updater && go test ./... -count=1` | 通过 |
+| `wails3 build`（离线） | 通过，产出 `bin/YukiHub.exe`（144.7 MB，PE 头有效） |
+
+`wails3 build` 的执行链路：读取 `build/config.yml` → 重新生成绑定（601 包 /
+240 方法）→ 生成 Windows 资源 `syso` → `go build` → 落盘 `bin/YukiHub.exe`。
+体积 144.7 MB 主要来自 DuckDB 静态链接（amd64 走静态链接，不需要随包分发
+`duckdb.dll`）与嵌入的前端资源；该路径已在 `.gitignore` 中。
 
 重要结论：**上游那 114 个测试文件第一次被真实执行，结果是全绿的。**
 之前"可能已经失效"的担心不成立，平台裁剪也已有编译与测试双重保障。
