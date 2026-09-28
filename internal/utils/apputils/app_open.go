@@ -4,7 +4,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 )
 
@@ -18,17 +17,7 @@ func OpenDirectory(dir string) error {
 		return err
 	}
 
-	var cmd *exec.Cmd
-	switch runtime.GOOS {
-	case "windows":
-		cmd = exec.Command("explorer", dir)
-	case "darwin":
-		cmd = exec.Command("open", dir)
-	default:
-		cmd = exec.Command("xdg-open", dir)
-	}
-
-	return cmd.Start()
+	return exec.Command("explorer", dir).Start()
 }
 
 // OpenFile 使用系统默认应用打开指定文件。
@@ -51,17 +40,7 @@ func OpenFile(path string) error {
 		return OpenDirectory(absPath)
 	}
 
-	var cmd *exec.Cmd
-	switch runtime.GOOS {
-	case "windows":
-		cmd = exec.Command("explorer", absPath)
-	case "darwin":
-		cmd = exec.Command("open", absPath)
-	default:
-		cmd = exec.Command("xdg-open", absPath)
-	}
-
-	return cmd.Start()
+	return exec.Command("explorer", absPath).Start()
 }
 
 // OpenFileOrFolder 使用系统文件管理器打开文件或目录。如果是文件，尽量在资源管理器中选中它。
@@ -80,27 +59,8 @@ func OpenFileOrFolder(path string) error {
 		return OpenDirectory(filepath.Dir(absPath))
 	}
 
-	var cmd *exec.Cmd
-	switch runtime.GOOS {
-	case "windows":
-		if info.IsDir() {
-			cmd = exec.Command("explorer", absPath)
-		} else {
-			cmd = exec.Command("explorer", "/select,", absPath)
-		}
-	case "darwin":
-		if info.IsDir() {
-			cmd = exec.Command("open", absPath)
-		} else {
-			cmd = exec.Command("open", "-R", absPath)
-		}
-	default:
-		dir := absPath
-		if !info.IsDir() {
-			dir = filepath.Dir(absPath)
-		}
-		cmd = exec.Command("xdg-open", dir)
+	if info.IsDir() {
+		return exec.Command("explorer", absPath).Start()
 	}
-
-	return cmd.Start()
+	return exec.Command("explorer", "/select,", absPath).Start()
 }

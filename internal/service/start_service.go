@@ -17,7 +17,6 @@ import (
 	"yukihub/internal/common/vo"
 	"yukihub/internal/models"
 	"yukihub/internal/service/cloudprovider"
-	"yukihub/internal/service/gamehelper"
 	launcherpkg "yukihub/internal/service/launcher"
 	"yukihub/internal/utils/audioutils"
 	"yukihub/internal/utils/processutils"
@@ -1164,7 +1163,7 @@ func (s *StartService) resolveExecutablePath(gameID string, path string, process
 	if err != nil {
 		return "", "", false, fmt.Errorf("stat game path: %w", err)
 	}
-	if !info.IsDir() || gamehelper.IsMacAppBundlePath(normalizedPath) {
+	if !info.IsDir() {
 		return normalizedPath, strings.TrimSpace(processName), false, nil
 	}
 
@@ -1197,7 +1196,7 @@ func (s *StartService) saveSelectedExecutablePath(gameID string, selection strin
 	if err != nil {
 		return "", "", false, fmt.Errorf("stat selected executable failed: %w", err)
 	}
-	if selectionInfo.IsDir() && !gamehelper.IsMacAppBundlePath(resolvedSelection) {
+	if selectionInfo.IsDir() {
 		return "", "", false, fmt.Errorf("selected path is a directory, not executable")
 	}
 

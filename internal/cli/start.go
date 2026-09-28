@@ -3,8 +3,6 @@ package cli
 import (
 	"fmt"
 	"io"
-	"path/filepath"
-	goruntime "runtime"
 	"strings"
 	"yukihub/internal/applog"
 	"yukihub/internal/service/launcher"
@@ -65,21 +63,6 @@ func newStartCmd(app *CoreApp) *cobra.Command {
 			}
 			if cmd.Flags().Changed("wine-prefix") {
 				launchOptions.WinePrefix = &winePrefix
-			}
-
-			if goruntime.GOOS == "darwin" {
-				game, err := app.GameService.GetGameByID(gameID)
-				if err != nil {
-					return fmt.Errorf("failed to load game: %w", err)
-				}
-				ext := strings.ToLower(filepath.Ext(strings.TrimSpace(game.Path)))
-				effectiveWineRunner := strings.TrimSpace(game.WineRunner)
-				if launchOptions.WineRunner != nil {
-					effectiveWineRunner = strings.TrimSpace(*launchOptions.WineRunner)
-				}
-				if (ext == ".exe" || ext == ".bat") && effectiveWineRunner == "" {
-					return fmt.Errorf("this game uses a Windows executable on macOS; set --wine-runner system|crossover|custom or configure Wine in the game launch settings")
-				}
 			}
 
 			logMsg := "Starting game..."

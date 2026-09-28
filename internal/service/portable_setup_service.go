@@ -79,19 +79,13 @@ func (s *PortableSetupService) GetStatus() (PortableSetupStatus, error) {
 	}
 
 	status.Protocol.CurrentPath = status.ExecutablePath
-	if runtime.GOOS == "darwin" {
-		status.Protocol.Registered = true
-		status.Protocol.RegisteredPath = "LaunchServices / Info.plist"
-		status.Protocol.UpToDate = true
-	} else {
-		registeredExe, err := protocol.GetRegisteredURLSchemeExe()
-		if err != nil {
-			return status, fmt.Errorf("query portable protocol status: %w", err)
-		}
-		status.Protocol.RegisteredPath = registeredExe
-		status.Protocol.Registered = registeredExe != ""
-		status.Protocol.UpToDate = status.Protocol.Registered && protocolRegistrationMatchesPath(registeredExe, status.ExecutablePath)
+	registeredExe, err := protocol.GetRegisteredURLSchemeExe()
+	if err != nil {
+		return status, fmt.Errorf("query portable protocol status: %w", err)
 	}
+	status.Protocol.RegisteredPath = registeredExe
+	status.Protocol.Registered = registeredExe != ""
+	status.Protocol.UpToDate = status.Protocol.Registered && protocolRegistrationMatchesPath(registeredExe, status.ExecutablePath)
 
 	cliExists, cliPath, cliErr := apputils.CLIExists()
 	if cliErr != nil {
@@ -132,9 +126,6 @@ func (s *PortableSetupService) RegisterProtocol() (PortableSetupStatus, error) {
 	if !supportsLocalIntegrationSetup() {
 		return PortableSetupStatus{}, fmt.Errorf("安装版协议由 Wails 安装程序管理")
 	}
-	if runtime.GOOS == "darwin" {
-		return s.GetStatus()
-	}
 	exePath, err := apputils.GetLaunchExecutablePath()
 	if err != nil {
 		return PortableSetupStatus{}, fmt.Errorf("resolve local executable: %w", err)
@@ -150,9 +141,6 @@ func (s *PortableSetupService) RegisterProtocol() (PortableSetupStatus, error) {
 func (s *PortableSetupService) UnregisterProtocol() (PortableSetupStatus, error) {
 	if !supportsLocalIntegrationSetup() {
 		return PortableSetupStatus{}, fmt.Errorf("安装版协议由 Wails 安装程序管理")
-	}
-	if runtime.GOOS == "darwin" {
-		return s.GetStatus()
 	}
 	if err := protocol.UnregisterPortableURLScheme(); err != nil {
 		return PortableSetupStatus{}, fmt.Errorf("unregister portable protocol: %w", err)

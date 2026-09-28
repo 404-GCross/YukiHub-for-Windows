@@ -18,9 +18,6 @@ func DefaultGameDirectory(path string) string {
 	if info, err := os.Stat(cleanPath); err == nil && info.IsDir() {
 		return cleanPath
 	}
-	if IsMacAppBundlePath(cleanPath) {
-		return cleanPath
-	}
 
 	dir := filepath.Dir(cleanPath)
 	if dir == "." {

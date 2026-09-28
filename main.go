@@ -12,7 +12,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	goruntime "runtime"
 	"runtime/debug"
 	"strings"
 	"sync"
@@ -319,7 +318,7 @@ type pendingProtocolRequest struct {
 	launch  *vo.ProtocolLaunchRequest
 }
 
-func parseProtocolRequest(rawURL string, allowLaunch bool) (*pendingProtocolRequest, error) {
+func parseProtocolRequest(rawURL string) (*pendingProtocolRequest, error) {
 	action, err := protocol.ParseAction(rawURL)
 	if err != nil {
 		return nil, err
@@ -334,9 +333,6 @@ func parseProtocolRequest(rawURL string, allowLaunch bool) (*pendingProtocolRequ
 		}
 		req.install = installReq
 	case protocol.ActionLaunch:
-		if !allowLaunch {
-			return nil, fmt.Errorf("yukihub://launch is not supported on macOS yet")
-		}
 		launchReq, err := protocol.ParseLaunchURL(rawURL)
 		if err != nil {
 			return nil, err
@@ -391,33 +387,6 @@ func dispatchProtocolRequest(
 			}
 		}()
 	}
-}
-
-func repairStaleAppImageProtocolRegistration(appLogger *applog.FileLogger) {
-	if goruntime.GOOS != "linux" || !apputils.IsAppImageMode() {
-		return
-	}
-
-	currentPath, err := apputils.GetLaunchExecutablePath()
-	if err != nil {
-		appLogger.Warning("failed to resolve AppImage path for protocol repair: " + err.Error())
-		return
-	}
-	registeredPath, err := protocol.GetRegisteredURLSchemeExe()
-	if err != nil {
-		appLogger.Warning("failed to query protocol registration for AppImage repair: " + err.Error())
-		return
-	}
-	registeredPath = strings.TrimSpace(registeredPath)
-	if !protocol.RegistrationNeedsRepair(registeredPath, currentPath) {
-		return
-	}
-
-	if err := protocol.RegisterPortableURLScheme(currentPath); err != nil {
-		appLogger.Warning("failed to repair stale AppImage protocol registration: " + err.Error())
-		return
-	}
-	appLogger.Info(fmt.Sprintf("repaired stale AppImage protocol registration: %s -> %s", registeredPath, currentPath))
 }
 
 type startupCoordinator struct {
@@ -481,7 +450,7 @@ func main() {
 
 	// yukihub:// URL：检查 GUI 是否已运行
 	if len(args) == 1 && protocol.IsProtocolURL(args[0]) {
-		req, err := parseProtocolRequest(args[0], goruntime.GOOS != "darwin")
+		req, err := parseProtocolRequest(args[0])
 		if err != nil {
 			appLogger.Error("failed to parse protocol URL: " + err.Error())
 			fmt.Fprintf(os.Stderr, "Error parsing protocol URL: %v\n", err)
@@ -848,10 +817,7 @@ func runGUI(
 		Services:   applicationServices,
 		OnShutdown: shutdownApplication,
 		ShouldQuit: func() bool {
-			if goruntime.GOOS != "darwin" {
-				return true
-			}
-			return appState.ShouldQuitApplication(config)
+			return true
 		},
 	})
 
@@ -872,7 +838,7 @@ func runGUI(
 			AlwaysOnTop:      true,
 			Hidden:           hidden,
 			DisableResize:    true,
-			Frameless:        goruntime.GOOS != "darwin",
+			Frameless:        true,
 			InitialPosition:  application.WindowCentered,
 			BackgroundType:   application.BackgroundTypeTranslucent,
 			BackgroundColour: application.NewRGBA(18, 20, 22, 0),
@@ -938,7 +904,7 @@ func runGUI(
 			MinHeight:        563,
 			StartState:       startState,
 			Hidden:           true,
-			Frameless:        goruntime.GOOS != "darwin",
+			Frameless:        true,
 			EnableFileDrop:   true,
 			BackgroundType:   application.BackgroundTypeTranslucent,
 			BackgroundColour: application.NewRGBA(18, 20, 22, 0),
@@ -1040,8 +1006,6 @@ func runGUI(
 			return fmt.Errorf("读取应用配置失败: %w", err)
 		}
 		config = loadedConfig
-
-		repairStaleAppImageProtocolRegistration(appLogger)
 
 		if config.PendingFullRestore != "" || config.PendingDBRestore != "" {
 		}
@@ -1159,7 +1123,7 @@ func runGUI(
 	})
 	wailsApp.Event.OnApplicationEvent(events.Common.ApplicationLaunchedWithUrl, func(event *application.ApplicationEvent) {
 		rawURL := event.Context().URL()
-		req, err := parseProtocolRequest(rawURL, goruntime.GOOS != "darwin")
+		req, err := parseProtocolRequest(rawURL)
 		if err != nil {
 			appLogger.Error("failed to handle protocol URL: " + err.Error())
 			return

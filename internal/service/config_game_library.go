@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"yukihub/internal/common/vo"
 )
@@ -550,11 +549,7 @@ func rebaseLibraryPathFromRoots(currentPath string, oldRoots []string, newRoot s
 }
 
 func normalizeLibraryPathKey(path string) string {
-	path = filepath.Clean(path)
-	if runtime.GOOS == "windows" {
-		return strings.ToLower(path)
-	}
-	return path
+	return strings.ToLower(filepath.Clean(path))
 }
 
 func newLibraryPathChangeItem(
@@ -629,10 +624,5 @@ func rebaseLibraryPath(currentPath string, oldRoot string, newRoot string) (stri
 }
 
 func sameLibraryPath(left string, right string) bool {
-	left = filepath.Clean(left)
-	right = filepath.Clean(right)
-	if runtime.GOOS == "windows" {
-		return strings.EqualFold(left, right)
-	}
-	return left == right
+	return strings.EqualFold(filepath.Clean(left), filepath.Clean(right))
 }

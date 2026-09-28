@@ -1598,9 +1598,6 @@ func collapseSingleRootDirectory(dir string) (string, bool) {
 	}
 
 	nestedRoot := filepath.Join(dir, only.Name())
-	if gamehelper.IsMacAppBundlePath(nestedRoot) {
-		return nestedRoot, true
-	}
 
 	nestedEntries, err := os.ReadDir(nestedRoot)
 	if err != nil {

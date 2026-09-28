@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 
 	"yukihub/internal/protocol"
@@ -140,12 +139,5 @@ func siblingPortableGUIPath() (string, error) {
 }
 
 func portableGUIExecutableName() (string, error) {
-	switch runtime.GOOS {
-	case "windows":
-		return "YukiHub.exe", nil
-	case "linux":
-		return "YukiHub", nil
-	default:
-		return "", fmt.Errorf("portable protocol registration is not supported on %s", runtime.GOOS)
-	}
+	return "YukiHub.exe", nil
 }

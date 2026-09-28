@@ -4,7 +4,6 @@ import (
 	"encoding/base64"
 	"os"
 	"path/filepath"
-	"runtime"
 	"testing"
 )
 
@@ -25,16 +24,6 @@ func TestLoadOrCreateInstallationIDAtPersistsRandomValue(t *testing.T) {
 	}
 	if second != first {
 		t.Fatalf("installation id changed from %q to %q", first, second)
-	}
-
-	if runtime.GOOS != "windows" {
-		info, err := os.Stat(path)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if mode := info.Mode().Perm(); mode != 0o600 {
-			t.Fatalf("installation identity file mode = %o, want 600", mode)
-		}
 	}
 }
 

@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"runtime"
 	"syscall"
 
 	"golift.io/xtractr"
@@ -57,11 +56,5 @@ func isRecoverableExtractPathError(err error) bool {
 		return true
 	}
 
-	if runtime.GOOS == "windows" {
-		if errors.Is(pathErr.Err, syscall.Errno(123)) {
-			return true
-		}
-	}
-
-	return false
+	return errors.Is(pathErr.Err, syscall.Errno(123))
 }

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	goruntime "runtime"
 	"strings"
 	"sync"
 	"time"
@@ -161,7 +160,7 @@ func (s *UpdateService) checkUpdates(isAutoCheck bool) (*UpdateCheckResult, erro
 	if err != nil {
 		return nil, fmt.Errorf("failed to compare versions: %w", err)
 	}
-	if appConfig.UpdateCheckURL == "" && goruntime.GOOS == "windows" && strings.TrimSpace(updateInfo.UpdateManifestURL) == "" {
+	if appConfig.UpdateCheckURL == "" && strings.TrimSpace(updateInfo.UpdateManifestURL) == "" {
 		updateInfo.UpdateManifestURL, err = buildOfficialUpdateManifestURL(version.UpdateServiceURL, updateInfo.Version)
 		if err != nil {
 			return nil, fmt.Errorf("failed to build update manifest url: %w", err)
