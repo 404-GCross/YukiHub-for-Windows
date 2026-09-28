@@ -41,6 +41,13 @@
 
 - CI 中 Go 测试此前实际只编译不执行（`go test -run '^$'`），现已改为真实执行
 - 应用内更新检查不再默认请求上游更新服务地址
+- 未配置更新源时启动会弹出 `failed to fetch update info from all sources: %!w(<nil>)`。
+  清空默认更新地址时漏了"无源可用"的分支，把"没有源"误报成"所有源都失败"，
+  还把 nil 传给 `%w`；已补上该分支并给错误加兜底
+- `AddGameModal` 引用了被重命名的品牌图片（`luna1/luna2.webp` → `brand-1/brand-2.webp`），
+  导致 `vite build` 报 `Could not resolve`——CI 的 `pnpm run build` 同样会失败
+- 界面上的 "LunaBox" 字样：`topbar-title.png` / `topbar-title-dark.png`
+  是上游的文字 logo 图片，文本替换无法修改图片内容，已删除并改为代码渲染 "YukiHub"
 - `main.go` 的 `//go:embed` 移除对已删除 macOS 资源的引用
   （否则 main 包无法编译）
 - 消除 `internal/utils/processutils` 中 `unsafe.Pointer` 的 uintptr 往返转换，

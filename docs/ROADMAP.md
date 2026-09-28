@@ -37,13 +37,19 @@
      步骤同样会失败**，属必现问题。已修复（提交 `53e08d3`），
      并用脚本扫描确认全部 36 个相对资源引用中仅这 2 处失效。
 4. NSIS 安装包可以完成"安装 → 启动 → 卸载"，且卸载后用户数据目录按预期处理。
-   **（安装包已生成，待实测）**
+   **（进行中）**
    - 产物：`build/bin/YukiHub-0.1.0-windows-amd64-setup.exe`（37.9 MB）
    - 本机无法直接运行 `scripts/build.bat`（安全策略拦截 `wmic.exe`，
      且 `pnpm install` 触发安全删除 shim 超时），已用等价的分步脚本完成构建，
      流程与坑记录在 `docs/fork-setup.md`
-   - 待验证：实际安装 → 启动 → 卸载，以及卸载后 `%APPDATA%\YukiHub`
-     与 `%LOCALAPPDATA%\YukiHub` 的处理
+   - [x] 安装：用户在 D 盘实测通过
+   - [x] 启动：实测发现 2 个缺陷，均已修复（提交 `35070b7`）
+         · 未配置更新源时弹出 `failed to fetch update info from all sources: %!w(<nil>)`
+           —— 清空默认更新地址时漏了"无源可用"分支，把"没有源"误报成"所有源失败"
+         · 标题栏与侧边栏显示 "LunaBox" —— 渲染的是上游文字 logo 图片，
+           文本替换覆盖不到二进制资源
+   - [ ] 用重新构建的安装包复测启动
+   - [ ] 卸载流程，以及卸载后 `%APPDATA%\YukiHub` 与 `%LOCALAPPDATA%\YukiHub` 的处理
 5. macOS / iOS / Linux 相关代码与 CI 矩阵移除完毕。**（已完成，见下方）**
 6. 界面上的"通用跨平台"表述与残留的上游素材占位清理完毕。**（进行中）**
    - [x] `PortableSetupPanel`（5 处三元 + 1 处条件渲染）、`GameSettingsPanel`、
@@ -52,7 +58,10 @@
    - [ ] `GameLaunchPanel` 约 20 处 `isDarwin` / `isLinux` 及配套的 Wine runner
          选择 UI（Windows 上这些分支恒不命中、UI 恒不渲染）
    - [ ] `UpdateDialog` 的 3 个平台变量与恒不显示的下载按钮区块
-   - [ ] 复查是否还有上游素材占位残留
+   - [ ] 替换上游品牌素材（文本替换覆盖不到的二进制资源）：
+         `appicon.png` / `appicon-dark.png`（月牙图标）、`brand-1.webp` / `brand-2.webp`（插画）。
+         文字 logo（`topbar-title*.png`）已删除，改为代码渲染 "YukiHub"。
+   - [ ] 复查是否还有其它上游素材占位残留
 
 ### 阶段 1 验证记录（2026-09-28）
 
