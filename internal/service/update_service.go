@@ -136,6 +136,17 @@ func (s *UpdateService) checkUpdates(isAutoCheck bool) (*UpdateCheckResult, erro
 	// 获取更新检查 URL
 	urls := s.getUpdateURLs(appConfig.UpdateCheckURL)
 
+	// 未配置任何更新源时直接跳过，不视为错误。
+	// YukiHub 在自建更新服务上线前属于这种情况：defaultUpdateURLs 为空、
+	// version.UpdateServiceURL 未经构建期注入、用户也未填自定义地址。
+	// 此前这里会落到下面的 updateInfo == nil 分支，把"没有源"误报成
+	// "所有源都失败"，并把 nil 传给 %w，界面上就会弹出
+	// "failed to fetch update info from all sources: %!w(<nil>)"。
+	if len(urls) == 0 {
+		applog.LogInfo(s.ctx, "[UpdateService] 未配置更新源，跳过更新检查")
+		return nil, nil
+	}
+
 	// 尝试从各个 URL 获取版本信息
 	var updateInfo *UpdateInfo
 	var lastErr error
@@ -148,6 +159,9 @@ func (s *UpdateService) checkUpdates(isAutoCheck bool) (*UpdateCheckResult, erro
 	}
 
 	if updateInfo == nil {
+		if lastErr == nil {
+			lastErr = fmt.Errorf("no update source returned a usable response")
+		}
 		applog.LogWarningf(s.ctx, "[UpdateService] failed to fetch update info from all sources: %v", lastErr)
 		return nil, fmt.Errorf("[UpdateService] failed to fetch update info from all sources: %w", lastErr)
 	}

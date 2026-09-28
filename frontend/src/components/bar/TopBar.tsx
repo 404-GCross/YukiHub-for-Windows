@@ -4,8 +4,6 @@ import {
   WindowNoDragRegion,
 } from "@yukihub/desktop-shell-react";
 import { useRef } from "react";
-import topbarTitleDarkUrl from "../../assets/branding/topbar-title-dark.png";
-import topbarTitleUrl from "../../assets/branding/topbar-title.png";
 
 export const TOPBAR_HEIGHT = 28;
 const WINDOW_STATE_DRAG_SYNC_DELAYS_MS = [80, 300] as const;
@@ -55,18 +53,9 @@ export function TopBar() {
       onMouseDown={handleTopBarMouseDown}
       className="relative z-50 flex h-[28px] select-none items-center justify-center border-b border-brand-200/50 bg-brand-50 dark:border-brand-700/50 dark:bg-brand-800"
     >
-      <img
-        src={topbarTitleDarkUrl}
-        className="h-[20px] absolute dark:hidden left-1/2 -translate-x-1/2 pointer-events-none"
-        draggable="false"
-        onDragStart={event => event.preventDefault()}
-      />
-      <img
-        src={topbarTitleUrl}
-        className="h-[20px] absolute hidden dark:block left-1/2 -translate-x-1/2 pointer-events-none"
-        draggable="false"
-        onDragStart={event => event.preventDefault()}
-      />
+      <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 text-[13px] font-medium tracking-wide text-brand-700 dark:text-brand-200">
+        YukiHub
+      </span>
 
       {showWindowControls && (
         <WindowNoDragRegion

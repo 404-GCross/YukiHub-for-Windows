@@ -7,8 +7,6 @@ import { useTranslation } from "react-i18next";
 import { GetFailure } from "../../../bindings/yukihub/internal/service/startupservice";
 import appIconDarkUrl from "../../assets/branding/appicon-dark.png";
 import appIconUrl from "../../assets/branding/appicon.png";
-import topbarTitleDarkUrl from "../../assets/branding/topbar-title-dark.png";
-import topbarTitleUrl from "../../assets/branding/topbar-title.png";
 import { onWailsEvent } from "../../bindings/runtime";
 
 interface StartupFailure {
@@ -106,18 +104,9 @@ function StartupWindow() {
             draggable="false"
             alt=""
           />
-          <img
-            src={topbarTitleDarkUrl}
-            className="h-auto w-38 dark:hidden"
-            draggable="false"
-            alt="YukiHub"
-          />
-          <img
-            src={topbarTitleUrl}
-            className="hidden h-auto w-38 dark:block"
-            draggable="false"
-            alt="YukiHub"
-          />
+          <span className="text-2xl font-medium tracking-wide text-brand-900 dark:text-brand-100">
+            YukiHub
+          </span>
         </div>
       </aside>
 

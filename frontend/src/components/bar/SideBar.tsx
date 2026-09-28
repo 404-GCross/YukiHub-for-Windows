@@ -4,8 +4,6 @@ import { useTranslation } from "react-i18next";
 import { onWailsEvent } from "../../../src/bindings/runtime";
 import appIconDarkUrl from "../../assets/branding/appicon-dark.png";
 import appIconUrl from "../../assets/branding/appicon.png";
-import topbarTitleDarkUrl from "../../assets/branding/topbar-title-dark.png";
-import topbarTitleUrl from "../../assets/branding/topbar-title.png";
 import { useCloudSync } from "../../hooks/useCloudSync";
 import { useAppStore } from "../../store";
 import {
@@ -201,14 +199,9 @@ export function SideBar({ bgEnabled = false, bgOpacity = 0.85 }: SideBarProps) {
             className="w-8 h-8 hidden dark:block pointer-events-none shrink-0"
             draggable="false"
           />
-          <img
-            src={topbarTitleDarkUrl}
-            className="h-6 dark:hidden pointer-events-none shrink-0"
-          />
-          <img
-            src={topbarTitleUrl}
-            className="h-6 hidden dark:block pointer-events-none shrink-0"
-          />
+          <span className="shrink-0 text-[15px] font-medium tracking-wide text-brand-900 dark:text-brand-100">
+            YukiHub
+          </span>
         </div>
         <div
           className={`flex-1 flex items-center min-w-[40px] ${isSidebarOpen ? "justify-end" : "justify-center"}`}
