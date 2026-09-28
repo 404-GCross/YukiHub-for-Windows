@@ -74,13 +74,24 @@
   - 前端：游戏启动面板的 Proton 工具发现与兼容层快捷工具、游戏设置面板的
     Wine / CrossOver / winetricks / protontricks 设置块、`wine_runner` 事件分支
   - 四语言文案清理 36 个孤儿键
+- 共享代码中的非 Windows 死分支（23 个文件，净减 410 行）：
+  - 收敛恒真的 `runtime.GOOS` 判断：协议解析的 `allowLaunch` 参数、`Frameless`、
+    `ShouldQuit`、`isLaunchableEntry`、路径打开与路径比较等
+  - 删除恒假分支：macOS 的 Wine 前置校验、portable 的 Linux 启动器路径、
+    AppImage 协议修复、导入目录的 goos 参数、测试中的平台 skip
+  - `gamehelper.IsMacAppBundlePath`（macOS .app 概念）及 6 处调用点
+  - `internal/utils/tricksutils` 整包（上一轮移除 compattools 后已无调用者，
+    因 Go 不检查未使用的包而被遗漏）
 
 保留说明：游戏级的 `wine_runner` / `wine_args` / `wine_prefix` 属于导入与云同步的
 数据契约，仍保留在数据模型与快照中；Steam 相关能力在 Windows 上有效，全部保留。
 
 ### 已知问题
 
-- Go 测试尚未在真实环境中执行过，可能包含失效用例；在测试全绿之前不做平台代码裁剪
-- macOS / iOS / Linux 平台代码与 CI 矩阵尚未移除
+- 游戏级 `wine_runner` / `wine_args` / `wine_prefix` 在 Windows-only 语境下的
+  存废待复核。它们属于导入与云同步的数据契约，删除是数据语义变更，
+  需与 Android 版按 `docs/mobile-yukihub-migration.md` 两端评审
+- 发布流水线 `release.yml` 依赖 SignPath 的代码签名资格。该资格属于上游项目，
+  不随代码转移，YukiHub 需自行申请或改用自有证书，否则签名与更新校验环节会失败
 - 界面与领域模型仍为上游形态
 - 应用图标、界面插画、截图仍为上游占位素材

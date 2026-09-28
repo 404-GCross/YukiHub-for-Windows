@@ -98,10 +98,10 @@ Wine / Proton / CrossOver 工具链清理（2026-09-28 完成）：
       "半截解压"污染——zip 完整、解压目录只写了一半，因此报错会在不同包之间跳。
       清理后 `go install wails3@v3.0.0-beta.24` 仅 47 秒完成。
       排查脚本见 `~/.workbuddy/tools/gocheck/check_modcache.py`。）
-- [ ] 清除共享代码中的死分支：`gamehelper/dialog.go`、`portable_setup_service.go`
-      （含 AppImage 集成）、`cli/start.go`、`cli/protocolcmd/protocol.go`、
-      `config_game_library.go`、`import_service.go`、`launcher/detector.go` 中的
-      `runtime.GOOS` 非 Windows 分支
+- [x] 清除共享代码中的死分支 —— **已完成**（23 个文件，净减 410 行）。
+      收敛 `runtime.GOOS` 恒真判断、删除恒假分支，并连带删除
+      `IsMacAppBundlePath`（含 6 处调用点）、`repairStaleAppImageProtocolRegistration`
+      与孤儿包 `internal/utils/tricksutils`。验证：gofmt / vet / build / test 全绿。
 - [ ] 复核游戏级 `wine_*` 字段在 Windows-only 语境下的存废（见上方"明确保留"说明）
 
 ## 阶段 2：领域模型统一与双向数据迁移
