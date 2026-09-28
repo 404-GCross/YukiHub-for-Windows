@@ -2,8 +2,6 @@ import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { onWailsEvent } from "../../../src/bindings/runtime";
-import appIconDarkUrl from "../../assets/branding/appicon-dark.png";
-import appIconUrl from "../../assets/branding/appicon.png";
 import { useCloudSync } from "../../hooks/useCloudSync";
 import { useAppStore } from "../../store";
 import {
@@ -11,6 +9,7 @@ import {
   getCloudSyncStatusClass,
   getCloudSyncStatusLabel,
 } from "../../utils/cloudSync";
+import { SnowflakeMark } from "../branding/SnowflakeMark";
 
 interface SideBarProps {
   bgEnabled?: boolean;
@@ -189,16 +188,7 @@ export function SideBar({ bgEnabled = false, bgOpacity = 0.85 }: SideBarProps) {
         <div
           className={`flex items-center gap-1 select-none overflow-hidden transition-all duration-300 ${isSidebarOpen ? "opacity-100 max-w-[200px] pl-1" : "opacity-0 max-w-0 pl-0"}`}
         >
-          <img
-            src={appIconUrl}
-            className="w-8 h-8 dark:hidden pointer-events-none shrink-0"
-            draggable="false"
-          />
-          <img
-            src={appIconDarkUrl}
-            className="w-8 h-8 hidden dark:block pointer-events-none shrink-0"
-            draggable="false"
-          />
+          <SnowflakeMark className="h-8 w-8 shrink-0 text-primary-500 dark:text-primary-300" />
           <span className="shrink-0 text-[15px] font-medium tracking-wide text-brand-900 dark:text-brand-100">
             YukiHub
           </span>
