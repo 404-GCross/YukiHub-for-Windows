@@ -18,6 +18,7 @@ import { useDownloadNotifications } from "./hooks/useDownloadNotifications";
 import { useExitSyncToast } from "./hooks/useExitSyncToast";
 import { useUpdateCheck } from "./hooks/useUpdateCheck";
 import { Route as rootRoute } from "./routes/__root";
+import { Route as bigscreenRoute } from "./routes/bigscreen";
 import { Route as categoriesRoute } from "./routes/categories";
 import { Route as categoryRoute } from "./routes/category";
 import { Route as downloadsRoute } from "./routes/downloads";
@@ -31,6 +32,7 @@ import { useAppStore } from "./store";
 const routeTree = rootRoute.addChildren([
   indexRoute,
   libraryRoute,
+  bigscreenRoute,
   gameRoute,
   statsRoute,
   categoriesRoute,

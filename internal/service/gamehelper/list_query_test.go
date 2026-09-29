@@ -109,6 +109,53 @@ func TestQueryGameListExcludesMetadataSource(t *testing.T) {
 	}
 }
 
+func TestQueryGameListExcludesHidden(t *testing.T) {
+	db := setupGameListQueryTest(t)
+	if _, err := db.Exec(`
+		INSERT INTO games (
+			id, name, source_type, source_id, hidden,
+			cached_at, created_at, updated_at
+		) VALUES
+			('visible', 'Visible', 'local', '', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+			('hidden', 'Hidden', 'local', '', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+	`); err != nil {
+		t.Fatalf("insert hidden fixtures: %v", err)
+	}
+
+	response, err := QueryGameList(context.Background(), db, vo.GameListRequest{
+		Limit:         100,
+		ExcludeHidden: true,
+		SortBy:        enums.GameListSortByName,
+		SortOrder:     enums.SortOrderAsc,
+	}, GameListScope{})
+	if err != nil {
+		t.Fatalf("query games: %v", err)
+	}
+	for _, game := range response.Games {
+		if game.ID == "hidden" {
+			t.Fatalf("hidden game should be excluded: %#v", response.Games)
+		}
+	}
+
+	all, err := QueryGameList(context.Background(), db, vo.GameListRequest{
+		Limit:     100,
+		SortBy:    enums.GameListSortByName,
+		SortOrder: enums.SortOrderAsc,
+	}, GameListScope{})
+	if err != nil {
+		t.Fatalf("query all games: %v", err)
+	}
+	foundHidden := false
+	for _, game := range all.Games {
+		if game.ID == "hidden" {
+			foundHidden = true
+		}
+	}
+	if !foundHidden {
+		t.Fatalf("hidden game should be present without filter: %#v", all.Games)
+	}
+}
+
 func TestQueryGameListUsesSecondarySort(t *testing.T) {
 	db := setupGameListQueryTest(t)
 	if _, err := db.Exec(`

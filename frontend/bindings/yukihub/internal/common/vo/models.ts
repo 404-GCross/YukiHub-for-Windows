@@ -541,6 +541,7 @@ export class CategoryGameListRequest {
     "exclude_status"?: boolean;
     "metadata_source"?: enums$0.SourceType | null;
     "exclude_metadata_source"?: boolean;
+    "exclude_hidden"?: boolean;
     "tags": string[];
     "exclude_tags"?: boolean;
     "sort_by": enums$0.GameListSortBy;
@@ -585,10 +586,10 @@ export class CategoryGameListRequest {
      * Creates a new CategoryGameListRequest instance from a string or object.
      */
     static createFrom($$source: any = {}): CategoryGameListRequest {
-        const $$createField8_0 = $$createType0;
+        const $$createField9_0 = $$createType0;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("tags" in $$parsedSource) {
-            $$parsedSource["tags"] = $$createField8_0($$parsedSource["tags"]);
+            $$parsedSource["tags"] = $$createField9_0($$parsedSource["tags"]);
         }
         return new CategoryGameListRequest($$parsedSource as Partial<CategoryGameListRequest>);
     }
@@ -1126,6 +1127,7 @@ export class GameListRequest {
     "exclude_status"?: boolean;
     "metadata_source"?: enums$0.SourceType | null;
     "exclude_metadata_source"?: boolean;
+    "exclude_hidden"?: boolean;
     "tags": string[];
     "exclude_tags"?: boolean;
     "sort_by": enums$0.GameListSortBy;
@@ -1167,10 +1169,10 @@ export class GameListRequest {
      * Creates a new GameListRequest instance from a string or object.
      */
     static createFrom($$source: any = {}): GameListRequest {
-        const $$createField7_0 = $$createType0;
+        const $$createField8_0 = $$createType0;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("tags" in $$parsedSource) {
-            $$parsedSource["tags"] = $$createField7_0($$parsedSource["tags"]);
+            $$parsedSource["tags"] = $$createField8_0($$parsedSource["tags"]);
         }
         return new GameListRequest($$parsedSource as Partial<GameListRequest>);
     }

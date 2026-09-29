@@ -10,6 +10,8 @@ export default defineConfig({
     disablePlurals: true,
     sort: false,
     preservePatterns: [
+      "bigScreen.categoryAll",
+      "bigScreen.categoryRecent",
       "common.allStatus",
       "common.name",
       "common.company",

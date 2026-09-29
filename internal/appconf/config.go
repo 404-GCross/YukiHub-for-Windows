@@ -42,6 +42,7 @@ const MaxProcessDetectionTimeoutSec = 600
 const DefaultBatchImportScanPreset = "scan_parent"
 const MaxBatchImportHierarchyDepth = 5
 const DefaultGameCardLayout = "portrait"
+const DefaultBigScreenDefaultCategory = "recent"
 const DefaultUmbraBaseURL = "https://umbrae.cc"
 const DefaultErogameScapeBaseURL = metadata.DefaultErogameScapeBaseURL
 const ScheduledDBBackupModeInterval = "interval"
@@ -193,6 +194,9 @@ type AppConfig struct {
 	GameCardLayout       string `json:"game_card_layout,omitempty"` // 游戏库卡片布局：portrait / landscape
 	ShowSortFieldOnCover bool   `json:"show_sort_field_on_cover"`   // 是否在游戏卡片封面底部展示当前排序字段对应的值
 	BlurNSFWGameCovers   bool   `json:"blur_nsfw_game_covers"`      // 是否模糊 NSFW 游戏封面
+	// 大屏模式配置
+	BigScreenShowHiddenGame  bool   `json:"bigscreen_show_hidden_game"`           // 大屏模式是否展示已隐藏的游戏，默认 false
+	BigScreenDefaultCategory string `json:"bigscreen_default_category,omitempty"` // 大屏模式默认分类，默认 recent
 }
 
 // getConfigPath 获取配置文件路径
@@ -319,6 +323,8 @@ func LoadConfig() (*AppConfig, error) {
 		GameCardLayout:              DefaultGameCardLayout,
 		ShowSortFieldOnCover:        false,
 		BlurNSFWGameCovers:          true,
+		BigScreenShowHiddenGame:     false,
+		BigScreenDefaultCategory:    DefaultBigScreenDefaultCategory,
 	}
 
 	// 获取配置文件路径
@@ -360,6 +366,7 @@ func LoadConfig() (*AppConfig, error) {
 	config.HomeGameCarouselIntervalSec = NormalizeHomeGameCarouselIntervalSec(config.HomeGameCarouselIntervalSec)
 	config.ProcessDetectionTimeoutSec = NormalizeProcessDetectionTimeoutSec(config.ProcessDetectionTimeoutSec)
 	config.GameCardLayout = NormalizeGameCardLayout(config.GameCardLayout)
+	config.BigScreenDefaultCategory = NormalizeBigScreenDefaultCategory(config.BigScreenDefaultCategory)
 	NormalizeBatchImportPreferences(config)
 
 	shouldSaveSanitizedConfig := SanitizeErogameScapeConfig(config)
@@ -422,6 +429,7 @@ func SaveConfig(config *AppConfig) error {
 	config.HomeGameCarouselIntervalSec = NormalizeHomeGameCarouselIntervalSec(config.HomeGameCarouselIntervalSec)
 	config.ProcessDetectionTimeoutSec = NormalizeProcessDetectionTimeoutSec(config.ProcessDetectionTimeoutSec)
 	config.GameCardLayout = NormalizeGameCardLayout(config.GameCardLayout)
+	config.BigScreenDefaultCategory = NormalizeBigScreenDefaultCategory(config.BigScreenDefaultCategory)
 	NormalizeBatchImportPreferences(config)
 	config.LocalDBBackupRetention = NormalizeLocalDBBackupRetention(config.LocalDBBackupRetention)
 	NormalizeScheduledDBBackup(config)

@@ -870,11 +870,18 @@
     "title": "Settings",
     "subtitle": "Manage how YukiHub runs and stores your data",
     "preparingSettings": "Preparing settings...",
+    "bigScreen": {
+      "showHiddenGame": "Show hidden games",
+      "showHiddenGameHint": "When enabled, big screen mode also shows games hidden from the library",
+      "defaultCategory": "Default category",
+      "defaultCategoryHint": "Category selected when entering big screen mode"
+    },
     "sections": {
       "basic": "Basic Configuration",
       "metadata": "Metadata Settings",
       "appData": "App Data",
       "appearance": "Appearance",
+      "bigScreen": "Big Screen Mode",
       "game": "Game Settings",
       "proxy": "Proxy Settings",
       "cloudBackup": "Cloud Configuration",
@@ -1747,5 +1754,19 @@
       "success": "Image downloaded successfully",
       "failed": "Failed to download image"
     }
+  },
+  "bigScreen": {
+    "enter": "Enter big screen mode",
+    "empty": "No games to show",
+    "categoryAll": "All",
+    "categoryRecent": "Recent",
+    "favorite": "Favorite",
+    "unfavorite": "Unfavorite",
+    "favoriteAdded": "Added to favorites",
+    "favoriteRemoved": "Removed from favorites",
+    "favoriteFailed": "Failed to update favorite",
+    "hintMove": "Switch game",
+    "hintConfirm": "Launch / Confirm",
+    "hintExit": "Exit"
   }
 }

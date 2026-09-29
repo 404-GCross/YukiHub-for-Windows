@@ -276,6 +276,9 @@ export default defineConfig({
         "playing-island-leave": "1",
         "playing-island-content-in": "1",
         "playing-island-content-out": "1",
+        "bigscreen-bg-in": "1",
+        "bigscreen-kenburns": "1",
+        "bigscreen-hint-dim": "1",
       },
       durations: {
         "app-toast-enter": "450ms",
@@ -287,6 +290,9 @@ export default defineConfig({
         "playing-island-leave": "220ms",
         "playing-island-content-in": "260ms",
         "playing-island-content-out": "220ms",
+        "bigscreen-bg-in": "600ms",
+        "bigscreen-kenburns": "22s",
+        "bigscreen-hint-dim": "4000ms",
       },
       keyframes: {
         "app-toast-enter":
@@ -307,6 +313,12 @@ export default defineConfig({
           "{0%{opacity:0;filter:blur(2px)}100%{opacity:1;filter:blur(0)}}",
         "playing-island-content-out":
           "{0%{opacity:1;filter:blur(0)}100%{opacity:0;filter:blur(2px)}}",
+        // 大屏模式的背景交叉淡入与 KenBurns 缓慢推进
+        "bigscreen-bg-in": "{0%{opacity:0}100%{opacity:1}}",
+        "bigscreen-kenburns":
+          "{0%{transform:scale(1.04) translate3d(0,0,0)}100%{transform:scale(1.14) translate3d(-1.5%,-1%,0)}}",
+        // 底栏按键提示 4s 后淡到 28%
+        "bigscreen-hint-dim": "{0%,86%{opacity:1}100%{opacity:.28}}",
       },
       properties: {
         "app-toast-enter": {
@@ -336,6 +348,16 @@ export default defineConfig({
         "playing-island-content-out": {
           "animation-fill-mode": "both",
         },
+        "bigscreen-bg-in": {
+          "animation-fill-mode": "both",
+        },
+        "bigscreen-kenburns": {
+          "animation-fill-mode": "both",
+          "transform-origin": "center",
+        },
+        "bigscreen-hint-dim": {
+          "animation-fill-mode": "forwards",
+        },
       },
       timingFns: {
         "app-toast-enter": "cubic-bezier(.22,1,.36,1)",
@@ -346,6 +368,9 @@ export default defineConfig({
         "playing-island-leave": "cubic-bezier(.4,0,1,1)",
         "playing-island-content-in": "cubic-bezier(.2,.9,.18,1)",
         "playing-island-content-out": "cubic-bezier(.4,0,.2,1)",
+        "bigscreen-bg-in": "ease-out",
+        "bigscreen-kenburns": "ease-out",
+        "bigscreen-hint-dim": "ease-out",
       },
     },
     colors: {

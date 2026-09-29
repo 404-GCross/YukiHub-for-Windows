@@ -74,6 +74,8 @@ interface GameCardProps {
   cardLayout?: GameCardLayout;
   /** 非多选模式下点击卡片本体时触发（PC 版用于展开右侧详情面板） */
   onActivate?: (game: models.Game) => void;
+  /** 覆盖「查看详情」的默认行为（大屏模式下改为就地打开详情层） */
+  onViewDetails?: (game: models.Game) => void;
 }
 
 function GameCardComponent({
@@ -85,6 +87,7 @@ function GameCardComponent({
   displaySortField = null,
   cardLayout = "portrait",
   onActivate,
+  onViewDetails,
 }: GameCardProps) {
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -138,9 +141,13 @@ function GameCardComponent({
   const handleViewDetails = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
+      if (onViewDetails) {
+        onViewDetails(game);
+        return;
+      }
       navigate({ to: `/game/${game.id}` });
     },
-    [game.id, navigate],
+    [game, navigate, onViewDetails],
   );
 
   const handleCardClick = useCallback(() => {

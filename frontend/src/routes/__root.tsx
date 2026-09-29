@@ -3,6 +3,7 @@ import { OverlayHost } from "@yukihub/desktop-shell-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { onWailsEvent } from "../../src/bindings/runtime";
+import { BIG_SCREEN_PATH } from "../bigscreen/constants";
 import { invalidateAllGameLists } from "../cache/gameCache";
 import { PlayingIsland } from "../components/bar/PlayingIsland";
 import { SideBar } from "../components/bar/SideBar";
@@ -132,6 +133,11 @@ function RootLayout() {
     setShowDragDropModal(false);
     setDroppedPaths([]);
   }, []);
+
+  // 大屏模式是同窗口的无外壳全屏路由：跳过顶栏、侧栏与背景层。
+  if (pathname === BIG_SCREEN_PATH) {
+    return <Outlet />;
+  }
 
   return (
     <div

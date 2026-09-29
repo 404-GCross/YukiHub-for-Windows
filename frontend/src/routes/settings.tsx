@@ -12,6 +12,7 @@ import { AppDataSettingsPanel } from "../components/panel/AppDataSettingsPanel";
 import { AutoBackupSettingsPanel } from "../components/panel/AutoBackupSettingsPanel";
 import { BackgroundSettingsPanel } from "../components/panel/BackgroundSettingsPanel";
 import { BasicSettingsPanel } from "../components/panel/BasicSettingsPanel";
+import { BigScreenSettingsPanel } from "../components/panel/BigScreenSettingsPanel";
 import { CloudBackupSettingsPanel } from "../components/panel/CloudBackupSettingsPanel";
 import { DBBackupPanel } from "../components/panel/DBBackupPanel";
 import { FullDataBackupPanel } from "../components/panel/FullDataBackupPanel";
@@ -205,6 +206,17 @@ function SettingsPage() {
           defaultOpen={false}
         >
           <BackgroundSettingsPanel
+            formData={draftConfig}
+            onChange={handleDraftChange}
+          />
+        </CollapsibleSection>
+
+        <CollapsibleSection
+          title={t("settings.sections.bigScreen")}
+          icon="i-mdi-television-classic"
+          defaultOpen={false}
+        >
+          <BigScreenSettingsPanel
             formData={draftConfig}
             onChange={handleDraftChange}
           />

@@ -554,9 +554,9 @@ LB·RB 切分类 / START 菜单），长按 400ms 后每 80ms 连发；`FocusEng
 - 路由：新建 `frontend/src/routes/bigscreen.tsx` 导出 `Route`，
   在 `frontend/src/App.tsx` 的 `rootRoute.addChildren([...])` 注册；
   `frontend/src/routes/__root.tsx` 用已有的 `useLocation` 按 pathname 跳过外壳。
-- **先验风险**：`wailsruntime.Runtime`（`internal/.../runtime.go`）目前只有
-  Show/Restore/对话框，**没有全屏 API**；M0 必须先确定扩展 Runtime 接口还是直接调
-  Wails window，否则整个方案不成立。
+- **先验风险（M0 已解除）**：`wailsruntime.Runtime`（`internal/.../runtime.go`）
+  只有 Show/Restore/对话框，**没有全屏 API**；结论是**不扩展 Go 侧接口**，
+  直接用 `@wailsio/runtime` 的 `Window` 全屏 API（详见下方「M0 进展」）。
 - 输入：键盘方向键/Enter/Esc；鼠标 hover 预览、滚轮横滑、点击中转（桌面端增强）。
 - 焦点：TS 侧复刻 `FocusEngine` 逻辑模型，视觉动效交给 CSS。
 - 数据：复用 `GameService.GetGames`（`internal/service/game_service.go`）已有的
@@ -571,10 +571,92 @@ LB·RB 切分类 / START 菜单），长按 400ms 后每 80ms 连发；`FocusEng
 | 期 | 内容 | 风险 |
 | --- | --- | --- |
 | **M0** | 技术验证：窗口全屏 API、横向虚拟货架一屏、键盘焦点环 | 全屏 API 缺口 |
-| **M1** | 可用骨架：路由+绕外壳、双背景+遮罩、侧栏 6 分类、单排虚拟货架、信息浮层、启动/收藏/详情按钮、键盘操作、焦点记忆、i18n、设置分区 | 低（基本全靠复用） |
+| **M1** | 可用骨架（2026-09-29 完成）：路由+绕外壳、双背景+遮罩、侧栏 6 分类、单排虚拟货架、信息浮层、启动/收藏/详情按钮、键盘操作、焦点记忆、i18n、设置分区 | 低（基本全靠复用） |
 | M2 | 详情层；截图画带需先补桌面端截图能力，否则降级为封面大图 | 中 |
 | M3 | PV/预告片：Go 字段 + 本地视频选择 + 播放器 + 悬停延迟起播 | 高（全链路从零） |
 | M4 | 氛围打磨：特效档位、入场动画、界面音效、手柄图标、提示条 | 低 |
+
+### M0 进展（2026-09-29 完成）
+
+技术验证全部通过，未改动任何 Go 代码。
+
+- **M0.1 全屏方案**：不扩展 `wailsruntime.Runtime`。`@wailsio/runtime` 的
+  `Window` 已提供 `Fullscreen()` / `UnFullscreen()` / `IsFullscreen()` /
+  `ToggleFullscreen()`，且前端全仓已有直连先例（`useAppRuntimeEffects.ts`、
+  `StartupWindow.tsx`），因此**无需重新生成 Wails 绑定**。
+  落地文件：`frontend/src/bigscreen/useBigScreenFullscreen.ts`
+  （进入时先 `IsFullscreen()` 探测，本来不是全屏才自己开，卸载时只还原自己改过的那次）。
+- **M0.2 横向虚拟货架**：`frontend/src/bigscreen/VirtualGameShelf.tsx`。
+  用 `@tanstack/react-virtual` 的 `horizontal` 模式 + `overscan: 4`，卡片复用
+  `GameCard`；卡片宽度由货架可视高度反推（对齐手机端 `BigScreenSizes` 的等比思路），
+  焦点卡片 `scale(1.045)` + `ring-secondary-500`（= `bs_focus #FF8AB3`），
+  140ms 过渡与手机端一致。
+- **M0.3 二维焦点引擎**：`frontend/src/bigscreen/focusEngine.ts`（纯逻辑类，
+  多区 / 网格与每行不等长 / 跨行夹紧列 / 边界回调 / 按分类记忆）+
+  `frontend/src/bigscreen/useFocusEngine.ts`（React 接线，引擎实例只建一次）。
+- **承载与入口**：`frontend/src/routes/bigscreen.tsx` 导出 `Route`，在 `App.tsx`
+  注册；`__root.tsx` 按 pathname 跳过顶栏/侧栏/背景层。入口先收敛为 TopBar 上的
+  一个「大屏模式」按钮（手机端的三个入口在桌面端不需要）。
+- **i18n**：4 个语言文件新增顶层 `bigScreen.*`：`enter` / `empty` /
+  `hintMove` / `hintConfirm` / `hintExit`。
+
+**M0 未覆盖、留给 M1 的部分**：`GetGames` 目前没有「排除隐藏」过滤，M0 先在
+前端剔除 `game.hidden`（服务端过滤记入 M1）；双背景+遮罩、侧栏 6 分类、
+信息浮层、收藏按钮、焦点记忆接线（引擎已支持，UI 未用）、设置分区
+`AppConfig.bigscreen_*` 全部属 M1。
+
+**验证**：`pnpm build`（`build:desktop` + `typecheck` + `vite build`）通过；
+eslint `--max-warnings 0` 干净；`pnpm i18n:check` 通过。大屏本身的观感与输入
+手感仍需实机确认，归入阶段 3 延后的实机测试范围。
+
+### M1 进展（2026-09-29 完成）
+
+M1 全部落地，视觉与输入层按桌面端重做（鼠标可点、键盘可走、动效走 CSS）。
+
+- **M1.1 数据层**：`frontend/src/bigscreen/categories.ts`。6 分类 → 后端查询的映射：
+  「全部」按名称正序、「最近」按最近游玩时间倒序（未玩过的排末尾），其余按状态筛选；
+  **「收藏」不是游戏字段而是系统分类**，走 `GetCategoryGames`，分类 id 由
+  `GetCategories()` 的 `is_system` 标记解析（前端不硬编码 id）。
+  后端单次查询上限 `MaxGameListLimit = 240`，前端按 `BIG_SCREEN_SHELF_LIMIT = 500` 逐页补齐。
+- **M1.2 双背景**：`frontend/src/bigscreen/BigScreenBackground.tsx`。双 slot + `opacity`
+  600ms 交叉淡入，KenBurns 放在两层共同的父容器上（避免换图重挂载导致缩放跳变），
+  叠左/下双向渐变遮罩；复用 `ProxyImage`（NSFW 模糊沿用全局配置）。
+- **M1.3 侧栏**：`frontend/src/bigscreen/BigScreenRail.tsx`，收起 76 / 展开 216，
+  `transition-[width] 220ms`；展开由「焦点进入侧栏 或 鼠标悬停」驱动，不加额外按键。
+  `BIG_SCREEN_FOCUS_ORDER` **刻意不含侧栏**：否则从货架向上会被引擎跨区夹紧丢到
+  分类栏最后一项；侧栏只由货架的「左 / 上」边界显式进入，返回用「下 / 右 / Enter」。
+- **M1.4 信息浮层**：`frontend/src/bigscreen/BigScreenInfoBar.tsx`，标题 / 副行
+  （开发商 + 状态）/ 标签（≤3，复用 `getTagDisplayName`）/ 按钮排；标签按 gameId
+  缓存（`useGameTags.ts`），左右切游戏不重复请求。
+- **M1.5 操作按钮**：启动 / 收藏 / 详情。收藏走 `AddGameToCategory` /
+  `RemoveGameFromCategory`（`useGameFavorite.ts` 按 gameId 缓存并在本地覆盖状态）；
+  在「收藏」分类里取消收藏会触发货架重载。
+- **M1.6 焦点记忆**：切分类前 `saveMemory(activeCategory)`，切回时 `restoreMemory`，
+  无记忆则回落第一张（对齐手机端）。焦点进侧栏 / 按钮排时单独记一份货架下标，
+  信息浮层仍显示当前选中的游戏。
+- **M1.7 提示条**：底栏按键提示 4s 后淡到 28%（`bigscreen-hint-dim`），
+  任何方向键 / Enter 重置。
+- **M1.8 服务端排除隐藏**：`vo.GameListRequest` 新增 `exclude_hidden`（顺带补
+  `metadata_source` / `exclude_metadata_source` / `tags`），`QueryGameList` 补
+  `COALESCE(g.hidden, FALSE) = FALSE`，新增 `TestQueryGameListExcludesHidden`。
+- **M1.9 设置分区**：`AppConfig` 新增 `bigscreen_show_hidden_game`（默认 `false`）与
+  `bigscreen_default_category`（默认 `recent`，`NormalizeBigScreenDefaultCategory`
+  做白名单校验），设置页新增「大屏模式」分区（`BigScreenSettingsPanel.tsx`），
+  4 个语言文件同步。
+- **i18n**：4 个语言文件补齐 `bigScreen.categoryAll` / `categoryRecent` /
+  `favorite` / `unfavorite` / `favoriteAdded` / `favoriteRemoved` / `favoriteFailed`
+  与 `settings.bigScreen.*`。`categoryAll` / `categoryRecent` 只作为 `labelKey`
+  数据引用，已加入 `i18next.config.ts` 的 `preservePatterns`。
+
+**验证**：重新生成 Wails 绑定（仅 `appconf/models.ts` 与 `vo/models.ts` 变动）；
+`pnpm build`（`build:desktop` + `typecheck` + `vite build`）通过；
+eslint `--max-warnings 0` 在大屏相关文件上干净（`routes/settings.tsx` 有 1 个
+**既有** warning，非本轮引入）；`i18n:check` 通过；`gofmt` 无输出、
+`go vet ./internal/...` 干净、`go test ./internal/appconf/... ./internal/service/gamehelper/...`
+通过。大屏本身的手感与观感仍需实机确认，归入阶段 3 延后的实机测试范围。
+
+**M1 未覆盖、留给后续**：详情层（M2）、截图画带（依赖桌面端截图能力）、
+PV/预告片（M3）、氛围特效与手柄（M4）。
 
 ### 已核实的缺口
 

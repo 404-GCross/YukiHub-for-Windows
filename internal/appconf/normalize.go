@@ -176,6 +176,16 @@ func NormalizeGameCardLayout(layout string) string {
 	}
 }
 
+func NormalizeBigScreenDefaultCategory(category string) string {
+	trimmed := strings.TrimSpace(category)
+	switch trimmed {
+	case "all", "favorites", "recent", "playing", "completed", "wantToPlay":
+		return trimmed
+	default:
+		return DefaultBigScreenDefaultCategory
+	}
+}
+
 func NormalizeMetadataCoverSource(source enums2.MetadataCoverSource) enums2.MetadataCoverSource {
 	switch strings.ToLower(strings.TrimSpace(string(source))) {
 	case string(enums2.MetadataCoverSourceOriginal):

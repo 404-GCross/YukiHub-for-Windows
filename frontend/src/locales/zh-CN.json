@@ -870,11 +870,18 @@
     "title": "设置",
     "subtitle": "管理 YukiHub 的运行方式与数据",
     "preparingSettings": "正在准备设置...",
+    "bigScreen": {
+      "showHiddenGame": "显示已隐藏的游戏",
+      "showHiddenGameHint": "开启后，大屏模式也会展示已在游戏库中隐藏的游戏",
+      "defaultCategory": "默认分类",
+      "defaultCategoryHint": "进入大屏模式时默认选中的分类"
+    },
     "sections": {
       "basic": "基础配置",
       "metadata": "元数据设置",
       "appData": "应用数据",
       "appearance": "外观设置",
+      "bigScreen": "大屏模式",
       "game": "游玩配置",
       "proxy": "代理配置",
       "cloudBackup": "云配置",
@@ -1747,5 +1754,19 @@
       "success": "图片下载成功",
       "failed": "图片下载失败"
     }
+  },
+  "bigScreen": {
+    "enter": "进入大屏模式",
+    "empty": "暂无可显示的游戏",
+    "categoryAll": "全部",
+    "categoryRecent": "最近",
+    "favorite": "收藏",
+    "unfavorite": "取消收藏",
+    "favoriteAdded": "已加入收藏",
+    "favoriteRemoved": "已移出收藏",
+    "favoriteFailed": "收藏操作失败",
+    "hintMove": "切换游戏",
+    "hintConfirm": "启动 / 确认",
+    "hintExit": "退出"
   }
 }

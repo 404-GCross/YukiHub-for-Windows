@@ -870,11 +870,18 @@
     "title": "設定",
     "subtitle": "YukiHub の動作とデータを管理",
     "preparingSettings": "設定を準備中...",
+    "bigScreen": {
+      "showHiddenGame": "非表示のゲームを表示",
+      "showHiddenGameHint": "有効にすると、大画面モードでもライブラリで非表示にしたゲームを表示します",
+      "defaultCategory": "既定のカテゴリ",
+      "defaultCategoryHint": "大画面モードに入ったときに既定で選択されるカテゴリ"
+    },
     "sections": {
       "basic": "基本設定",
       "metadata": "メタデータ設定",
       "appData": "アプリデータ",
       "appearance": "外観設定",
+      "bigScreen": "大画面モード",
       "game": "ゲーム設定",
       "proxy": "プロキシ設定",
       "cloudBackup": "クラウド設定",
@@ -1747,5 +1754,19 @@
       "success": "画像のダウンロードに成功しました",
       "failed": "画像のダウンロードに失敗しました"
     }
+  },
+  "bigScreen": {
+    "enter": "大画面モードに入る",
+    "empty": "表示できるゲームがありません",
+    "categoryAll": "すべて",
+    "categoryRecent": "最近",
+    "favorite": "お気に入り",
+    "unfavorite": "お気に入り解除",
+    "favoriteAdded": "お気に入りに追加しました",
+    "favoriteRemoved": "お気に入りから削除しました",
+    "favoriteFailed": "お気に入りの更新に失敗しました",
+    "hintMove": "ゲームを切り替え",
+    "hintConfirm": "起動 / 決定",
+    "hintExit": "終了"
   }
 }

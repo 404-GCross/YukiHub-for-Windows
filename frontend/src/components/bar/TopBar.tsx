@@ -1,14 +1,19 @@
+import { useNavigate } from "@tanstack/react-router";
 import {
   useDesktopWindow,
   WindowDragRegion,
   WindowNoDragRegion,
 } from "@yukihub/desktop-shell-react";
 import { useRef } from "react";
+import { useTranslation } from "react-i18next";
+import { BIG_SCREEN_PATH } from "../../bigscreen/constants";
 
 export const TOPBAR_HEIGHT = 28;
 const WINDOW_STATE_DRAG_SYNC_DELAYS_MS = [80, 300] as const;
 
 export function TopBar() {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
   const {
     close,
     isMaximized,
@@ -63,6 +68,16 @@ export function TopBar() {
           onMouseDown={event => event.stopPropagation()}
           className="ml-auto flex items-center"
         >
+          <button
+            type="button"
+            aria-label={t("bigScreen.enter")}
+            title={t("bigScreen.enter")}
+            onClick={() => void navigate({ to: BIG_SCREEN_PATH })}
+            className="flex h-[28px] w-[36px] items-center justify-center text-brand-600 transition-colors hover:bg-brand-200 active:scale-98 dark:text-brand-400 dark:hover:bg-brand-700"
+          >
+            <span className="i-mdi-television text-[14px]" aria-hidden="true" />
+          </button>
+
           <button
             type="button"
             aria-label="Minimize window"

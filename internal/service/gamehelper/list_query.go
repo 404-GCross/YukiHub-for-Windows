@@ -199,6 +199,9 @@ func QueryGameList(ctx context.Context, db *sql.DB, req vo.GameListRequest, scop
 		whereParts = append(whereParts, fmt.Sprintf("COALESCE(g.status, 'not_started') %s ?", statusOperator))
 		args = append(args, string(*req.Status))
 	}
+	if req.ExcludeHidden {
+		whereParts = append(whereParts, "COALESCE(g.hidden, FALSE) = FALSE")
+	}
 	if req.MetadataSource != nil {
 		metadataSourceClause := ""
 		if *req.MetadataSource == enums2.Local {

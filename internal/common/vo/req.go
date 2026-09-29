@@ -57,6 +57,7 @@ type GameListRequest struct {
 	ExcludeStatus         bool                 `json:"exclude_status,omitempty"`
 	MetadataSource        *enums.SourceType    `json:"metadata_source,omitempty"`
 	ExcludeMetadataSource bool                 `json:"exclude_metadata_source,omitempty"`
+	ExcludeHidden         bool                 `json:"exclude_hidden,omitempty"`
 	Tags                  []string             `json:"tags"`
 	ExcludeTags           bool                 `json:"exclude_tags,omitempty"`
 	SortBy                enums.GameListSortBy `json:"sort_by"`

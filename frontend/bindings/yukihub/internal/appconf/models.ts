@@ -547,6 +547,17 @@ export class AppConfig {
      */
     "blur_nsfw_game_covers": boolean;
 
+    /**
+     * 大屏模式配置
+     * 大屏模式是否展示已隐藏的游戏，默认 false
+     */
+    "bigscreen_show_hidden_game": boolean;
+
+    /**
+     * 大屏模式默认分类，默认 recent
+     */
+    "bigscreen_default_category"?: string;
+
     /** Creates a new AppConfig instance. */
     constructor($$source: Partial<AppConfig> = {}) {
         if (!("allow_duplicate_metadata_import" in $$source)) {
@@ -683,6 +694,9 @@ export class AppConfig {
         }
         if (!("blur_nsfw_game_covers" in $$source)) {
             this["blur_nsfw_game_covers"] = false;
+        }
+        if (!("bigscreen_show_hidden_game" in $$source)) {
+            this["bigscreen_show_hidden_game"] = false;
         }
 
         Object.assign(this, $$source);
