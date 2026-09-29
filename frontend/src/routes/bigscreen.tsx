@@ -168,8 +168,8 @@ function BigScreenPage() {
     const updateSize = () => {
       const next = {
         height: element.clientHeight,
-        // 左右各 px-8，卡片可用宽度要扣掉
-        width: Math.max(0, element.clientWidth - 64),
+        // 内容层左右各 px-10，卡片可用宽度要扣掉
+        width: Math.max(0, element.clientWidth - 80),
       };
       // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
       setShelfAreaSize(previous =>
@@ -723,7 +723,8 @@ function BigScreenPage() {
             行标题紧贴卡片排上方，卡片排贴着信息浮层的上沿。
           */}
           <div ref={shelfAreaRef} className="relative min-h-0 flex-1">
-            <div className="absolute inset-0 flex flex-col justify-end px-8 pb-2">
+            {/* px-10：PC 上留出更从容的左边距（手机端是窄边距，桌面端不必挤） */}
+            <div className="absolute inset-0 flex flex-col justify-end px-10 pb-2">
               {/*
                 信息浮层：左侧一块，压在背景大图上；下面依次是行标题与卡片排，
                 卡片排贴着最下沿（对齐手机端 `bsShelfContainer gravity="bottom"`）。
@@ -764,18 +765,21 @@ function BigScreenPage() {
               )}
 
               {games.length > 0 && shelfMetrics.rowHeight > 0 && (
-                <VirtualGameShelf
-                  cardWidth={shelfMetrics.cardWidth}
-                  entryAnimation={entryAnimation}
-                  focused={isShelfFocused}
-                  focusedIndex={safeShelfIndex}
-                  games={games}
-                  onActivate={handleStartGame}
-                  onFocusIndexChange={index =>
-                    focus(BIG_SCREEN_SHELF_ZONE, index)}
-                  onViewDetails={handleOpenDetails}
-                  rowHeight={shelfMetrics.rowHeight}
-                />
+                // -mx-2 抵消货架内部给焦点缩放留的 px-2，保持左沿与标题对齐
+                <div className="-mx-2">
+                  <VirtualGameShelf
+                    cardWidth={shelfMetrics.cardWidth}
+                    entryAnimation={entryAnimation}
+                    focused={isShelfFocused}
+                    focusedIndex={safeShelfIndex}
+                    games={games}
+                    onActivate={handleStartGame}
+                    onFocusIndexChange={index =>
+                      focus(BIG_SCREEN_SHELF_ZONE, index)}
+                    onViewDetails={handleOpenDetails}
+                    rowHeight={shelfMetrics.rowHeight}
+                  />
+                </div>
               )}
 
               {games.length === 0 && (

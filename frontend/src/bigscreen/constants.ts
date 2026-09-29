@@ -54,9 +54,17 @@ const HEADER_HEIGHT_RATIO = 0.2;
 const MIN_HEADER_HEIGHT = 24;
 const MAX_HEADER_HEIGHT = 44;
 
-/** 封面高度的夹取区间（px），对应手机端的 88–200dp */
-const MIN_CARD_COVER_HEIGHT = 140;
-const MAX_CARD_COVER_HEIGHT = 720;
+/**
+ * 封面高度的夹取区间（px）。
+ *
+ * 手机端夹在 88–200dp，但**桌面端要更小**：PC 屏幕大、视距远，
+ * 卡片占满屏高只会显得笨重。这里让整张卡约占内容区高度的四分之一到三成。
+ */
+const MIN_CARD_COVER_HEIGHT = 130;
+
+function resolveMaxCardCoverHeight(areaHeight: number) {
+  return Math.round(Math.min(Math.max(areaHeight * 0.28, 220), 400));
+}
 
 /**
  * 信息浮层要预留的高度占内容区的比例，对应手机端 `infoReserveH = clamp(h×0.34, 100, 150)`。
@@ -77,7 +85,7 @@ const MAX_INFO_RESERVE_HEIGHT = 190;
 const CARD_SCALE_HEADROOM = 16;
 
 /** 卡片宽度占内容区宽度的上限（对齐手机端 `cardW ≤ wDp × 0.17`，保证一屏好几张） */
-const CARD_WIDTH_RATIO_OF_AREA = 0.17;
+const CARD_WIDTH_RATIO_OF_AREA = 0.12;
 
 export type BigScreenShelfMetrics = {
   cardWidth: number;
@@ -138,7 +146,7 @@ export function resolveBigScreenShelfMetrics(area: {
       - CARD_SCALE_HEADROOM * 2;
   const byHeight = Math.min(
     Math.max(available, MIN_CARD_COVER_HEIGHT),
-    MAX_CARD_COVER_HEIGHT,
+    resolveMaxCardCoverHeight(area.height),
   );
   const cardWidth = Math.max(
     96,

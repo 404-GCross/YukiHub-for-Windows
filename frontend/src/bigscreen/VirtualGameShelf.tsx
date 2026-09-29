@@ -64,9 +64,13 @@ export const VirtualGameShelf = memo(
       // 高度必须是「行高」而不是 h-full：写成 h-full 时这个 flex 子项会
       // flex-shrink 吃掉整个剩余空间，父级的 justify-end 就失效了，
       // 卡片会停在区域顶部而不是贴底。
+      //
+      // px-2 是给焦点缩放留的余量：容器是 overflow-x-auto，第一张卡放大后
+      // 会往左溢出几像素，没有这段内边距就会被裁掉（表现为「卡片左边看不见」）。
+      // 外层用 -mx-2 抵消，保证卡片左沿与标题左沿仍然对齐。
       <div
         ref={scrollRef}
-        className="scrollbar-hide w-full overflow-x-auto overflow-y-hidden"
+        className="scrollbar-hide w-full overflow-x-auto overflow-y-hidden px-2"
         style={{ height: rowHeight }}
       >
         <div
