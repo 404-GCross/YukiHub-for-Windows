@@ -1999,6 +1999,62 @@ export class MetadataRequest {
     }
 }
 
+/**
+ * NextMoeAuthStatus 描述 NextMoe 用户令牌的本地授权状态。
+ */
+export class NextMoeAuthStatus {
+    "authorized": boolean;
+    "account_label": string;
+    "access_token_expires_at": string;
+
+    /** Creates a new NextMoeAuthStatus instance. */
+    constructor($$source: Partial<NextMoeAuthStatus> = {}) {
+        if (!("authorized" in $$source)) {
+            this["authorized"] = false;
+        }
+        if (!("account_label" in $$source)) {
+            this["account_label"] = "";
+        }
+        if (!("access_token_expires_at" in $$source)) {
+            this["access_token_expires_at"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new NextMoeAuthStatus instance from a string or object.
+     */
+    static createFrom($$source: any = {}): NextMoeAuthStatus {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new NextMoeAuthStatus($$parsedSource as Partial<NextMoeAuthStatus>);
+    }
+}
+
+/**
+ * NextMoeProfile 描述已连接账号的展示信息。
+ */
+export class NextMoeProfile {
+    "account_label": string;
+
+    /** Creates a new NextMoeProfile instance. */
+    constructor($$source: Partial<NextMoeProfile> = {}) {
+        if (!("account_label" in $$source)) {
+            this["account_label"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new NextMoeProfile instance from a string or object.
+     */
+    static createFrom($$source: any = {}): NextMoeProfile {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new NextMoeProfile($$parsedSource as Partial<NextMoeProfile>);
+    }
+}
+
 export class PeriodStats {
     /**
      * day, week, month

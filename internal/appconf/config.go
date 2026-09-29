@@ -8,26 +8,23 @@ import (
 	enums2 "yukihub/internal/common/enums"
 	"yukihub/internal/utils"
 	"yukihub/internal/utils/apputils"
-	"yukihub/internal/utils/metadata"
 	"yukihub/internal/utils/proxyutils"
 )
 
 var defaultMetadataSources = []string{
-	string(enums2.Bangumi),
 	string(enums2.VNDB),
+	string(enums2.Bangumi),
+	string(enums2.Ymgal),
 	string(enums2.Hikarinagi),
-	string(enums2.Steam),
 }
 
 var allowedMetadataSourceSet = map[string]struct{}{
-	string(enums2.Bangumi):      {},
-	string(enums2.VNDB):         {},
-	string(enums2.Ymgal):        {},
-	string(enums2.Steam):        {},
-	string(enums2.DLsite):       {},
-	string(enums2.TouchGal):     {},
-	string(enums2.Hikarinagi):   {},
-	string(enums2.ErogameScape): {},
+	string(enums2.VNDB):          {},
+	string(enums2.Bangumi):       {},
+	string(enums2.BangumiMirror): {},
+	string(enums2.Ymgal):         {},
+	string(enums2.Hikarinagi):    {},
+	string(enums2.NextMoe):       {},
 }
 
 const legacyOneDriveDefaultClientID = "26fcab6e-41ea-49ff-8ec9-063983cae3ef"
@@ -45,7 +42,6 @@ const DefaultGameCardLayout = "portrait"
 const DefaultBigScreenDefaultCategory = "recent"
 const DefaultBigScreenEffectLevel = "low"
 const DefaultUmbraBaseURL = "https://umbrae.cc"
-const DefaultErogameScapeBaseURL = metadata.DefaultErogameScapeBaseURL
 const ScheduledDBBackupModeInterval = "interval"
 const ScheduledDBBackupModeDaily = "daily"
 const DefaultScheduledDBBackupIntervalMinutes = 60
@@ -56,33 +52,35 @@ const DefaultLocalDBBackupRetention = 5
 
 // AppConfig 应用配置结构体
 type AppConfig struct {
-	BangumiAccessToken            string                       `json:"access_token,omitempty"`
-	BangumiRefreshToken           string                       `json:"bangumi_refresh_token,omitempty"`
-	BangumiTokenExpiresAt         string                       `json:"bangumi_token_expires_at,omitempty"`
-	BangumiAuthorizedUserID       string                       `json:"bangumi_authorized_user_id,omitempty"`
-	BangumiAuthorizedUsername     string                       `json:"bangumi_authorized_username,omitempty"`
-	BangumiAuthorizedAvatarURL    string                       `json:"bangumi_authorized_avatar_url,omitempty"`
-	BangumiAuthError              string                       `json:"bangumi_auth_error,omitempty"`
-	BangumiStatusPushEnabled      *bool                        `json:"bangumi_status_push_enabled,omitempty"`
-	HikarinagiAccessToken         string                       `json:"hikarinagi_access_token,omitempty"`
-	HikarinagiRefreshToken        string                       `json:"hikarinagi_refresh_token,omitempty"`
-	HikarinagiTokenExpiresAt      string                       `json:"hikarinagi_token_expires_at,omitempty"`
-	HikarinagiAuthorizedUserID    string                       `json:"hikarinagi_authorized_user_id,omitempty"`
-	HikarinagiAuthorizedUsername  string                       `json:"hikarinagi_authorized_username,omitempty"`
-	HikarinagiAuthorizedAvatarURL string                       `json:"hikarinagi_authorized_avatar_url,omitempty"`
-	HikarinagiAuthError           string                       `json:"hikarinagi_auth_error,omitempty"`
-	HikarinagiStatusPushEnabled   *bool                        `json:"hikarinagi_status_push_enabled,omitempty"`
-	VNDBAccessToken               string                       `json:"vndb_access_token,omitempty"`
-	ErogameScapeBaseURL           string                       `json:"erogamescape_base_url,omitempty"`   // ErogameScape 站点地址
-	MetadataSources               []string                     `json:"metadata_sources,omitempty"`        // 元数据拉取来源列表（bangumi/vndb/ymgal/steam/dlsite/touchgal/hikarinagi/erogamescape）
-	AllowDuplicateMetadataImport  bool                         `json:"allow_duplicate_metadata_import"`   // 批量/外部导入时允许相同 source_type + source_id
-	BangumiCoverSource            enums2.MetadataCoverSource   `json:"bangumi_cover_source,omitempty"`    // Bangumi 封面来源
-	VNDBCoverSource               enums2.MetadataCoverSource   `json:"vndb_cover_source,omitempty"`       // VNDB 封面来源
-	SteamCoverOrientation         enums2.SteamCoverOrientation `json:"steam_cover_orientation,omitempty"` // Steam 封面方向
-	Theme                         string                       `json:"theme"`                             // light or dark
-	Language                      string                       `json:"language"`                          // zh, en, etc.
-	SidebarOpen                   bool                         `json:"sidebar_open"`                      // 侧边栏是否展开
-	CloseToTray                   bool                         `json:"close_to_tray"`                     // 关闭时最小化到托盘
+	BangumiAccessToken            string                     `json:"access_token,omitempty"`
+	BangumiRefreshToken           string                     `json:"bangumi_refresh_token,omitempty"`
+	BangumiTokenExpiresAt         string                     `json:"bangumi_token_expires_at,omitempty"`
+	BangumiAuthorizedUserID       string                     `json:"bangumi_authorized_user_id,omitempty"`
+	BangumiAuthorizedUsername     string                     `json:"bangumi_authorized_username,omitempty"`
+	BangumiAuthorizedAvatarURL    string                     `json:"bangumi_authorized_avatar_url,omitempty"`
+	BangumiAuthError              string                     `json:"bangumi_auth_error,omitempty"`
+	BangumiStatusPushEnabled      *bool                      `json:"bangumi_status_push_enabled,omitempty"`
+	HikarinagiAccessToken         string                     `json:"hikarinagi_access_token,omitempty"`
+	HikarinagiRefreshToken        string                     `json:"hikarinagi_refresh_token,omitempty"`
+	HikarinagiTokenExpiresAt      string                     `json:"hikarinagi_token_expires_at,omitempty"`
+	HikarinagiAuthorizedUserID    string                     `json:"hikarinagi_authorized_user_id,omitempty"`
+	HikarinagiAuthorizedUsername  string                     `json:"hikarinagi_authorized_username,omitempty"`
+	HikarinagiAuthorizedAvatarURL string                     `json:"hikarinagi_authorized_avatar_url,omitempty"`
+	HikarinagiAuthError           string                     `json:"hikarinagi_auth_error,omitempty"`
+	HikarinagiStatusPushEnabled   *bool                      `json:"hikarinagi_status_push_enabled,omitempty"`
+	NextMoeAccessToken            string                     `json:"nextmoe_access_token,omitempty"`
+	NextMoeRefreshToken           string                     `json:"nextmoe_refresh_token,omitempty"`
+	NextMoeTokenExpiresAt         string                     `json:"nextmoe_token_expires_at,omitempty"`
+	NextMoeAccountLabel           string                     `json:"nextmoe_account_label,omitempty"`
+	VNDBAccessToken               string                     `json:"vndb_access_token,omitempty"`
+	MetadataSources               []string                   `json:"metadata_sources,omitempty"`      // 元数据拉取来源列表（vndb/bangumi/bangumi_mirror/ymgal/hikarinagi/nextmoe）
+	AllowDuplicateMetadataImport  bool                       `json:"allow_duplicate_metadata_import"` // 批量/外部导入时允许相同 source_type + source_id
+	BangumiCoverSource            enums2.MetadataCoverSource `json:"bangumi_cover_source,omitempty"`  // Bangumi 封面来源
+	VNDBCoverSource               enums2.MetadataCoverSource `json:"vndb_cover_source,omitempty"`     // VNDB 封面来源
+	Theme                         string                     `json:"theme"`                           // light or dark
+	Language                      string                     `json:"language"`                        // zh, en, etc.
+	SidebarOpen                   bool                       `json:"sidebar_open"`                    // 侧边栏是否展开
+	CloseToTray                   bool                       `json:"close_to_tray"`                   // 关闭时最小化到托盘
 	// AI 配置
 	AIProvider     string `json:"ai_provider,omitempty"`      // openai, deepseek, etc.
 	AIBaseURL      string `json:"ai_base_url,omitempty"`      // API base URL
@@ -133,7 +131,6 @@ type AppConfig struct {
 	// 自动备份配置
 	AutoBackupDB          bool `json:"auto_backup_db"`                 // 退出时自动备份数据库
 	AutoBackupGameSave    bool `json:"auto_backup_game_save"`          // 游戏退出时自动备份存档
-	AutoUploadToCloud     bool `json:"auto_upload_to_cloud,omitempty"` // 已弃用，保留用于配置迁移
 	AutoUploadDBToCloud   bool `json:"auto_upload_db_to_cloud"`        // 自动上传数据库备份到云端
 	AutoUploadSaveToCloud bool `json:"auto_upload_game_save_to_cloud"` // 自动上传游戏存档备份到云端
 
@@ -229,13 +226,15 @@ func LoadConfig() (*AppConfig, error) {
 		HikarinagiAuthorizedAvatarURL: "",
 		HikarinagiAuthError:           "",
 		HikarinagiStatusPushEnabled:   boolPtr(true),
+		NextMoeAccessToken:            "",
+		NextMoeRefreshToken:           "",
+		NextMoeTokenExpiresAt:         "",
+		NextMoeAccountLabel:           "",
 		VNDBAccessToken:               "",
-		ErogameScapeBaseURL:           DefaultErogameScapeBaseURL,
 		MetadataSources:               cloneStringSlice(defaultMetadataSources),
 		AllowDuplicateMetadataImport:  false,
 		BangumiCoverSource:            enums2.MetadataCoverSourceHikarinagi,
 		VNDBCoverSource:               enums2.MetadataCoverSourceHikarinagi,
-		SteamCoverOrientation:         enums2.SteamCoverOrientationPortrait,
 		Theme:                         "light",
 		Language:                      "zh-CN",
 		SidebarOpen:                   true,
@@ -277,7 +276,6 @@ func LoadConfig() (*AppConfig, error) {
 		PendingFullRestore:            "",
 		AutoBackupDB:                  false,
 		AutoBackupGameSave:            false,
-		AutoUploadToCloud:             false,
 
 		CloudDBBackupRetention:           5,
 		AutoRestoreCloudSave:             false,
@@ -375,7 +373,7 @@ func LoadConfig() (*AppConfig, error) {
 	config.BigScreenEffectLevel = NormalizeBigScreenEffectLevel(config.BigScreenEffectLevel)
 	NormalizeBatchImportPreferences(config)
 
-	shouldSaveSanitizedConfig := SanitizeErogameScapeConfig(config)
+	shouldSaveSanitizedConfig := false
 	if normalizedRetention := NormalizeLocalDBBackupRetention(config.LocalDBBackupRetention); config.LocalDBBackupRetention != normalizedRetention {
 		config.LocalDBBackupRetention = normalizedRetention
 		shouldSaveSanitizedConfig = true
@@ -387,6 +385,9 @@ func LoadConfig() (*AppConfig, error) {
 		shouldSaveSanitizedConfig = true
 	}
 	if SanitizeHikarinagiOAuthConfig(config) {
+		shouldSaveSanitizedConfig = true
+	}
+	if SanitizeNextMoeOAuthConfig(config) {
 		shouldSaveSanitizedConfig = true
 	}
 	if NormalizeProxySettings(config) {
@@ -424,10 +425,10 @@ func SaveConfig(config *AppConfig) error {
 	}
 	config.MetadataSources = normalizeMetadataSources(config.MetadataSources)
 	NormalizeMetadataCoverSources(config)
-	SanitizeErogameScapeConfig(config)
 	NormalizeProxySettings(config)
 	SanitizeBangumiOAuthConfig(config)
 	SanitizeHikarinagiOAuthConfig(config)
+	SanitizeNextMoeOAuthConfig(config)
 	SanitizeOneDriveOAuthConfig(config)
 	SanitizeUmbraConfig(config)
 	config.MCPPort = NormalizeMCPPort(config.MCPPort)

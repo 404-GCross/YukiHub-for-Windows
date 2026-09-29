@@ -35,17 +35,15 @@ func MetadataGetterOptions(config *appconf.AppConfig) []metadata.GetterOption {
 	return []metadata.GetterOption{
 		metadata.WithProxyConfig(config),
 		metadata.WithTagLimit(config.ScrapedTagLimit),
-		metadata.WithErogameScapeBaseURL(config.ErogameScapeBaseURL),
 		metadata.WithBangumiCoverSource(config.BangumiCoverSource),
 		metadata.WithVNDBCoverSource(config.VNDBCoverSource),
-		metadata.WithSteamCoverOrientation(config.SteamCoverOrientation),
 	}
 }
 
 // ConfiguredMetadataSources returns the enabled metadata sources in user-preferred order,
 // falling back to a sensible default when the config is empty or invalid.
 func ConfiguredMetadataSources(config *appconf.AppConfig) []enums2.SourceType {
-	defaultSources := []enums2.SourceType{enums2.Bangumi, enums2.VNDB, enums2.Ymgal, enums2.Steam}
+	defaultSources := []enums2.SourceType{enums2.VNDB, enums2.Bangumi, enums2.Ymgal, enums2.Hikarinagi}
 	if config == nil || len(config.MetadataSources) == 0 {
 		return defaultSources
 	}

@@ -2,20 +2,6 @@ package appconf
 
 import "strings"
 
-func SanitizeErogameScapeConfig(config *AppConfig) bool {
-	if config == nil {
-		return false
-	}
-
-	baseURL := strings.TrimRight(strings.TrimSpace(config.ErogameScapeBaseURL), "/")
-	if baseURL == "" {
-		baseURL = DefaultErogameScapeBaseURL
-	}
-	changed := config.ErogameScapeBaseURL != baseURL
-	config.ErogameScapeBaseURL = baseURL
-	return changed
-}
-
 func SanitizeUmbraConfig(config *AppConfig) bool {
 	if config == nil {
 		return false
@@ -86,6 +72,35 @@ func SanitizeBangumiOAuthConfig(config *AppConfig) bool {
 
 	if config.BangumiAccessToken == "" && config.BangumiTokenExpiresAt != "" {
 		config.BangumiTokenExpiresAt = ""
+		changed = true
+	}
+
+	return changed
+}
+
+// SanitizeNextMoeOAuthConfig 修剪 NextMoe 令牌与账号标识，并在无访问令牌时清掉过期时间。
+func SanitizeNextMoeOAuthConfig(config *AppConfig) bool {
+	if config == nil {
+		return false
+	}
+
+	trimmedAccessToken := strings.TrimSpace(config.NextMoeAccessToken)
+	trimmedRefreshToken := strings.TrimSpace(config.NextMoeRefreshToken)
+	trimmedExpiresAt := strings.TrimSpace(config.NextMoeTokenExpiresAt)
+	trimmedAccountLabel := strings.TrimSpace(config.NextMoeAccountLabel)
+
+	changed := config.NextMoeAccessToken != trimmedAccessToken ||
+		config.NextMoeRefreshToken != trimmedRefreshToken ||
+		config.NextMoeTokenExpiresAt != trimmedExpiresAt ||
+		config.NextMoeAccountLabel != trimmedAccountLabel
+
+	config.NextMoeAccessToken = trimmedAccessToken
+	config.NextMoeRefreshToken = trimmedRefreshToken
+	config.NextMoeTokenExpiresAt = trimmedExpiresAt
+	config.NextMoeAccountLabel = trimmedAccountLabel
+
+	if config.NextMoeAccessToken == "" && config.NextMoeTokenExpiresAt != "" {
+		config.NextMoeTokenExpiresAt = ""
 		changed = true
 	}
 

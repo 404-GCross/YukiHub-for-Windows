@@ -41,6 +41,7 @@ type GameService struct {
 	tagService         *TagService
 	bangumiService     *BangumiService
 	hikarinagiService  *HikarinagiService
+	nextMoeService     *NextMoeService
 	runtime            wailsruntime.Runtime
 	emitEvent          func(string, ...interface{})
 	imageTaskStarter   func([]CoverImageDownloadItem) string
@@ -96,6 +97,11 @@ func (s *GameService) SetBangumiService(bangumiService *BangumiService) {
 //wails:ignore
 func (s *GameService) SetHikarinagiService(hikarinagiService *HikarinagiService) {
 	s.hikarinagiService = hikarinagiService
+}
+
+//wails:ignore
+func (s *GameService) SetNextMoeService(nextMoeService *NextMoeService) {
+	s.nextMoeService = nextMoeService
 }
 
 //wails:ignore
@@ -1602,6 +1608,7 @@ func (s *GameService) FetchMetadataByName(name string) ([]vo.GameMetadataFromWeb
 		config:            s.config,
 		bangumiService:    s.bangumiService,
 		hikarinagiService: s.hikarinagiService,
+		nextMoeService:    s.nextMoeService,
 	})
 	// 这里暂不处理任何错误，直接尝试从多个来源并发获取数据，空就是网络问题或未找到，不管它
 	wg.Add(len(searchSources))
@@ -1654,7 +1661,7 @@ func (s *GameService) fetchMetadataResultByRequest(req vo.MetadataRequest) (meta
 	}
 
 	switch req.Source {
-	case enums2.Bangumi:
+	case enums2.Bangumi, enums2.BangumiMirror:
 		return s.fetchMetadataResultBySource(req.Source, strings.ToLower(sourceID))
 	case enums2.VNDB:
 		if !gamehelper.IsVndbID(strings.ToLower(sourceID)) {
@@ -1695,6 +1702,9 @@ func (s *GameService) fetchMetadataResultByRequest(req vo.MetadataRequest) (meta
 			return metadata.MetadataResult{}, fmt.Errorf("invalid Hikarinagi ID format: %s", req.ID)
 		}
 		return s.fetchMetadataResultBySource(req.Source, normalizedID)
+	case enums2.NextMoe:
+		// NextMoe 的 work id 为不透明字符串，与手机版一致，仅做去空格。
+		return s.fetchMetadataResultBySource(req.Source, sourceID)
 	default:
 		return metadata.MetadataResult{}, fmt.Errorf("unsupported source type: %s", req.Source)
 	}
@@ -1731,6 +1741,16 @@ func (s *GameService) fetchMetadataResultBySource(source enums2.SourceType, sour
 			return metadata.MetadataResult{}, fmt.Errorf("Hikarinagi 服务未初始化")
 		}
 		return s.hikarinagiService.fetchMetadataByID(s.ctx, sourceID)
+	case enums2.BangumiMirror:
+		if s.bangumiService == nil {
+			return metadata.MetadataResult{}, fmt.Errorf("Bangumi 服务未初始化")
+		}
+		return s.bangumiService.fetchMirrorMetadataByID(s.ctx, sourceID)
+	case enums2.NextMoe:
+		if s.nextMoeService == nil {
+			return metadata.MetadataResult{}, fmt.Errorf("NextMoe 服务未初始化")
+		}
+		return s.nextMoeService.fetchMetadataByID(s.ctx, sourceID)
 	default:
 		return metadata.MetadataResult{}, fmt.Errorf("unsupported source type: %s", source)
 	}

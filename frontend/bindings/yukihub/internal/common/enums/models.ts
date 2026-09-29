@@ -151,14 +151,14 @@ export enum SourceType {
     TouchGal = "touchgal",
     Hikarinagi = "hikarinagi",
     ErogameScape = "erogamescape",
-};
 
-export enum SteamCoverOrientation {
     /**
-     * The Go zero value for the underlying type of the enum.
+     * BangumiMirror 与 Bangumi 共用同一套 API 与 token，仅站点域名不同。
      */
-    $zero = "",
+    BangumiMirror = "bangumi_mirror",
 
-    SteamCoverOrientationPortrait = "portrait",
-    SteamCoverOrientationLandscape = "landscape",
+    /**
+     * NextMoe 未萌目录，使用用户级 OAuth 令牌访问 catalog 接口。
+     */
+    NextMoe = "nextmoe",
 };

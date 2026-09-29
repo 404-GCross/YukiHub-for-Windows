@@ -3,48 +3,44 @@ import type { enums } from "../../src/bindings/models";
 import { enums as modelEnums } from "../../src/bindings/models";
 import bangumiIconUrl from "../assets/providers/bangumi-icon.png";
 import bangumiLogoUrl from "../assets/providers/bangumi-logo.png";
-import dlsiteLogoUrl from "../assets/providers/dlsite-logo.png";
-import erogamescapeLogoUrl from "../assets/providers/erogamescape-logo.png";
 import hikarinagiIconUrl from "../assets/providers/hikarinagi-icon.webp";
 import hikarinagiLogoUrl from "../assets/providers/hikarinagi-logo.svg";
-import steamLogoUrl from "../assets/providers/steam-logo.png";
-import touchgalLogoUrl from "../assets/providers/touchgal-logo.webp";
 import vndbLogoUrl from "../assets/providers/vndb-logo.svg";
 import ymgalLogoUrl from "../assets/providers/ymgal-logo.png";
 
+// 未萌暂无独立图标资源，用内联 SVG 生成一个「N」字标，避免新增二进制资源。
+const NEXTMOE_ICON_URL = `data:image/svg+xml,${encodeURIComponent(
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7C5CFF"/><stop offset="1" stop-color="#3B82F6"/></linearGradient></defs><rect width="64" height="64" rx="14" fill="url(#g)"/><path d="M21 45V19l22 26V19" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+)}`;
+
+// 与手机版保持一致的可选来源集合。
 export const ALL_METADATA_SOURCES: readonly enums.SourceType[] = [
-  modelEnums.SourceType.Bangumi,
   modelEnums.SourceType.VNDB,
+  modelEnums.SourceType.Bangumi,
+  modelEnums.SourceType.BangumiMirror,
   modelEnums.SourceType.Ymgal,
-  modelEnums.SourceType.DLsite,
-  modelEnums.SourceType.TouchGal,
   modelEnums.SourceType.Hikarinagi,
-  modelEnums.SourceType.ErogameScape,
-  modelEnums.SourceType.Steam,
+  modelEnums.SourceType.NextMoe,
 ];
 
 export const DEFAULT_ENABLED_METADATA_SOURCES: readonly enums.SourceType[] = [
-  modelEnums.SourceType.Bangumi,
   modelEnums.SourceType.VNDB,
+  modelEnums.SourceType.Bangumi,
   modelEnums.SourceType.Ymgal,
-  modelEnums.SourceType.Steam,
+  modelEnums.SourceType.Hikarinagi,
 ];
 
 const VALID_METADATA_SOURCE_SET = new Set<string>(ALL_METADATA_SOURCES);
-const DEFAULT_EROGAMESCAPE_BASE_URL
-  = "https://erogamescape.org/~ap2/ero/toukei_kaiseki";
 
 const METADATA_SOURCE_ICONS: Readonly<
   Partial<Record<enums.SourceType, string>>
 > = {
   [modelEnums.SourceType.Bangumi]: bangumiLogoUrl,
+  [modelEnums.SourceType.BangumiMirror]: bangumiLogoUrl,
   [modelEnums.SourceType.VNDB]: vndbLogoUrl,
   [modelEnums.SourceType.Ymgal]: ymgalLogoUrl,
-  [modelEnums.SourceType.Steam]: steamLogoUrl,
-  [modelEnums.SourceType.DLsite]: dlsiteLogoUrl,
-  [modelEnums.SourceType.TouchGal]: touchgalLogoUrl,
   [modelEnums.SourceType.Hikarinagi]: hikarinagiLogoUrl,
-  [modelEnums.SourceType.ErogameScape]: erogamescapeLogoUrl,
+  [modelEnums.SourceType.NextMoe]: NEXTMOE_ICON_URL,
 };
 
 const METADATA_SOURCE_COMPACT_ICONS: Readonly<
@@ -67,7 +63,6 @@ export function getMetadataSourceIcon(
 export function getMetadataSourceURL(
   source: string | undefined,
   sourceId: string | undefined,
-  erogameScapeBaseURL?: string,
 ): string {
   const id = sourceId?.trim();
   if (!source || !id) {
@@ -78,27 +73,18 @@ export function getMetadataSourceURL(
   switch (source) {
     case "vndb":
       return `https://vndb.org/${encodedId}`;
+    // 镜像站与主站条目页一致，使用同一 subject id。
     case "bangumi":
+    case "bangumi_mirror":
       return `https://bgm.tv/subject/${encodedId}`;
     case "ymgal":
       return `https://www.ymgal.games/ga/${encodedId}`;
-    case "steam":
-      return `https://store.steampowered.com/app/${encodedId}`;
-    case "dlsite":
-      return `https://www.dlsite.com/maniax/work/=/product_id/${encodedId}.html`;
-    case "touchgal":
-      return `https://www.touchgal.ink/${encodedId}`;
     case "hikarinagi":
       return `https://www.hikarinagi.org/galgames/${encodedId}`;
-    case "erogamescape":
-      return `${normalizeErogameScapeBaseURL(erogameScapeBaseURL)}/game.php?game=${encodedId}`;
+    // nextmoe 的目录平台尚未开放 Web 前台，没有可跳转的作品页，故不给链接。
     default:
       return "";
   }
-}
-
-function normalizeErogameScapeBaseURL(baseURL?: string): string {
-  return baseURL?.trim().replace(/\/+$/, "") || DEFAULT_EROGAMESCAPE_BASE_URL;
 }
 
 export function normalizeEnabledMetadataSources(

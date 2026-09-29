@@ -35,6 +35,7 @@ type metadataSourceDeps struct {
 	config            *appconf.AppConfig
 	bangumiService    *BangumiService
 	hikarinagiService *HikarinagiService
+	nextMoeService    *NextMoeService
 }
 
 // buildConfiguredMetadataSearchSources 是元数据来源的唯一入口。
@@ -148,6 +149,33 @@ func buildConfiguredMetadataSearchSources(deps metadataSourceDeps) []metadataSea
 				},
 				fetchCandidatesByName: func(name string) ([]metadata.MetadataResult, error) {
 					return deps.hikarinagiService.fetchMetadataCandidatesByName(deps.ctx, name)
+				},
+			})
+		case enums2.BangumiMirror:
+			// 镜像站复用 Bangumi 服务的令牌与刷新逻辑，仅换 API 基址。
+			if deps.bangumiService == nil {
+				continue
+			}
+			sources = append(sources, metadataSearchSource{
+				source: enums2.BangumiMirror,
+				fetchByName: func(name string) (metadata.MetadataResult, error) {
+					return deps.bangumiService.fetchMirrorMetadataByName(deps.ctx, name)
+				},
+				fetchCandidatesByName: func(name string) ([]metadata.MetadataResult, error) {
+					return deps.bangumiService.fetchMirrorMetadataCandidatesByName(deps.ctx, name)
+				},
+			})
+		case enums2.NextMoe:
+			if deps.nextMoeService == nil {
+				continue
+			}
+			sources = append(sources, metadataSearchSource{
+				source: enums2.NextMoe,
+				fetchByName: func(name string) (metadata.MetadataResult, error) {
+					return deps.nextMoeService.fetchMetadataByName(deps.ctx, name)
+				},
+				fetchCandidatesByName: func(name string) ([]metadata.MetadataResult, error) {
+					return deps.nextMoeService.fetchMetadataCandidatesByName(deps.ctx, name)
 				},
 			})
 		}

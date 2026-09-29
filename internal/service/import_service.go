@@ -62,6 +62,7 @@ type ImportService struct {
 	gameService       *GameService
 	bangumiService    *BangumiService
 	hikarinagiService *HikarinagiService
+	nextMoeService    *NextMoeService
 	sessionService    *SessionService
 	runtime           wailsruntime.Runtime
 }
@@ -106,6 +107,11 @@ func (s *ImportService) SetBangumiService(bangumiService *BangumiService) {
 //wails:ignore
 func (s *ImportService) SetHikarinagiService(hikarinagiService *HikarinagiService) {
 	s.hikarinagiService = hikarinagiService
+}
+
+//wails:ignore
+func (s *ImportService) SetNextMoeService(nextMoeService *NextMoeService) {
+	s.nextMoeService = nextMoeService
 }
 
 func (s *ImportService) importerDependencies() importer.Dependencies {
@@ -974,6 +980,7 @@ func (s *ImportService) metadataSearchSources() []metadataSearchSource {
 		config:            s.config,
 		bangumiService:    s.bangumiService,
 		hikarinagiService: s.hikarinagiService,
+		nextMoeService:    s.nextMoeService,
 	})
 }
 

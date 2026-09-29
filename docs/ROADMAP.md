@@ -371,6 +371,30 @@ INSERT / UPDATE 语句都不含这些列，落库时被**静默丢弃**——这
         `ImportService` 清单与共享构建器逐项一致
       - 验证：`gofmt` / `go vet` / `go build ./...` 无输出，
         `go test ./... -count=1` 全绿（退出码 0）
+- [x] 元数据来源对齐手机版与设置清理（2026-09-29）：验收项 3 的收口
+      - 问题：桌面端可选元数据来源有 8 个（含 Steam / DLsite / TouchGAL /
+        ErogameScape），与手机版的 6 个（VNDB / Bangumi / Bangumi 镜像 /
+        月幕 / Hikarinagi / 未萌）长期分叉；设置里还留着随来源收敛失效的
+        `erogamescape_base_url`、`steam_cover_orientation`，
+        以及无任何读写方的 `auto_upload_to_cloud`
+      - 来源收敛：`SourceType` 新增 `bangumi_mirror` 与 `nextmoe`，
+        可选清单统一为 6 项。`bangumi_mirror` 复用 Bangumi 的令牌与刷新逻辑、
+        仅替换 API 基址（`https://api.bangumi.pro`）；`nextmoe` 走
+        OAuth 授权码 + PKCE S256 与本地回环回调（固定端口 14792），
+        catalog 请求带 Bearer 并按 1100ms 限速，令牌每次刷新轮换
+      - 被裁来源（Steam / DLsite / TouchGAL / ErogameScape）只从可选清单摘掉，
+        getter 实现、`SourceType` 枚举与展示映射全部保留，
+        历史数据里的来源名称仍能正确显示
+      - 设置清理：删除 `erogamescape_base_url`、`steam_cover_orientation`、
+        `auto_upload_to_cloud` 三项配置及其 UI 与归一化函数；
+        `window_maximised` 因 `main.go` 仍在读写（窗口尺寸记忆）而保留
+      - 默认值统一：`config.go` / `gamehelper.ConfiguredMetadataSources` /
+        前端三处对齐为 `[VNDB, Bangumi, Ymgal, Hikarinagi]`
+      - 无法实现项：`www.nextmoe.com` 目前只是品牌门户，目录平台无 Web 前台，
+        故 `nextmoe` 不提供来源页跳转（走 URL 解析的 default 分支）
+      - 验证：`gofmt` / `go vet ./...` / `go build ./...` 无输出，
+        `go test ./... -count=1` 全绿；前端 `pnpm typecheck` / `pnpm build` /
+        `pnpm i18n:check` 通过，改动文件 eslint 0 error
 - [x] 补齐 Windows 启动策略的测试覆盖（2026-09-29）：验收项 4 的静态部分
       - 背景：Magpie（超分）与 Locale Emulator（转区）是 **Windows 独有能力**，
         后端策略（`launcher/strategy_windows.go`）与前端 UI

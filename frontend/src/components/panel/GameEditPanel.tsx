@@ -15,6 +15,7 @@ import {
 } from "../../../bindings/yukihub/internal/service/gameservice";
 import { enums } from "../../../src/bindings/models";
 import {
+  ALL_METADATA_SOURCES,
   getMetadataSourceIcon,
   getMetadataSourceURL,
 } from "../../utils/metadataSources";
@@ -29,7 +30,6 @@ import { BetterSwitch } from "../ui/better/BetterSwitch";
 
 interface GameEditFormProps {
   game: models.Game;
-  erogameScapeBaseURL?: string;
   onGameChange: (game: models.Game) => void;
   onDelete: () => void;
   onSelectExecutable: () => void;
@@ -56,16 +56,21 @@ interface GameEditFormProps {
   ) => Promise<boolean>;
 }
 
+// 含已下线来源：仅用于展示历史数据里的来源名称，新增来源的可选清单由 ALL_METADATA_SOURCES 决定。
 const metadataSourceTypes: enums.SourceType[] = [
   enums.SourceType.Bangumi,
+  enums.SourceType.BangumiMirror,
   enums.SourceType.VNDB,
   enums.SourceType.Ymgal,
+  enums.SourceType.Hikarinagi,
+  enums.SourceType.NextMoe,
   enums.SourceType.Steam,
   enums.SourceType.DLsite,
   enums.SourceType.TouchGal,
-  enums.SourceType.Hikarinagi,
   enums.SourceType.ErogameScape,
 ];
+
+const selectableMetadataSourceSet = new Set<string>(ALL_METADATA_SOURCES);
 
 interface ReleaseDateRow {
   week: string;
@@ -386,7 +391,6 @@ function getTrailerDisplayName(trailerPath?: string): string {
 
 export function GameEditPanel({
   game,
-  erogameScapeBaseURL,
   onGameChange,
   onDelete,
   onSelectExecutable,
@@ -476,19 +480,23 @@ export function GameEditPanel({
     label:
       source === enums.SourceType.Ymgal
         ? t("gameEdit.sourceYmgal")
-        : source === enums.SourceType.DLsite
-          ? t("gameEdit.sourceDlsite")
-          : source === enums.SourceType.TouchGal
-            ? t("gameEdit.sourceTouchGal")
-            : source === enums.SourceType.Hikarinagi
-              ? t("gameEdit.sourceHikarinagi")
-              : source === enums.SourceType.ErogameScape
-                ? t("gameEdit.sourceErogameScape")
-                : source === enums.SourceType.VNDB
-                  ? "VNDB"
-                  : source === enums.SourceType.Steam
-                    ? "Steam"
-                    : "Bangumi",
+        : source === enums.SourceType.BangumiMirror
+          ? t("gameEdit.sourceBangumiMirror")
+          : source === enums.SourceType.NextMoe
+            ? t("gameEdit.sourceNextMoe")
+            : source === enums.SourceType.DLsite
+              ? t("gameEdit.sourceDlsite")
+              : source === enums.SourceType.TouchGal
+                ? t("gameEdit.sourceTouchGal")
+                : source === enums.SourceType.Hikarinagi
+                  ? t("gameEdit.sourceHikarinagi")
+                  : source === enums.SourceType.ErogameScape
+                    ? t("gameEdit.sourceErogameScape")
+                    : source === enums.SourceType.VNDB
+                      ? "VNDB"
+                      : source === enums.SourceType.Steam
+                        ? "Steam"
+                        : "Bangumi",
   }));
   const sourceLabels = new Map(
     sourceOptions.map(option => [option.value, option.label]),
@@ -1182,7 +1190,6 @@ export function GameEditPanel({
                   const sourceURL = getMetadataSourceURL(
                     source.source_type,
                     sourceID,
-                    erogameScapeBaseURL,
                   );
                   const isDefault = game.source_type === source.source_type;
                   const isBusy = busySource.startsWith(
@@ -1328,7 +1335,9 @@ export function GameEditPanel({
                   onChange={value =>
                     setSourceDraftType(value as enums.SourceType)}
                   options={sourceOptions.filter(
-                    option => !configuredSourceTypes.has(option.value),
+                    option =>
+                      selectableMetadataSourceSet.has(option.value)
+                      && !configuredSourceTypes.has(option.value),
                   )}
                 />
                 <BetterInput
@@ -1355,7 +1364,8 @@ export function GameEditPanel({
                       setSourceDraftID("");
                       const nextType = metadataSourceTypes.find(
                         source =>
-                          source !== sourceDraftType
+                          selectableMetadataSourceSet.has(source)
+                          && source !== sourceDraftType
                           && !configuredSourceTypes.has(source),
                       );
                       if (nextType)

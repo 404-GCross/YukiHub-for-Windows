@@ -98,6 +98,7 @@ type getterConfig struct {
 	tagLimit              int
 	hasTagLimit           bool
 	erogameScapeBaseURL   string
+	bangumiBaseURL        string
 	bangumiCoverSource    enums2.MetadataCoverSource
 	vndbCoverSource       enums2.MetadataCoverSource
 	steamCoverOrientation enums2.SteamCoverOrientation
@@ -155,6 +156,13 @@ func WithTagLimit(limit int) GetterOption {
 func WithErogameScapeBaseURL(baseURL string) GetterOption {
 	return func(config *getterConfig) {
 		config.erogameScapeBaseURL = strings.TrimRight(strings.TrimSpace(baseURL), "/")
+	}
+}
+
+// WithBangumiBaseURL 覆盖 Bangumi API 基址，用于切换到镜像站（同一套 API，仅域名不同）。
+func WithBangumiBaseURL(baseURL string) GetterOption {
+	return func(config *getterConfig) {
+		config.bangumiBaseURL = strings.TrimRight(strings.TrimSpace(baseURL), "/")
 	}
 }
 

@@ -130,7 +130,6 @@ function App() {
       />
       <InstallConfirmModal
         request={installRequest}
-        erogameScapeBaseURL={config?.erogamescape_base_url}
         onClose={() => setInstallRequest(null)}
       />
     </DesktopShellProvider>

@@ -38,6 +38,8 @@ const (
 	bangumiOAuthTokenURL       = "https://bgm.tv/oauth/access_token"
 	bangumiCurrentUserURL      = "https://api.bgm.tv/v0/me"
 	bangumiCollectionAPIFormat = "https://api.bgm.tv/v0/users/-/collections/%s"
+	// bangumiMirrorAPIBaseURL 是 Bangumi 镜像站基址：与主站同一套 API，token 共用。
+	bangumiMirrorAPIBaseURL = "https://api.bangumi.pro"
 
 	bangumiOAuthClientIDEnv     = "YUKIHUB_BANGUMI_CLIENT_ID"
 	bangumiOAuthClientSecretEnv = "YUKIHUB_BANGUMI_CLIENT_SECRET"
@@ -312,8 +314,26 @@ func (s *BangumiService) refreshAccessToken(ctx context.Context) (string, error)
 	return s.refreshAccessTokenLocked(ctx)
 }
 
+// newMetadataGetter 构造 Bangumi getter；baseURL 为空时使用主站，非空时使用镜像站。
+func (s *BangumiService) newMetadataGetter(baseURL string) *metadata.BangumiInfoGetter {
+	options := gamehelper.MetadataGetterOptions(s.config)
+	if baseURL != "" {
+		options = append(options, metadata.WithBangumiBaseURL(baseURL))
+	}
+	return metadata.NewBangumiInfoGetter(options...)
+}
+
 func (s *BangumiService) fetchMetadataByID(ctx context.Context, sourceID string) (metadata.MetadataResult, error) {
-	getter := metadata.NewBangumiInfoGetter(gamehelper.MetadataGetterOptions(s.config)...)
+	return s.fetchMetadataByIDWithBaseURL(ctx, sourceID, "")
+}
+
+// fetchMirrorMetadataByID 走 Bangumi 镜像站，复用主站的 token 与刷新逻辑。
+func (s *BangumiService) fetchMirrorMetadataByID(ctx context.Context, sourceID string) (metadata.MetadataResult, error) {
+	return s.fetchMetadataByIDWithBaseURL(ctx, sourceID, bangumiMirrorAPIBaseURL)
+}
+
+func (s *BangumiService) fetchMetadataByIDWithBaseURL(ctx context.Context, sourceID, baseURL string) (metadata.MetadataResult, error) {
+	getter := s.newMetadataGetter(baseURL)
 
 	token, err := s.getValidAccessToken(ctx)
 	if err != nil {
@@ -341,8 +361,26 @@ func (s *BangumiService) fetchMetadataByName(ctx context.Context, name string) (
 	return results[0], nil
 }
 
+// fetchMirrorMetadataByName 走 Bangumi 镜像站的名称搜索。
+func (s *BangumiService) fetchMirrorMetadataByName(ctx context.Context, name string) (metadata.MetadataResult, error) {
+	results, err := s.fetchMirrorMetadataCandidatesByName(ctx, name)
+	if err != nil {
+		return metadata.MetadataResult{}, err
+	}
+	return results[0], nil
+}
+
 func (s *BangumiService) fetchMetadataCandidatesByName(ctx context.Context, name string) ([]metadata.MetadataResult, error) {
-	getter := metadata.NewBangumiInfoGetter(gamehelper.MetadataGetterOptions(s.config)...)
+	return s.fetchMetadataCandidatesByNameWithBaseURL(ctx, name, "")
+}
+
+// fetchMirrorMetadataCandidatesByName 走 Bangumi 镜像站，复用主站的 token 与刷新逻辑。
+func (s *BangumiService) fetchMirrorMetadataCandidatesByName(ctx context.Context, name string) ([]metadata.MetadataResult, error) {
+	return s.fetchMetadataCandidatesByNameWithBaseURL(ctx, name, bangumiMirrorAPIBaseURL)
+}
+
+func (s *BangumiService) fetchMetadataCandidatesByNameWithBaseURL(ctx context.Context, name, baseURL string) ([]metadata.MetadataResult, error) {
+	getter := s.newMetadataGetter(baseURL)
 
 	token, err := s.getValidAccessToken(ctx)
 	if err != nil {

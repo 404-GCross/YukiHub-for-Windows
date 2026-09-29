@@ -133,6 +133,18 @@ type HikarinagiStatusPushFailureEvent struct {
 	Error       string `json:"error"`
 }
 
+// NextMoeAuthStatus 描述 NextMoe 用户令牌的本地授权状态。
+type NextMoeAuthStatus struct {
+	Authorized           bool   `json:"authorized"`
+	AccountLabel         string `json:"account_label"`
+	AccessTokenExpiresAt string `json:"access_token_expires_at"`
+}
+
+// NextMoeProfile 描述已连接账号的展示信息。
+type NextMoeProfile struct {
+	AccountLabel string `json:"account_label"`
+}
+
 type ProtocolLaunchErrorEvent struct {
 	Message   string `json:"message"`
 	Detail    string `json:"detail,omitempty"`

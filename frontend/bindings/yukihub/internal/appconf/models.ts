@@ -29,15 +29,14 @@ export class AppConfig {
     "hikarinagi_authorized_avatar_url"?: string;
     "hikarinagi_auth_error"?: string;
     "hikarinagi_status_push_enabled"?: boolean | null;
+    "nextmoe_access_token"?: string;
+    "nextmoe_refresh_token"?: string;
+    "nextmoe_token_expires_at"?: string;
+    "nextmoe_account_label"?: string;
     "vndb_access_token"?: string;
 
     /**
-     * ErogameScape 站点地址
-     */
-    "erogamescape_base_url"?: string;
-
-    /**
-     * 元数据拉取来源列表（bangumi/vndb/ymgal/steam/dlsite/touchgal/hikarinagi/erogamescape）
+     * 元数据拉取来源列表（vndb/bangumi/bangumi_mirror/ymgal/hikarinagi/nextmoe）
      */
     "metadata_sources"?: string[];
 
@@ -55,11 +54,6 @@ export class AppConfig {
      * VNDB 封面来源
      */
     "vndb_cover_source"?: enums$0.MetadataCoverSource;
-
-    /**
-     * Steam 封面方向
-     */
-    "steam_cover_orientation"?: enums$0.SteamCoverOrientation;
 
     /**
      * light or dark
@@ -293,11 +287,6 @@ export class AppConfig {
      * 游戏退出时自动备份存档
      */
     "auto_backup_game_save": boolean;
-
-    /**
-     * 已弃用，保留用于配置迁移
-     */
-    "auto_upload_to_cloud"?: boolean;
 
     /**
      * 自动上传数据库备份到云端
@@ -719,10 +708,10 @@ export class AppConfig {
      * Creates a new AppConfig instance from a string or object.
      */
     static createFrom($$source: any = {}): AppConfig {
-        const $$createField18_0 = $$createType0;
+        const $$createField21_0 = $$createType0;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("metadata_sources" in $$parsedSource) {
-            $$parsedSource["metadata_sources"] = $$createField18_0($$parsedSource["metadata_sources"]);
+            $$parsedSource["metadata_sources"] = $$createField21_0($$parsedSource["metadata_sources"]);
         }
         return new AppConfig($$parsedSource as Partial<AppConfig>);
     }

@@ -19,23 +19,38 @@ import (
 type BangumiInfoGetter struct {
 	client      *http.Client
 	tagLimit    int
+	baseURL     string
 	coverSource enums.MetadataCoverSource
 }
 
 func NewBangumiInfoGetter(options ...GetterOption) *BangumiInfoGetter {
 	config := newGetterConfig(options)
+	baseURL := config.bangumiBaseURL
+	if baseURL == "" {
+		baseURL = bangumiDefaultAPIBaseURL
+	}
 	return &BangumiInfoGetter{
 		client:      config.client,
 		tagLimit:    config.tagLimit,
+		baseURL:     baseURL,
 		coverSource: config.bangumiCoverSource,
 	}
 }
 
 var _ Getter = (*BangumiInfoGetter)(nil)
 
-const bangumiIDQueryAPIURL = "https://api.bgm.tv/v0/subjects"
+// bangumiDefaultAPIBaseURL 是 Bangumi 主站 API 基址；镜像站与之同构，仅域名不同。
+const bangumiDefaultAPIBaseURL = "https://api.bgm.tv"
 
 var ErrBangumiUnauthorized = errors.New("bangumi unauthorized")
+
+// sourceType 返回该 getter 对应的元数据来源：非默认基址即视为镜像站。
+func (b BangumiInfoGetter) sourceType() enums.SourceType {
+	if b.baseURL != bangumiDefaultAPIBaseURL {
+		return enums.BangumiMirror
+	}
+	return enums.Bangumi
+}
 
 func IsBangumiUnauthorizedError(err error) bool {
 	return errors.Is(err, ErrBangumiUnauthorized)
@@ -101,7 +116,7 @@ func (b BangumiInfoGetter) FetchMetadata(id string, token string) (MetadataResul
 		return MetadataResult{}, errors.New("bangumi API requires Bearer token")
 	}
 
-	reqURL := fmt.Sprintf("%s/%s", bangumiIDQueryAPIURL, id)
+	reqURL := fmt.Sprintf("%s/v0/subjects/%s", b.baseURL, id)
 	req, err := http.NewRequest("GET", reqURL, nil)
 	if err != nil {
 		return MetadataResult{}, err
@@ -149,7 +164,7 @@ func (b BangumiInfoGetter) FetchMetadataCandidatesByName(name string, token stri
 		return nil, errors.New("bangumi API requires Bearer token")
 	}
 
-	searchURL := "https://api.bgm.tv/v0/search/subjects"
+	searchURL := b.baseURL + "/v0/search/subjects"
 
 	params := url.Values{}
 	params.Add("limit", strconv.Itoa(metadataSearchCandidateLimit))
@@ -240,7 +255,7 @@ func (b BangumiInfoGetter) metadataResultFromResponse(bangumiResp bangumiRespons
 	if coverURL == "" {
 		coverURL = bangumiResp.Images.Common
 	}
-	coverURL = resolveMetadataCoverURL(enums.Bangumi, b.coverSource, coverURL)
+	coverURL = resolveMetadataCoverURL(b.sourceType(), b.coverSource, coverURL)
 
 	return MetadataResult{
 		Game: models.Game{
@@ -253,7 +268,7 @@ func (b BangumiInfoGetter) metadataResultFromResponse(bangumiResp bangumiRespons
 			Rating:         normalizeTenPointRating(bangumiResp.Rating.Score),
 			ReleaseDate:    strings.TrimSpace(bangumiResp.Date),
 			IsNSFW:         bangumiResp.NSFW,
-			SourceType:     enums.Bangumi,
+			SourceType:     b.sourceType(),
 			SourceID:       strconv.Itoa(bangumiResp.ID),
 			CachedAt:       time.Now(),
 		},

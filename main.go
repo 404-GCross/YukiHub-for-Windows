@@ -480,6 +480,7 @@ func runGUI(
 	gameService := service.NewGameService()
 	bangumiService := service.NewBangumiService()
 	hikarinagiService := service.NewHikarinagiService()
+	nextMoeService := service.NewNextMoeService()
 	aiService := service.NewAiService()
 	aiStatsBuilder := service.NewAIStatsBuilder()
 	backupService := service.NewBackupService()
@@ -541,6 +542,7 @@ func runGUI(
 		gameService.Init(ctx, db, config)
 		bangumiService.Init(ctx, db, config)
 		hikarinagiService.Init(ctx, db, config)
+		nextMoeService.Init(ctx, config)
 		tagService.Init(ctx, db, config)
 		gameFilterPresetService.Init(ctx, db, config)
 		aiService.Init(ctx, db, config)
@@ -579,12 +581,14 @@ func runGUI(
 		gameService.SetTagService(tagService)
 		gameService.SetBangumiService(bangumiService)
 		gameService.SetHikarinagiService(hikarinagiService)
+		gameService.SetNextMoeService(nextMoeService)
 		gameReviewService.SetBangumiService(bangumiService)
 		gameReviewService.SetHikarinagiService(hikarinagiService)
 		importService.SetGameService(gameService)
 		integrationService.SetGameService(gameService)
 		importService.SetBangumiService(bangumiService)
 		importService.SetHikarinagiService(hikarinagiService)
+		importService.SetNextMoeService(nextMoeService)
 		importService.SetSessionService(sessionService)
 		updateService.SetConfigService(configService)
 		mcpReadService.SetGameService(gameService)
@@ -625,6 +629,7 @@ func runGUI(
 		application.NewService(gameService),
 		application.NewService(bangumiService),
 		application.NewService(hikarinagiService),
+		application.NewService(nextMoeService),
 		application.NewService(aiService),
 		application.NewService(backupService),
 		application.NewService(cloudSyncService),
@@ -922,6 +927,7 @@ func runGUI(
 		backupService.SetRuntime(guiRuntime)
 		bangumiService.SetRuntime(guiRuntime)
 		hikarinagiService.SetRuntime(guiRuntime)
+		nextMoeService.SetRuntime(guiRuntime)
 		cloudSyncService.SetRuntime(guiRuntime)
 		configService.SetRuntime(guiRuntime)
 		downloadService.SetRuntime(guiRuntime)

@@ -45,6 +45,8 @@ export {
     LastPlayedGame,
     MetadataRefreshResult,
     MetadataRequest,
+    NextMoeAuthStatus,
+    NextMoeProfile,
     PeriodStats,
     PeriodStatsRequest,
     ProtocolLaunchRequest,

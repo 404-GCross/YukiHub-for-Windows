@@ -70,6 +70,23 @@ func DefaultMetadataRateLimitPolicies() map[MetadataSource]MetadataRateLimitPoli
 			Source:   enums.ErogameScape,
 			Interval: 2 * time.Second,
 		},
+		// 镜像站与主站同一套 API、同一份配额口径。
+		enums.BangumiMirror: {
+			Source:         enums.BangumiMirror,
+			Interval:       time.Second,
+			UpstreamLimit:  3000,
+			UpstreamWindow: 10 * time.Minute,
+		},
+		// NextMoe 用户档 100/min，客户端限速 1100ms 并留出重试余量。
+		enums.NextMoe: {
+			Source:              enums.NextMoe,
+			Interval:            1100 * time.Millisecond,
+			UpstreamLimit:       100,
+			UpstreamWindow:      time.Minute,
+			RateLimitRetryDelay: 1200 * time.Millisecond,
+			MaxRetryDelay:       5 * time.Second,
+			MaxRateLimitRetries: 2,
+		},
 	}
 
 	return policies

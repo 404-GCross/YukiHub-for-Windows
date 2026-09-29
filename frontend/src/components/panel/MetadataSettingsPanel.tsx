@@ -29,7 +29,6 @@ import {
 } from "../modal/MetadataFieldSelectModal";
 import { MetadataRefreshProgressModal } from "../modal/MetadataRefreshProgressModal";
 import { BetterButton } from "../ui/better/BetterButton";
-import { BetterInput } from "../ui/better/BetterInput";
 import { BetterNumberInput } from "../ui/better/BetterNumberInput";
 import { BetterSelect } from "../ui/better/BetterSelect";
 import { BetterSwitch } from "../ui/better/BetterSwitch";
@@ -150,16 +149,28 @@ export function MetadataSettingsPanel({
     icon: string;
   }> = [
     {
+      value: enums.SourceType.VNDB,
+      label: "VNDB",
+      hint: t("settings.metadata.sourceHints.vndb"),
+      icon: getMetadataSourceIcon(enums.SourceType.VNDB) ?? "",
+    },
+    {
       value: enums.SourceType.Bangumi,
       label: "Bangumi",
       hint: t("settings.metadata.sourceHints.bangumi"),
       icon: getMetadataSourceIcon(enums.SourceType.Bangumi) ?? "",
     },
     {
-      value: enums.SourceType.VNDB,
-      label: "VNDB",
-      hint: t("settings.metadata.sourceHints.vndb"),
-      icon: getMetadataSourceIcon(enums.SourceType.VNDB) ?? "",
+      value: enums.SourceType.BangumiMirror,
+      label: t("gameEdit.sourceBangumiMirror"),
+      hint: t("settings.metadata.sourceHints.bangumiMirror"),
+      icon: getMetadataSourceIcon(enums.SourceType.BangumiMirror) ?? "",
+    },
+    {
+      value: enums.SourceType.Ymgal,
+      label: t("gameEdit.sourceYmgal"),
+      hint: t("settings.metadata.sourceHints.ymgal"),
+      icon: getMetadataSourceIcon(enums.SourceType.Ymgal) ?? "",
     },
     {
       value: enums.SourceType.Hikarinagi,
@@ -168,34 +179,10 @@ export function MetadataSettingsPanel({
       icon: getMetadataSourceIcon(enums.SourceType.Hikarinagi) ?? "",
     },
     {
-      value: enums.SourceType.Steam,
-      label: "Steam",
-      hint: t("settings.metadata.sourceHints.steam"),
-      icon: getMetadataSourceIcon(enums.SourceType.Steam) ?? "",
-    },
-    {
-      value: enums.SourceType.DLsite,
-      label: "DLsite",
-      hint: t("settings.metadata.sourceHints.dlsite"),
-      icon: getMetadataSourceIcon(enums.SourceType.DLsite) ?? "",
-    },
-    {
-      value: enums.SourceType.TouchGal,
-      label: "TouchGAL",
-      hint: t("settings.metadata.sourceHints.touchgal"),
-      icon: getMetadataSourceIcon(enums.SourceType.TouchGal) ?? "",
-    },
-    {
-      value: enums.SourceType.Ymgal,
-      label: "Ymgal",
-      hint: t("settings.metadata.sourceHints.ymgal"),
-      icon: getMetadataSourceIcon(enums.SourceType.Ymgal) ?? "",
-    },
-    {
-      value: enums.SourceType.ErogameScape,
-      label: "ErogameScape",
-      hint: t("settings.metadata.sourceHints.erogamescape"),
-      icon: getMetadataSourceIcon(enums.SourceType.ErogameScape) ?? "",
+      value: enums.SourceType.NextMoe,
+      label: t("gameEdit.sourceNextMoe"),
+      hint: t("settings.metadata.sourceHints.nextmoe"),
+      icon: getMetadataSourceIcon(enums.SourceType.NextMoe) ?? "",
     },
   ];
 
@@ -498,61 +485,6 @@ export function MetadataSettingsPanel({
             <p className="text-xs text-brand-500 dark:text-brand-400">
               {t("settings.metadata.vndbCoverSourceHint")}
             </p>
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          <label
-            htmlFor="erogamescape-base-url"
-            className="block text-sm font-medium text-brand-700 dark:text-brand-300"
-          >
-            {t("settings.metadata.erogameScapeBaseURL")}
-          </label>
-          <BetterInput
-            id="erogamescape-base-url"
-            type="url"
-            name="erogamescape_base_url"
-            value={formData.erogamescape_base_url || ""}
-            onChange={event =>
-              onChange({
-                ...formData,
-                erogamescape_base_url: event.target.value,
-              } as appconf.AppConfig)}
-            placeholder="https://erogamescape.org/~ap2/ero/toukei_kaiseki"
-          />
-          <p className="text-xs text-brand-500 dark:text-brand-400">
-            {t("settings.metadata.erogameScapeBaseURLHint")}
-          </p>
-        </div>
-
-        <div className="space-y-2">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex-1 space-y-2">
-              <label
-                htmlFor="steam-portrait-cover"
-                className="block cursor-pointer text-sm font-medium text-brand-700 dark:text-brand-300"
-              >
-                {t("settings.metadata.steamPortraitCover")}
-              </label>
-              <p className="text-xs text-brand-500 dark:text-brand-400">
-                {t("settings.metadata.steamPortraitCoverHint")}
-              </p>
-            </div>
-            <BetterSwitch
-              id="steam-portrait-cover"
-              checked={
-                formData.steam_cover_orientation
-                !== enums.SteamCoverOrientation.SteamCoverOrientationLandscape
-              }
-              onCheckedChange={checked =>
-                onChange({
-                  ...formData,
-                  steam_cover_orientation: checked
-                    ? enums.SteamCoverOrientation.SteamCoverOrientationPortrait
-                    : enums.SteamCoverOrientation
-                      .SteamCoverOrientationLandscape,
-                } as appconf.AppConfig)}
-            />
           </div>
         </div>
 

@@ -7,8 +7,8 @@ import (
 )
 
 func TestNormalizeMetadataSourcesAcceptsOptInSources(t *testing.T) {
-	got := normalizeMetadataSources([]string{"bangumi", "dlsite", "touchgal", "hikarinagi", "erogamescape", "DLSITE", "unknown"})
-	want := []string{"bangumi", "dlsite", "touchgal", "hikarinagi", "erogamescape"}
+	got := normalizeMetadataSources([]string{"bangumi", "bangumi_mirror", "nextmoe", "hikarinagi", "dlsite", "touchgal", "erogamescape", "BANGUMI_MIRROR", "unknown"})
+	want := []string{"bangumi", "bangumi_mirror", "nextmoe", "hikarinagi"}
 
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("expected %#v, got %#v", want, got)
@@ -17,7 +17,7 @@ func TestNormalizeMetadataSourcesAcceptsOptInSources(t *testing.T) {
 
 func TestNormalizeMetadataSourcesUsesExpectedDefaults(t *testing.T) {
 	got := normalizeMetadataSources(nil)
-	want := []string{"bangumi", "vndb", "hikarinagi", "steam"}
+	want := []string{"vndb", "bangumi", "ymgal", "hikarinagi"}
 
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("expected %#v, got %#v", want, got)
@@ -112,35 +112,6 @@ func TestSanitizeUmbraConfigPreservesConfiguredBaseURL(t *testing.T) {
 			}
 			if !config.UmbraAuthenticated {
 				t.Fatal("sanitizing a configured Umbra base URL cleared authentication")
-			}
-		})
-	}
-}
-
-func TestSanitizeErogameScapeConfig(t *testing.T) {
-	tests := []struct {
-		name    string
-		baseURL string
-		want    string
-	}{
-		{
-			name:    "empty value uses default",
-			baseURL: "",
-			want:    DefaultErogameScapeBaseURL,
-		},
-		{
-			name:    "custom value is normalized",
-			baseURL: " https://example.com/erogamescape/// ",
-			want:    "https://example.com/erogamescape",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			config := &AppConfig{ErogameScapeBaseURL: tt.baseURL}
-			SanitizeErogameScapeConfig(config)
-			if config.ErogameScapeBaseURL != tt.want {
-				t.Fatalf("expected ErogameScape base URL %q, got %q", tt.want, config.ErogameScapeBaseURL)
 			}
 		})
 	}

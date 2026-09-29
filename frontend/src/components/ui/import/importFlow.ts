@@ -28,21 +28,22 @@ export type ImportRequestOptions = {
 };
 
 export function sourceLabel(source: enums.SourceType, t: TFunction) {
-  return source === modelEnums.SourceType.Bangumi
-    ? "Bangumi"
-    : source === modelEnums.SourceType.VNDB
-      ? "VNDB"
-      : source === modelEnums.SourceType.Ymgal
-        ? t("gameEdit.sourceYmgal")
-        : source === modelEnums.SourceType.DLsite
-          ? t("gameEdit.sourceDlsite")
-          : source === modelEnums.SourceType.TouchGal
-            ? t("gameEdit.sourceTouchGal")
-            : source === modelEnums.SourceType.Hikarinagi
-              ? t("gameEdit.sourceHikarinagi")
-              : source === modelEnums.SourceType.ErogameScape
-                ? t("gameEdit.sourceErogameScape")
-                : "Steam";
+  switch (source) {
+    case modelEnums.SourceType.Bangumi:
+      return "Bangumi";
+    case modelEnums.SourceType.BangumiMirror:
+      return t("gameEdit.sourceBangumiMirror");
+    case modelEnums.SourceType.VNDB:
+      return "VNDB";
+    case modelEnums.SourceType.Ymgal:
+      return t("gameEdit.sourceYmgal");
+    case modelEnums.SourceType.Hikarinagi:
+      return t("gameEdit.sourceHikarinagi");
+    case modelEnums.SourceType.NextMoe:
+      return t("gameEdit.sourceNextMoe");
+    default:
+      return source;
+  }
 }
 
 export function normalizeScanPreset(
