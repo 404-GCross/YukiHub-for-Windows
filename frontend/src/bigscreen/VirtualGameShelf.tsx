@@ -61,9 +61,13 @@ export const VirtualGameShelf = memo(
     }, [focusedIndex, games.length, virtualizer]);
 
     return (
+      // 高度必须是「行高」而不是 h-full：写成 h-full 时这个 flex 子项会
+      // flex-shrink 吃掉整个剩余空间，父级的 justify-end 就失效了，
+      // 卡片会停在区域顶部而不是贴底。
       <div
         ref={scrollRef}
-        className="scrollbar-hide h-full w-full overflow-x-auto overflow-y-hidden"
+        className="scrollbar-hide w-full overflow-x-auto overflow-y-hidden"
+        style={{ height: rowHeight }}
       >
         <div
           className="relative h-full"
