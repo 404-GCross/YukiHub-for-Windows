@@ -75,6 +75,7 @@ type CommitItem struct {
 	Source                  enums.SourceType
 	Action                  string
 	UpdateLocalLaunchFields bool
+	Favorite                bool
 	CoverLoader             func(models.Game) (string, error)
 }
 
@@ -116,6 +117,14 @@ func importPathContainsNormalized(parentPath string, childPath string) bool {
 
 func normalizeImportName(name string) string {
 	return strings.ToLower(strings.TrimSpace(name))
+}
+
+// nullableTime 把可空的清零时间转成 appender 可写入的值：nil 落 NULL，而不是零值时间。
+func nullableTime(value *time.Time) any {
+	if value == nil {
+		return nil
+	}
+	return *value
 }
 
 func importSourceKey(source enums.SourceType, sourceID string) string {
@@ -374,6 +383,7 @@ func (c *Committer) AddItems(items []ImportItem) (ImportResult, error) {
 			Source:                  source,
 			Action:                  action,
 			UpdateLocalLaunchFields: item.UpdateLocalLaunchFields,
+			Favorite:                item.Favorite,
 			CoverLoader:             item.CoverLoader,
 		}
 		toCommit = append(toCommit, converted)
@@ -554,7 +564,11 @@ func (c *Committer) addImportedItems(ctx context.Context, conn *sql.Conn, items 
 		updated_at TIMESTAMPTZ,
 		use_locale_emulator BOOLEAN,
 		use_magpie BOOLEAN,
-		is_nsfw BOOLEAN
+		is_nsfw BOOLEAN,
+		legacy_local_id TEXT,
+		source_device_id TEXT,
+		playtime_reset_at TIMESTAMPTZ,
+		hidden BOOLEAN
 	)`)
 	if err != nil {
 		return 0, fmt.Errorf("create temp_import_games: %w", err)
@@ -618,6 +632,10 @@ func (c *Committer) addImportedItems(ctx context.Context, conn *sql.Conn, items 
 				game.UseLocaleEmulator,
 				game.UseMagpie,
 				game.IsNSFW,
+				game.LegacyLocalID,
+				game.SourceDeviceID,
+				nullableTime(game.PlaytimeResetAt),
+				game.Hidden,
 			); err != nil {
 				return fmt.Errorf("append imported game %s: %w", game.Name, err)
 			}
@@ -632,14 +650,16 @@ func (c *Committer) addImportedItems(ctx context.Context, conn *sql.Conn, items 
 		save_path, process_name, wine_runner, wine_args, wine_prefix, launch_mode,
 		steam_launch_id, steam_launch_kind, steam_user_id, steam_launch_options,
 		source_type, cached_at, source_id, created_at, updated_at,
-		use_locale_emulator, use_magpie, is_nsfw
+		use_locale_emulator, use_magpie, is_nsfw,
+		legacy_local_id, source_device_id, playtime_reset_at, hidden
 	)
 	SELECT
 		id, name, cover_url, cover_source_url, company, summary, rating, release_date, path, game_directory,
 		save_path, process_name, wine_runner, wine_args, wine_prefix, launch_mode,
 		steam_launch_id, steam_launch_kind, steam_user_id, steam_launch_options,
 		source_type, cached_at, source_id, created_at, updated_at,
-		use_locale_emulator, use_magpie, is_nsfw
+		use_locale_emulator, use_magpie, is_nsfw,
+		legacy_local_id, source_device_id, playtime_reset_at, hidden
 	FROM temp_import_games`); err != nil {
 		return 0, fmt.Errorf("insert imported games from staging: %w", err)
 	}
@@ -668,7 +688,11 @@ func (c *Committer) updateImportedItemMetadata(ctx context.Context, conn *sql.Co
 		cached_at TIMESTAMPTZ,
 		source_id TEXT,
 		updated_at TIMESTAMPTZ,
-		is_nsfw BOOLEAN
+		is_nsfw BOOLEAN,
+		legacy_local_id TEXT,
+		source_device_id TEXT,
+		playtime_reset_at TIMESTAMPTZ,
+		hidden BOOLEAN
 	)`)
 	if err != nil {
 		return 0, fmt.Errorf("create temp_update_import_games: %w", err)
@@ -710,6 +734,10 @@ func (c *Committer) updateImportedItemMetadata(ctx context.Context, conn *sql.Co
 				game.SourceID,
 				game.UpdatedAt,
 				game.IsNSFW,
+				game.LegacyLocalID,
+				game.SourceDeviceID,
+				nullableTime(game.PlaytimeResetAt),
+				game.Hidden,
 			); err != nil {
 				return fmt.Errorf("append import metadata update %s: %w", game.Name, err)
 			}
@@ -747,7 +775,19 @@ func (c *Committer) updateImportedItemMetadata(ctx context.Context, conn *sql.Co
 			is_nsfw = CASE
 				WHEN temp_update_import_games.source_type IN ('bangumi', 'vndb') THEN temp_update_import_games.is_nsfw
 				ELSE games.is_nsfw
-			END
+			END,
+			-- 身份键与设备标识「非空才覆盖」，避免用空值抹掉桌面端已有的来源信息。
+			legacy_local_id = CASE
+				WHEN temp_update_import_games.legacy_local_id <> '' THEN temp_update_import_games.legacy_local_id
+				ELSE games.legacy_local_id
+			END,
+			source_device_id = CASE
+				WHEN temp_update_import_games.source_device_id <> '' THEN temp_update_import_games.source_device_id
+				ELSE games.source_device_id
+			END,
+			-- 清零时间与隐藏标记以权威源（Android）为准。
+			playtime_reset_at = temp_update_import_games.playtime_reset_at,
+			hidden = temp_update_import_games.hidden
 		FROM temp_update_import_games
 		WHERE games.id = temp_update_import_games.id
 	`); err != nil {
@@ -766,6 +806,7 @@ func (c *Committer) upsertImportedItemMetadataSources(ctx context.Context, conn 
 		game_id TEXT,
 		source_type TEXT,
 		source_id TEXT,
+		cache_json TEXT,
 		cached_at TIMESTAMPTZ,
 		created_at TIMESTAMPTZ,
 		updated_at TIMESTAMPTZ,
@@ -809,6 +850,7 @@ func (c *Committer) upsertImportedItemMetadataSources(ctx context.Context, conn 
 					game.ID,
 					string(sourceType),
 					sourceID,
+					source.CacheJSON,
 					cachedAt,
 					now,
 					now,
@@ -830,12 +872,18 @@ func (c *Committer) upsertImportedItemMetadataSources(ctx context.Context, conn 
 
 	if _, err := conn.ExecContext(ctx, `
 		INSERT INTO game_metadata_sources (
-			game_id, source_type, source_id, cached_at, created_at, updated_at
+			game_id, source_type, source_id, cache_json, cached_at, created_at, updated_at
 		)
-		SELECT game_id, source_type, source_id, cached_at, created_at, updated_at
+		SELECT game_id, source_type, source_id, cache_json, cached_at, created_at, updated_at
 		FROM temp_import_metadata_sources
 		ON CONFLICT (game_id, source_type) DO UPDATE SET
 			source_id = EXCLUDED.source_id,
+			-- 空负载不覆盖已有缓存：没有 metadata_cache 元素的来源只是身份信息，
+			-- 用它清空对端已有的缓存属于破坏性写入。
+			cache_json = CASE
+				WHEN EXCLUDED.cache_json <> '' THEN EXCLUDED.cache_json
+				ELSE game_metadata_sources.cache_json
+			END,
 			cached_at = EXCLUDED.cached_at,
 			updated_at = EXCLUDED.updated_at
 	`); err != nil {
@@ -1012,6 +1060,62 @@ func (c *Committer) addImportedItemTags(ctx context.Context, conn *sql.Conn, ite
 			updated_at = EXCLUDED.updated_at
 	`); err != nil {
 		return inserted, fmt.Errorf("insert imported tags from staging: %w", err)
+	}
+	return inserted, nil
+}
+
+// addImportedItemFavorites 把标记为收藏的条目写入「收藏」系统分类。
+//
+// 桌面端没有游戏级 favorite 列，收藏关系存在 game_categories；导入方向此前完全
+// 丢弃快照的 favorite，导致「桌面端导出 → 手机版 → 回导」会丢失收藏，与导出方向不对称。
+// 这里只做「加收藏」，不做「取消收藏」：快照里的 favorite=false 可能是对端未标记，
+// 也可能只是本轮未同步，删除既有收藏属于破坏性操作，按合并语义「只增不减」处理。
+func (c *Committer) addImportedItemFavorites(ctx context.Context, conn *sql.Conn, items []CommitItem) (int, error) {
+	total := 0
+	for _, item := range items {
+		if item.Favorite && item.Game.ID != "" {
+			total++
+		}
+	}
+	if total == 0 {
+		return 0, nil
+	}
+
+	if _, err := conn.ExecContext(ctx, `DROP TABLE IF EXISTS temp_import_game_favorites`); err != nil {
+		return 0, fmt.Errorf("drop temp_import_game_favorites: %w", err)
+	}
+	if _, err := conn.ExecContext(ctx, `CREATE TEMP TABLE temp_import_game_favorites (
+		game_id TEXT,
+		category_id TEXT,
+		updated_at TIMESTAMPTZ
+	)`); err != nil {
+		return 0, fmt.Errorf("create temp_import_game_favorites: %w", err)
+	}
+
+	now := time.Now()
+	inserted := 0
+	if err := dbutils.AppendRows(ctx, conn, "", "temp_import_game_favorites", func(appender *duckdb.Appender) error {
+		for _, item := range items {
+			if !item.Favorite || item.Game.ID == "" {
+				continue
+			}
+			if err := appender.AppendRow(item.Game.ID, gamehelper.SystemFavoritesCategoryID, now); err != nil {
+				return fmt.Errorf("append imported favorite for %s: %w", item.Game.Name, err)
+			}
+			inserted++
+		}
+		return nil
+	}); err != nil {
+		return inserted, err
+	}
+
+	if _, err := conn.ExecContext(ctx, `
+		INSERT INTO game_categories (game_id, category_id, updated_at)
+		SELECT game_id, category_id, updated_at
+		FROM temp_import_game_favorites
+		ON CONFLICT (game_id, category_id) DO NOTHING
+	`); err != nil {
+		return inserted, fmt.Errorf("insert imported favorites from staging: %w", err)
 	}
 	return inserted, nil
 }
@@ -1278,6 +1382,13 @@ func (c *Committer) CommitItems(items []CommitItem) (int, int, error) {
 	applog.LogInfof(c.ctx, "commitImportedItems: staged and inserted sessions=%d elapsed=%s", insertedSessions, time.Since(stepStartedAt))
 
 	stepStartedAt = time.Now()
+	insertedFavorites, err := c.addImportedItemFavorites(c.ctx, conn, items)
+	if err != nil {
+		return insertedGames + updatedGames, insertedSessions, err
+	}
+	applog.LogInfof(c.ctx, "commitImportedItems: staged and inserted favorites=%d elapsed=%s", insertedFavorites, time.Since(stepStartedAt))
+
+	stepStartedAt = time.Now()
 	if err := c.deleteImportedItemTombstones(c.ctx, conn, items); err != nil {
 		return insertedGames + updatedGames, insertedSessions, err
 	}
@@ -1314,6 +1425,7 @@ func stagingTableNames() []string {
 		"temp_import_metadata_sources",
 		"temp_update_import_launch_fields",
 		"temp_import_game_tags",
+		"temp_import_game_favorites",
 		"temp_import_play_sessions",
 		"temp_import_play_sessions_dedup",
 		"temp_import_tombstones",

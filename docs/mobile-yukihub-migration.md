@@ -56,6 +56,11 @@
 
 `game_local_id`、`game_root_uri`、`game_title`、`source`、`source_id`、`json`、`updated_at`
 
+其中 `json` 是 Android 侧 `VnMetadata` 的 JSON blob，两端**原样搬运**，不做字段改写。
+桌面端把它存在 `game_metadata_sources.cache_json`（`migration178` 新增），
+导入与导出两个方向都直接传递该字符串，以保证「Android → 桌面端 → Android」
+不丢失桌面端没有对应列的字段（截图、罗马音标题、封面分级等）。
+
 ### 快照中刻意不包含的内容
 
 以下内容被 Android 版明确排除在同步之外，桌面版也必须遵守，**不得擅自加入**：
@@ -86,7 +91,7 @@
 | `playtime_reset_at` | `playtime_reset_at`（新增列） | 必须保留，否则清零历史会复活 |
 | `created_at` / `updated_at` | `created_at` / `updated_at` | |
 | `hidden` | `hidden`（新增列） | |
-| `favorite` | 归类到"收藏"系统分类 | 复用 `categories` 的 `is_system` |
+| `favorite` | 归类到"收藏"系统分类 | 复用 `categories` 的 `is_system`（`system:favorites`）；导入方向已于 2026-09-28 补齐 |
 | `root_uri` | `path` / `game_directory` | 见路径模型 |
 | `engine` | 无需映射 | Android 专用（引擎类型），桌面端不存储 |
 | `emulator_package`、`launch_target`、`winlator_launch_mode`、`gamehub_*` | 无需映射 | Android 专用启动方式 |
@@ -237,6 +242,33 @@ Android 为权威源的状态合并是否要覆盖，待决策。
 `convertYukiHubGame` 把 `cover_source_url` 也设为网络封面地址，
 命中的条目会被"整条跳过"——即封面已在本地时不会重新下载，符合契约。
 
+**⑦ `favorite` 导入方向缺失——已修复（2026-09-28）**
+
+导出方向早已把 `system:favorites` 分类读成 `favorite`（`loadFavorites`），
+但导入方向完全丢弃了快照的 `favorite`：桌面端没有游戏级收藏列，
+收藏关系存在 `game_categories`，而导入器的落库路径（staging + INSERT）根本不碰分类表。
+结果是「桌面端导出 → 手机版 → 回导」会静默丢失收藏，两端行为不对称。
+
+修复：`ImportItem` / `CommitItem` 新增 `Favorite` 字段，`CommitItems` 增加
+`addImportedItemFavorites` 步骤，把标记收藏的条目写入 `game_categories`
+（`system:favorites`，`ON CONFLICT DO NOTHING`）。
+语义上**只加不删**：快照里的 `favorite=false` 无法区分"明确取消收藏"与"本轮未同步"，
+删除既有收藏属破坏性操作，按合并语义「只增不减」处理。
+测试：`TestYukiHubImportAppliesFavoriteToSystemCategory`。
+
+**⑧ 元数据缓存（`metadata_cache`）双向缺失——已修复（2026-09-29）**
+
+导入方向此前只把缓存 JSON 解析成身份与少量字段，**丢弃原始 blob**；导出方向
+完全不产出 `metadata_cache`。结果是「Android → 桌面端 → Android」会静默丢失
+桌面端没有对应列的字段（截图、罗马音标题、封面分级）。
+
+修复：`game_metadata_sources` 新增 `cache_json` 列（`migration178`），导入时原样写入
+`entry.json`、导出时原样读回；刮削路径也把该来源的负载按同一结构写入，
+供离线展示与导出复用。空负载不覆盖已有缓存（缺失 `metadata_cache` 元素只是身份信息，
+用它清空对端缓存属破坏性写入）。
+测试：`TestYukiHubImporterPreviewAndImport`、`TestApplyRemoteMetadataCachesSourcePayload`、
+`TestYukiHubMetadataCacheRoundTrip`。
+
 ### 聚合补偿
 
 当 Android 侧只有 `games.total_play_time` 而没有对应明细会话时（历史数据），
@@ -264,8 +296,12 @@ Android 为权威源的状态合并是否要覆盖，待决策。
 - `play_status` 做 6 → 5 态映射：Android 没有"想玩"，`want_to_play` 降级为 `unplayed`。
 - `cover_uri` 只写 `http(s)://` 开头的网络封面，本地封面不迁移。
 - `favorite` 由系统收藏分类（`game_categories` 中的 `system:favorites`）导出。
-- `metadata_cache` 暂不导出：桌面端的元数据存储结构与 Android 侧的 `VnMetadata` JSON blob 不同，
-  待两端结构统一后再补。
+- `metadata_cache` 由 `game_metadata_sources.cache_json` 导出（2026-09-29 补齐）：
+  负载即 Android 侧 `VnMetadata` JSON，逐字节原样搬运，不在 `games` 元素里重复表达；
+  `game_local_id` 由 `games.legacy_local_id` 还原，缺失或非法（≤0）的条目跳过，
+  避免产出无法被对端关联的孤儿缓存。桌面端没有对应列的字段（截图、罗马音标题、
+  封面分级）只存在于该 JSON 中。
+  测试：`TestYukiHubMetadataCacheRoundTrip`。
 - 游玩记录另写入 `launch_type = "external"`、`device_id = "desktop"`，
   `game_root_uri` 与游戏条目保持一致（空）。
 
@@ -284,8 +320,9 @@ Android 为权威源的状态合并是否要覆盖，待决策。
    若复用，需要服务端确认新客户端可被接受（版本、UA、协议）。
 3. 桌面端是否保留自有的云同步（上游 `cloudsync` 的墓碑与脏表机制）？
    与 Android 版的哈希比对机制是两套算法，**必须择一**，不能并存。
-4. 元数据缓存的 JSON 结构是否沿用 Android 版的 `VnMetadata` 字段？
-   建议沿用，便于两端共享缓存。
+4. ~~元数据缓存的 JSON 结构是否沿用 Android 版的 `VnMetadata` 字段？~~
+   **已决策（2026-09-29）**：沿用。桌面端 `game_metadata_sources.cache_json` 直接存
+   `VnMetadata` JSON，导出与导入原样搬运，两端共享同一份缓存结构。
 
 ## 八、测试矩阵
 
@@ -304,3 +341,17 @@ Android 为权威源的状态合并是否要覆盖，待决策。
 | 无本地目录条目（`root_uri` 为空） | 按标题匹配的降级路径 |
 | 路径不可达 | 导入后可正常显示，启动时给出明确提示 |
 | 大量条目（万级） | 性能与不丢数据 |
+
+### 阶段 2 验收结论（2026-09-28）
+
+- **万级样例（0 丢失、0 重复）已通过**：`internal/service/test/yukihub_scale_test.go`
+  生成 10,000 游戏 / 17,501 会话 / 20,000 标签 / 10,000 元数据源的 schema 5 快照，
+  经**真实 Committer** 落库后逐项核对计数与去重数，并验证重复导入幂等。
+  详见 [ROADMAP.md](ROADMAP.md) 的"阶段 2 验证记录"。
+- **契约字段落库缺陷已修复**：`legacy_local_id`、`source_device_id`、
+  `playtime_reset_at`、`hidden` 此前在导入器 staging 表与 INSERT/UPDATE 中缺失，
+  落库时被静默丢弃；现已补齐，`playtime_reset_at` 为 0 时落 NULL（不落 1970）。
+  这条缺陷只有走真实落库才能暴露——**导入器的测试必须查库，不能只断言内存对象**。
+- 测试矩阵中其余样例（空库、清零、聚合补偿、双端新增、时区、单位换算、
+  无路径降级等）已由导入器 / 导出器的单测与集成测试覆盖（见
+  `internal/service/importer/yukihub_test.go`、`internal/service/exporter/yukihub_test.go`）。

@@ -58,6 +58,7 @@ func InitSchema(db *sql.DB) error {
 			game_id TEXT NOT NULL,
 			source_type TEXT NOT NULL,
 			source_id TEXT NOT NULL,
+			cache_json TEXT DEFAULT '',
 			cached_at TIMESTAMPTZ,
 			created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,

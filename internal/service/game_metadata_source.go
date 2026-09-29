@@ -2,15 +2,19 @@ package service
 
 import (
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 	"yukihub/internal/common/enums"
 	"yukihub/internal/models"
+	"yukihub/internal/models/yukihub"
 	"yukihub/internal/service/cloudsync"
 	"yukihub/internal/service/gamehelper"
 	"yukihub/internal/utils/dbutils"
+	"yukihub/internal/utils/metadata"
 )
 
 func scanGameMetadataSources(rows *sql.Rows) ([]models.GameMetadataSource, error) {
@@ -22,6 +26,7 @@ func scanGameMetadataSources(rows *sql.Rows) ([]models.GameMetadataSource, error
 			&item.GameID,
 			&sourceType,
 			&item.SourceID,
+			&item.CacheJSON,
 			&item.CachedAt,
 			&item.CreatedAt,
 			&item.UpdatedAt,
@@ -39,7 +44,7 @@ func scanGameMetadataSources(rows *sql.Rows) ([]models.GameMetadataSource, error
 
 func (s *GameService) GetGameMetadataSources(gameID string) ([]models.GameMetadataSource, error) {
 	rows, err := s.db.QueryContext(s.ctx, `
-		SELECT game_id, source_type, source_id,
+		SELECT game_id, source_type, source_id, COALESCE(cache_json, ''),
 		       COALESCE(cached_at, created_at, updated_at, CURRENT_TIMESTAMP),
 		       COALESCE(created_at, CURRENT_TIMESTAMP),
 		       COALESCE(updated_at, created_at, CURRENT_TIMESTAMP)
@@ -89,7 +94,7 @@ func (s *GameService) getGameMetadataSource(gameID string, source enums.SourceTy
 	var item models.GameMetadataSource
 	var sourceType string
 	err := s.db.QueryRowContext(s.ctx, `
-		SELECT game_id, source_type, source_id,
+		SELECT game_id, source_type, source_id, COALESCE(cache_json, ''),
 		       COALESCE(cached_at, created_at, updated_at, CURRENT_TIMESTAMP),
 		       COALESCE(created_at, CURRENT_TIMESTAMP),
 		       COALESCE(updated_at, created_at, CURRENT_TIMESTAMP)
@@ -99,6 +104,7 @@ func (s *GameService) getGameMetadataSource(gameID string, source enums.SourceTy
 		&item.GameID,
 		&sourceType,
 		&item.SourceID,
+		&item.CacheJSON,
 		&item.CachedAt,
 		&item.CreatedAt,
 		&item.UpdatedAt,
@@ -340,4 +346,104 @@ func (s *GameService) addInitialMetadataSourcesTx(tx *sql.Tx, game models.Game) 
 		}
 	}
 	return nil
+}
+
+// updateMetadataSourceCachePayload 写入某个来源的元数据负载缓存。
+//
+// 只 UPDATE 已有来源行，不新建来源：来源身份由 UpsertGameMetadataSource 负责，
+// 这里只负责缓存内容，避免缓存写入意外改变了「游戏关联了哪些来源」。
+func (s *GameService) updateMetadataSourceCachePayload(gameID string, source enums.SourceType, payload string) error {
+	if strings.TrimSpace(payload) == "" {
+		return nil
+	}
+	return dbutils.WithDuckDBWriteLock(s.db, func() error {
+		return dbutils.RetryDuckDBWriteConflict(s.ctx, func() error {
+			now := time.Now()
+			if _, err := s.db.ExecContext(s.ctx, `
+				UPDATE game_metadata_sources
+				SET cache_json = ?, updated_at = ?
+				WHERE game_id = ? AND source_type = ?
+			`, payload, now, gameID, string(source)); err != nil {
+				return fmt.Errorf("保存元数据缓存失败: %w", err)
+			}
+			return nil
+		})
+	})
+}
+
+// saveScrapedMetadataCache 把一次刮削结果写成该来源的元数据缓存负载。
+//
+// 缓存键是 (游戏, 来源)，两者缺一就跳过：没有来源身份的缓存无法在导出到 Android
+// 时被关联，写进去只是噪声。缓存写失败属于非致命问题，由调用方决定是否告警。
+func (s *GameService) saveScrapedMetadataCache(game models.Game, result metadata.MetadataResult) error {
+	source := gamehelper.NormalizeMetadataSourceType(result.Game.SourceType)
+	if source == "" || source == enums.Local {
+		source = gamehelper.NormalizeMetadataSourceType(game.SourceType)
+	}
+	if source == "" || source == enums.Local {
+		return nil
+	}
+	sourceID := metadataSourceIDFor(game, source)
+	if sourceID == "" {
+		return nil
+	}
+	payload, err := encodeMetadataCachePayload(sourceID, result)
+	if err != nil {
+		return err
+	}
+	return s.updateMetadataSourceCachePayload(game.ID, source, payload)
+}
+
+// metadataSourceIDFor 取某个来源在该游戏上的标识，优先用逐来源列表，其次回退默认来源。
+func metadataSourceIDFor(game models.Game, source enums.SourceType) string {
+	for _, item := range game.MetadataSources {
+		if gamehelper.NormalizeMetadataSourceType(item.SourceType) == source {
+			return strings.TrimSpace(item.SourceID)
+		}
+	}
+	if gamehelper.NormalizeMetadataSourceType(game.SourceType) == source {
+		return strings.TrimSpace(game.SourceID)
+	}
+	return ""
+}
+
+// encodeMetadataCachePayload 把一个刮削结果编码为 Android 版 VnMetadata JSON。
+//
+// 只填两端同名的字段；桌面端没有对应概念的字段（截图、封面分级、罗马音标题）留空，
+// 不做猜测性填充，避免污染对端展示。JSON 结构对齐 docs/mobile-yukihub-migration.md。
+func encodeMetadataCachePayload(sourceID string, result metadata.MetadataResult) (string, error) {
+	payload := yukihub.Metadata{
+		ID:            strings.TrimSpace(sourceID),
+		ChineseTitle:  strings.TrimSpace(result.Game.Name),
+		OriginalTitle: firstNonEmptyString(result.Game.Aliases...),
+		CoverURL:      strings.TrimSpace(result.Game.CoverURL),
+		Description:   strings.TrimSpace(result.Game.Summary),
+		Released:      strings.TrimSpace(result.Game.ReleaseDate),
+		Developer:     strings.TrimSpace(result.Game.Company),
+		TagsText:      strings.Join(metadataTagNames(result.Tags), ","),
+		RatingText:    formatMetadataRating(result.Game.Rating),
+	}
+	data, err := json.Marshal(payload)
+	if err != nil {
+		return "", fmt.Errorf("序列化元数据缓存失败: %w", err)
+	}
+	return string(data), nil
+}
+
+func metadataTagNames(tags []metadata.TagItem) []string {
+	names := make([]string, 0, len(tags))
+	for _, tag := range tags {
+		if name := strings.TrimSpace(tag.Name); name != "" {
+			names = append(names, name)
+		}
+	}
+	return names
+}
+
+// formatMetadataRating 与 Android 侧的 ratingText 对齐：只写数值，无评分时留空。
+func formatMetadataRating(rating float64) string {
+	if rating <= 0 {
+		return ""
+	}
+	return strconv.FormatFloat(rating, 'f', -1, 64)
 }

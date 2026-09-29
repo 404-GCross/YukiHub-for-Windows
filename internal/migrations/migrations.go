@@ -873,6 +873,21 @@ func migration177(tx *sql.Tx) error {
 	return nil
 }
 
+// migration178 为 game_metadata_sources 增加 cache_json 列，保存该来源的元数据负载。
+//
+// 负载沿用 Android 版 VnMetadata 的 JSON 结构（见 docs/mobile-yukihub-migration.md），
+// 使「桌面端刮削 → 导出快照」与「Android 备份 → 桌面端」两个方向都能带上元数据缓存，
+// 同时为离线展示保留本地副本。历史行为空串，表示尚无缓存。
+func migration178(tx *sql.Tx) error {
+	if _, err := tx.Exec(`
+		ALTER TABLE game_metadata_sources
+		ADD COLUMN IF NOT EXISTS cache_json TEXT DEFAULT ''
+	`); err != nil {
+		return fmt.Errorf("failed to add cache_json column to game_metadata_sources: %w", err)
+	}
+	return nil
+}
+
 // 所有迁移按版本号顺序排列
 var migrations = []Migration{
 	{
@@ -1019,6 +1034,11 @@ var migrations = []Migration{
 		Version:     177,
 		Description: "Add mobile YukiHub contract columns (legacy_local_id, source_device_id, playtime_reset_at, hidden) to games",
 		Up:          migration177,
+	},
+	{
+		Version:     178,
+		Description: "Add cache_json payload column to game_metadata_sources for offline metadata cache",
+		Up:          migration178,
 	},
 	// {
 	// 	Version:     114,

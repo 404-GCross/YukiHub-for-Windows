@@ -192,6 +192,8 @@ func (y *YukiHubImporter) ImportSelected(backupPath string, skipNoPath bool, sam
 			DisplayName:    gameName,
 			Action:         action,
 			ExistingGameID: existingGameID,
+			// 收藏在桌面端由「收藏」系统分类承载，models.Game 里没有对应列。
+			Favorite: sourceGame.Favorite,
 		})
 		if action == ImportActionCreate {
 			updateExistingIndexes(existingNames, existingPaths, game, gameName, "")
@@ -401,8 +403,12 @@ func collectYukiHubMetadataSources(items []parsedYukiHubMetadata, fallbackTime t
 		bySource[item.source] = models.GameMetadataSource{
 			SourceType: item.source,
 			SourceID:   item.sourceID,
-			CachedAt:   cachedAt,
-			UpdatedAt:  cachedAt,
+			// 原样保留 Android 的 VnMetadata 负载：桌面端只解析出自己用得到的字段，
+			// 直接丢弃会让「Android → 桌面端 → Android」的往返丢掉截图、罗马音标题等
+			// 桌面端没有对应列的字段。
+			CacheJSON: strings.TrimSpace(item.cache.JSON),
+			CachedAt:  cachedAt,
+			UpdatedAt: cachedAt,
 		}
 	}
 	result := make([]models.GameMetadataSource, 0, len(bySource))

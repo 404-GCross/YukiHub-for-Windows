@@ -128,6 +128,26 @@ export class Game {
     "metadata_locked": boolean;
 
     /**
+     * 手机版 YukiHub 的整数 local_id，用于回写与去重，不替代主键
+     */
+    "legacy_local_id": string;
+
+    /**
+     * 条目来源设备，避免多设备互相覆盖
+     */
+    "source_device_id": string;
+
+    /**
+     * 清零时间点：该时间之前的历史会话不计入统计，记录本身保留
+     */
+    "playtime_reset_at"?: string | null;
+
+    /**
+     * 手机版 YukiHub 的隐藏标记
+     */
+    "hidden": boolean;
+
+    /**
      * 最近一次游玩开始时间（由 play_sessions 聚合）
      */
     "last_played_at"?: string | null;
@@ -229,6 +249,15 @@ export class Game {
         }
         if (!("metadata_locked" in $$source)) {
             this["metadata_locked"] = false;
+        }
+        if (!("legacy_local_id" in $$source)) {
+            this["legacy_local_id"] = "";
+        }
+        if (!("source_device_id" in $$source)) {
+            this["source_device_id"] = "";
+        }
+        if (!("hidden" in $$source)) {
+            this["hidden"] = false;
         }
 
         Object.assign(this, $$source);
@@ -386,6 +415,12 @@ export class GameMetadataSource {
     "game_id": string;
     "source_type": enums$0.SourceType;
     "source_id": string;
+
+    /**
+     * CacheJSON 是该来源的元数据负载，结构沿用 Android 版 VnMetadata，
+     * 空串表示尚无缓存。它只是缓存，权威源仍是远程站点。
+     */
+    "cache_json": string;
     "cached_at": string;
     "created_at": string;
     "updated_at": string;
@@ -400,6 +435,9 @@ export class GameMetadataSource {
         }
         if (!("source_id" in $$source)) {
             this["source_id"] = "";
+        }
+        if (!("cache_json" in $$source)) {
+            this["cache_json"] = "";
         }
         if (!("cached_at" in $$source)) {
             this["cached_at"] = "0001-01-01T00:00:00.000Z";

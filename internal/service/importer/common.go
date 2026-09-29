@@ -55,7 +55,10 @@ type ImportItem struct {
 	Action                  string
 	ExistingGameID          string
 	UpdateLocalLaunchFields bool
-	CoverLoader             func(models.Game) (string, error)
+	// Favorite 为真时把游戏加入「收藏」系统分类。桌面端没有游戏级收藏列，
+	// 收藏由 game_categories 承载，因此不能塞进 models.Game。
+	Favorite    bool
+	CoverLoader func(models.Game) (string, error)
 }
 
 const (

@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"reflect"
 	"testing"
 
@@ -9,6 +10,7 @@ import (
 	"yukihub/internal/common/enums"
 	"yukihub/internal/common/vo"
 	"yukihub/internal/models"
+	"yukihub/internal/models/yukihub"
 	"yukihub/internal/service/gamehelper"
 	"yukihub/internal/utils/metadata"
 )
@@ -54,6 +56,89 @@ func TestApplyRemoteMetadataMergesAliases(t *testing.T) {
 	}
 	if saved.Name != existing.Name {
 		t.Fatalf("unselected name changed: got %q want %q", saved.Name, existing.Name)
+	}
+}
+
+// TestApplyRemoteMetadataCachesSourcePayload 验证刮削结果会按来源写入元数据缓存。
+//
+// 缓存负载使用 Android 版 VnMetadata 结构，桌面端没有对应列的字段不做猜测性填充；
+// 两个方向（导出到 Android / 从 Android 导入）共用同一份结构。
+func TestApplyRemoteMetadataCachesSourcePayload(t *testing.T) {
+	db := setupImportServiceTestDB(t)
+	service := NewGameService()
+	service.Init(context.Background(), db, &appconf.AppConfig{})
+
+	existing := models.Game{
+		ID:         "cache-payload-game",
+		Name:       "本地名称",
+		SourceType: enums.VNDB,
+		SourceID:   "v123",
+	}
+	if err := service.AddGameFromWebMetadata(vo.GameMetadataFromWebVO{
+		Game: existing,
+		Tags: []metadata.TagItem{{Name: "校园", Source: "vndb"}},
+	}); err != nil {
+		t.Fatalf("add game: %v", err)
+	}
+	existing, err := service.GetGameByID(existing.ID)
+	if err != nil {
+		t.Fatalf("get game: %v", err)
+	}
+
+	fields := gamehelper.NormalizeMetadataUpdateFields([]enums.MetadataUpdateField{
+		enums.MetadataUpdateFieldName,
+		enums.MetadataUpdateFieldCompany,
+		enums.MetadataUpdateFieldRating,
+	})
+	if _, err := service.applyRemoteMetadataResult(existing, metadata.MetadataResult{
+		Game: models.Game{
+			Name:     "远端名称",
+			Aliases:  []string{"遠端名稱"},
+			Company:  "Test Studio",
+			Rating:   8.4,
+			Summary:  "远端简介",
+			CoverURL: "https://example.com/cover.jpg",
+		},
+		Tags: []metadata.TagItem{
+			{Name: "剧情", Source: "vndb"},
+			{Name: "悬疑", Source: "vndb"},
+		},
+	}, false, fields); err != nil {
+		t.Fatalf("apply remote metadata: %v", err)
+	}
+
+	var payload string
+	if err := db.QueryRow(`
+		SELECT COALESCE(cache_json, '')
+		FROM game_metadata_sources
+		WHERE game_id = ? AND source_type = ?`,
+		existing.ID, string(enums.VNDB)).Scan(&payload); err != nil {
+		t.Fatalf("query cached payload: %v", err)
+	}
+	if payload == "" {
+		t.Fatal("刮削结果没有写入元数据缓存")
+	}
+	var cached yukihub.Metadata
+	if err := json.Unmarshal([]byte(payload), &cached); err != nil {
+		t.Fatalf("解析缓存负载失败: %v", err)
+	}
+	if cached.ID != "v123" {
+		t.Errorf("cached id = %q, want v123", cached.ID)
+	}
+	if cached.ChineseTitle != "远端名称" || cached.OriginalTitle != "遠端名稱" {
+		t.Errorf("cached title = %q / %q, want 远端名称 / 遠端名稱", cached.ChineseTitle, cached.OriginalTitle)
+	}
+	if cached.Developer != "Test Studio" || cached.Description != "远端简介" {
+		t.Errorf("cached developer/description = %q/%q", cached.Developer, cached.Description)
+	}
+	if cached.CoverURL != "https://example.com/cover.jpg" {
+		t.Errorf("cached cover = %q", cached.CoverURL)
+	}
+	if cached.RatingText != "8.4" {
+		t.Errorf("cached rating = %q, want \"8.4\"", cached.RatingText)
+	}
+	if cached.TagsText != "剧情,悬疑" {
+		t.Errorf("cached tags = %q, want \"剧情,悬疑\"", cached.TagsText)
 	}
 }
 

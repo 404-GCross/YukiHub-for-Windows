@@ -129,6 +129,23 @@ func TestYukiHubImporterPreviewAndImport(t *testing.T) {
 	if len(game.MetadataSources) != 2 {
 		t.Fatalf("Metadata source count = %d, want 2", len(game.MetadataSources))
 	}
+	// Android 的 metadata_cache 负载必须原样保留：桌面端没有截图、罗马音标题等列，
+	// 丢掉这份 JSON 会让「Android → 桌面端 → Android」的往返损失这些字段。
+	cacheBySource := make(map[enums.SourceType]string, len(game.MetadataSources))
+	sourceIDBySource := make(map[enums.SourceType]string, len(game.MetadataSources))
+	for _, source := range game.MetadataSources {
+		cacheBySource[source.SourceType] = source.CacheJSON
+		sourceIDBySource[source.SourceType] = source.SourceID
+	}
+	if cacheBySource[enums.VNDB] != backup.MetadataCache[0].JSON {
+		t.Errorf("vndb cache payload = %q, want %q", cacheBySource[enums.VNDB], backup.MetadataCache[0].JSON)
+	}
+	if cacheBySource[enums.Bangumi] != backup.MetadataCache[1].JSON {
+		t.Errorf("bangumi cache payload = %q, want %q", cacheBySource[enums.Bangumi], backup.MetadataCache[1].JSON)
+	}
+	if sourceIDBySource[enums.VNDB] != "v123" || sourceIDBySource[enums.Bangumi] != "987" {
+		t.Errorf("metadata source ids = %+v, want vndb=v123 / bangumi=987", sourceIDBySource)
+	}
 
 	totalDuration := 0
 	for _, session := range item.Sessions {

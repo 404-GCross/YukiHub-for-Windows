@@ -286,6 +286,153 @@ func TestYukiHubExportThenImportRoundTrip(t *testing.T) {
 	}
 }
 
+// TestYukiHubImportAppliesFavoriteToSystemCategory 验证导入方向把快照的 favorite
+// 落到「收藏」系统分类。
+//
+// 导出方向早已读取该分类（loadFavorites），导入方向此前完全丢弃 favorite，
+// 造成「桌面端导出 → 手机版 → 回导」丢失收藏的不对称。
+func TestYukiHubImportAppliesFavoriteToSystemCategory(t *testing.T) {
+	targetDB, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	createdAt := time.Date(2026, time.September, 28, 9, 0, 0, 0, time.Local)
+	backup := yukihub.Backup{
+		App:       "YukiHub",
+		Schema:    5,
+		CreatedAt: createdAt.UnixMilli(),
+		Games: []yukihub.Game{
+			{LocalID: 1, Title: "收藏的游戏", Favorite: true, CreatedAt: createdAt.UnixMilli(), UpdatedAt: createdAt.UnixMilli()},
+			{LocalID: 2, Title: "普通的游戏", CreatedAt: createdAt.UnixMilli(), UpdatedAt: createdAt.UnixMilli()},
+		},
+	}
+	snapshotPath := writeSnapshotFile(t, t.TempDir(), backup)
+
+	result, err := importer.NewYukiHubImporter(newTestImporterDependencies(targetDB)).
+		Import(snapshotPath, false, importer.SamePathActionSkip)
+	if err != nil {
+		t.Fatalf("导入失败: %v", err)
+	}
+	if result.Success != 2 || result.Failed != 0 {
+		t.Fatalf("导入结果 = success %d / failed %d, want 2/0", result.Success, result.Failed)
+	}
+
+	var favoriteID string
+	if err := targetDB.QueryRow(`SELECT id FROM games WHERE name = ?`, "收藏的游戏").Scan(&favoriteID); err != nil {
+		t.Fatalf("查询收藏游戏失败: %v", err)
+	}
+	var count int
+	if err := targetDB.QueryRow(`SELECT COUNT(*) FROM game_categories WHERE game_id = ? AND category_id = ?`,
+		favoriteID, gamehelper.SystemFavoritesCategoryID).Scan(&count); err != nil {
+		t.Fatalf("查询收藏分类失败: %v", err)
+	}
+	if count != 1 {
+		t.Errorf("收藏游戏在 system:favorites 中的记录数 = %d, want 1", count)
+	}
+
+	var plainID string
+	if err := targetDB.QueryRow(`SELECT id FROM games WHERE name = ?`, "普通的游戏").Scan(&plainID); err != nil {
+		t.Fatalf("查询普通游戏失败: %v", err)
+	}
+	if err := targetDB.QueryRow(`SELECT COUNT(*) FROM game_categories WHERE game_id = ?`, plainID).Scan(&count); err != nil {
+		t.Fatalf("查询普通游戏分类失败: %v", err)
+	}
+	if count != 0 {
+		t.Errorf("非收藏游戏不应产生分类记录, got %d", count)
+	}
+}
+
+// TestYukiHubMetadataCacheRoundTrip 验证元数据缓存负载在两个方向都能原样往返。
+//
+// 往返语义：桌面端存量缓存（已是 Android VnMetadata 结构）→ 导出快照 → 导入另一个库
+// → 再导出，JSON 必须逐字节一致，且游戏仍按 local_id 关联。桌面端自建条目没有
+// legacy_local_id，无从映射回 Android 的整数 local_id，导出时必须跳过，否则会产出孤儿缓存。
+func TestYukiHubMetadataCacheRoundTrip(t *testing.T) {
+	sourceDB, sourceCleanup := setupTestDB(t)
+	defer sourceCleanup()
+	targetDB, targetCleanup := setupTestDB(t)
+	defer targetCleanup()
+
+	payload := `{"id":"v9000","chineseTitle":"往返缓存游戏","romanTitle":"Round Trip Cache","screenshotUrls":["https://example.com/s1.jpg"]}`
+	createdAt := time.Date(2026, time.September, 28, 11, 0, 0, 0, time.Local)
+	if _, err := sourceDB.Exec(`
+		INSERT INTO games (id, name, status, source_type, source_id, created_at, updated_at, legacy_local_id)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		"game-cache", "往返缓存游戏", "completed", "vndb", "v9000", createdAt, createdAt.Add(time.Hour), "42"); err != nil {
+		t.Fatalf("插入游戏失败: %v", err)
+	}
+	if _, err := sourceDB.Exec(`
+		INSERT INTO games (id, name, status, source_type, source_id, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		"game-orphan", "自建条目", "not_started", "vndb", "v1", createdAt, createdAt); err != nil {
+		t.Fatalf("插入自建游戏失败: %v", err)
+	}
+	for _, entry := range []struct {
+		gameID   string
+		sourceID string
+		payload  string
+	}{
+		{"game-cache", "v9000", payload},
+		{"game-orphan", "v1", `{"id":"v1"}`},
+	} {
+		if _, err := sourceDB.Exec(`
+			INSERT INTO game_metadata_sources (game_id, source_type, source_id, cache_json, cached_at, created_at, updated_at)
+			VALUES (?, ?, ?, ?, ?, ?, ?)`,
+			entry.gameID, "vndb", entry.sourceID, entry.payload, createdAt, createdAt, createdAt); err != nil {
+			t.Fatalf("插入元数据缓存失败: %v", err)
+		}
+	}
+
+	snapshotPath := filepath.Join(t.TempDir(), "metadata-cache.ykbak")
+	if err := exporter.NewYukiHubExporter(context.Background(), sourceDB).Export(snapshotPath); err != nil {
+		t.Fatalf("导出失败: %v", err)
+	}
+	snapshot := readYukiHubSnapshot(t, snapshotPath)
+	if len(snapshot.MetadataCache) != 1 {
+		t.Fatalf("导出缓存条目数 = %d, want 1（无 legacy_local_id 的条目应被跳过）", len(snapshot.MetadataCache))
+	}
+	entry := snapshot.MetadataCache[0]
+	if entry.GameLocalID != 42 || entry.Source != "vndb" || entry.SourceID != "v9000" {
+		t.Fatalf("缓存条目身份 = %+v, want local_id 42 / vndb / v9000", entry)
+	}
+	if entry.JSON != payload {
+		t.Fatalf("导出缓存负载 = %q, want %q", entry.JSON, payload)
+	}
+
+	imported, err := importer.NewYukiHubImporter(newTestImporterDependencies(targetDB)).
+		Import(snapshotPath, false, importer.SamePathActionSkip)
+	if err != nil {
+		t.Fatalf("导入失败: %v", err)
+	}
+	// 两条游戏都会作为新条目落库（自建条目只是没有缓存，游戏本身仍会导出与导入）。
+	if imported.Success != 2 || imported.Failed != 0 {
+		t.Fatalf("导入结果 = success %d / failed %d (%v), want 2/0", imported.Success, imported.Failed, imported.FailedNames)
+	}
+
+	var persisted string
+	if err := targetDB.QueryRow(`
+		SELECT s.cache_json
+		FROM game_metadata_sources s
+		JOIN games g ON g.id = s.game_id
+		WHERE g.legacy_local_id = '42' AND s.source_type = 'vndb'`).Scan(&persisted); err != nil {
+		t.Fatalf("查询导入后的缓存失败: %v", err)
+	}
+	if persisted != payload {
+		t.Fatalf("导入后的缓存负载 = %q, want %q", persisted, payload)
+	}
+
+	reExportedPath := filepath.Join(t.TempDir(), "metadata-cache-again.ykbak")
+	if err := exporter.NewYukiHubExporter(context.Background(), targetDB).Export(reExportedPath); err != nil {
+		t.Fatalf("再次导出失败: %v", err)
+	}
+	again := readYukiHubSnapshot(t, reExportedPath)
+	if len(again.MetadataCache) != 1 {
+		t.Fatalf("再次导出缓存条目数 = %d, want 1", len(again.MetadataCache))
+	}
+	if again.MetadataCache[0].JSON != payload || again.MetadataCache[0].GameLocalID != 42 {
+		t.Fatalf("往返后的缓存 = %+v, want 与首次导出逐字节一致", again.MetadataCache[0])
+	}
+}
+
 // newTestImporterDependencies 构造最小可用的导入依赖：真实 Committer + 直写 play_sessions，
 // 与 ImportService.importerDependencies 生产装配保持一致（仅裁掉封面下载与 Wails 相关部分）。
 func newTestImporterDependencies(db *sql.DB) importer.Dependencies {

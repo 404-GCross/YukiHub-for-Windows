@@ -81,6 +81,7 @@ func initTestSchema(t *testing.T, db *sql.DB) {
 			game_id TEXT NOT NULL,
 			source_type TEXT NOT NULL,
 			source_id TEXT NOT NULL,
+			cache_json TEXT DEFAULT '',
 			cached_at TIMESTAMPTZ,
 			created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
 			updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,

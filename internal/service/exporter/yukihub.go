@@ -64,17 +64,21 @@ func (e *YukiHubExporter) Build() (*yukihub.Backup, error) {
 	if err != nil {
 		return nil, err
 	}
+	metadataCache, err := e.loadMetadataCache()
+	if err != nil {
+		return nil, err
+	}
 
 	backup := &yukihub.Backup{
 		App:       yukiHubBackupApp,
 		Schema:    yukiHubBackupSchema,
 		CreatedAt: unixMilli(time.Now()),
 		Games:     make([]yukihub.Game, 0, len(games)),
-		// metadata_cache：桌面端的元数据存储结构（game_metadata_sources + 展开列）与 Android 侧的
-		// VnMetadata JSON blob 不同，本次不导出。
-		// TODO: 待两端元数据缓存结构统一后再补 metadata_cache 导出。
-		MetadataCache: make([]yukihub.MetadataCache, 0),
-		// settings.metadata_source 只用于挑选 metadata_cache 的主源，本次没有 metadata_cache，留空。
+		// metadata_cache 取自 game_metadata_sources.cache_json，负载沿用 Android 的
+		// VnMetadata 结构，两个方向都能原样往返。
+		MetadataCache: metadataCache,
+		// settings.metadata_source 是 Android 侧的全局首选来源，桌面端没有对应概念
+		// （默认来源是逐游戏的），留空由对端按自身优先级挑选。
 	}
 	for _, game := range games {
 		// 跳过无标题条目：Android 侧会把空标题落成「未命名游戏」，
@@ -267,6 +271,57 @@ func (e *YukiHubExporter) loadFavorites() (map[string]bool, error) {
 		return nil, fmt.Errorf("遍历收藏分类失败: %w", err)
 	}
 	return result, nil
+}
+
+// loadMetadataCache 读取每个来源的元数据负载，映射为快照的 metadata_cache 元素。
+//
+// game_local_id 只能由 games.legacy_local_id 还原：Android 的 metadata_cache 以整数
+// local_id 关联游戏，桌面端自建条目没有 legacy_local_id，无从关联，只能跳过。
+// 无标题游戏与 games 导出保持同一口径（同样跳过），避免产生无法匹配的孤儿缓存。
+func (e *YukiHubExporter) loadMetadataCache() ([]yukihub.MetadataCache, error) {
+	rows, err := e.db.QueryContext(e.ctx, `SELECT
+		COALESCE(g.legacy_local_id, ''),
+		s.source_type,
+		COALESCE(s.source_id, ''),
+		COALESCE(s.cache_json, ''),
+		COALESCE(s.updated_at, s.cached_at, g.updated_at, CURRENT_TIMESTAMP)
+	FROM game_metadata_sources s
+	JOIN games g ON g.id = s.game_id
+	WHERE COALESCE(s.cache_json, '') <> ''
+	  AND TRIM(COALESCE(g.name, '')) <> ''
+	ORDER BY g.created_at ASC, g.id ASC, s.source_type ASC`)
+	if err != nil {
+		applog.LogErrorf(e.ctx, "ExportYukiHub: failed to query metadata cache: %v", err)
+		return nil, fmt.Errorf("查询元数据缓存失败: %w", err)
+	}
+	defer rows.Close()
+
+	entries := make([]yukihub.MetadataCache, 0)
+	for rows.Next() {
+		var legacyLocalID string
+		var sourceType string
+		var sourceID string
+		var payload string
+		var updatedAt time.Time
+		if err := rows.Scan(&legacyLocalID, &sourceType, &sourceID, &payload, &updatedAt); err != nil {
+			return nil, fmt.Errorf("读取元数据缓存失败: %w", err)
+		}
+		localID := parseYukiHubLocalID(legacyLocalID)
+		if localID <= 0 {
+			continue
+		}
+		entries = append(entries, yukihub.MetadataCache{
+			GameLocalID: localID,
+			Source:      string(gamehelper.NormalizeMetadataSourceType(enums.SourceType(sourceType))),
+			SourceID:    strings.TrimSpace(sourceID),
+			JSON:        payload,
+			UpdatedAt:   unixMilli(updatedAt),
+		})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("遍历元数据缓存失败: %w", err)
+	}
+	return entries, nil
 }
 
 // buildYukiHubGame 把一个桌面端游戏转换为快照的 games 元素，并生成它的游玩记录。

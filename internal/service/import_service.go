@@ -672,8 +672,7 @@ func (s *ImportService) FetchMetadataForCandidate(searchName string) (vo.BatchIm
 		SearchName:  searchName,
 		MatchStatus: "not_found",
 	}
-	getterOptions := gamehelper.MetadataGetterOptions(s.config)
-	sources := s.getConfiguredMetadataSearchSources(getterOptions)
+	sources := s.metadataSearchSources()
 
 	for _, src := range sources {
 		metaResults, err := src.fetchCandidates(searchName)
@@ -712,7 +711,7 @@ func (s *ImportService) FetchMetadataForCandidateWithPreference(searchName strin
 		return result, nil
 	}
 
-	sources := s.getConfiguredMetadataSearchSources(gamehelper.MetadataGetterOptions(s.config))
+	sources := s.metadataSearchSources()
 	if len(sources) == 0 {
 		result.PreferredError = "没有可用的数据源"
 		return result, nil
@@ -967,113 +966,15 @@ func isMetadataNoResultError(err error) bool {
 		strings.Contains(message, "returned no data")
 }
 
-func (s *ImportService) getConfiguredMetadataSearchSources(getterOptions []metadata.GetterOption) []metadataSearchSource {
-	vndbToken := ""
-	language := ""
-	if s.config != nil {
-		vndbToken = s.config.VNDBAccessToken
-		language = s.config.Language
-	}
-
-	configuredSources := gamehelper.ConfiguredMetadataSources(s.config)
-	sources := make([]metadataSearchSource, 0, len(configuredSources))
-	for _, source := range configuredSources {
-		switch source {
-		case enums.Bangumi:
-			if s.bangumiService == nil {
-				continue
-			}
-			sources = append(sources, metadataSearchSource{
-				source: enums.Bangumi,
-				fetchByName: func(name string) (metadata.MetadataResult, error) {
-					return s.bangumiService.fetchMetadataByName(s.ctx, name)
-				},
-				fetchCandidatesByName: func(name string) ([]metadata.MetadataResult, error) {
-					return s.bangumiService.fetchMetadataCandidatesByName(s.ctx, name)
-				},
-			})
-		case enums.VNDB:
-			getter := metadata.NewVNDBInfoGetterWithLanguage(language, getterOptions...)
-			sources = append(sources, metadataSearchSource{
-				source: enums.VNDB,
-				fetchByName: func(name string) (metadata.MetadataResult, error) {
-					return getter.FetchMetadataByName(name, vndbToken)
-				},
-				fetchCandidatesByName: func(name string) ([]metadata.MetadataResult, error) {
-					return metadata.FetchMetadataCandidatesByName(getter, name, vndbToken)
-				},
-			})
-		case enums.Ymgal:
-			getter := metadata.NewYmgalInfoGetter(getterOptions...)
-			sources = append(sources, metadataSearchSource{
-				source: enums.Ymgal,
-				fetchByName: func(name string) (metadata.MetadataResult, error) {
-					return getter.FetchMetadataByName(name, "")
-				},
-				fetchCandidatesByName: func(name string) ([]metadata.MetadataResult, error) {
-					return metadata.FetchMetadataCandidatesByName(getter, name, "")
-				},
-			})
-		case enums.Steam:
-			getter := metadata.NewSteamInfoGetterWithLanguage(language, getterOptions...)
-			sources = append(sources, metadataSearchSource{
-				source: enums.Steam,
-				fetchByName: func(name string) (metadata.MetadataResult, error) {
-					return getter.FetchMetadataByName(name, "")
-				},
-				fetchCandidatesByName: func(name string) ([]metadata.MetadataResult, error) {
-					return metadata.FetchMetadataCandidatesByName(getter, name, "")
-				},
-			})
-		case enums.DLsite:
-			getter := metadata.NewDLsiteInfoGetter(getterOptions...)
-			sources = append(sources, metadataSearchSource{
-				source: enums.DLsite,
-				fetchByName: func(name string) (metadata.MetadataResult, error) {
-					return getter.FetchMetadataByName(name, "")
-				},
-				fetchCandidatesByName: func(name string) ([]metadata.MetadataResult, error) {
-					return metadata.FetchMetadataCandidatesByName(getter, name, "")
-				},
-			})
-		case enums.ErogameScape:
-			getter := metadata.NewErogameScapeInfoGetter(getterOptions...)
-			sources = append(sources, metadataSearchSource{
-				source: enums.ErogameScape,
-				fetchByName: func(name string) (metadata.MetadataResult, error) {
-					return getter.FetchMetadataByName(name, "")
-				},
-				fetchCandidatesByName: func(name string) ([]metadata.MetadataResult, error) {
-					return metadata.FetchMetadataCandidatesByName(getter, name, "")
-				},
-			})
-		case enums.TouchGal:
-			getter := metadata.NewTouchGalInfoGetter(getterOptions...)
-			sources = append(sources, metadataSearchSource{
-				source: enums.TouchGal,
-				fetchByName: func(name string) (metadata.MetadataResult, error) {
-					return getter.FetchMetadataByName(name, "")
-				},
-				fetchCandidatesByName: func(name string) ([]metadata.MetadataResult, error) {
-					return metadata.FetchMetadataCandidatesByName(getter, name, "")
-				},
-			})
-		case enums.Hikarinagi:
-			if s.hikarinagiService == nil {
-				continue
-			}
-			sources = append(sources, metadataSearchSource{
-				source: enums.Hikarinagi,
-				fetchByName: func(name string) (metadata.MetadataResult, error) {
-					return s.hikarinagiService.fetchMetadataByName(s.ctx, name)
-				},
-				fetchCandidatesByName: func(name string) ([]metadata.MetadataResult, error) {
-					return s.hikarinagiService.fetchMetadataCandidatesByName(s.ctx, name)
-				},
-			})
-		}
-	}
-	return sources
+// metadataSearchSources 返回当前配置下的元数据来源清单。
+// 装配逻辑统一在 buildConfiguredMetadataSearchSources，避免与 GameService 各持一份。
+func (s *ImportService) metadataSearchSources() []metadataSearchSource {
+	return buildConfiguredMetadataSearchSources(metadataSourceDeps{
+		ctx:               s.ctx,
+		config:            s.config,
+		bangumiService:    s.bangumiService,
+		hikarinagiService: s.hikarinagiService,
+	})
 }
 
 // CheckImportMetadataDuplicates 批量检查元数据 source/id 是否已存在。
