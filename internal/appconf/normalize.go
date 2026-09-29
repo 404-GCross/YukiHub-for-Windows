@@ -179,7 +179,7 @@ func NormalizeGameCardLayout(layout string) string {
 func NormalizeBigScreenDefaultCategory(category string) string {
 	trimmed := strings.TrimSpace(category)
 	switch trimmed {
-	case "all", "favorites", "recent", "playing", "completed", "wantToPlay":
+	case "all", "favorites", "recent", "playing", "completed", "unplayed":
 		return trimmed
 	default:
 		return DefaultBigScreenDefaultCategory

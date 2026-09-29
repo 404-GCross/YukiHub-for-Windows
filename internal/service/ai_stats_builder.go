@@ -35,7 +35,7 @@ type GamePlayInfo struct {
 	Duration        int      // 秒
 	Summary         string   // 截断至 300 字
 	Categories      []string // 分类标签
-	Status          string   // not_started / playing / completed / on_hold / dropped
+	Status          string   // unplayed / playing / completed / onhold / dropped
 	SpoilerBoundary string   // 来自 game_progress 或全局配置
 	ProgressNote    string   // 玩家备注
 	Route           string   // 当前路线
@@ -149,7 +149,7 @@ func (b *AIStatsBuilder) Build(dimension enums.Period) (*AIStatsData, error) {
 			COALESCE(g.company, '') AS company,
 			COALESCE(SUM(ps.duration), 0) AS total_duration,
 			COALESCE(LEFT(g.summary, 300), '') AS summary,
-			COALESCE(g.status, 'not_started') AS status,
+			COALESCE(g.status, 'unplayed') AS status,
 			COALESCE(gp.spoiler_boundary, ?) AS spoiler_boundary,
 			COALESCE(gp.progress_note, '') AS progress_note,
 			COALESCE(gp.route, '') AS route

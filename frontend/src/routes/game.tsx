@@ -730,15 +730,10 @@ function GameDetailPage() {
   };
 
   const statusConfig = {
-    [enums.GameStatus.StatusNotStarted]: {
-      label: t("common.notStarted"),
+    [enums.GameStatus.StatusUnplayed]: {
+      label: t("common.unplayed"),
       icon: "i-mdi-clock-outline",
       color: "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300",
-    },
-    [enums.GameStatus.StatusWantToPlay]: {
-      label: t("common.wantToPlay"),
-      icon: "i-mdi-bookmark-outline",
-      color: "bg-info-100 text-info-700 dark:bg-info-900 dark:text-info-300",
     },
     [enums.GameStatus.StatusPlaying]: {
       label: t("common.playing"),
@@ -766,7 +761,7 @@ function GameDetailPage() {
   };
 
   const gameStatusBadge
-    = GAME_STATUS_BADGE_STYLES[game.status || enums.GameStatus.StatusNotStarted];
+    = GAME_STATUS_BADGE_STYLES[game.status || enums.GameStatus.StatusUnplayed];
 
   const performStartGame = async (
     targetGame: models.Game,
@@ -1048,7 +1043,7 @@ function GameDetailPage() {
   const handleStatusChange = async (newStatus: string) => {
     if (
       !game
-      || (game.status || enums.GameStatus.StatusNotStarted) === newStatus
+      || (game.status || enums.GameStatus.StatusUnplayed) === newStatus
     ) {
       return;
     }
@@ -1411,7 +1406,7 @@ function GameDetailPage() {
               <div className="flex flex-wrap gap-1.5">
                 {Object.entries(statusConfig).map(([key, config]) => {
                   const isActive
-                    = (game.status || enums.GameStatus.StatusNotStarted) === key;
+                    = (game.status || enums.GameStatus.StatusUnplayed) === key;
                   const badge
                     = GAME_STATUS_BADGE_STYLES[key as enums.GameStatus];
                   const activeChipClass = `border border-white/25 text-white shadow-sm backdrop-blur-sm ${badge?.className ?? config.color}`;

@@ -152,7 +152,7 @@ func TestUpdateDownloadedCoverURLSkipsSupersededSource(t *testing.T) {
 			id, name, cover_url, cover_source_url, status, source_type,
 			cached_at, created_at, updated_at
 		) VALUES ('cover-race', 'Cover Race', '/local/covers/current.webp',
-			'https://example.com/current.webp', 'not_started', 'local',
+			'https://example.com/current.webp', 'unplayed', 'local',
 			CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
 	`); err != nil {
 		t.Fatalf("insert game: %v", err)

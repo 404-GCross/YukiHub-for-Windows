@@ -53,7 +53,7 @@ func TestYukiHubExporterBuildMapsDesktopLibrary(t *testing.T) {
 		INSERT INTO games (id, name, cover_url, path, status, source_type, source_id, created_at, updated_at, legacy_local_id)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		"game-2", "收藏的游戏", "https://example.com/cover.jpg", "D:\\Games\\two\\game.exe",
-		"want_to_play", "local", "", createdAt, createdAt.Add(time.Hour), "not-a-number"); err != nil {
+		"unplayed", "local", "", createdAt, createdAt.Add(time.Hour), "not-a-number"); err != nil {
 		t.Fatalf("插入游戏失败: %v", err)
 	}
 	if _, err := db.Exec(
@@ -130,7 +130,7 @@ func TestYukiHubExporterBuildMapsDesktopLibrary(t *testing.T) {
 	if favoriteGame.Tags != "剧情,校园" {
 		t.Errorf("tags = %q, want \"剧情,校园\"", favoriteGame.Tags)
 	}
-	// Android 侧没有「想玩」，按契约降级为 unplayed。
+	// 两端状态已统一，未玩的游戏原样导出为 unplayed。
 	if favoriteGame.PlayStatus != "unplayed" {
 		t.Errorf("play_status = %q, want unplayed", favoriteGame.PlayStatus)
 	}
@@ -363,7 +363,7 @@ func TestYukiHubMetadataCacheRoundTrip(t *testing.T) {
 	if _, err := sourceDB.Exec(`
 		INSERT INTO games (id, name, status, source_type, source_id, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?)`,
-		"game-orphan", "自建条目", "not_started", "vndb", "v1", createdAt, createdAt); err != nil {
+		"game-orphan", "自建条目", "unplayed", "vndb", "v1", createdAt, createdAt); err != nil {
 		t.Fatalf("插入自建游戏失败: %v", err)
 	}
 	for _, entry := range []struct {

@@ -149,9 +149,7 @@ export function AddGameModal({
 
   const applyImportFields = (game: models.Game) => {
     game.path = isRemoteImport ? "" : executablePath;
-    game.status = isRemoteImport
-      ? enums.GameStatus.StatusWantToPlay
-      : game.status || enums.GameStatus.StatusNotStarted;
+    game.status = game.status || enums.GameStatus.StatusUnplayed;
   };
 
   const saveGameFromWebMetadata = async (
@@ -283,9 +281,7 @@ export function AddGameModal({
               }),
             ]
           : [],
-        status: isRemoteImport
-          ? enums.GameStatus.StatusWantToPlay
-          : enums.GameStatus.StatusNotStarted,
+        status: enums.GameStatus.StatusUnplayed,
       });
       await AddGameFromWebMetadata(
         new vo.GameMetadataFromWebVO({

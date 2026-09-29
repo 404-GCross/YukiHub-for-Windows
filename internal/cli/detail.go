@@ -55,15 +55,13 @@ func newDetailCmd(app *CoreApp) *cobra.Command {
 
 func formatGameStatus(status string) string {
 	switch status {
-	case "not_started":
-		return "Not Started"
-	case "want_to_play":
-		return "Want to Play"
+	case "unplayed":
+		return "Unplayed"
 	case "playing":
 		return "Playing"
 	case "completed":
 		return "Completed"
-	case "on_hold":
+	case "onhold":
 		return "On Hold"
 	case "dropped":
 		return "Dropped"

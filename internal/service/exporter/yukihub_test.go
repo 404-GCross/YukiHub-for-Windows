@@ -10,19 +10,17 @@ import (
 	"yukihub/internal/models"
 )
 
-func TestMapGameStatusToYukiHubDegradesWantToPlay(t *testing.T) {
+func TestMapGameStatusToYukiHubCoversAllStatuses(t *testing.T) {
 	t.Parallel()
 
 	cases := map[enums.GameStatus]string{
-		enums.StatusNotStarted: "unplayed",
-		// Android 侧没有「想玩」，按契约降级为 unplayed。
-		enums.StatusWantToPlay: "unplayed",
-		enums.StatusPlaying:    "playing",
-		enums.StatusCompleted:  "completed",
-		enums.StatusOnHold:     "onhold",
-		enums.StatusDropped:    "dropped",
-		enums.GameStatus(""):   "unplayed",
-		enums.GameStatus("x"):  "unplayed",
+		enums.StatusUnplayed:  "unplayed",
+		enums.StatusPlaying:   "playing",
+		enums.StatusCompleted: "completed",
+		enums.StatusOnHold:    "onhold",
+		enums.StatusDropped:   "dropped",
+		enums.GameStatus(""):  "unplayed",
+		enums.GameStatus("x"): "unplayed",
 	}
 	for input, want := range cases {
 		if got := mapGameStatusToYukiHub(input); got != want {
@@ -245,7 +243,7 @@ func TestBuildYukiHubGameWithoutSessions(t *testing.T) {
 		Path:    "D:\\Games\\game.exe",
 		// 本地封面不迁移。
 		CoverURL: "D:\\covers\\game.jpg",
-		Status:   enums.StatusWantToPlay,
+		Status:   enums.StatusUnplayed,
 		IsNSFW:   true,
 		Hidden:   true,
 	}

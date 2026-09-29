@@ -83,7 +83,7 @@ func (s *HomeService) GetHomePageData() (vo.HomePageData, error) {
 			COALESCE(g.steam_launch_kind, '') as steam_launch_kind,
 			COALESCE(g.steam_user_id, '') as steam_user_id,
 			COALESCE(g.steam_launch_options, '') as steam_launch_options,
-			COALESCE(g.status, 'not_started') as status,
+			COALESCE(g.status, 'unplayed') as status,
 			COALESCE(g.source_type, '') as source_type, 
 			g.cached_at, 
 			COALESCE(g.source_id, '') as source_id, 

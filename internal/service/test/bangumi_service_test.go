@@ -176,11 +176,10 @@ func TestBangumiService_RefreshExpiredTokenAndPushMappedStatus(t *testing.T) {
 		status       enums.GameStatus
 		expectedType int
 	}{
-		{name: "not started", initial: enums.StatusPlaying, status: enums.StatusNotStarted, expectedType: 1},
-		{name: "want to play", initial: enums.StatusPlaying, status: enums.StatusWantToPlay, expectedType: 1},
-		{name: "playing", initial: enums.StatusNotStarted, status: enums.StatusPlaying, expectedType: 3},
-		{name: "completed", initial: enums.StatusNotStarted, status: enums.StatusCompleted, expectedType: 2},
-		{name: "on hold", initial: enums.StatusNotStarted, status: enums.StatusOnHold, expectedType: 4},
+		{name: "unplayed", initial: enums.StatusPlaying, status: enums.StatusUnplayed, expectedType: 1},
+		{name: "playing", initial: enums.StatusUnplayed, status: enums.StatusPlaying, expectedType: 3},
+		{name: "completed", initial: enums.StatusUnplayed, status: enums.StatusCompleted, expectedType: 2},
+		{name: "on hold", initial: enums.StatusUnplayed, status: enums.StatusOnHold, expectedType: 4},
 	}
 
 	for _, tc := range cases {
@@ -346,7 +345,7 @@ func TestGameService_SkipsBangumiPushForIneligibleGames(t *testing.T) {
 			db, cleanup := setupTestDB(t)
 			defer cleanup()
 
-			insertBangumiGame(t, db, "skip-"+strings.ReplaceAll(tc.name, " ", "-"), enums.StatusNotStarted, tc.sourceType, tc.sourceID)
+			insertBangumiGame(t, db, "skip-"+strings.ReplaceAll(tc.name, " ", "-"), enums.StatusUnplayed, tc.sourceType, tc.sourceID)
 
 			var requestCount int32
 			testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -390,7 +389,7 @@ func TestGameService_SkipsBangumiPushWhenDisabled(t *testing.T) {
 	db, cleanup := setupTestDB(t)
 	defer cleanup()
 
-	insertBangumiGame(t, db, "bangumi-push-disabled", enums.StatusNotStarted, enums.Bangumi, "42")
+	insertBangumiGame(t, db, "bangumi-push-disabled", enums.StatusUnplayed, enums.Bangumi, "42")
 
 	var requestCount int32
 	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -433,7 +432,7 @@ func TestGameService_PushFailureDoesNotRollbackLocalStatus(t *testing.T) {
 	db, cleanup := setupTestDB(t)
 	defer cleanup()
 
-	insertBangumiGame(t, db, "bangumi-push-fail", enums.StatusNotStarted, enums.Bangumi, "42")
+	insertBangumiGame(t, db, "bangumi-push-fail", enums.StatusUnplayed, enums.Bangumi, "42")
 
 	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -479,7 +478,7 @@ func TestGameService_AcceptsBangumi202Response(t *testing.T) {
 	db, cleanup := setupTestDB(t)
 	defer cleanup()
 
-	insertBangumiGame(t, db, "bangumi-accepted", enums.StatusNotStarted, enums.Bangumi, "42")
+	insertBangumiGame(t, db, "bangumi-accepted", enums.StatusUnplayed, enums.Bangumi, "42")
 
 	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusAccepted)

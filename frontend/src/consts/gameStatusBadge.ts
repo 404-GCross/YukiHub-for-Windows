@@ -10,15 +10,10 @@ export const GAME_STATUS_BADGE_STYLES: Partial<
     { className: string; icon: string; labelKey: string }
   >
 > = {
-  [enums.GameStatus.StatusNotStarted]: {
+  [enums.GameStatus.StatusUnplayed]: {
     className: "bg-brand-900/55",
     icon: "i-mdi-clock-outline",
-    labelKey: "common.notStarted",
-  },
-  [enums.GameStatus.StatusWantToPlay]: {
-    className: "bg-info-600/70",
-    icon: "i-mdi-bookmark-outline",
-    labelKey: "common.wantToPlay",
+    labelKey: "common.unplayed",
   },
   [enums.GameStatus.StatusPlaying]: {
     className: "bg-success-600/70",

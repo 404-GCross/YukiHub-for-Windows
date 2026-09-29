@@ -291,10 +291,10 @@ func TestMapYukiHubGameStatusCoversAllPlayStatuses(t *testing.T) {
 	t.Parallel()
 
 	cases := map[string]enums.GameStatus{
-		"":             enums.StatusNotStarted,
-		"unplayed":     enums.StatusNotStarted,
-		"not_started":  enums.StatusNotStarted,
-		"want_to_play": enums.StatusNotStarted,
+		"":             enums.StatusUnplayed,
+		"unplayed":     enums.StatusUnplayed,
+		"not_started":  enums.StatusUnplayed,
+		"want_to_play": enums.StatusUnplayed,
 		"playing":      enums.StatusPlaying,
 		"completed":    enums.StatusCompleted,
 		"onhold":       enums.StatusOnHold,

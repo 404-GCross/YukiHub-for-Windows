@@ -813,7 +813,7 @@ func (s *HikarinagiService) resolveContext(ctx context.Context) context.Context 
 
 func mapGameStatusToHikarinagiStatus(status enums.GameStatus) (string, bool) {
 	switch status {
-	case enums.StatusNotStarted, enums.StatusWantToPlay:
+	case enums.StatusUnplayed:
 		return "PLAN", true
 	case enums.StatusPlaying:
 		return "GOING", true

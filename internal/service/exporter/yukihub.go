@@ -136,7 +136,7 @@ func (e *YukiHubExporter) loadGames() ([]models.Game, error) {
 		COALESCE(g.summary, '') as summary,
 		COALESCE(g.path, '') as path,
 		COALESCE(g.game_directory, '') as game_directory,
-		COALESCE(g.status, 'not_started') as status,
+		COALESCE(g.status, 'unplayed') as status,
 		COALESCE(g.is_nsfw, FALSE) as is_nsfw,
 		COALESCE(g.created_at, CURRENT_TIMESTAMP) as created_at,
 		COALESCE(g.updated_at, g.created_at, CURRENT_TIMESTAMP) as updated_at,
@@ -432,8 +432,10 @@ func sessionTimestamp(session models.PlaySession) int64 {
 	return unixMilli(session.StartTime)
 }
 
-// mapGameStatusToYukiHub 把桌面端 6 态映射为 Android 侧 5 态。
-// Android 没有「想玩」，want_to_play 按契约降级为 unplayed；未知值同样回落 unplayed。
+// mapGameStatusToYukiHub 输出 Android 侧的 play_status。
+//
+// 两端状态已统一为同一套五态字符串（见 docs/mobile-yukihub-migration.md），
+// 这里只做原样透出；未知值回落 unplayed。
 func mapGameStatusToYukiHub(status enums.GameStatus) string {
 	switch status {
 	case enums.StatusPlaying:

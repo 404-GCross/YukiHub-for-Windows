@@ -241,7 +241,7 @@ func (s *GameService) addGameWithTags(game models.Game, tags []metadata.TagItem,
 		game.UpdatedAt = time.Now()
 	}
 	if game.Status == "" {
-		game.Status = enums2.StatusNotStarted
+		game.Status = enums2.StatusUnplayed
 	}
 	game.Aliases = gamehelper.NormalizeAliases(game.Aliases)
 	aliasesJSON := gamehelper.EncodeAliases(game.Aliases)
@@ -720,7 +720,7 @@ func (s *GameService) GetGameByID(id string) (models.Game, error) {
 		COALESCE(g.steam_launch_kind, '') as steam_launch_kind,
 		COALESCE(g.steam_user_id, '') as steam_user_id,
 		COALESCE(g.steam_launch_options, '') as steam_launch_options,
-		COALESCE(g.status, 'not_started') as status,
+		COALESCE(g.status, 'unplayed') as status,
 		COALESCE(g.source_type, '') as source_type, 
 		g.cached_at, 
 		COALESCE(g.source_id, '') as source_id, 
@@ -2123,7 +2123,7 @@ func (s *GameService) getGameStatusSyncSnapshot(gameID string) (models.Game, err
 	var status string
 
 	err := s.db.QueryRowContext(s.ctx, `
-		SELECT id, name, COALESCE(status, 'not_started'), COALESCE(source_type, ''), COALESCE(source_id, '')
+		SELECT id, name, COALESCE(status, 'unplayed'), COALESCE(source_type, ''), COALESCE(source_id, '')
 		FROM games
 		WHERE id = ?
 	`, gameID).Scan(
@@ -2158,7 +2158,7 @@ func (s *GameService) listGamesForExternalStatusPush(ids []string) ([]models.Gam
 	}
 
 	rows, err := s.db.QueryContext(s.ctx, fmt.Sprintf(`
-		SELECT id, name, COALESCE(status, 'not_started'), COALESCE(source_type, ''), COALESCE(source_id, '')
+		SELECT id, name, COALESCE(status, 'unplayed'), COALESCE(source_type, ''), COALESCE(source_id, '')
 		FROM games
 		WHERE id IN (%s)
 	`, placeholders), args...)

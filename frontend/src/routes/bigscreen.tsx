@@ -1,4 +1,5 @@
 import type { models } from "../../src/bindings/models";
+import type { BigScreenDetailAction } from "../bigscreen/BigScreenDetailsLayer";
 import type { BigScreenAction } from "../bigscreen/BigScreenInfoBar";
 import type { BigScreenCategoryId } from "../bigscreen/categories";
 import type { FocusDirection, FocusZone } from "../bigscreen/focusEngine";
@@ -18,6 +19,7 @@ import {
   RemoveGameFromCategory,
 } from "../../bindings/yukihub/internal/service/categoryservice";
 import { BigScreenBackground } from "../bigscreen/BigScreenBackground";
+import { BigScreenDetailsLayer } from "../bigscreen/BigScreenDetailsLayer";
 import { BigScreenInfoBar } from "../bigscreen/BigScreenInfoBar";
 import { BigScreenRail } from "../bigscreen/BigScreenRail";
 import {
@@ -27,6 +29,7 @@ import {
 } from "../bigscreen/categories";
 import {
   BIG_SCREEN_ACTIONS_ZONE,
+  BIG_SCREEN_DETAILS_ZONE,
   BIG_SCREEN_EXIT_PATH,
   BIG_SCREEN_FOCUS_ORDER,
   BIG_SCREEN_RAIL_ZONE,
@@ -51,6 +54,9 @@ const CATEGORY_COUNT = BIG_SCREEN_CATEGORIES.length;
 
 /** 信息浮层的操作条目数：启动 / 收藏 / 详情 */
 const ACTION_COUNT = 3;
+
+/** 详情层的操作条目数：游玩 / 详细（看 PV 属 M3，暂不接入） */
+const DETAIL_ACTION_COUNT = 2;
 
 function normalizeCategoryId(value: string | undefined): BigScreenCategoryId {
   return BIG_SCREEN_CATEGORIES.some(category => category.id === value)
@@ -81,6 +87,7 @@ function BigScreenPage() {
   const [games, setGames] = useState<models.Game[]>([]);
   const [reloadToken, setReloadToken] = useState(0);
   const [shelfIndex, setShelfIndex] = useState(0);
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const [shelfHeight, setShelfHeight] = useState(0);
   const [railHovered, setRailHovered] = useState(false);
   const [hintKey, setHintKey] = useState(0);
@@ -134,16 +141,27 @@ function BigScreenPage() {
     return () => observer.disconnect();
   }, []);
 
+  // 详情层打开时把其余三个区域清空，让它成为唯一有内容的区域：
+  // 否则上下键会顺着 verticalNeighbor 从详情层跳回货架，firstPosition 也不会选中它。
   const zones = useMemo<FocusZone[]>(
-    () => [
-      {
-        id: BIG_SCREEN_RAIL_ZONE,
-        rowLengths: BIG_SCREEN_CATEGORIES.map(() => 1),
-      },
-      { id: BIG_SCREEN_SHELF_ZONE, rowLengths: [games.length] },
-      { id: BIG_SCREEN_ACTIONS_ZONE, rowLengths: [ACTION_COUNT] },
-    ],
-    [games.length],
+    () =>
+      detailsOpen
+        ? [
+            { id: BIG_SCREEN_RAIL_ZONE, rowLengths: [0] },
+            { id: BIG_SCREEN_SHELF_ZONE, rowLengths: [0] },
+            { id: BIG_SCREEN_ACTIONS_ZONE, rowLengths: [0] },
+            { id: BIG_SCREEN_DETAILS_ZONE, rowLengths: [DETAIL_ACTION_COUNT] },
+          ]
+        : [
+            {
+              id: BIG_SCREEN_RAIL_ZONE,
+              rowLengths: BIG_SCREEN_CATEGORIES.map(() => 1),
+            },
+            { id: BIG_SCREEN_SHELF_ZONE, rowLengths: [games.length] },
+            { id: BIG_SCREEN_ACTIONS_ZONE, rowLengths: [ACTION_COUNT] },
+            { id: BIG_SCREEN_DETAILS_ZONE, rowLengths: [0] },
+          ],
+    [detailsOpen, games.length],
   );
 
   const activeCategoryIndex = BIG_SCREEN_CATEGORIES.findIndex(
@@ -246,6 +264,20 @@ function BigScreenPage() {
     }
   }, [position]);
 
+  // 详情层开关时显式交接焦点：引擎的 setZones 只会把失效焦点退回区域首项，
+  // 打开时进不了详情层按钮、关闭时会停在货架第一张，所以这里各补一次。
+  const detailsOpenRef = useRef(detailsOpen);
+  useEffect(() => {
+    if (detailsOpenRef.current === detailsOpen) {
+      return;
+    }
+    detailsOpenRef.current = detailsOpen;
+    focus(
+      detailsOpen ? BIG_SCREEN_DETAILS_ZONE : BIG_SCREEN_SHELF_ZONE,
+      detailsOpen ? 0 : safeShelfIndex,
+    );
+  }, [detailsOpen, focus, safeShelfIndex]);
+
   const handleStartGame = useCallback(
     (game: models.Game | undefined) => {
       if (!game?.id) {
@@ -265,6 +297,14 @@ function BigScreenPage() {
     },
     [navigate],
   );
+
+  /** 货架与信息浮层的「详情」都先展开大屏详情层，「详细」按钮才进完整详情页。 */
+  const handleOpenDetails = useCallback((game: models.Game | undefined) => {
+    if (!game?.id) {
+      return;
+    }
+    setDetailsOpen(true);
+  }, []);
 
   const handleToggleFavorite = useCallback(async () => {
     const gameId = focusedGame?.id;
@@ -320,17 +360,35 @@ function BigScreenPage() {
         icon: "i-mdi-information-variant",
         key: "details",
         label: t("common.details"),
-        run: () => handleViewDetails(focusedGame),
+        run: () => handleOpenDetails(focusedGame),
       },
     ],
     [
       focusedGame,
+      handleOpenDetails,
       handleStartGame,
       handleToggleFavorite,
-      handleViewDetails,
       isFavorite,
       t,
     ],
+  );
+
+  const detailActions = useMemo<BigScreenDetailAction[]>(
+    () => [
+      {
+        icon: "i-mdi-play",
+        key: "start",
+        label: t("gameCard.startGame"),
+        run: () => handleStartGame(focusedGame),
+      },
+      {
+        icon: "i-mdi-information-outline",
+        key: "details",
+        label: t("common.details"),
+        run: () => handleViewDetails(focusedGame),
+      },
+    ],
+    [focusedGame, handleStartGame, handleViewDetails, t],
   );
 
   const exitBigScreen = useCallback(() => {
@@ -341,6 +399,11 @@ function BigScreenPage() {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         event.preventDefault();
+        // 详情层先吃掉 Esc，再往外才是退出大屏
+        if (detailsOpen) {
+          setDetailsOpen(false);
+          return;
+        }
         exitBigScreen();
         return;
       }
@@ -371,6 +434,10 @@ function BigScreenPage() {
       }
       if (position.zoneId === BIG_SCREEN_ACTIONS_ZONE) {
         actions[position.index]?.run();
+        return;
+      }
+      if (position.zoneId === BIG_SCREEN_DETAILS_ZONE) {
+        detailActions[position.index]?.run();
       }
     };
 
@@ -378,6 +445,8 @@ function BigScreenPage() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [
     actions,
+    detailActions,
+    detailsOpen,
     exitBigScreen,
     focus,
     focusedGame,
@@ -426,7 +495,7 @@ function BigScreenPage() {
                 onActivate={handleStartGame}
                 onFocusIndexChange={index =>
                   focus(BIG_SCREEN_SHELF_ZONE, index)}
-                onViewDetails={handleViewDetails}
+                onViewDetails={handleOpenDetails}
                 rowHeight={shelfHeight}
               />
             )}
@@ -479,6 +548,22 @@ function BigScreenPage() {
           </span>
         </div>
       </div>
+
+      {detailsOpen && focusedGame && (
+        <BigScreenDetailsLayer
+          actions={detailActions}
+          actionsFocused={position.zoneId === BIG_SCREEN_DETAILS_ZONE}
+          focusedActionIndex={position.index}
+          game={focusedGame}
+          onActionActivate={(index) => {
+            focus(BIG_SCREEN_DETAILS_ZONE, index);
+            detailActions[index]?.run();
+          }}
+          onActionFocus={index => focus(BIG_SCREEN_DETAILS_ZONE, index)}
+          onClose={() => setDetailsOpen(false)}
+          tags={tags}
+        />
+      )}
     </div>
   );
 }

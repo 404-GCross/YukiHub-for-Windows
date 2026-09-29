@@ -120,7 +120,7 @@ func TestGameReviewServiceSaveAndSync(t *testing.T) {
 func TestGameReviewServiceRejectsInvalidRating(t *testing.T) {
 	db, cleanup := setupTestDB(t)
 	defer cleanup()
-	insertBangumiGame(t, db, "invalid-review", enums.StatusNotStarted, enums.Local, "")
+	insertBangumiGame(t, db, "invalid-review", enums.StatusUnplayed, enums.Local, "")
 
 	svc := service.NewGameReviewService()
 	svc.Init(context.Background(), db, &appconf.AppConfig{})

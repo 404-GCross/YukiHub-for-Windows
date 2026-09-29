@@ -490,13 +490,11 @@ func convertYukiHubSessions(gameID string, game yukihub.Game, entries []yukihub.
 	return sessions
 }
 
-// mapYukiHubGameStatus 把 YukiHub 备份里的 play_status 映射为 YukiHub 状态。
+// mapYukiHubGameStatus 把 YukiHub 备份里的 play_status 映射为桌面端状态。
 //
-// YukiHub 侧 normalizePlayStatus（GameRepository.java）只会产出这五个值：
-// unplayed 未玩 / playing 在玩 / completed 玩过 / onhold 搁置 / dropped 抛弃。
-// 这里额外容忍下划线、过去式等历史写法，避免旧备份解析不到。
-//
-// unplayed 与未知值一律落到「未开始」；桌面端的「想玩」在手机版 YukiHub 侧没有对应状态。
+// 两端状态已经是同一套五态字符串：unplayed 未玩 / playing 在玩 /
+// completed 玩过 / onhold 搁置 / dropped 抛弃。这里额外容忍下划线、过去式等
+// 历史写法，避免旧备份解析不到；unplayed 与未知值一律落到「未玩」。
 func mapYukiHubGameStatus(status string) enums.GameStatus {
 	switch strings.ToLower(strings.TrimSpace(status)) {
 	case "playing":
@@ -508,7 +506,7 @@ func mapYukiHubGameStatus(status string) enums.GameStatus {
 	case "dropped", "drop", "abandoned", "abandon", "give_up":
 		return enums.StatusDropped
 	default:
-		return enums.StatusNotStarted
+		return enums.StatusUnplayed
 	}
 }
 

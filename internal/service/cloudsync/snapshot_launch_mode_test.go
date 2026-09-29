@@ -32,7 +32,7 @@ func TestBuildLocalStateOmitsLaunchModeAndOldJSONStillDecodes(t *testing.T) {
 	now := time.Now().Truncate(time.Second)
 	if _, err := db.Exec(`
 		INSERT INTO games (id, name, status, source_type, cached_at, source_id, created_at, updated_at, launch_mode)
-		VALUES ('game-1', 'Steam Game', 'not_started', 'steam', ?, '123456', ?, ?, 'steam')
+		VALUES ('game-1', 'Steam Game', 'unplayed', 'steam', ?, '123456', ?, ?, 'steam')
 	`, now, now, now); err != nil {
 		t.Fatalf("insert game: %v", err)
 	}
@@ -66,7 +66,7 @@ func TestApplyMergedSnapshotPreservesExistingLaunchModeAndDefaultsNewGame(t *tes
 		INSERT INTO games (
 			id, name, path, game_directory, status, source_type, cached_at, source_id,
 			launch_mode, steam_launch_id, steam_launch_kind, created_at, updated_at
-		) VALUES ('existing', 'Existing', '/local/game', '/local/game', 'not_started', 'steam', ?, '123456', 'steam', '123456', 'native', ?, ?)
+		) VALUES ('existing', 'Existing', '/local/game', '/local/game', 'unplayed', 'steam', ?, '123456', 'steam', '123456', 'native', ?, ?)
 	`, now, now, now); err != nil {
 		t.Fatalf("insert existing game: %v", err)
 	}
@@ -84,7 +84,7 @@ func TestApplyMergedSnapshotPreservesExistingLaunchModeAndDefaultsNewGame(t *tes
 		{
 			ID:         "new-game",
 			Name:       "New Synced",
-			Status:     "not_started",
+			Status:     "unplayed",
 			SourceType: "steam",
 			SourceID:   "654321",
 			CreatedAt:  now,
@@ -128,7 +128,7 @@ func TestApplyMergedSnapshotDoesNotOverwriteNewerLocalGame(t *testing.T) {
 	snapshot := Snapshot{Games: []Game{{
 		ID:         "newer-local",
 		Name:       "Older Remote",
-		Status:     "not_started",
+		Status:     "unplayed",
 		SourceType: "local",
 		CreatedAt:  now.Add(-time.Hour),
 		UpdatedAt:  now.Add(-time.Minute),

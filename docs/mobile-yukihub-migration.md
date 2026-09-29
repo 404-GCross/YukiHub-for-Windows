@@ -100,16 +100,15 @@
 
 ### 游玩状态映射
 
-Android 版只有 5 态，桌面版（上游）有 6 态：
+桌面端已与 Android 版统一为同一套 5 态，双向为恒等映射，不再有"想玩"：
 
 | Android | 桌面端 | 备注 |
 | --- | --- | --- |
-| `unplayed` | `not_started` | |
+| `unplayed` | `unplayed` | 上游历史值 `not_started` 与 `want_to_play` 已并入 |
 | `playing` | `playing` | |
 | `completed` | `completed` | |
-| `onhold` | `on_hold` | 兼容 `on_hold` / `shelved` / `paused` 等历史写法 |
+| `onhold` | `onhold` | 兼容 `on_hold` / `shelved` / `paused` 等历史写法 |
 | `dropped` | `dropped` | |
-| — | `want_to_play` | Android 版没有"想玩"；导出到 Android 时降级为 `unplayed` |
 
 映射必须容忍下划线、过去式与大小写差异（历史上出现过多种写法）。
 
@@ -231,11 +230,12 @@ Android 侧 `root_uri` 为空时走 `findByTitleForEmptyRoot` **纯标题匹配*
 桌面端游玩状态保持不变。这是通用导入路径的既有行为（PotatoVN 相同）。
 Android 为权威源的状态合并是否要覆盖，待决策。
 
-**⑤ "想玩"在往返后消失（契约层面的信息损失）**
+**⑤ 游玩状态已在两端对齐（原"想玩"往返丢失问题已消除）**
 
-桌面端 6 态、Android 5 态：导入方向 `unplayed` 无法区分"想玩"与"未开始"
-（落 `not_started`）；导出方向 `want_to_play` 降级为 `unplayed`。
-双向都无法还原。若要保守语义，快照需额外携带对端原始状态。暂不处理。
+桌面端已按本文档契约收敛为与 Android 完全一致的 5 态：`migration179` 把存量
+`not_started` / `want_to_play` 并入 `unplayed`，`on_hold` 改写为 `onhold`，
+筛选预设里保存的状态条件同步转换。双向映射因此成为恒等映射，不再存在只在
+单端出现的状态；历史快照里残留的旧值在导入时仍按上表的容错规则归一。
 
 **⑥ 导入时不重复下载封面**
 
@@ -293,7 +293,7 @@ Android 为权威源的状态合并是否要覆盖，待决策。
   只会制造无法匹配的占位记录。
 - `local_id` 由 `games.legacy_local_id` 还原（保留的 Android 整数 ID），非法或缺失时为 0。
 - `original_title` 取第一个非空别名；`tags` 用英文逗号拼接。
-- `play_status` 做 6 → 5 态映射：Android 没有"想玩"，`want_to_play` 降级为 `unplayed`。
+- `play_status` 已是与 Android 一致的 5 态恒等映射；导入旧快照时仍按状态映射表容错归一历史写法。
 - `cover_uri` 只写 `http(s)://` 开头的网络封面，本地封面不迁移。
 - `favorite` 由系统收藏分类（`game_categories` 中的 `system:favorites`）导出。
 - `metadata_cache` 由 `game_metadata_sources.cache_json` 导出（2026-09-29 补齐）：

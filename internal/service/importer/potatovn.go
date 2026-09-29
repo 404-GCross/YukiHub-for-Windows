@@ -374,12 +374,9 @@ func mapPotatoVNStatus(status potatovn.PlayType) enums.GameStatus {
 		return enums.StatusOnHold
 	case potatovn.PlayTypeAbandoned:
 		return enums.StatusDropped
-	case potatovn.PlayTypeWantToPlay:
-		return enums.StatusWantToPlay
-	case potatovn.PlayTypeNone:
-		return enums.StatusNotStarted
 	default:
-		return enums.StatusNotStarted
+		// PlayTypeNone 与「想玩」在手机版五态里都并入未玩。
+		return enums.StatusUnplayed
 	}
 }
 

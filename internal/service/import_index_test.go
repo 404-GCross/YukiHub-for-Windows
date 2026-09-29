@@ -290,8 +290,8 @@ func TestCommitImportedItemsUpdatesOnlyFlaggedLocalLaunchFields(t *testing.T) {
 			id, name, path, game_directory, process_name, status, source_type, cached_at, source_id,
 			launch_mode, steam_launch_id, steam_launch_kind, steam_user_id, created_at, updated_at
 		) VALUES
-			('missing-path', 'Missing Path', '', '', '', 'not_started', 'steam', ?, '123456', 'normal', '', '', '', ?, ?),
-			('ordinary', 'Ordinary', '/local/original', '/local', 'original.exe', 'not_started', 'steam', ?, '654321', 'normal', 'local-id', 'shortcut', 'local-user', ?, ?)
+			('missing-path', 'Missing Path', '', '', '', 'unplayed', 'steam', ?, '123456', 'normal', '', '', '', ?, ?),
+			('ordinary', 'Ordinary', '/local/original', '/local', 'original.exe', 'unplayed', 'steam', ?, '654321', 'normal', 'local-id', 'shortcut', 'local-user', ?, ?)
 	`, now, now, now, now, now, now); err != nil {
 		t.Fatalf("insert existing games: %v", err)
 	}
@@ -391,7 +391,7 @@ func TestCommitImportedItemsMergeSessionsPreservesGameInformation(t *testing.T) 
 			id, name, cover_url, company, summary, rating, release_date, path,
 			save_path, process_name, status, source_type, cached_at, source_id, created_at, updated_at,
 			use_locale_emulator, use_magpie, metadata_locked
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, '', '', 'not_started', ?, ?, ?, ?, ?, FALSE, FALSE, FALSE)
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, '', '', 'unplayed', ?, ?, ?, ?, ?, FALSE, FALSE, FALSE)
 	`,
 		existing.ID,
 		existing.Name,
@@ -539,7 +539,7 @@ func TestCommitImportedItemsDeduplicatesImportedSessions(t *testing.T) {
 			id, name, cover_url, company, summary, rating, release_date, path,
 			save_path, process_name, status, source_type, cached_at, source_id, created_at, updated_at,
 			use_locale_emulator, use_magpie, metadata_locked
-		) VALUES (?, ?, '', '', '', 0, '', ?, '', '', 'not_started', ?, ?, '', ?, ?, FALSE, FALSE, FALSE)
+		) VALUES (?, ?, '', '', '', 0, '', ?, '', '', 'unplayed', ?, ?, '', ?, ?, FALSE, FALSE, FALSE)
 	`, game.ID, game.Name, game.Path, string(game.SourceType), game.CachedAt, game.CreatedAt, game.UpdatedAt); err != nil {
 		t.Fatalf("insert existing game: %v", err)
 	}

@@ -9,7 +9,8 @@ import { enums } from "../../src/bindings/models";
 import { BIG_SCREEN_PAGE_LIMIT, BIG_SCREEN_SHELF_LIMIT } from "./constants";
 
 /**
- * 大屏侧栏的六个分类，对齐手机端 ALL/FAV/RECENT/PLAYING/DONE/TODO。
+ * 大屏侧栏的六个分类，对齐手机端 ALL/FAV/RECENT/PLAYING/DONE/TODO：
+ * `all` / `favorites` / `recent` / `playing` / `completed` / `unplayed`（TODO 即未玩）。
  * 「收藏」不是游戏字段而是系统分类（`system:favorites`），因此走 `GetCategoryGames`。
  */
 export type BigScreenCategoryId
@@ -18,7 +19,7 @@ export type BigScreenCategoryId
     | "recent"
     | "playing"
     | "completed"
-    | "wantToPlay";
+    | "unplayed";
 
 export type BigScreenCategory = {
   /** 分类图标（UnoCSS mdi 名） */
@@ -51,9 +52,9 @@ export const BIG_SCREEN_CATEGORIES: BigScreenCategory[] = [
     labelKey: "common.completed",
   },
   {
-    icon: "i-mdi-bookmark-outline",
-    id: "wantToPlay",
-    labelKey: "common.wantToPlay",
+    icon: "i-mdi-clock-outline",
+    id: "unplayed",
+    labelKey: "common.unplayed",
   },
 ];
 
@@ -90,8 +91,8 @@ const CATEGORY_QUERY_PLANS: Record<BigScreenCategoryId, CategoryQueryPlan> = {
     sortBy: enums.GameListSortBy.GameListSortByLastPlayedAt,
     sortOrder: enums.SortOrder.SortOrderDesc,
   },
-  wantToPlay: {
-    status: enums.GameStatus.StatusWantToPlay,
+  unplayed: {
+    status: enums.GameStatus.StatusUnplayed,
     sortBy: enums.GameListSortBy.GameListSortByName,
     sortOrder: enums.SortOrder.SortOrderAsc,
   },

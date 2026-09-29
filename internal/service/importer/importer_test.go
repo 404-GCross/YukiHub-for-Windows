@@ -91,14 +91,14 @@ func TestPlayniteStatusMapping(t *testing.T) {
 		input string
 		want  enums.GameStatus
 	}{
-		{input: "not_started", want: enums.StatusNotStarted},
-		{input: "want_to_play", want: enums.StatusWantToPlay},
+		{input: "not_started", want: enums.StatusUnplayed},
+		{input: "want_to_play", want: enums.StatusUnplayed},
 		{input: "playing", want: enums.StatusPlaying},
 		{input: "completed", want: enums.StatusCompleted},
 		{input: "on_hold", want: enums.StatusOnHold},
 		{input: "dropped", want: enums.StatusDropped},
 		{input: " DROPPED ", want: enums.StatusDropped},
-		{input: "unknown", want: enums.StatusNotStarted},
+		{input: "unknown", want: enums.StatusUnplayed},
 	}
 
 	for _, test := range tests {
@@ -113,13 +113,13 @@ func TestPotatoVNStatusMapping(t *testing.T) {
 		input potatovn.PlayType
 		want  enums.GameStatus
 	}{
-		{input: potatovn.PlayTypeNone, want: enums.StatusNotStarted},
+		{input: potatovn.PlayTypeNone, want: enums.StatusUnplayed},
 		{input: potatovn.PlayTypePlaying, want: enums.StatusPlaying},
 		{input: potatovn.PlayTypePlayed, want: enums.StatusCompleted},
 		{input: potatovn.PlayTypeShelved, want: enums.StatusOnHold},
 		{input: potatovn.PlayTypeAbandoned, want: enums.StatusDropped},
-		{input: potatovn.PlayTypeWantToPlay, want: enums.StatusWantToPlay},
-		{input: potatovn.PlayType(99), want: enums.StatusNotStarted},
+		{input: potatovn.PlayTypeWantToPlay, want: enums.StatusUnplayed},
+		{input: potatovn.PlayType(99), want: enums.StatusUnplayed},
 	}
 
 	for _, test := range tests {
@@ -134,12 +134,12 @@ func TestReinaManagerStatusMapping(t *testing.T) {
 		input reinamanager.PlayStatus
 		want  enums.GameStatus
 	}{
-		{input: reinamanager.PlayStatusWish, want: enums.StatusWantToPlay},
+		{input: reinamanager.PlayStatusWish, want: enums.StatusUnplayed},
 		{input: reinamanager.PlayStatusPlayed, want: enums.StatusCompleted},
 		{input: reinamanager.PlayStatusPlaying, want: enums.StatusPlaying},
 		{input: reinamanager.PlayStatusOnHold, want: enums.StatusOnHold},
 		{input: reinamanager.PlayStatusDropped, want: enums.StatusDropped},
-		{input: reinamanager.PlayStatus(0), want: enums.StatusWantToPlay},
+		{input: reinamanager.PlayStatus(0), want: enums.StatusUnplayed},
 	}
 
 	for _, test := range tests {

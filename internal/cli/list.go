@@ -59,8 +59,6 @@ func newListCmd(app *CoreApp) *cobra.Command {
 				// 显示状态图标
 				statusIcon := "·"
 				switch game.Status {
-				case enums.StatusWantToPlay:
-					statusIcon = "☆"
 				case enums.StatusPlaying:
 					statusIcon = "▶"
 				case enums.StatusCompleted:

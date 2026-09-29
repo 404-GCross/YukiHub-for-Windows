@@ -79,7 +79,7 @@ func TestGameServicePushesStatusToEveryLinkedProvider(t *testing.T) {
 	defer cleanup()
 
 	const gameID = "multi-provider-status"
-	insertBangumiGame(t, db, gameID, enums.StatusNotStarted, enums.Bangumi, "42")
+	insertBangumiGame(t, db, gameID, enums.StatusUnplayed, enums.Bangumi, "42")
 	if _, err := db.Exec(`
 		INSERT INTO game_metadata_sources (game_id, source_type, source_id, cached_at, created_at, updated_at)
 		VALUES
@@ -148,7 +148,7 @@ func TestGameServiceSkipsUnauthorizedProviderWithoutAffectingOtherProvider(t *te
 	defer cleanup()
 
 	const gameID = "partially-authorized-status"
-	insertBangumiGame(t, db, gameID, enums.StatusNotStarted, enums.Bangumi, "42")
+	insertBangumiGame(t, db, gameID, enums.StatusUnplayed, enums.Bangumi, "42")
 	if _, err := db.Exec(`
 		INSERT INTO game_metadata_sources (game_id, source_type, source_id, cached_at, created_at, updated_at)
 		VALUES
@@ -227,11 +227,10 @@ func TestHikarinagiServiceRefreshesRotatingTokenAndPushesMappedStatus(t *testing
 		status         enums.GameStatus
 		expectedStatus string
 	}{
-		{name: "not started", initial: enums.StatusPlaying, status: enums.StatusNotStarted, expectedStatus: "PLAN"},
-		{name: "want to play", initial: enums.StatusPlaying, status: enums.StatusWantToPlay, expectedStatus: "PLAN"},
-		{name: "playing", initial: enums.StatusNotStarted, status: enums.StatusPlaying, expectedStatus: "GOING"},
-		{name: "completed", initial: enums.StatusNotStarted, status: enums.StatusCompleted, expectedStatus: "COMPLETED"},
-		{name: "on hold", initial: enums.StatusNotStarted, status: enums.StatusOnHold, expectedStatus: "ON_HOLD"},
+		{name: "unplayed", initial: enums.StatusPlaying, status: enums.StatusUnplayed, expectedStatus: "PLAN"},
+		{name: "playing", initial: enums.StatusUnplayed, status: enums.StatusPlaying, expectedStatus: "GOING"},
+		{name: "completed", initial: enums.StatusUnplayed, status: enums.StatusCompleted, expectedStatus: "COMPLETED"},
+		{name: "on hold", initial: enums.StatusUnplayed, status: enums.StatusOnHold, expectedStatus: "ON_HOLD"},
 	}
 
 	for index, tc := range cases {
@@ -323,7 +322,7 @@ func TestGameServiceSkipsHikarinagiPushWhenDisabled(t *testing.T) {
 	applog.SetMode(applog.ModeCLI)
 	db, cleanup := setupTestDB(t)
 	defer cleanup()
-	insertBangumiGame(t, db, "hikarinagi-disabled", enums.StatusNotStarted, enums.Hikarinagi, "42")
+	insertBangumiGame(t, db, "hikarinagi-disabled", enums.StatusUnplayed, enums.Hikarinagi, "42")
 
 	var requestCount int32
 	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -363,7 +362,7 @@ func TestHikarinagiServiceReportsRemoteFailureWithoutRollingBackLocalStatus(t *t
 	applog.SetMode(applog.ModeCLI)
 	db, cleanup := setupTestDB(t)
 	defer cleanup()
-	insertBangumiGame(t, db, "hikarinagi-failure", enums.StatusNotStarted, enums.Hikarinagi, "42")
+	insertBangumiGame(t, db, "hikarinagi-failure", enums.StatusUnplayed, enums.Hikarinagi, "42")
 
 	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")

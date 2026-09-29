@@ -54,7 +54,7 @@ func TestGameFilterPresetServiceCRUD(t *testing.T) {
 		Name:               "  想玩的剧情游戏  ",
 		Tags:               []string{"tag1", " tag2 ", "tag1", ""},
 		ExcludeTags:        true,
-		Status:             enums.StatusWantToPlay,
+		Status:             enums.StatusUnplayed,
 		ExcludeStatus:      true,
 		MetadataSource:     enums.Local,
 		SortBy:             enums.GameListSortByCreatedAt,

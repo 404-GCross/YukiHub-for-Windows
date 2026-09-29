@@ -13,6 +13,9 @@ export const BIG_SCREEN_SHELF_ZONE = "shelf";
 /** 焦点区：底部按钮排 */
 export const BIG_SCREEN_ACTIONS_ZONE = "actions";
 
+/** 焦点区：详情层按钮排（详情层打开时它是唯一有内容的区域） */
+export const BIG_SCREEN_DETAILS_ZONE = "details";
+
 /**
  * 上下方向在焦点区之间的穿梭顺序。
  *

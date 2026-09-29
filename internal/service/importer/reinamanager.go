@@ -561,10 +561,9 @@ func mapReinaManagerStatus(status reinamanager.PlayStatus) enums.GameStatus {
 		return enums.StatusOnHold
 	case reinamanager.PlayStatusDropped:
 		return enums.StatusDropped
-	case reinamanager.PlayStatusWish:
-		return enums.StatusWantToPlay
 	default:
-		return enums.StatusWantToPlay
+		// 未玩 / 想玩在手机版五态里都并入未玩。
+		return enums.StatusUnplayed
 	}
 }
 

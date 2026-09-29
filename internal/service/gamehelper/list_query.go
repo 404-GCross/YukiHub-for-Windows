@@ -62,7 +62,7 @@ func normalizeGameListStatus(status *enums2.GameStatus) *enums2.GameStatus {
 		return nil
 	}
 	switch *status {
-	case enums2.StatusNotStarted, enums2.StatusWantToPlay, enums2.StatusPlaying, enums2.StatusCompleted, enums2.StatusOnHold, enums2.StatusDropped:
+	case enums2.StatusUnplayed, enums2.StatusPlaying, enums2.StatusCompleted, enums2.StatusOnHold, enums2.StatusDropped:
 		return status
 	default:
 		return nil
@@ -196,7 +196,7 @@ func QueryGameList(ctx context.Context, db *sql.DB, req vo.GameListRequest, scop
 		if req.ExcludeStatus {
 			statusOperator = "!="
 		}
-		whereParts = append(whereParts, fmt.Sprintf("COALESCE(g.status, 'not_started') %s ?", statusOperator))
+		whereParts = append(whereParts, fmt.Sprintf("COALESCE(g.status, 'unplayed') %s ?", statusOperator))
 		args = append(args, string(*req.Status))
 	}
 	if req.ExcludeHidden {
@@ -311,7 +311,7 @@ func QueryGameList(ctx context.Context, db *sql.DB, req vo.GameListRequest, scop
 			COALESCE(g.steam_launch_kind, '') AS steam_launch_kind,
 			COALESCE(g.steam_user_id, '') AS steam_user_id,
 			COALESCE(g.steam_launch_options, '') AS steam_launch_options,
-			COALESCE(g.status, 'not_started') AS status,
+			COALESCE(g.status, 'unplayed') AS status,
 			COALESCE(g.source_type, '') AS source_type,
 			g.cached_at,
 			COALESCE(g.source_id, '') AS source_id,

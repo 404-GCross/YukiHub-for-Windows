@@ -5,8 +5,7 @@ export type GameStatusFilter = enums.GameStatus | "";
 export const statusOptions: Array<{ label: string; value: GameStatusFilter }>
   = [
     { label: "common.allStatus", value: "" },
-    { label: "common.notStarted", value: enums.GameStatus.StatusNotStarted },
-    { label: "common.wantToPlay", value: enums.GameStatus.StatusWantToPlay },
+    { label: "common.unplayed", value: enums.GameStatus.StatusUnplayed },
     { label: "common.playing", value: enums.GameStatus.StatusPlaying },
     { label: "common.completed", value: enums.GameStatus.StatusCompleted },
     { label: "common.onHold", value: enums.GameStatus.StatusOnHold },

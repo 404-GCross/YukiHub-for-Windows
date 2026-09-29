@@ -245,7 +245,7 @@ INSERT / UPDATE 语句都不含这些列，落库时被**静默丢弃**——这
 | 三语标题 | `name` + `aliases`（原名 / 罗马字并入别名数组） | 信息不丢，但**不做结构化区分**（设计如此） |
 | 别名 | `games.aliases`（JSON 数组） | 完整 |
 | NSFW | `games.is_nsfw` | 完整（导入取快照 `nsfw`，导出回填） |
-| 五态游玩状态 | `games.status`（桌面 6 态，含"想玩"） | 完整，双向映射已容忍历史写法 |
+| 五态游玩状态 | `games.status`（与 Android 同为 5 态） | 完整，双向为恒等映射（`migration179`） |
 | 标签 | `game_tags` 表 | 完整（快照 `tags` 文本拆分去重 + 元数据 `tagsText` 合并） |
 | 封面来源 | `cover_url` / `cover_source_url` / `source_type` | 完整；本地封面按契约不迁移 |
 | 元数据来源 | `source_type` / `source_id` / `game_metadata_sources` | 导入完整；导出侧 `metadata_cache` 待两端结构统一（见迁移文档） |
@@ -561,7 +561,8 @@ LB·RB 切分类 / START 菜单），长按 400ms 后每 80ms 连发；`FocusEng
 - 焦点：TS 侧复刻 `FocusEngine` 逻辑模型，视觉动效交给 CSS。
 - 数据：复用 `GameService.GetGames`（`internal/service/game_service.go`）已有的
   筛选/排序/分页，比手机端更强。**缺口：`vo.GameListResponse` 不含游玩时长**，
-  信息层首期不显示时长，后续补批量时长接口。
+  信息浮层不显示时长；详情层（M2）改用 `GetGameStats` 按游戏单查并缓存，
+  批量时长接口仍待补。
 - 设置：`internal/appconf/config.go` 的 `AppConfig` 加 `bigscreen_*` 字段
   （snake_case，默认值写在 `LoadConfig`），设置页新增分区，4 个语言文件同步。
 - i18n：i18next，新增顶层键组 `bigScreen.*`，4 文件同层补齐。
@@ -572,7 +573,7 @@ LB·RB 切分类 / START 菜单），长按 400ms 后每 80ms 连发；`FocusEng
 | --- | --- | --- |
 | **M0** | 技术验证：窗口全屏 API、横向虚拟货架一屏、键盘焦点环 | 全屏 API 缺口 |
 | **M1** | 可用骨架（2026-09-29 完成）：路由+绕外壳、双背景+遮罩、侧栏 6 分类、单排虚拟货架、信息浮层、启动/收藏/详情按钮、键盘操作、焦点记忆、i18n、设置分区 | 低（基本全靠复用） |
-| M2 | 详情层；截图画带需先补桌面端截图能力，否则降级为封面大图 | 中 |
+| **M2** | 详情层（2026-09-29 完成）：截图画带因桌面端无截图能力降级为封面大图；操作收敛为「游玩 / 详细」（PV 属 M3） | 中 |
 | M3 | PV/预告片：Go 字段 + 本地视频选择 + 播放器 + 悬停延迟起播 | 高（全链路从零） |
 | M4 | 氛围打磨：特效档位、入场动画、界面音效、手柄图标、提示条 | 低 |
 
@@ -657,6 +658,31 @@ eslint `--max-warnings 0` 在大屏相关文件上干净（`routes/settings.tsx`
 
 **M1 未覆盖、留给后续**：详情层（M2）、截图画带（依赖桌面端截图能力）、
 PV/预告片（M3）、氛围特效与手柄（M4）。
+
+### M2 进展（2026-09-29 完成）
+
+- **M2.1 详情层**：`frontend/src/bigscreen/BigScreenDetailsLayer.tsx`。整屏遮罩
+  （`bg-brand-950/85` + `backdrop-blur`）上左侧封面大图、右侧标题 / 副行（原文名 ·
+  开发商 · 发行日期）/ 标签 chips（≤3 + R18）/ 4 格统计块（时长 / 上次游玩 / 状态 /
+  评分）/ 可滚动简介 / 按钮排 / 底部按键提示；点击遮罩或 Esc 关闭。
+- **M2.2 操作收敛为两个**：「游玩」直接启动，「详细」跳完整详情页 `/game/:id`。
+  货架与信息浮层的「详情」改为展开详情层，进完整页要再点一次「详细」。
+- **M2.3 游玩时长**：`frontend/src/bigscreen/useGamePlaytime.ts`，按 game id 走
+  `GetGameStats({ dimension: "all" })` 取 `total_play_time` 并缓存。
+  `vo.GameListResponse` 仍不含时长，故只有详情层按需单查一次，信息浮层照旧不显示。
+- **M2.4 焦点交接**：详情层打开时把 rail / shelf / actions 三区 `rowLengths` 置 0、
+  DETAILS 区置 `[2]`，让它成为唯一有内容的区域：否则上下键会顺着 `verticalNeighbor`
+  从详情层跳回货架，`firstPosition()` 也不会选中它。开关瞬间再显式 `focus` 一次——
+  打开进 DETAILS，关闭回到进入前的货架下标（`useFocusEngine` 的 `setZones` 只会退回首项）。
+- **i18n**：4 个语言文件补 `bigScreen.playTime` / `hintSwitchButton` / `hintBack`。
+
+**与手机端的差异**（依据同下节「已核实的缺口」）：截图画带需要桌面端先有截图能力，
+本轮降级为封面大图；「观看 PV」属 M3，故按钮只有两个而非三个。
+
+**验证**：`pnpm build`（`build:desktop` + `typecheck` + `vite build`，965 modules）通过；
+大屏相关文件 eslint `--max-warnings 0` 干净；`i18n:check` 通过；Go 侧 `gofmt` 无输出、
+`go vet ./internal/...` 干净、`go test ./... -count=1` 全通过。详情层的观感与键鼠手感
+仍需实机确认，归入阶段 3 延后的实机测试范围。
 
 ### 已核实的缺口
 

@@ -420,7 +420,7 @@ func TestMigration171CreatesGameFilterPresets(t *testing.T) {
 		INSERT INTO game_filter_presets (
 			id, name, tags, exclude_tags, status, exclude_status
 		)
-		VALUES ('preset-1', 'test', '["tag1"]', true, 'want_to_play', true)
+		VALUES ('preset-1', 'test', '["tag1"]', true, 'unplayed', true)
 	`); err != nil {
 		t.Fatalf("insert migrated preset: %v", err)
 	}
@@ -690,5 +690,100 @@ func TestMigration176AddsSecondarySortingToGameFilterPresets(t *testing.T) {
 	}
 	if secondarySortBy != "" || secondarySortOrder != "" {
 		t.Fatalf("unexpected secondary sorting defaults: %q %q", secondarySortBy, secondarySortOrder)
+	}
+}
+
+func TestMigration179AlignsMobileGameStatuses(t *testing.T) {
+	db, err := sql.Open("duckdb", "")
+	if err != nil {
+		t.Fatalf("open test database: %v", err)
+	}
+	db.SetMaxOpenConns(1)
+	defer db.Close()
+
+	if _, err := db.Exec(`
+		CREATE TABLE games (
+			id TEXT PRIMARY KEY,
+			status TEXT
+		);
+		INSERT INTO games (id, status) VALUES
+			('legacy-not-started', 'not_started'),
+			('legacy-want-to-play', 'want_to_play'),
+			('legacy-on-hold', 'on_hold'),
+			('already-aligned', 'unplayed'),
+			('untouched-playing', 'playing'),
+			('untouched-completed', 'completed'),
+			('untouched-dropped', 'dropped'),
+			('null-status', NULL);
+		CREATE TABLE game_filter_presets (
+			id TEXT PRIMARY KEY,
+			status TEXT
+		);
+		INSERT INTO game_filter_presets (id, status) VALUES
+			('preset-not-started', 'not_started'),
+			('preset-want-to-play', 'want_to_play'),
+			('preset-on-hold', 'on_hold'),
+			('preset-playing', 'playing');
+	`); err != nil {
+		t.Fatalf("create migration fixtures: %v", err)
+	}
+
+	tx, err := db.Begin()
+	if err != nil {
+		t.Fatalf("begin migration transaction: %v", err)
+	}
+	if err := migration179(tx); err != nil {
+		tx.Rollback()
+		t.Fatalf("run migration179: %v", err)
+	}
+	if err := migration179(tx); err != nil {
+		tx.Rollback()
+		t.Fatalf("run migration179 a second time: %v", err)
+	}
+	if err := tx.Commit(); err != nil {
+		t.Fatalf("commit migration179: %v", err)
+	}
+
+	gameStatuses := map[string]string{
+		"legacy-not-started":  "unplayed",
+		"legacy-want-to-play": "unplayed",
+		"legacy-on-hold":      "onhold",
+		"already-aligned":     "unplayed",
+		"untouched-playing":   "playing",
+		"untouched-completed": "completed",
+		"untouched-dropped":   "dropped",
+	}
+	for id, want := range gameStatuses {
+		var status string
+		if err := db.QueryRow(`SELECT status FROM games WHERE id = ?`, id).Scan(&status); err != nil {
+			t.Fatalf("query migrated game %s: %v", id, err)
+		}
+		if status != want {
+			t.Fatalf("game %s migrated to %q, want %q", id, status, want)
+		}
+	}
+
+	var nullStatus sql.NullString
+	if err := db.QueryRow(`SELECT status FROM games WHERE id = 'null-status'`).Scan(&nullStatus); err != nil {
+		t.Fatalf("query null status game: %v", err)
+	}
+	if nullStatus.Valid {
+		t.Fatalf("null status should stay null, got %q", nullStatus.String)
+	}
+
+	presetStatuses := map[string]string{
+		"preset-not-started":  "unplayed",
+		"preset-want-to-play": "unplayed",
+		"preset-on-hold":      "onhold",
+		"preset-playing":      "playing",
+	}
+	for id, want := range presetStatuses {
+		var status string
+		if err := db.QueryRow(`SELECT status FROM game_filter_presets WHERE id = ?`, id).Scan(&status); err != nil {
+			t.Fatalf("query migrated preset %s: %v", id, err)
+		}
+		if status != want {
+			t.Fatalf("preset %s migrated to %q, want %q", id, status, want)
+		}
 	}
 }

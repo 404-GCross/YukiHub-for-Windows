@@ -237,19 +237,16 @@ func stringToSourceType(sourceType string) enums.SourceType {
 
 func stringToGameStatus(status string) enums.GameStatus {
 	switch strings.ToLower(strings.TrimSpace(status)) {
-	case string(enums.StatusNotStarted):
-		return enums.StatusNotStarted
-	case string(enums.StatusWantToPlay):
-		return enums.StatusWantToPlay
 	case string(enums.StatusPlaying):
 		return enums.StatusPlaying
 	case string(enums.StatusCompleted):
 		return enums.StatusCompleted
-	case string(enums.StatusOnHold):
+	case string(enums.StatusOnHold), "on_hold":
 		return enums.StatusOnHold
 	case string(enums.StatusDropped):
 		return enums.StatusDropped
 	default:
-		return enums.StatusNotStarted
+		// not_started / want_to_play 与未知值统一并入未玩。
+		return enums.StatusUnplayed
 	}
 }

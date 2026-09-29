@@ -957,15 +957,10 @@ function LibraryPage() {
   };
 
   const statusConfig = {
-    [enums.GameStatus.StatusNotStarted]: {
-      label: t("common.notStarted"),
+    [enums.GameStatus.StatusUnplayed]: {
+      label: t("common.unplayed"),
       icon: "i-mdi-clock-outline",
       color: "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300",
-    },
-    [enums.GameStatus.StatusWantToPlay]: {
-      label: t("common.wantToPlay"),
-      icon: "i-mdi-bookmark-outline",
-      color: "bg-info-100 text-info-700 dark:bg-info-900 dark:text-info-300",
     },
     [enums.GameStatus.StatusPlaying]: {
       label: t("common.playing"),

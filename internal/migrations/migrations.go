@@ -85,7 +85,7 @@ func migration134(tx *sql.Tx) error {
 		summary TEXT,
 		path TEXT,
 		save_path TEXT,
-		status TEXT DEFAULT 'not_started',
+		status TEXT DEFAULT 'unplayed',
 		source_type TEXT,
 		cached_at TIMESTAMPTZ,
 		source_id TEXT,
@@ -888,6 +888,27 @@ func migration178(tx *sql.Tx) error {
 	return nil
 }
 
+// migration179 把历史上游遗留的六态游玩状态收敛到手机版的五态。
+//
+// 手机版只有 unplayed / playing / completed / onhold / dropped
+// （见 docs/mobile-yukihub-migration.md）。桌面端此前的 not_started 与
+// want_to_play 统一并入 unplayed，on_hold 改写为 onhold；筛选预设里保存的
+// 状态条件同样要改，否则预设会指向一个不再存在的状态。
+func migration179(tx *sql.Tx) error {
+	statements := []string{
+		`UPDATE games SET status = 'unplayed' WHERE status IN ('not_started', 'want_to_play')`,
+		`UPDATE games SET status = 'onhold' WHERE status = 'on_hold'`,
+		`UPDATE game_filter_presets SET status = 'unplayed' WHERE status IN ('not_started', 'want_to_play')`,
+		`UPDATE game_filter_presets SET status = 'onhold' WHERE status = 'on_hold'`,
+	}
+	for _, statement := range statements {
+		if _, err := tx.Exec(statement); err != nil {
+			return fmt.Errorf("failed to align play status: %w", err)
+		}
+	}
+	return nil
+}
+
 // 所有迁移按版本号顺序排列
 var migrations = []Migration{
 	{
@@ -1039,6 +1060,11 @@ var migrations = []Migration{
 		Version:     178,
 		Description: "Add cache_json payload column to game_metadata_sources for offline metadata cache",
 		Up:          migration178,
+	},
+	{
+		Version:     179,
+		Description: "Align play status values with the mobile five-state contract (unplayed/playing/completed/onhold/dropped)",
+		Up:          migration179,
 	},
 	// {
 	// 	Version:     114,

@@ -403,7 +403,7 @@ func TestGameService_AddsManualRemoteGameWithMetadataSource(t *testing.T) {
 			SourceType: enums.Bangumi,
 			SourceID:   "1002430",
 		}},
-		Status: enums.StatusWantToPlay,
+		Status: enums.StatusUnplayed,
 	}
 
 	if err := addGameViaMetadata(gameService, game); err != nil {
@@ -432,7 +432,7 @@ func TestGameService_ClearsUnavailableTemporaryCover(t *testing.T) {
 		ID:       "missing-temp-cover-game",
 		Name:     "临时封面缺失",
 		CoverURL: "/local/covers/temp_missing.webp",
-		Status:   enums.StatusWantToPlay,
+		Status:   enums.StatusUnplayed,
 	}
 
 	if err := addGameViaMetadata(gameService, game); err != nil {
@@ -465,7 +465,7 @@ func TestGameService_AddGameFromWebMetadataPersistsLaunchFields(t *testing.T) {
 		UseLocaleEmulator: true,
 		UseMagpie:         true,
 		SourceType:        enums.Local,
-		Status:            enums.StatusWantToPlay,
+		Status:            enums.StatusUnplayed,
 	}
 
 	if err := addGameViaMetadata(gameService, game); err != nil {
@@ -759,7 +759,7 @@ func TestGameService_GetGames(t *testing.T) {
 			name   string
 			status enums.GameStatus
 		}{
-			{id: "status-not-started", name: "Alpha", status: enums.StatusNotStarted},
+			{id: "status-not-started", name: "Alpha", status: enums.StatusUnplayed},
 			{id: "status-playing", name: "Beta", status: enums.StatusPlaying},
 			{id: "status-completed", name: "Gamma", status: enums.StatusCompleted},
 		}
@@ -917,7 +917,7 @@ func TestGameService_BatchUpdateStatusUpdatesTimestamp(t *testing.T) {
 	gameService.Init(context.Background(), db, &appconf.AppConfig{})
 	game := createTestGame()
 	game.ID = "batch-status-timestamp"
-	game.Status = enums.StatusNotStarted
+	game.Status = enums.StatusUnplayed
 	if err := addGameViaMetadata(gameService, game); err != nil {
 		t.Fatalf("添加游戏失败: %v", err)
 	}

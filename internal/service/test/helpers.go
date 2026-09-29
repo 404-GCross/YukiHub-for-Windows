@@ -62,7 +62,7 @@ func initTestSchema(t *testing.T, db *sql.DB) {
 			steam_launch_kind TEXT DEFAULT '',
 			steam_user_id TEXT DEFAULT '',
 			steam_launch_options TEXT DEFAULT '',
-			status TEXT DEFAULT 'not_started',
+			status TEXT DEFAULT 'unplayed',
 			source_type TEXT,
 			cached_at TIMESTAMP,
 			source_id TEXT,
