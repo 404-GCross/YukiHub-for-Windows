@@ -169,3 +169,89 @@ func TestWindowsLauncherStrategyLaunchOptionCanDisablePersistedAdmin(t *testing.
 		t.Fatal("expected explicit RunAsAdmin=false to disable persisted admin mode")
 	}
 }
+
+func planForGame(t *testing.T, game *models.Game, opts LaunchOptions, cfg *appconf.AppConfig) LaunchPlan {
+	t.Helper()
+	strategy, err := SelectLauncherStrategy(game, opts, cfg)
+	if err != nil {
+		t.Fatalf("select strategy: %v", err)
+	}
+	plan, err := strategy.Plan(context.Background(), game, opts)
+	if err != nil {
+		t.Fatalf("plan: %v", err)
+	}
+	return plan
+}
+
+// Magpie（超分）是 Windows 独有能力：游戏字段开启后必须进入启动计划。
+func TestWindowsLauncherStrategyCarriesMagpieFromGameField(t *testing.T) {
+	game := &models.Game{Path: `C:\Games\Game.exe`, UseMagpie: true}
+
+	plan := planForGame(t, game, LaunchOptions{}, &appconf.AppConfig{})
+	if !plan.Magpie {
+		t.Fatal("expected game-level UseMagpie to enable Magpie in the launch plan")
+	}
+}
+
+// 单次启动的 Magpie 覆盖优先于游戏字段，且能反向关闭。
+func TestWindowsLauncherStrategyMagpieLaunchOptionOverride(t *testing.T) {
+	enable := true
+	disable := false
+
+	enabled := planForGame(t, &models.Game{Path: `C:\Games\Game.exe`}, LaunchOptions{UseMagpie: &enable}, &appconf.AppConfig{})
+	if !enabled.Magpie {
+		t.Fatal("expected UseMagpie=true override to enable Magpie")
+	}
+
+	disabled := planForGame(t, &models.Game{Path: `C:\Games\Game.exe`, UseMagpie: true}, LaunchOptions{UseMagpie: &disable}, &appconf.AppConfig{})
+	if disabled.Magpie {
+		t.Fatal("expected UseMagpie=false override to disable game-level Magpie")
+	}
+}
+
+// 未配置 Locale Emulator 路径时，即使游戏要求转区也必须回落到原生启动，
+// 避免计划里出现一个不存在的可执行文件。
+func TestWindowsLauncherStrategyFallsBackToNativeWhenLocaleEmulatorUnconfigured(t *testing.T) {
+	game := &models.Game{Path: `C:\Games\Game.exe`, UseLocaleEmulator: true}
+
+	plan := planForGame(t, game, LaunchOptions{}, &appconf.AppConfig{})
+	if plan.File != game.Path {
+		t.Fatalf("expected native fallback to %q, got %q", game.Path, plan.File)
+	}
+	if len(plan.Args) != 0 {
+		t.Fatalf("expected no wrapper args on native fallback, got %#v", plan.Args)
+	}
+}
+
+// 单次启动的转区开关可以在游戏字段未开启时临时启用 Locale Emulator。
+func TestWindowsLauncherStrategyLocaleEmulatorLaunchOptionOverride(t *testing.T) {
+	useLE := true
+	game := &models.Game{Path: `C:\Games\Game.exe`}
+	cfg := &appconf.AppConfig{LocaleEmulatorPath: `C:\Tools\LEProc.exe`}
+
+	plan := planForGame(t, game, LaunchOptions{UseLocaleEmulator: &useLE}, cfg)
+	if plan.File != cfg.LocaleEmulatorPath {
+		t.Fatalf("expected LE file %q, got %q", cfg.LocaleEmulatorPath, plan.File)
+	}
+	if len(plan.Args) != 1 || plan.Args[0] != game.Path {
+		t.Fatalf("unexpected args: %#v", plan.Args)
+	}
+}
+
+// 转区与超分可叠加：经 Locale Emulator 启动时仍须保留 Magpie 标记。
+func TestWindowsLauncherStrategyLocaleEmulatorCarriesMagpie(t *testing.T) {
+	game := &models.Game{
+		Path:              `C:\Games\Game.exe`,
+		UseLocaleEmulator: true,
+		UseMagpie:         true,
+	}
+	cfg := &appconf.AppConfig{LocaleEmulatorPath: `C:\Tools\LEProc.exe`}
+
+	plan := planForGame(t, game, LaunchOptions{}, cfg)
+	if plan.File != cfg.LocaleEmulatorPath {
+		t.Fatalf("expected LE file %q, got %q", cfg.LocaleEmulatorPath, plan.File)
+	}
+	if !plan.Magpie {
+		t.Fatal("expected Magpie to survive the Locale Emulator strategy")
+	}
+}
