@@ -43,6 +43,7 @@ type Game struct {
 	PlaytimeResetAt    *time.Time           `json:"playtime_reset_at,omitempty"` // 清零时间点：该时间之前的历史会话不计入统计，记录本身保留
 	Hidden             bool                 `json:"hidden"`                      // 手机版 YukiHub 的隐藏标记
 	LastPlayedAt       *time.Time           `json:"last_played_at,omitempty"`    // 最近一次游玩开始时间（由 play_sessions 聚合）
+	TrailerPath        string               `json:"trailer_path"`                // 本地预告片视频，/local/trailers/... 或空；依 mobile-yukihub-migration.md 不入同步快照
 }
 
 // GameBackup 游戏存档备份记录（基于文件系统，不使用数据库）

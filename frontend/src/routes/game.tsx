@@ -21,9 +21,11 @@ import {
   GetGameByID,
   OpenGameGuideDocument,
   OpenLocalPath,
+  RemoveGameTrailer,
   SelectCoverImage,
   SelectGameDirectory,
   SelectGameExecutable,
+  SelectGameTrailer,
   SelectSaveDirectory,
   SelectSaveFile,
   SetDefaultMetadataSource,
@@ -539,6 +541,37 @@ function GameDetailPage() {
     catch (error) {
       console.error("Failed to select cover image:", error);
       toast.error(t("game.toast.selectCoverFailed"));
+    }
+  };
+
+  const handleSelectTrailer = async () => {
+    if (!game)
+      return;
+    try {
+      const trailerPath = await SelectGameTrailer(
+        game.id,
+        game.trailer_path || "",
+      );
+      if (trailerPath) {
+        updateGameState({ ...game, trailer_path: trailerPath } as models.Game);
+      }
+    }
+    catch (error) {
+      console.error("Failed to select trailer:", error);
+      toast.error(t("gameEdit.trailerSelectFailed"));
+    }
+  };
+
+  const handleRemoveTrailer = async () => {
+    if (!game)
+      return;
+    try {
+      await RemoveGameTrailer(game.id);
+      updateGameState({ ...game, trailer_path: "" } as models.Game);
+    }
+    catch (error) {
+      console.error("Failed to remove trailer:", error);
+      toast.error(t("gameEdit.trailerSelectFailed"));
     }
   };
 
@@ -1643,6 +1676,8 @@ function GameDetailPage() {
           onSelectCoverImage={handleSelectCoverImage}
           onCoverImageChanged={() =>
             setCoverImageRefreshToken(prev => prev + 1)}
+          onSelectTrailer={handleSelectTrailer}
+          onRemoveTrailer={handleRemoveTrailer}
           onUpdateFromRemote={handleOpenUpdateFromRemote}
           onUpsertMetadataSource={handleUpsertMetadataSource}
           onDeleteMetadataSource={handleDeleteMetadataSource}

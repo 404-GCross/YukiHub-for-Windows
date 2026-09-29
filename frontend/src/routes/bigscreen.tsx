@@ -30,6 +30,7 @@ import { BigScreenHintBar } from "../bigscreen/BigScreenHintBar";
 import { BigScreenInfoBar } from "../bigscreen/BigScreenInfoBar";
 import { BigScreenRail } from "../bigscreen/BigScreenRail";
 import { playBigScreenSound } from "../bigscreen/bigScreenSound";
+import { BigScreenTrailerPlayer } from "../bigscreen/BigScreenTrailerPlayer";
 import {
   BIG_SCREEN_CATEGORIES,
   fetchBigScreenGames,
@@ -42,6 +43,7 @@ import {
   BIG_SCREEN_FOCUS_ORDER,
   BIG_SCREEN_RAIL_ZONE,
   BIG_SCREEN_SHELF_ZONE,
+  BIG_SCREEN_TRAILER_ZONE,
   resolveBigScreenEffectLevel,
 } from "../bigscreen/constants";
 import { useBigScreenFullscreen } from "../bigscreen/useBigScreenFullscreen";
@@ -49,6 +51,7 @@ import { useFocusEngine } from "../bigscreen/useFocusEngine";
 import { useGameFavorite } from "../bigscreen/useGameFavorite";
 import { useGamepad } from "../bigscreen/useGamepad";
 import { useGameTags } from "../bigscreen/useGameTags";
+import { useTrailerHover } from "../bigscreen/useTrailerHover";
 import { VirtualGameShelf } from "../bigscreen/VirtualGameShelf";
 import { useAppStore } from "../store";
 import { Route as rootRoute } from "./__root";
@@ -65,8 +68,11 @@ const CATEGORY_COUNT = BIG_SCREEN_CATEGORIES.length;
 /** 信息浮层的操作条目数：启动 / 收藏 / 详情 */
 const ACTION_COUNT = 3;
 
-/** 详情层的操作条目数：游玩 / 详细（看 PV 属 M3，暂不接入） */
-const DETAIL_ACTION_COUNT = 2;
+/** 详情层的操作条目数：游玩 / 详细 / 观看 PV */
+const DETAIL_ACTION_COUNT = 3;
+
+/** 「观看 PV」在详情层操作里的下标，关闭播放器后把焦点还给它 */
+const DETAIL_TRAILER_ACTION_INDEX = 2;
 
 function normalizeCategoryId(value: string | undefined): BigScreenCategoryId {
   return BIG_SCREEN_CATEGORIES.some(category => category.id === value)
@@ -104,6 +110,7 @@ function BigScreenPage() {
   const [reloadToken, setReloadToken] = useState(0);
   const [shelfIndex, setShelfIndex] = useState(0);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [trailerOpen, setTrailerOpen] = useState(false);
   const [shelfHeight, setShelfHeight] = useState(0);
   const [railHovered, setRailHovered] = useState(false);
   const [hintKey, setHintKey] = useState(0);
@@ -168,27 +175,38 @@ function BigScreenPage() {
     return () => observer.disconnect();
   }, []);
 
-  // 详情层打开时把其余三个区域清空，让它成为唯一有内容的区域：
-  // 否则上下键会顺着 verticalNeighbor 从详情层跳回货架，firstPosition 也不会选中它。
+  // 详情层 / 全屏播放器打开时把其余区域清空，让它成为唯一有内容的区域：
+  // 否则上下键会顺着 verticalNeighbor 跳出浮层，firstPosition 也不会选中它。
   const zones = useMemo<FocusZone[]>(
     () =>
-      detailsOpen
+      trailerOpen
         ? [
             { id: BIG_SCREEN_RAIL_ZONE, rowLengths: [0] },
             { id: BIG_SCREEN_SHELF_ZONE, rowLengths: [0] },
             { id: BIG_SCREEN_ACTIONS_ZONE, rowLengths: [0] },
-            { id: BIG_SCREEN_DETAILS_ZONE, rowLengths: [DETAIL_ACTION_COUNT] },
-          ]
-        : [
-            {
-              id: BIG_SCREEN_RAIL_ZONE,
-              rowLengths: BIG_SCREEN_CATEGORIES.map(() => 1),
-            },
-            { id: BIG_SCREEN_SHELF_ZONE, rowLengths: [games.length] },
-            { id: BIG_SCREEN_ACTIONS_ZONE, rowLengths: [ACTION_COUNT] },
             { id: BIG_SCREEN_DETAILS_ZONE, rowLengths: [0] },
-          ],
-    [detailsOpen, games.length],
+            { id: BIG_SCREEN_TRAILER_ZONE, rowLengths: [1] },
+          ]
+        : detailsOpen
+          ? [
+              { id: BIG_SCREEN_RAIL_ZONE, rowLengths: [0] },
+              { id: BIG_SCREEN_SHELF_ZONE, rowLengths: [0] },
+              { id: BIG_SCREEN_ACTIONS_ZONE, rowLengths: [0] },
+              {
+                id: BIG_SCREEN_DETAILS_ZONE,
+                rowLengths: [DETAIL_ACTION_COUNT],
+              },
+            ]
+          : [
+              {
+                id: BIG_SCREEN_RAIL_ZONE,
+                rowLengths: BIG_SCREEN_CATEGORIES.map(() => 1),
+              },
+              { id: BIG_SCREEN_SHELF_ZONE, rowLengths: [games.length] },
+              { id: BIG_SCREEN_ACTIONS_ZONE, rowLengths: [ACTION_COUNT] },
+              { id: BIG_SCREEN_DETAILS_ZONE, rowLengths: [0] },
+            ],
+    [detailsOpen, games.length, trailerOpen],
   );
 
   const activeCategoryIndex = BIG_SCREEN_CATEGORIES.findIndex(
@@ -198,6 +216,12 @@ function BigScreenPage() {
   const focusedGame = games[safeShelfIndex];
   const { isFavorite, setFavorite } = useGameFavorite(focusedGame?.id);
   const tags = useGameTags(focusedGame?.id);
+  // 特效档位为 off 时一并关掉背景预告片（语义是省电），浮层打开时也不该起播
+  const backgroundTrailerActive = useTrailerHover(
+    focusedGame?.id,
+    focusedGame?.trailer_path,
+    effectLevel !== "off" && !detailsOpen && !trailerOpen,
+  );
 
   const { focus, move, position, restoreMemory, saveMemory } = useFocusEngine({
     onBoundary: (zoneId, direction) =>
@@ -235,6 +259,11 @@ function BigScreenPage() {
 
   const handleBoundary = useCallback(
     (zoneId: string, direction: FocusDirection) => {
+      // 播放器是全屏浮层，方向键一律吞掉，不做任何区域间穿梭
+      if (zoneId === BIG_SCREEN_TRAILER_ZONE) {
+        return true;
+      }
+
       if (zoneId === BIG_SCREEN_RAIL_ZONE) {
         // 侧栏是单列：左右切分类；向下交还给货架
         if (direction === "left") {
@@ -304,6 +333,19 @@ function BigScreenPage() {
       detailsOpen ? 0 : safeShelfIndex,
     );
   }, [detailsOpen, focus, safeShelfIndex]);
+
+  // 播放器开关时同样显式交接焦点：打开进播放器，关闭把焦点还给「观看 PV」按钮
+  const trailerOpenRef = useRef(trailerOpen);
+  useEffect(() => {
+    if (trailerOpenRef.current === trailerOpen) {
+      return;
+    }
+    trailerOpenRef.current = trailerOpen;
+    focus(
+      trailerOpen ? BIG_SCREEN_TRAILER_ZONE : BIG_SCREEN_DETAILS_ZONE,
+      trailerOpen ? 0 : DETAIL_TRAILER_ACTION_INDEX,
+    );
+  }, [focus, trailerOpen]);
 
   const handleStartGame = useCallback(
     (game: models.Game | undefined) => {
@@ -414,6 +456,13 @@ function BigScreenPage() {
         label: t("common.details"),
         run: () => handleViewDetails(focusedGame),
       },
+      {
+        icon: "i-mdi-movie-open-outline",
+        key: "trailer",
+        label: t("bigScreen.trailer"),
+        run: () => setTrailerOpen(true),
+        disabled: !focusedGame?.trailer_path,
+      },
     ],
     [focusedGame, handleStartGame, handleViewDetails, t],
   );
@@ -437,8 +486,17 @@ function BigScreenPage() {
 
   /** 确认：详情层里跑详情层按钮，外层按当前聚焦的区域分别处理 */
   const activateFocused = useCallback(() => {
+    // 播放器只吃返回键，确认不做任何事
+    if (position.zoneId === BIG_SCREEN_TRAILER_ZONE) {
+      return;
+    }
     if (position.zoneId === BIG_SCREEN_DETAILS_ZONE) {
-      detailActions[position.index]?.run();
+      const action = detailActions[position.index];
+      // 禁用的条目只吞掉确认，不执行（例如没有本地预告片的「观看 PV」）
+      if (action?.disabled) {
+        return;
+      }
+      action?.run();
       return;
     }
     if (position.zoneId === BIG_SCREEN_RAIL_ZONE) {
@@ -464,14 +522,18 @@ function BigScreenPage() {
     safeShelfIndex,
   ]);
 
-  /** 返回：详情层先吃掉，再往外才是退出大屏 */
+  /** 返回：播放器先吃掉，再是详情层，最后才是退出大屏 */
   const goBack = useCallback(() => {
+    if (trailerOpen) {
+      setTrailerOpen(false);
+      return;
+    }
     if (detailsOpen) {
       setDetailsOpen(false);
       return;
     }
     exitBigScreen();
-  }, [detailsOpen, exitBigScreen]);
+  }, [detailsOpen, exitBigScreen, trailerOpen]);
 
   /**
    * 键盘与手柄共用的意图分发：两者只在「按键怎么翻译」上不同，
@@ -587,6 +649,8 @@ function BigScreenPage() {
       <BigScreenBackground
         coverUrl={coverUrl}
         isNSFW={Boolean(focusedGame?.is_nsfw)}
+        trailerUrl={focusedGame?.trailer_path}
+        backgroundTrailerActive={backgroundTrailerActive}
       />
       <BigScreenAtmosphere
         coverUrl={coverUrl}
@@ -673,6 +737,14 @@ function BigScreenPage() {
           onActionFocus={index => focus(BIG_SCREEN_DETAILS_ZONE, index)}
           onClose={() => setDetailsOpen(false)}
           tags={tags}
+        />
+      )}
+
+      {trailerOpen && focusedGame?.trailer_path && (
+        <BigScreenTrailerPlayer
+          title={focusedGame.name}
+          url={focusedGame.trailer_path}
+          onClose={() => setTrailerOpen(false)}
         />
       )}
     </div>

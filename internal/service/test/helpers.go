@@ -75,7 +75,8 @@ func initTestSchema(t *testing.T, db *sql.DB) {
 			legacy_local_id TEXT DEFAULT '',
 			source_device_id TEXT DEFAULT '',
 			playtime_reset_at TIMESTAMPTZ,
-			hidden BOOLEAN DEFAULT FALSE
+			hidden BOOLEAN DEFAULT FALSE,
+			trailer_path TEXT DEFAULT ''
 		)`,
 		`CREATE TABLE IF NOT EXISTS game_metadata_sources (
 			game_id TEXT NOT NULL,

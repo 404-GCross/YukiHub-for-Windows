@@ -15,6 +15,8 @@ export interface BigScreenDetailAction {
   key: string;
   label: string;
   run: () => void;
+  /** 不可用（例如游戏没有本地预告片）时禁用而非隐藏，以保持焦点索引稳定 */
+  disabled?: boolean;
 }
 
 interface BigScreenDetailsLayerProps {
@@ -35,8 +37,8 @@ interface BigScreenDetailsLayerProps {
  * 大屏详情层，对齐手机端 `BigScreenDetailsLayer`：
  * 标题 / 副行（原文名·开发商·发行日期）/ 标签 chips（≤3 + R18）/ 统计块 / 简介 / 封面。
  *
- * 两处与手机端的差异都记在 `docs/ROADMAP.md`：截图画带需要先补桌面端截图能力，
- * 本轮降级为封面大图；「观看 PV」属 M3，因此操作只有「游玩 / 详细」两个。
+ * 与手机端的差异（截图画带需要先补桌面端截图能力，本轮降级为封面大图）记在
+ * `docs/ROADMAP.md`；「观看 PV」已在 M3 补齐，无本地预告片时按钮禁用而非隐藏。
  */
 export const BigScreenDetailsLayer = memo(
   ({
@@ -172,10 +174,18 @@ export const BigScreenDetailsLayer = memo(
                     key={action.key}
                     type="button"
                     aria-label={action.label}
+                    disabled={action.disabled}
+                    title={
+                      action.disabled
+                        ? t("bigScreen.trailerUnavailable")
+                        : undefined
+                    }
                     className={`inline-flex items-center gap-2 rounded-full border px-6 py-3 text-sm font-medium transition-all duration-150 ${
-                      isFocused
-                        ? "scale-105 border-secondary-500 bg-brand-750 text-white"
-                        : "border-brand-700 bg-brand-800/70 text-brand-400 hover:border-brand-600 hover:text-white"
+                      action.disabled
+                        ? "cursor-not-allowed border-brand-800 bg-brand-800/40 text-brand-600"
+                        : isFocused
+                          ? "scale-105 border-secondary-500 bg-brand-750 text-white"
+                          : "border-brand-700 bg-brand-800/70 text-brand-400 hover:border-brand-600 hover:text-white"
                     }`}
                     onClick={() => onActionActivate(index)}
                     onMouseEnter={() => onActionFocus(index)}

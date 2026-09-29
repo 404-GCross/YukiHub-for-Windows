@@ -16,6 +16,9 @@ export const BIG_SCREEN_ACTIONS_ZONE = "actions";
 /** 焦点区：详情层按钮排（详情层打开时它是唯一有内容的区域） */
 export const BIG_SCREEN_DETAILS_ZONE = "details";
 
+/** 焦点区：全屏预告片播放器（播放期间它是唯一有内容的区域，不进穿梭链路） */
+export const BIG_SCREEN_TRAILER_ZONE = "trailer";
+
 /**
  * 上下方向在焦点区之间的穿梭顺序。
  *
@@ -79,3 +82,6 @@ export function resolveBigScreenEnterDelay(index: number) {
     * BIG_SCREEN_ENTER_STAGGER_MS
   );
 }
+
+/** 货架焦点停留多久后才在背景起播预告片（对齐手机端 bsBgVideo 的延迟起播） */
+export const BIG_SCREEN_TRAILER_HOVER_DELAY_MS = 1200;

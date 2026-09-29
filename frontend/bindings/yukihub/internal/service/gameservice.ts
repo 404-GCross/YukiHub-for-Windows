@@ -182,6 +182,13 @@ export function RefreshGamesMetadataWithFields(gameIDs: string[], fields: enums$
 }
 
 /**
+ * RemoveGameTrailer 清除游戏的预告片：先删受管目录里的文件，再清空列。
+ */
+export function RemoveGameTrailer(gameID: string): $CancellablePromise<void> {
+    return $Call.ByID(922065006, gameID);
+}
+
+/**
  * ResolveExecutablePathForImport 解析导入时的可执行路径：
  * - 如果是可执行文件路径，直接返回
  * - 如果是目录，弹出文件选择器让用户手动选择可执行文件
@@ -217,6 +224,14 @@ export function SelectGameDirectory(currentPath: string): $CancellablePromise<st
 
 export function SelectGameExecutable(currentPath: string): $CancellablePromise<string> {
     return $Call.ByID(1188050431, currentPath);
+}
+
+/**
+ * SelectGameTrailer 弹出视频文件选择器，把用户选中的本地视频复制进受管目录并写入游戏。
+ * 返回 /local/trailers/... 地址供大屏与设置面板使用；用户取消时返回空串且不报错。
+ */
+export function SelectGameTrailer(gameID: string, currentPath: string): $CancellablePromise<string> {
+    return $Call.ByID(129985758, gameID, currentPath);
 }
 
 /**

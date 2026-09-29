@@ -38,6 +38,8 @@ interface GameEditFormProps {
   onSelectSaveFile: (rootPath: string) => void;
   onSelectCoverImage: () => void;
   onCoverImageChanged?: () => void;
+  onSelectTrailer: () => void;
+  onRemoveTrailer: () => void;
   onUpdateFromRemote?: () => void;
   onUpsertMetadataSource: (
     source: enums.SourceType,
@@ -372,6 +374,16 @@ function resolveExecutablePath(
   return `${directory}${separator}${executablePath.replace(/^[\\/]+/, "")}`;
 }
 
+// getTrailerDisplayName 取受管预告片路径的文件名部分（等价于后端 filepath.Base）。
+function getTrailerDisplayName(trailerPath?: string): string {
+  const normalized = (trailerPath || "").trim();
+  if (!normalized)
+    return "";
+
+  const segments = normalized.split(/[\\/]+/);
+  return segments[segments.length - 1] || "";
+}
+
 export function GameEditPanel({
   game,
   erogameScapeBaseURL,
@@ -383,6 +395,8 @@ export function GameEditPanel({
   onSelectSaveFile,
   onSelectCoverImage,
   onCoverImageChanged,
+  onSelectTrailer,
+  onRemoveTrailer,
   onUpdateFromRemote,
   onUpsertMetadataSource,
   onDeleteMetadataSource,
@@ -1050,6 +1064,36 @@ export function GameEditPanel({
           />
           <p className="mt-1 text-xs text-brand-500">
             {t("gameEdit.savePathHint")}
+          </p>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-brand-700 dark:text-brand-300 mb-1">
+            {t("gameEdit.trailer")}
+          </label>
+          <BetterActionInput
+            readOnly
+            value={getTrailerDisplayName(game.trailer_path)}
+            title={game.trailer_path || t("gameEdit.trailerEmpty")}
+            placeholder={t("gameEdit.trailerPlaceholder")}
+            className="cursor-pointer"
+            onClick={onSelectTrailer}
+            actions={[
+              {
+                ariaLabel: t("gameEdit.trailerSelect"),
+                icon: "i-mdi-file-search-outline",
+                onClick: onSelectTrailer,
+              },
+              {
+                ariaLabel: t("gameEdit.trailerClear"),
+                disabled: !game.trailer_path,
+                icon: "i-mdi-close-circle-outline",
+                onClick: onRemoveTrailer,
+              },
+            ]}
+          />
+          <p className="mt-1 text-xs text-brand-500">
+            {t("gameEdit.trailerHint")}
           </p>
         </div>
 

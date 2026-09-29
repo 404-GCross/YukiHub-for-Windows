@@ -14,6 +14,7 @@ import (
 	"yukihub/internal/common/vo"
 	"yukihub/internal/models"
 	"yukihub/internal/service"
+	"yukihub/internal/utils/mediautils"
 
 	_ "github.com/duckdb/duckdb-go/v2"
 )
@@ -446,6 +447,90 @@ func TestGameService_ClearsUnavailableTemporaryCover(t *testing.T) {
 	if saved.CoverURL != "" {
 		t.Fatalf("expected unavailable temporary cover to be cleared, got %q", saved.CoverURL)
 	}
+}
+
+func TestGameService_RemoveGameTrailerClearsPath(t *testing.T) {
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	trailerDir := t.TempDir()
+	restore := mediautils.SetTrailersDirForTest(trailerDir)
+	defer restore()
+
+	gameService := service.NewGameService()
+	gameService.Init(context.Background(), db, &appconf.AppConfig{})
+
+	game := createTestGame()
+	game.ID = "trailer-game-001"
+	if err := addGameViaMetadata(gameService, game); err != nil {
+		t.Fatalf("添加游戏失败: %v", err)
+	}
+
+	// 直接落库，等价于 SelectGameTrailer 写入后的状态
+	if _, err := db.Exec(
+		`UPDATE games SET trailer_path = ? WHERE id = ?`,
+		"/local/trailers/trailer-game-001.mp4",
+		game.ID,
+	); err != nil {
+		t.Fatalf("写入 trailer_path 失败: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(trailerDir, "trailer-game-001.mp4"), []byte("x"), 0644); err != nil {
+		t.Fatalf("准备受管预告片文件失败: %v", err)
+	}
+
+	t.Run("单条查询透出 trailer_path", func(t *testing.T) {
+		saved, err := gameService.GetGameByID(game.ID)
+		if err != nil {
+			t.Fatalf("获取游戏失败: %v", err)
+		}
+		if saved.TrailerPath != "/local/trailers/trailer-game-001.mp4" {
+			t.Fatalf("trailer_path 不匹配: %q", saved.TrailerPath)
+		}
+	})
+
+	t.Run("列表查询透出 trailer_path", func(t *testing.T) {
+		resp, err := gameService.GetGames(vo.GameListRequest{})
+		if err != nil {
+			t.Fatalf("获取游戏列表失败: %v", err)
+		}
+		found := false
+		for _, item := range resp.Games {
+			if item.ID != game.ID {
+				continue
+			}
+			found = true
+			if item.TrailerPath != "/local/trailers/trailer-game-001.mp4" {
+				t.Fatalf("列表 trailer_path 不匹配: %q", item.TrailerPath)
+			}
+		}
+		if !found {
+			t.Fatalf("列表未包含目标游戏 %s", game.ID)
+		}
+	})
+
+	t.Run("清除预告片同时删除文件与列", func(t *testing.T) {
+		if err := gameService.RemoveGameTrailer(game.ID); err != nil {
+			t.Fatalf("RemoveGameTrailer 失败: %v", err)
+		}
+
+		if _, err := os.Stat(filepath.Join(trailerDir, "trailer-game-001.mp4")); !os.IsNotExist(err) {
+			t.Error("受管目录中的预告片文件应被删除")
+		}
+
+		saved, err := gameService.GetGameByID(game.ID)
+		if err != nil {
+			t.Fatalf("获取游戏失败: %v", err)
+		}
+		if saved.TrailerPath != "" {
+			t.Fatalf("trailer_path 应被清空，实际为 %q", saved.TrailerPath)
+		}
+	})
+
+	t.Run("缺少 gameID 时报错", func(t *testing.T) {
+		if err := gameService.RemoveGameTrailer("  "); err == nil {
+			t.Error("空的 gameID 应报错")
+		}
+	})
 }
 
 func TestGameService_AddGameFromWebMetadataPersistsLaunchFields(t *testing.T) {

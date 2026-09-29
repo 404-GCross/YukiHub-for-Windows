@@ -152,6 +152,11 @@ export class Game {
      */
     "last_played_at"?: string | null;
 
+    /**
+     * 本地预告片视频，/local/trailers/... 或空；依 mobile-yukihub-migration.md 不入同步快照
+     */
+    "trailer_path": string;
+
     /** Creates a new Game instance. */
     constructor($$source: Partial<Game> = {}) {
         if (!("id" in $$source)) {
@@ -258,6 +263,9 @@ export class Game {
         }
         if (!("hidden" in $$source)) {
             this["hidden"] = false;
+        }
+        if (!("trailer_path" in $$source)) {
+            this["trailer_path"] = "";
         }
 
         Object.assign(this, $$source);

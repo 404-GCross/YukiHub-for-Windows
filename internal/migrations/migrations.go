@@ -909,6 +909,23 @@ func migration179(tx *sql.Tx) error {
 	return nil
 }
 
+// migration180 为 games 表新增本地预告片视频路径列
+//
+// 该列只在桌面端本地使用，用于大屏模式播放本地 PV。
+// 依 docs/mobile-yukihub-migration.md 的约定，trailer_path 属手机版快照
+// 刻意不包含的本地文件路径，因此不得进入同步导出/导入白名单。
+func migration180(tx *sql.Tx) error {
+	// DuckDB 支持 IF NOT EXISTS，列已存在时会静默成功
+	_, err := tx.Exec(`
+		ALTER TABLE games 
+		ADD COLUMN IF NOT EXISTS trailer_path TEXT DEFAULT ''
+	`)
+	if err != nil {
+		return fmt.Errorf("failed to add trailer_path column: %w", err)
+	}
+	return nil
+}
+
 // 所有迁移按版本号顺序排列
 var migrations = []Migration{
 	{
@@ -1065,6 +1082,11 @@ var migrations = []Migration{
 		Version:     179,
 		Description: "Align play status values with the mobile five-state contract (unplayed/playing/completed/onhold/dropped)",
 		Up:          migration179,
+	},
+	{
+		Version:     180,
+		Description: "Add trailer_path column to games for local big-screen PV playback",
+		Up:          migration180,
 	},
 	// {
 	// 	Version:     114,

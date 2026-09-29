@@ -574,7 +574,7 @@ LB·RB 切分类 / START 菜单），长按 400ms 后每 80ms 连发；`FocusEng
 | **M0** | 技术验证：窗口全屏 API、横向虚拟货架一屏、键盘焦点环 | 全屏 API 缺口 |
 | **M1** | 可用骨架（2026-09-29 完成）：路由+绕外壳、双背景+遮罩、侧栏 6 分类、单排虚拟货架、信息浮层、启动/收藏/详情按钮、键盘操作、焦点记忆、i18n、设置分区 | 低（基本全靠复用） |
 | **M2** | 详情层（2026-09-29 完成）：截图画带因桌面端无截图能力降级为封面大图；操作收敛为「游玩 / 详细」（PV 属 M3） | 中 |
-| M3 | PV/预告片：Go 字段 + 本地视频选择 + 播放器 + 悬停延迟起播 | 高（全链路从零） |
+| **M3** | PV/预告片（2026-09-29 完成）：`trailer_path` 本地视频选择（受管复制）+ 详情层全屏播放器 + 悬停 1.2s 背景起播；不入手机版同步快照 | 高（全链路从零） |
 | **M4** | 氛围打磨（2026-09-29 完成）：特效档位、入场错峰动画、界面音效、手柄与图标、提示条 | 低 |
 
 ### M0 进展（2026-09-29 完成）
@@ -677,12 +677,59 @@ PV/预告片（M3）、氛围特效与手柄（M4）。
 - **i18n**：4 个语言文件补 `bigScreen.playTime` / `hintSwitchButton` / `hintBack`。
 
 **与手机端的差异**（依据同下节「已核实的缺口」）：截图画带需要桌面端先有截图能力，
-本轮降级为封面大图；「观看 PV」属 M3，故按钮只有两个而非三个。
+本轮降级为封面大图；当时「观看 PV」属 M3，故按钮只有两个而非三个（M3 已补齐为三个）。
 
 **验证**：`pnpm build`（`build:desktop` + `typecheck` + `vite build`，965 modules）通过；
 大屏相关文件 eslint `--max-warnings 0` 干净；`i18n:check` 通过；Go 侧 `gofmt` 无输出、
 `go vet ./internal/...` 干净、`go test ./... -count=1` 全通过。详情层的观感与键鼠手感
 仍需实机确认，归入阶段 3 延后的实机测试范围。
+
+### M3 进展（2026-09-29 完成）
+
+M3 预告片落地：数据层加字段、本地视频受管复制、详情层全屏播放器、悬停延迟背景起播。
+
+- **M3.1 数据层**：`models.Game` 新增 `trailer_path`；`migration180`（`ALTER TABLE games
+  ADD COLUMN IF NOT EXISTS trailer_path TEXT DEFAULT ''`）与 `init.go` 建表语句同步；
+  列表查询（`gamehelper/list_query.go`）与 `GetGameByID` 的 SELECT / Scan 补列。
+  **`trailer_path` 不进同步白名单**：桌面版同步走显式字段映射（`cloudsync/mapper.go`、
+  `exporter/yukihub.go`），依 `docs/mobile-yukihub-migration.md:64-72` 所述「快照中刻意
+  不包含的内容」，加字段不会泄漏进手机版快照。
+- **M3.2 视频文件管理**：新包 `internal/utils/mediautils`。按「复制进数据目录」方案，
+  `SaveTrailer` 把外部文件复制为 `trailers/<gameID><ext>`，换扩展名时清掉旧的其它扩展名，
+  返回 `/local/trailers/...` 地址复用既有的 `LocalFileHandler`（`http.ServeFile`，原生支持
+  HTTP Range，可拖动进度条）；受管目录与测试隔离分别用 `TrailersDir()` /
+  `SetTrailersDirForTest()`。
+- **M3.3 服务层**：`GameService` 新增 `SelectGameTrailer`（系统文件选择器，取消返回空串
+  不报错）、`RemoveGameTrailer`（同时删文件与清列）与 `game-trailer:changed` 事件；路径写入
+  走独立的 `updateGameTrailerPath`，不并入 `UpdateGame` 的 SET。
+- **M3.4 前端设置入口**：per-game 的 `GameEditPanel.tsx` 新增预告片行（只读显示文件名，
+  选择 / 清除两个动作），`routes/game.tsx` 接线 `SelectGameTrailer` / `RemoveGameTrailer`。
+- **M3.5 全屏播放**：`frontend/src/bigscreen/BigScreenTrailerPlayer.tsx` 整屏黑底
+  `object-contain` 播放，`onEnded` 关闭、`onError` 时 toast 并回退封面。详情层操作补齐为
+  三个（游玩 / 详细 / 观看 PV），无本地 PV 时按钮**禁用而非隐藏**以保持焦点索引稳定；
+  播放期把 rail / shelf / actions / details 四区 `rowLengths` 置 0、新增 TRAILER 区置 `[1]`
+  并吞掉全部方向键，关闭后焦点回到详情层的「观看 PV」。
+- **M3.6 悬停延迟起播**：`useTrailerHover.ts` + `BackgroundTrailerVideo.tsx`。焦点停留
+  `BIG_SCREEN_TRAILER_HOVER_DELAY_MS = 1200` 后才在封面之上叠一层静音循环预告片，移开即
+  卸载（DOM 里 `<video>` 归零）；`bigscreen_effect_level = off` 或浮层打开时一律不起播。
+  TRAILER 区刻意不加入 `BIG_SCREEN_FOCUS_ORDER`，避免方向键被夹进播放器。
+- **i18n**：4 个语言文件补 `gameEdit.trailer*` 与 `bigScreen.trailer` /
+  `trailerUnavailable` / `trailerPlayFailed`。
+- **WebView2 解码限制**：容器 / 编码支持有限（mkv、HEVC、AC3 常无法播放），文件选择器
+  优先 `*.mp4;*.m4v;*.webm`，解码失败时 toast 并回退封面，推荐 H.264/AAC 的 mp4。
+
+**与手机端的差异**（依据同下节「已核实的缺口」）：手机端 PV 来自抓取流程，桌面端只支持
+手动选择本地视频；截图画带仍未补，桌面端沿用封面大图。
+
+**验证**：`gofmt` 无输出、`go vet ./internal/...` 干净、`go build ./...` 通过、
+`go test ./internal/migrations/... ./internal/service/... -count=1` 全通过（含
+`TestMigration180AddsTrailerPath`、mediautils 单测、`TestGameService_RemoveGameTrailerClearsPath`）；
+`wails3 generate bindings` 重新生成（`models.ts` 出现 `trailer_path`）；`pnpm i18n:clean`
+（4 文件 +0 -0）→ `pnpm i18n:check` 干净、`pnpm typecheck` / `pnpm build` 通过、大屏与
+`GameEditPanel` 相关文件 eslint 干净。注：`src/routes` 全目录存在既有 warning，
+`--max-warnings 0` 在改动前的基线即不通过，本轮未新增。视频拖动 Range、mkv 解码、悬停 1.2s
+起播、无 PV 时按钮禁用态、Esc/播完关闭后焦点回落与内存曲线仍需实机确认，归入阶段 3 延后的
+实机测试范围。
 
 ### M4 进展（2026-09-29 完成）
 
@@ -736,8 +783,9 @@ M4 氛围打磨落地：特效档位、入场错峰动画、界面音效、手�
 ### 已核实的缺口
 
 - 桌面端**无截图字段**（`screenshot` 只存在于 Android 契约模型与测试里）
-- 桌面端**无任何预告片能力**（Go 模型 / 配置 / 前端播放器全缺；
-  `docs/mobile-yukihub-migration.md` 已把 `trailer_path` 等列为刻意不导出）
+- 桌面端**只有本地预告片能力**（M3 已落地）：仅支持手动选择的本地视频文件，
+  `trailer_path` 依 `docs/mobile-yukihub-migration.md:64-72` **不入手机版同步快照**，
+  无在线 PV 抓取
 - **无多尺寸封面**：本地封面最长边 1600px（`image_covers_optimize.go`），
   4K 背景会糊，必要时回退 `cover_source_url` 原图
 - **无手柄支持**（大屏模式已在 M4 支持手柄，游戏库等其余页面仍无）、

@@ -787,3 +787,44 @@ func TestMigration179AlignsMobileGameStatuses(t *testing.T) {
 		}
 	}
 }
+
+func TestMigration180AddsTrailerPath(t *testing.T) {
+	db, err := sql.Open("duckdb", "")
+	if err != nil {
+		t.Fatalf("open test database: %v", err)
+	}
+	db.SetMaxOpenConns(1)
+	defer db.Close()
+
+	if _, err := db.Exec(`
+		CREATE TABLE games (id TEXT PRIMARY KEY);
+		INSERT INTO games (id) VALUES ('existing');
+	`); err != nil {
+		t.Fatalf("create migration fixtures: %v", err)
+	}
+
+	tx, err := db.Begin()
+	if err != nil {
+		t.Fatalf("begin migration transaction: %v", err)
+	}
+	if err := migration180(tx); err != nil {
+		tx.Rollback()
+		t.Fatalf("run migration180: %v", err)
+	}
+	// 幂等：列已存在时应静默成功
+	if err := migration180(tx); err != nil {
+		tx.Rollback()
+		t.Fatalf("run migration180 a second time: %v", err)
+	}
+	if err := tx.Commit(); err != nil {
+		t.Fatalf("commit migration180: %v", err)
+	}
+
+	var trailerPath string
+	if err := db.QueryRow(`SELECT trailer_path FROM games WHERE id = 'existing'`).Scan(&trailerPath); err != nil {
+		t.Fatalf("query migrated trailer_path: %v", err)
+	}
+	if trailerPath != "" {
+		t.Fatalf("unexpected trailer_path default: %q", trailerPath)
+	}
+}

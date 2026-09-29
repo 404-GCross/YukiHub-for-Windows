@@ -26,6 +26,7 @@ import (
 	"yukihub/internal/utils/dbutils"
 	"yukihub/internal/utils/downloadutils"
 	"yukihub/internal/utils/imageutils"
+	"yukihub/internal/utils/mediautils"
 	"yukihub/internal/utils/metadata"
 	"yukihub/internal/utils/processutils"
 
@@ -199,6 +200,90 @@ func (s *GameService) ResolveExecutablePathForImport(path string) (string, error
 	}
 
 	return selection, nil
+}
+
+// SelectGameTrailer 弹出视频文件选择器，把用户选中的本地视频复制进受管目录并写入游戏。
+// 返回 /local/trailers/... 地址供大屏与设置面板使用；用户取消时返回空串且不报错。
+func (s *GameService) SelectGameTrailer(gameID, currentPath string) (string, error) {
+	gameID = strings.TrimSpace(gameID)
+	if gameID == "" {
+		return "", fmt.Errorf("game id is required")
+	}
+
+	selection, err := s.runtime.OpenFile(wailsruntime.OpenDialogOptions{
+		Title:     "选择预告片视频",
+		Directory: gamehelper.ExecutableDialogDirectory(currentPath),
+		Filters: []wailsruntime.FileFilter{
+			{
+				DisplayName: "Video Files",
+				Pattern:     trailerFileFilterPattern(),
+			},
+			{
+				DisplayName: "All Files",
+				Pattern:     "*.*",
+			},
+		},
+	})
+	if err != nil {
+		applog.LogErrorf(s.ctx, "failed to open trailer dialog: %v", err)
+		return "", err
+	}
+	if selection == "" {
+		return "", nil
+	}
+
+	trailerPath, err := mediautils.SaveTrailer(selection, gameID)
+	if err != nil {
+		applog.LogErrorf(s.ctx, "failed to save trailer for game %s: %v", gameID, err)
+		return "", err
+	}
+	if err := s.updateGameTrailerPath(gameID, trailerPath); err != nil {
+		applog.LogErrorf(s.ctx, "failed to persist trailer path for game %s: %v", gameID, err)
+		return "", err
+	}
+
+	s.emitTrailerChangedEvent(gameID, trailerPath)
+	return trailerPath, nil
+}
+
+// RemoveGameTrailer 清除游戏的预告片：先删受管目录里的文件，再清空列。
+func (s *GameService) RemoveGameTrailer(gameID string) error {
+	gameID = strings.TrimSpace(gameID)
+	if gameID == "" {
+		return fmt.Errorf("game id is required")
+	}
+
+	if err := mediautils.RemoveTrailer(gameID); err != nil {
+		applog.LogErrorf(s.ctx, "failed to remove trailer file for game %s: %v", gameID, err)
+		return err
+	}
+	if err := s.updateGameTrailerPath(gameID, ""); err != nil {
+		applog.LogErrorf(s.ctx, "failed to clear trailer path for game %s: %v", gameID, err)
+		return err
+	}
+
+	s.emitTrailerChangedEvent(gameID, "")
+	return nil
+}
+
+func (s *GameService) emitTrailerChangedEvent(gameID, trailerPath string) {
+	if s.ctx == nil || s.emitEvent == nil {
+		return
+	}
+	s.emitEvent("game-trailer:changed", map[string]string{
+		"game_id":      gameID,
+		"trailer_path": trailerPath,
+	})
+}
+
+// trailerFileFilterPattern 由受管扩展名列表拼出文件对话框过滤串（*.mp4;*.webm;...）。
+func trailerFileFilterPattern() string {
+	extensions := mediautils.TrailerExtensions()
+	patterns := make([]string, 0, len(extensions))
+	for _, ext := range extensions {
+		patterns = append(patterns, "*"+ext)
+	}
+	return strings.Join(patterns, ";")
 }
 
 // AddGameFromWebMetadata 用于接收前端/导入流程中的完整刮削结果（含 tags）并一次性入库。
@@ -532,6 +617,18 @@ func (s *GameService) updateCoverURL(gameID, coverURL string) error {
 	})
 }
 
+// updateGameTrailerPath 更新游戏的本地预告片路径。
+// 只写 trailer_path 一列，不并入 UpdateGame 的 SET 列表，避免编辑其他字段时误写或清空该列。
+func (s *GameService) updateGameTrailerPath(gameID, trailerPath string) error {
+	return dbutils.WithDuckDBWriteLock(s.db, func() error {
+		return dbutils.RetryDuckDBWriteConflict(s.ctx, func() error {
+			query := `UPDATE games SET trailer_path = ?, updated_at = ? WHERE id = ?`
+			_, err := s.db.ExecContext(s.ctx, query, trailerPath, time.Now(), gameID)
+			return err
+		})
+	})
+}
+
 func (s *GameService) downloadAndUpdateCoverImage(ctx context.Context, gameID, coverSourceURL string) (string, bool, error) {
 	unlock := s.lockGameCover(gameID)
 	defer unlock()
@@ -704,6 +801,7 @@ func (s *GameService) GetGameByID(id string) (models.Game, error) {
 		COALESCE(g.aliases, '[]') as aliases,
 		COALESCE(g.cover_url, '') as cover_url,
 		COALESCE(g.cover_source_url, '') as cover_source_url,
+		COALESCE(g.trailer_path, '') as trailer_path,
 		COALESCE(g.company, '') as company, 
 		COALESCE(g.summary, '') as summary, 
 		COALESCE(g.rating, 0) as rating,
@@ -757,6 +855,7 @@ func (s *GameService) GetGameByID(id string) (models.Game, error) {
 		&aliasesJSON,
 		&game.CoverURL,
 		&game.CoverSourceURL,
+		&game.TrailerPath,
 		&game.Company,
 		&game.Summary,
 		&game.Rating,
