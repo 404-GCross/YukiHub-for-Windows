@@ -53,3 +53,29 @@ export function resolveBigScreenCardWidth(rowHeight: number) {
   const available = rowHeight - CARD_META_HEIGHT - BIG_SCREEN_CARD_GAP * 2;
   return Math.max(MIN_CARD_WIDTH, Math.round(available / COVER_ASPECT_RATIO));
 }
+
+/** 氛围特效档位 */
+export type BigScreenEffectLevel = "off" | "low" | "high";
+
+/**
+ * 归一化配置里的特效档位：识别不了的值一律回落到 `low`，
+ * 与 Go 侧 `NormalizeBigScreenEffectLevel` 的白名单保持一致。
+ */
+export function resolveBigScreenEffectLevel(
+  value: string | undefined,
+): BigScreenEffectLevel {
+  return value === "off" || value === "high" ? value : "low";
+}
+
+/** 入场错峰延迟：第 idx 个条目的延迟（对齐手机端 42ms×idx，且封顶避免长列表等待） */
+export const BIG_SCREEN_ENTER_STAGGER_MS = 42;
+
+/** 错峰延迟的最大档位，货架滚动到后面的卡片时不会再重新等待 */
+export const BIG_SCREEN_ENTER_STAGGER_MAX = 12;
+
+export function resolveBigScreenEnterDelay(index: number) {
+  return (
+    Math.min(Math.max(index, 0), BIG_SCREEN_ENTER_STAGGER_MAX)
+    * BIG_SCREEN_ENTER_STAGGER_MS
+  );
+}

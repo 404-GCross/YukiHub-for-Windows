@@ -229,6 +229,29 @@ func TestNormalizeScheduledDBBackup(t *testing.T) {
 	}
 }
 
+func TestNormalizeBigScreenEffectLevel(t *testing.T) {
+	tests := []struct {
+		name  string
+		level string
+		want  string
+	}{
+		{name: "off is kept", level: "off", want: "off"},
+		{name: "low is kept", level: "low", want: "low"},
+		{name: "high is kept", level: "high", want: "high"},
+		{name: "case and spaces are trimmed", level: "  HIGH ", want: "high"},
+		{name: "empty uses default", level: "", want: DefaultBigScreenEffectLevel},
+		{name: "unknown uses default", level: "ultra", want: DefaultBigScreenEffectLevel},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := NormalizeBigScreenEffectLevel(tt.level); got != tt.want {
+				t.Fatalf("expected %q, got %q", tt.want, got)
+			}
+		})
+	}
+}
+
 // Wine / CrossOver 相关的配置迁移逻辑（MigrateLegacyCompatibilityConfig 及
 // 其两个用例）已随 Windows-only 裁剪移除：这些字段仅服务于 macOS/Linux 上的
 // Wine、CrossOver、winetricks、protontricks，Windows 上不存在对应概念。

@@ -2,6 +2,7 @@ import type { appconf } from "../../../src/bindings/models";
 import type { BigScreenCategoryId } from "../../bigscreen/categories";
 import { useTranslation } from "react-i18next";
 import { BIG_SCREEN_CATEGORIES } from "../../bigscreen/categories";
+import { resolveBigScreenEffectLevel } from "../../bigscreen/constants";
 import { BetterSelect } from "../ui/better/BetterSelect";
 import { SettingSwitchRow } from "../ui/SettingSwitchRow";
 
@@ -21,6 +22,10 @@ export function BigScreenSettingsPanel({
   )
     ? (formData.bigscreen_default_category as BigScreenCategoryId)
     : "recent";
+
+  const effectLevel = resolveBigScreenEffectLevel(
+    formData.bigscreen_effect_level,
+  );
 
   return (
     <div className="space-y-4">
@@ -56,6 +61,40 @@ export function BigScreenSettingsPanel({
           {t("settings.bigScreen.defaultCategoryHint")}
         </p>
       </div>
+
+      <div className="space-y-2">
+        <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
+          {t("settings.bigScreen.effectLevel")}
+        </label>
+        <BetterSelect
+          value={effectLevel}
+          onChange={value =>
+            onChange({
+              ...formData,
+              bigscreen_effect_level: value,
+            } as appconf.AppConfig)}
+          options={[
+            { label: t("settings.bigScreen.effectOff"), value: "off" },
+            { label: t("settings.bigScreen.effectLow"), value: "low" },
+            { label: t("settings.bigScreen.effectHigh"), value: "high" },
+          ]}
+        />
+        <p className="text-xs text-brand-500 dark:text-brand-400">
+          {t("settings.bigScreen.effectLevelHint")}
+        </p>
+      </div>
+
+      <SettingSwitchRow
+        id="bigscreen_sound_enabled"
+        label={t("settings.bigScreen.soundEnabled")}
+        hint={t("settings.bigScreen.soundEnabledHint")}
+        checked={formData.bigscreen_sound_enabled || false}
+        onCheckedChange={checked =>
+          onChange({
+            ...formData,
+            bigscreen_sound_enabled: checked,
+          } as appconf.AppConfig)}
+      />
     </div>
   );
 }

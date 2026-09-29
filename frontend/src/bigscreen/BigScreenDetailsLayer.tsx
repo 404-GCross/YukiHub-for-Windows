@@ -1,11 +1,13 @@
 import type { models } from "../../src/bindings/models";
+import type { BigScreenInputDevice } from "./useGamepad";
 import { memo } from "react";
-import { useTranslation } from "react-i18next";
 
+import { useTranslation } from "react-i18next";
 import { statusOptions } from "../consts/options";
 import { useAppStore } from "../store";
 import { getTagDisplayName } from "../utils/tagTranslation";
 import { formatDurationCompact, formatLocalDate } from "../utils/time";
+import { BigScreenHintBar } from "./BigScreenHintBar";
 import { useGamePlaytime } from "./useGamePlaytime";
 
 export interface BigScreenDetailAction {
@@ -20,6 +22,8 @@ interface BigScreenDetailsLayerProps {
   actionsFocused: boolean;
   focusedActionIndex: number;
   game: models.Game;
+  /** 最近一次使用的输入设备，决定底部提示显示手柄图标还是键盘按键 */
+  inputDevice: BigScreenInputDevice;
   onActionActivate: (index: number) => void;
   onActionFocus: (index: number) => void;
   /** 关闭详情层回到货架 */
@@ -40,6 +44,7 @@ export const BigScreenDetailsLayer = memo(
     actionsFocused,
     focusedActionIndex,
     game,
+    inputDevice,
     onActionActivate,
     onActionFocus,
     onClose,
@@ -185,26 +190,11 @@ export const BigScreenDetailsLayer = memo(
               })}
             </div>
 
-            <div className="mt-4 flex shrink-0 items-center gap-6 text-xs text-brand-400">
-              <span className="inline-flex items-center gap-2">
-                <kbd className="rounded border border-brand-700 px-1.5 py-0.5 font-sans">
-                  ← →
-                </kbd>
-                {t("bigScreen.hintSwitchButton")}
-              </span>
-              <span className="inline-flex items-center gap-2">
-                <kbd className="rounded border border-brand-700 px-1.5 py-0.5 font-sans">
-                  Enter
-                </kbd>
-                {t("bigScreen.hintConfirm")}
-              </span>
-              <span className="inline-flex items-center gap-2">
-                <kbd className="rounded border border-brand-700 px-1.5 py-0.5 font-sans">
-                  Esc
-                </kbd>
-                {t("bigScreen.hintBack")}
-              </span>
-            </div>
+            <BigScreenHintBar
+              className="mt-4 shrink-0"
+              inputDevice={inputDevice}
+              variant="details"
+            />
           </div>
         </div>
       </div>

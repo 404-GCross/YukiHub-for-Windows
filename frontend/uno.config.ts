@@ -279,6 +279,7 @@ export default defineConfig({
         "bigscreen-bg-in": "1",
         "bigscreen-kenburns": "1",
         "bigscreen-hint-dim": "1",
+        "bigscreen-enter": "1",
       },
       durations: {
         "app-toast-enter": "450ms",
@@ -293,6 +294,7 @@ export default defineConfig({
         "bigscreen-bg-in": "600ms",
         "bigscreen-kenburns": "22s",
         "bigscreen-hint-dim": "4000ms",
+        "bigscreen-enter": "320ms",
       },
       keyframes: {
         "app-toast-enter":
@@ -319,6 +321,9 @@ export default defineConfig({
           "{0%{transform:scale(1.04) translate3d(0,0,0)}100%{transform:scale(1.14) translate3d(-1.5%,-1%,0)}}",
         // 底栏按键提示 4s 后淡到 28%
         "bigscreen-hint-dim": "{0%,86%{opacity:1}100%{opacity:.28}}",
+        // 入场：卡片 / 侧栏条目自下而上淡入，配合 42ms×idx 的错峰延迟
+        "bigscreen-enter":
+          "{0%{opacity:0;transform:translate3d(0,18px,0) scale(.96)}100%{opacity:1;transform:translate3d(0,0,0) scale(1)}}",
       },
       properties: {
         "app-toast-enter": {
@@ -358,6 +363,10 @@ export default defineConfig({
         "bigscreen-hint-dim": {
           "animation-fill-mode": "forwards",
         },
+        "bigscreen-enter": {
+          "animation-fill-mode": "both",
+          "transform-origin": "center",
+        },
       },
       timingFns: {
         "app-toast-enter": "cubic-bezier(.22,1,.36,1)",
@@ -371,6 +380,7 @@ export default defineConfig({
         "bigscreen-bg-in": "ease-out",
         "bigscreen-kenburns": "ease-out",
         "bigscreen-hint-dim": "ease-out",
+        "bigscreen-enter": "cubic-bezier(.2,.9,.18,1)",
       },
     },
     colors: {

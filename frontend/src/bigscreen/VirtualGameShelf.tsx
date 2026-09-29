@@ -3,9 +3,15 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { memo, useEffect, useRef } from "react";
 
 import { GameCard } from "../components/card/GameCard";
-import { BIG_SCREEN_CARD_GAP, resolveBigScreenCardWidth } from "./constants";
+import {
+  BIG_SCREEN_CARD_GAP,
+  resolveBigScreenCardWidth,
+  resolveBigScreenEnterDelay,
+} from "./constants";
 
 interface VirtualGameShelfProps {
+  /** 入场错峰动画：只在首次进入大屏时开启，滚动新挂载的卡片不再重放 */
+  entryAnimation?: boolean;
   /** 焦点是否落在这个区域（用于决定要不要画焦点环） */
   focused: boolean;
   focusedIndex: number;
@@ -25,6 +31,7 @@ interface VirtualGameShelfProps {
  */
 export const VirtualGameShelf = memo(
   ({
+    entryAnimation = false,
     focused,
     focusedIndex,
     games,
@@ -74,8 +81,16 @@ export const VirtualGameShelf = memo(
             return (
               <div
                 key={virtualItem.key}
-                className="absolute left-0 top-0 flex items-center"
-                style={{ height: rowHeight, width: cardWidth }}
+                className={`absolute left-0 top-0 flex items-center ${
+                  entryAnimation ? "animate-bigscreen-enter" : ""
+                }`}
+                style={{
+                  animationDelay: entryAnimation
+                    ? `${resolveBigScreenEnterDelay(virtualItem.index)}ms`
+                    : undefined,
+                  height: rowHeight,
+                  width: cardWidth,
+                }}
               >
                 <div
                   className="relative transition-transform duration-[140ms] ease-out"

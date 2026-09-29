@@ -43,6 +43,7 @@ const DefaultBatchImportScanPreset = "scan_parent"
 const MaxBatchImportHierarchyDepth = 5
 const DefaultGameCardLayout = "portrait"
 const DefaultBigScreenDefaultCategory = "recent"
+const DefaultBigScreenEffectLevel = "low"
 const DefaultUmbraBaseURL = "https://umbrae.cc"
 const DefaultErogameScapeBaseURL = metadata.DefaultErogameScapeBaseURL
 const ScheduledDBBackupModeInterval = "interval"
@@ -197,6 +198,8 @@ type AppConfig struct {
 	// 大屏模式配置
 	BigScreenShowHiddenGame  bool   `json:"bigscreen_show_hidden_game"`           // 大屏模式是否展示已隐藏的游戏，默认 false
 	BigScreenDefaultCategory string `json:"bigscreen_default_category,omitempty"` // 大屏模式默认分类，默认 recent
+	BigScreenEffectLevel     string `json:"bigscreen_effect_level,omitempty"`     // 大屏氛围特效档位：off / low / high，默认 low
+	BigScreenSoundEnabled    bool   `json:"bigscreen_sound_enabled"`              // 大屏界面音效开关，默认 true
 }
 
 // getConfigPath 获取配置文件路径
@@ -325,6 +328,8 @@ func LoadConfig() (*AppConfig, error) {
 		BlurNSFWGameCovers:          true,
 		BigScreenShowHiddenGame:     false,
 		BigScreenDefaultCategory:    DefaultBigScreenDefaultCategory,
+		BigScreenEffectLevel:        DefaultBigScreenEffectLevel,
+		BigScreenSoundEnabled:       true,
 	}
 
 	// 获取配置文件路径
@@ -367,6 +372,7 @@ func LoadConfig() (*AppConfig, error) {
 	config.ProcessDetectionTimeoutSec = NormalizeProcessDetectionTimeoutSec(config.ProcessDetectionTimeoutSec)
 	config.GameCardLayout = NormalizeGameCardLayout(config.GameCardLayout)
 	config.BigScreenDefaultCategory = NormalizeBigScreenDefaultCategory(config.BigScreenDefaultCategory)
+	config.BigScreenEffectLevel = NormalizeBigScreenEffectLevel(config.BigScreenEffectLevel)
 	NormalizeBatchImportPreferences(config)
 
 	shouldSaveSanitizedConfig := SanitizeErogameScapeConfig(config)
@@ -430,6 +436,7 @@ func SaveConfig(config *AppConfig) error {
 	config.ProcessDetectionTimeoutSec = NormalizeProcessDetectionTimeoutSec(config.ProcessDetectionTimeoutSec)
 	config.GameCardLayout = NormalizeGameCardLayout(config.GameCardLayout)
 	config.BigScreenDefaultCategory = NormalizeBigScreenDefaultCategory(config.BigScreenDefaultCategory)
+	config.BigScreenEffectLevel = NormalizeBigScreenEffectLevel(config.BigScreenEffectLevel)
 	NormalizeBatchImportPreferences(config)
 	config.LocalDBBackupRetention = NormalizeLocalDBBackupRetention(config.LocalDBBackupRetention)
 	NormalizeScheduledDBBackup(config)

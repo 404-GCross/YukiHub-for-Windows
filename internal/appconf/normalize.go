@@ -186,6 +186,16 @@ func NormalizeBigScreenDefaultCategory(category string) string {
 	}
 }
 
+func NormalizeBigScreenEffectLevel(level string) string {
+	normalized := strings.ToLower(strings.TrimSpace(level))
+	switch normalized {
+	case "off", "low", "high":
+		return normalized
+	default:
+		return DefaultBigScreenEffectLevel
+	}
+}
+
 func NormalizeMetadataCoverSource(source enums2.MetadataCoverSource) enums2.MetadataCoverSource {
 	switch strings.ToLower(strings.TrimSpace(string(source))) {
 	case string(enums2.MetadataCoverSourceOriginal):

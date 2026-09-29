@@ -6,10 +6,13 @@ import { BIG_SCREEN_CATEGORIES } from "./categories";
 import {
   BIG_SCREEN_RAIL_COLLAPSED_WIDTH,
   BIG_SCREEN_RAIL_EXPANDED_WIDTH,
+  resolveBigScreenEnterDelay,
 } from "./constants";
 
 interface BigScreenRailProps {
   activeCategory: BigScreenCategoryId;
+  /** 入场错峰动画：只在首次进入大屏时开启 */
+  entryAnimation?: boolean;
   /** 焦点或鼠标进入侧栏时展开，离开后收回到图标条 */
   expanded: boolean;
   focused: boolean;
@@ -22,6 +25,7 @@ interface BigScreenRailProps {
 export const BigScreenRail = memo(
   ({
     activeCategory,
+    entryAnimation = false,
     expanded,
     focused,
     focusedIndex,
@@ -51,6 +55,8 @@ export const BigScreenRail = memo(
               title={label}
               aria-current={isActive ? "true" : undefined}
               className={`mx-2 flex h-11 shrink-0 items-center gap-3 rounded-xl px-3 text-left transition-colors duration-150 ${
+                entryAnimation ? "animate-bigscreen-enter" : ""
+              } ${
                 isActive
                   ? "text-secondary-500"
                   : "text-brand-400 hover:text-white"
@@ -59,6 +65,11 @@ export const BigScreenRail = memo(
                   ? "bg-secondary-500/16 ring-2 ring-secondary-500"
                   : "hover:bg-white/6"
               }`}
+              style={{
+                animationDelay: entryAnimation
+                  ? `${resolveBigScreenEnterDelay(index)}ms`
+                  : undefined,
+              }}
               onClick={() => onSelect(category.id)}
               onMouseEnter={() => onFocusIndexChange(index)}
             >

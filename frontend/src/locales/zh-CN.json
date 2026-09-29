@@ -873,7 +873,14 @@
       "showHiddenGame": "显示已隐藏的游戏",
       "showHiddenGameHint": "开启后，大屏模式也会展示已在游戏库中隐藏的游戏",
       "defaultCategory": "默认分类",
-      "defaultCategoryHint": "进入大屏模式时默认选中的分类"
+      "defaultCategoryHint": "进入大屏模式时默认选中的分类",
+      "effectLevel": "氛围特效",
+      "effectLevelHint": "大屏模式下随焦点封面变化的粒子特效强度",
+      "effectOff": "关闭",
+      "effectLow": "低",
+      "effectHigh": "高",
+      "soundEnabled": "界面音效",
+      "soundEnabledHint": "在大屏模式中移动焦点、确认与返回时播放合成音效"
     },
     "sections": {
       "basic": "基础配置",
@@ -1769,6 +1776,9 @@
     "hintExit": "退出",
     "hintSwitchButton": "切换按钮",
     "hintBack": "返回",
-    "playTime": "游玩时长"
+    "playTime": "游玩时长",
+    "hintFavorite": "收藏",
+    "hintDetails": "详情",
+    "hintCategory": "切换分类"
   }
 }

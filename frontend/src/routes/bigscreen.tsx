@@ -1,8 +1,13 @@
 import type { models } from "../../src/bindings/models";
 import type { BigScreenDetailAction } from "../bigscreen/BigScreenDetailsLayer";
 import type { BigScreenAction } from "../bigscreen/BigScreenInfoBar";
+import type { BigScreenSound } from "../bigscreen/bigScreenSound";
 import type { BigScreenCategoryId } from "../bigscreen/categories";
 import type { FocusDirection, FocusZone } from "../bigscreen/focusEngine";
+import type {
+  BigScreenInputDevice,
+  BigScreenIntent,
+} from "../bigscreen/useGamepad";
 import { createRoute, useNavigate } from "@tanstack/react-router";
 import {
   useCallback,
@@ -18,10 +23,13 @@ import {
   AddGameToCategory,
   RemoveGameFromCategory,
 } from "../../bindings/yukihub/internal/service/categoryservice";
+import { BigScreenAtmosphere } from "../bigscreen/BigScreenAtmosphere";
 import { BigScreenBackground } from "../bigscreen/BigScreenBackground";
 import { BigScreenDetailsLayer } from "../bigscreen/BigScreenDetailsLayer";
+import { BigScreenHintBar } from "../bigscreen/BigScreenHintBar";
 import { BigScreenInfoBar } from "../bigscreen/BigScreenInfoBar";
 import { BigScreenRail } from "../bigscreen/BigScreenRail";
+import { playBigScreenSound } from "../bigscreen/bigScreenSound";
 import {
   BIG_SCREEN_CATEGORIES,
   fetchBigScreenGames,
@@ -34,10 +42,12 @@ import {
   BIG_SCREEN_FOCUS_ORDER,
   BIG_SCREEN_RAIL_ZONE,
   BIG_SCREEN_SHELF_ZONE,
+  resolveBigScreenEffectLevel,
 } from "../bigscreen/constants";
 import { useBigScreenFullscreen } from "../bigscreen/useBigScreenFullscreen";
 import { useFocusEngine } from "../bigscreen/useFocusEngine";
 import { useGameFavorite } from "../bigscreen/useGameFavorite";
+import { useGamepad } from "../bigscreen/useGamepad";
 import { useGameTags } from "../bigscreen/useGameTags";
 import { VirtualGameShelf } from "../bigscreen/VirtualGameShelf";
 import { useAppStore } from "../store";
@@ -80,6 +90,12 @@ function BigScreenPage() {
   const defaultCategory = useAppStore(
     state => state.config?.bigscreen_default_category,
   );
+  const effectLevel = useAppStore(state =>
+    resolveBigScreenEffectLevel(state.config?.bigscreen_effect_level),
+  );
+  const soundEnabled = useAppStore(
+    state => state.config?.bigscreen_sound_enabled ?? true,
+  );
 
   const [activeCategory, setActiveCategory] = useState<BigScreenCategoryId>(
     () => normalizeCategoryId(defaultCategory),
@@ -91,6 +107,11 @@ function BigScreenPage() {
   const [shelfHeight, setShelfHeight] = useState(0);
   const [railHovered, setRailHovered] = useState(false);
   const [hintKey, setHintKey] = useState(0);
+  // null = 用户还没用过任何输入设备，此时按手柄是否接入决定提示条形态
+  const [inputDevice, setInputDevice] = useState<BigScreenInputDevice | null>(
+    null,
+  );
+  const [entryAnimation, setEntryAnimation] = useState(true);
   const shelfAreaRef = useRef<HTMLDivElement | null>(null);
   const restoredCategoryRef = useRef<BigScreenCategoryId | null>(null);
   // 引擎在构造时就固定了 onBoundary，这里用 ref 把「之后才定义的处理函数」接进去
@@ -99,6 +120,12 @@ function BigScreenPage() {
   >(() => false);
 
   useBigScreenFullscreen();
+
+  // 入场错峰动画只播一次：时间窗结束后摘掉动画类，滚动时新挂载的卡片不再重放
+  useEffect(() => {
+    const timer = window.setTimeout(() => setEntryAnimation(false), 900);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   const excludeHidden = !showHiddenGame;
 
@@ -395,78 +422,176 @@ function BigScreenPage() {
     void navigate({ to: BIG_SCREEN_EXIT_PATH });
   }, [navigate]);
 
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        // 详情层先吃掉 Esc，再往外才是退出大屏
-        if (detailsOpen) {
-          setDetailsOpen(false);
-          return;
-        }
-        exitBigScreen();
-        return;
+  const playSound = useCallback(
+    (kind: BigScreenSound) => {
+      if (soundEnabled) {
+        playBigScreenSound(kind);
       }
+    },
+    [soundEnabled],
+  );
 
-      const direction = KEY_DIRECTIONS[event.key];
-      if (direction) {
-        event.preventDefault();
-        setHintKey(key => key + 1);
-        move(direction);
-        return;
-      }
+  const markInputDevice = useCallback((device: BigScreenInputDevice) => {
+    setInputDevice(current => (current === device ? current : device));
+  }, []);
 
-      if (event.key !== "Enter" && event.key !== " ") {
-        return;
-      }
-
-      event.preventDefault();
-      setHintKey(key => key + 1);
-
-      if (position.zoneId === BIG_SCREEN_RAIL_ZONE) {
-        // 侧栏确认 = 进入内容区；切分类用左右键
-        focus(BIG_SCREEN_SHELF_ZONE, safeShelfIndex);
-        return;
-      }
-      if (position.zoneId === BIG_SCREEN_SHELF_ZONE) {
-        handleStartGame(focusedGame);
-        return;
-      }
-      if (position.zoneId === BIG_SCREEN_ACTIONS_ZONE) {
-        actions[position.index]?.run();
-        return;
-      }
-      if (position.zoneId === BIG_SCREEN_DETAILS_ZONE) {
-        detailActions[position.index]?.run();
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+  /** 确认：详情层里跑详情层按钮，外层按当前聚焦的区域分别处理 */
+  const activateFocused = useCallback(() => {
+    if (position.zoneId === BIG_SCREEN_DETAILS_ZONE) {
+      detailActions[position.index]?.run();
+      return;
+    }
+    if (position.zoneId === BIG_SCREEN_RAIL_ZONE) {
+      // 侧栏确认 = 进入内容区；切分类用左右键
+      focus(BIG_SCREEN_SHELF_ZONE, safeShelfIndex);
+      return;
+    }
+    if (position.zoneId === BIG_SCREEN_SHELF_ZONE) {
+      handleStartGame(focusedGame);
+      return;
+    }
+    if (position.zoneId === BIG_SCREEN_ACTIONS_ZONE) {
+      actions[position.index]?.run();
+    }
   }, [
     actions,
     detailActions,
-    detailsOpen,
-    exitBigScreen,
     focus,
     focusedGame,
     handleStartGame,
-    move,
     position.index,
     position.zoneId,
     safeShelfIndex,
   ]);
 
+  /** 返回：详情层先吃掉，再往外才是退出大屏 */
+  const goBack = useCallback(() => {
+    if (detailsOpen) {
+      setDetailsOpen(false);
+      return;
+    }
+    exitBigScreen();
+  }, [detailsOpen, exitBigScreen]);
+
+  /**
+   * 键盘与手柄共用的意图分发：两者只在「按键怎么翻译」上不同，
+   * 翻译成意图之后的行为完全一致。
+   */
+  const dispatchIntent = useCallback(
+    (intent: BigScreenIntent) => {
+      switch (intent.type) {
+        case "back": {
+          setHintKey(key => key + 1);
+          playSound("back");
+          goBack();
+          return;
+        }
+        case "category": {
+          setHintKey(key => key + 1);
+          playSound("move");
+          stepCategory(intent.delta, false);
+          return;
+        }
+        case "confirm": {
+          setHintKey(key => key + 1);
+          playSound("confirm");
+          activateFocused();
+          return;
+        }
+        case "details": {
+          // 详情层已打开时 Y 不再额外做什么
+          if (detailsOpen) {
+            return;
+          }
+          setHintKey(key => key + 1);
+          playSound("confirm");
+          handleOpenDetails(focusedGame);
+          return;
+        }
+        case "favorite": {
+          setHintKey(key => key + 1);
+          playSound("toggle");
+          void handleToggleFavorite();
+          return;
+        }
+        default: {
+          setHintKey(key => key + 1);
+          playSound("move");
+          move(intent.direction);
+        }
+      }
+    },
+    [
+      activateFocused,
+      detailsOpen,
+      focusedGame,
+      goBack,
+      handleOpenDetails,
+      handleToggleFavorite,
+      move,
+      playSound,
+      stepCategory,
+    ],
+  );
+
+  const handleGamepadIntent = useCallback(
+    (intent: BigScreenIntent) => {
+      markInputDevice("gamepad");
+      dispatchIntent(intent);
+    },
+    [dispatchIntent, markInputDevice],
+  );
+
+  const { connected: gamepadConnected } = useGamepad({
+    onIntent: handleGamepadIntent,
+  });
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const direction = KEY_DIRECTIONS[event.key];
+      if (direction) {
+        event.preventDefault();
+        markInputDevice("keyboard");
+        dispatchIntent({ direction, type: "move" });
+        return;
+      }
+
+      if (event.key === "Escape") {
+        event.preventDefault();
+        markInputDevice("keyboard");
+        dispatchIntent({ type: "back" });
+        return;
+      }
+
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        markInputDevice("keyboard");
+        dispatchIntent({ type: "confirm" });
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [dispatchIntent, markInputDevice]);
+
   const railFocused = position.zoneId === BIG_SCREEN_RAIL_ZONE;
   const isShelfFocused = position.zoneId === BIG_SCREEN_SHELF_ZONE;
   const coverUrl
     = focusedGame?.cover_url || focusedGame?.cover_source_url || "";
+  // 用户还没用过任何输入设备时，按手柄是否接入决定提示条形态
+  const hintDevice: BigScreenInputDevice
+    = inputDevice ?? (gamepadConnected ? "gamepad" : "keyboard");
 
   return (
     <div className="relative flex h-screen w-screen select-none overflow-hidden bg-brand-900 text-white">
       <BigScreenBackground
         coverUrl={coverUrl}
         isNSFW={Boolean(focusedGame?.is_nsfw)}
+      />
+      <BigScreenAtmosphere
+        coverUrl={coverUrl}
+        level={effectLevel}
+        seed={focusedGame?.id ?? ""}
       />
 
       <div className="relative z-10 flex h-full w-full flex-col">
@@ -478,6 +603,7 @@ function BigScreenPage() {
           >
             <BigScreenRail
               activeCategory={activeCategory}
+              entryAnimation={entryAnimation}
               expanded={railFocused || railHovered}
               focused={railFocused}
               focusedIndex={position.index}
@@ -489,6 +615,7 @@ function BigScreenPage() {
           <div ref={shelfAreaRef} className="min-h-0 flex-1 px-8 pt-6">
             {games.length > 0 && shelfHeight > 0 && (
               <VirtualGameShelf
+                entryAnimation={entryAnimation}
                 focused={isShelfFocused}
                 focusedIndex={safeShelfIndex}
                 games={games}
@@ -524,29 +651,12 @@ function BigScreenPage() {
           />
         </div>
 
-        <div
+        <BigScreenHintBar
           key={hintKey}
-          className="flex shrink-0 animate-bigscreen-hint-dim items-center gap-6 px-10 pb-5 text-xs text-brand-400"
-        >
-          <span className="inline-flex items-center gap-2">
-            <kbd className="rounded border border-brand-700 px-1.5 py-0.5 font-sans">
-              ← →
-            </kbd>
-            {t("bigScreen.hintMove")}
-          </span>
-          <span className="inline-flex items-center gap-2">
-            <kbd className="rounded border border-brand-700 px-1.5 py-0.5 font-sans">
-              Enter
-            </kbd>
-            {t("bigScreen.hintConfirm")}
-          </span>
-          <span className="inline-flex items-center gap-2">
-            <kbd className="rounded border border-brand-700 px-1.5 py-0.5 font-sans">
-              Esc
-            </kbd>
-            {t("bigScreen.hintExit")}
-          </span>
-        </div>
+          className="shrink-0 animate-bigscreen-hint-dim px-10 pb-5"
+          inputDevice={hintDevice}
+          variant="main"
+        />
       </div>
 
       {detailsOpen && focusedGame && (
@@ -555,6 +665,7 @@ function BigScreenPage() {
           actionsFocused={position.zoneId === BIG_SCREEN_DETAILS_ZONE}
           focusedActionIndex={position.index}
           game={focusedGame}
+          inputDevice={hintDevice}
           onActionActivate={(index) => {
             focus(BIG_SCREEN_DETAILS_ZONE, index);
             detailActions[index]?.run();

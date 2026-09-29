@@ -558,6 +558,16 @@ export class AppConfig {
      */
     "bigscreen_default_category"?: string;
 
+    /**
+     * 大屏氛围特效档位：off / low / high，默认 low
+     */
+    "bigscreen_effect_level"?: string;
+
+    /**
+     * 大屏界面音效开关，默认 true
+     */
+    "bigscreen_sound_enabled": boolean;
+
     /** Creates a new AppConfig instance. */
     constructor($$source: Partial<AppConfig> = {}) {
         if (!("allow_duplicate_metadata_import" in $$source)) {
@@ -697,6 +707,9 @@ export class AppConfig {
         }
         if (!("bigscreen_show_hidden_game" in $$source)) {
             this["bigscreen_show_hidden_game"] = false;
+        }
+        if (!("bigscreen_sound_enabled" in $$source)) {
+            this["bigscreen_sound_enabled"] = false;
         }
 
         Object.assign(this, $$source);

@@ -575,7 +575,7 @@ LB·RB 切分类 / START 菜单），长按 400ms 后每 80ms 连发；`FocusEng
 | **M1** | 可用骨架（2026-09-29 完成）：路由+绕外壳、双背景+遮罩、侧栏 6 分类、单排虚拟货架、信息浮层、启动/收藏/详情按钮、键盘操作、焦点记忆、i18n、设置分区 | 低（基本全靠复用） |
 | **M2** | 详情层（2026-09-29 完成）：截图画带因桌面端无截图能力降级为封面大图；操作收敛为「游玩 / 详细」（PV 属 M3） | 中 |
 | M3 | PV/预告片：Go 字段 + 本地视频选择 + 播放器 + 悬停延迟起播 | 高（全链路从零） |
-| M4 | 氛围打磨：特效档位、入场动画、界面音效、手柄图标、提示条 | 低 |
+| **M4** | 氛围打磨（2026-09-29 完成）：特效档位、入场错峰动画、界面音效、手柄与图标、提示条 | 低 |
 
 ### M0 进展（2026-09-29 完成）
 
@@ -684,6 +684,55 @@ PV/预告片（M3）、氛围特效与手柄（M4）。
 `go vet ./internal/...` 干净、`go test ./... -count=1` 全通过。详情层的观感与键鼠手感
 仍需实机确认，归入阶段 3 延后的实机测试范围。
 
+### M4 进展（2026-09-29 完成）
+
+M4 氛围打磨落地：特效档位、入场错峰动画、界面音效、手柄与图标、提示条按设备切换。
+
+- **M4.1 氛围特效**：`frontend/src/bigscreen/BigScreenAtmosphere.tsx`。Canvas 粒子层，
+  档位 `off` 直接返回 `null`，`low` / `high` 分别对应 `{38 粒, 半径 0.8–2.6, 速度 0.7}`
+  与 `{96 粒, 半径 1–3.4, 速度 1.1}`；粒子主色从封面 24×24 采样求平均并提亮
+  （`lift = min(255, round(avg*0.55 + 96))`），跨域 tainted 或加载失败时按 gameId
+  派生色相兜底；`high` 额外叠同色 radial-gradient 柔光层。rAF 循环单帧更新，
+  `devicePixelRatio` 封顶 2。
+- **M4.2 手柄支持**：`frontend/src/bigscreen/useGamepad.ts`。Web 无按键事件，用 rAF
+  轮询 `navigator.getGamepads()` 走标准映射（0=A / 1=B / 2=X / 3=Y / 4=LB / 5=RB /
+  12–15=十字键，左摇杆阈值 0.5）；上升沿立即触发，长按 400ms 后每 80ms 连发，
+  仅方向与切分类参与连发。返回 `connected` 供提示条判断默认设备。
+- **M4.3 共用意图分发**：`routes/bigscreen.tsx` 抽出 `dispatchIntent(intent)` 与
+  `activateFocused()` / `goBack()`，键盘与手柄都把输入翻译成同一组
+  `BigScreenIntent`（move / category / back / confirm / details / favorite）再分发，
+  避免两套行为分叉。
+- **M4.4 提示条按设备切换**：`frontend/src/bigscreen/BigScreenHintBar.tsx` 新增
+  `inputDevice` prop 与 `main` / `details` 两个变体；手柄显示 `✚ / A / X / Y / LB·RB / B`
+  徽标，键盘显示 `← → / Enter / Esc`。设备取「最近一次实际使用过的输入」，从未使用
+  时按手柄是否接入回落。
+- **M4.5 界面音效**：`frontend/src/bigscreen/bigScreenSound.ts`。Web Audio 合成
+  （`OscillatorNode` + 指数衰减 `GainNode`），预设 `move` / `confirm` / `back` / `toggle`；
+  不新增任何二进制音频资源。受 `bigscreen_sound_enabled` 门控，懒创建 `AudioContext`
+  并在 `suspended` 时 resume。
+- **M4.6 入场错峰**：`constants.ts` 新增 `BIG_SCREEN_ENTER_STAGGER_MS = 42`（上限 12 项）
+  与 `resolveBigScreenEnterDelay(index)`；`uno.config.ts` 新增 `bigscreen-enter` 动画令牌；
+  动画挂在货架卡片的**外层绝对定位 div**（避免与内层焦点 `scale(1.045)` 的 transform
+  冲突）。只播一次：900ms 后摘掉动画类，滚动时新挂载的卡片不重放。
+- **M4.7 设置分区**：`AppConfig` 新增 `bigscreen_effect_level`（`off` / `low` / `high`，
+  默认 `low`，`NormalizeBigScreenEffectLevel` 做白名单校验）与 `bigscreen_sound_enabled`
+  （默认 `true`）；`BigScreenSettingsPanel.tsx` 新增特效档位选择与音效开关，4 个语言
+  文件同步。
+
+**与手机端的差异**（依据同下节「已核实的缺口」）：手机端手柄有独立的 `InputRouter`
+与按键提示映射，桌面端按 Web Gamepad API 重写等价逻辑；手机端音效是随包的音频资源，
+桌面端不新增二进制资源，改为 Web Audio 运行时合成。
+
+**验证**：绑定重新生成（`appconf/models.ts` 新增两个字段）；`gofmt -l .` 无输出、
+`go vet ./internal/...` 干净、`go test ./... -count=1` 全通过（含新增
+`TestNormalizeBigScreenEffectLevel`）；`pnpm i18n:check` 通过、`pnpm typecheck` 通过、
+`pnpm build`（`build:desktop` + `typecheck` + `vite build`，969 modules）通过；
+改动文件 eslint `--max-warnings 0` 干净。氛围特效、音效与手柄 / 键鼠手感仍需实机确认，
+归入阶段 3 延后的实机测试范围。
+
+**M4 未覆盖、留给后续**：PV / 预告片播放属 M3；截图画带依赖桌面端截图能力；
+游戏库等其余页面仍无手柄与全局快捷键。
+
 ### 已核实的缺口
 
 - 桌面端**无截图字段**（`screenshot` 只存在于 Android 契约模型与测试里）
@@ -691,7 +740,8 @@ PV/预告片（M3）、氛围特效与手柄（M4）。
   `docs/mobile-yukihub-migration.md` 已把 `trailer_path` 等列为刻意不导出）
 - **无多尺寸封面**：本地封面最长边 1600px（`image_covers_optimize.go`），
   4K 背景会糊，必要时回退 `cover_source_url` 原图
-- **无手柄支持**、**无全局快捷键系统**（只有 Ctrl±/0 缩放）
+- **无手柄支持**（大屏模式已在 M4 支持手柄，游戏库等其余页面仍无）、
+  **无全局快捷键系统**（只有 Ctrl±/0 缩放）
 - 现有 `VirtualGameGrid` 是**纵向**虚拟化，横向单排货架需新写
 
 ### 可复用清单

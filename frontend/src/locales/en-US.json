@@ -873,7 +873,14 @@
       "showHiddenGame": "Show hidden games",
       "showHiddenGameHint": "When enabled, big screen mode also shows games hidden from the library",
       "defaultCategory": "Default category",
-      "defaultCategoryHint": "Category selected when entering big screen mode"
+      "defaultCategoryHint": "Category selected when entering big screen mode",
+      "effectLevel": "Atmosphere effects",
+      "effectLevelHint": "Particle effect intensity in big screen mode, tinted by the focused cover",
+      "effectOff": "Off",
+      "effectLow": "Low",
+      "effectHigh": "High",
+      "soundEnabled": "Interface sounds",
+      "soundEnabledHint": "Play synthesized sounds when moving focus, confirming, or going back in big screen mode"
     },
     "sections": {
       "basic": "Basic Configuration",
@@ -1769,6 +1776,9 @@
     "hintExit": "Exit",
     "hintSwitchButton": "Switch button",
     "hintBack": "Back",
-    "playTime": "Play Time"
+    "playTime": "Play Time",
+    "hintFavorite": "Favorite",
+    "hintDetails": "Details",
+    "hintCategory": "Switch category"
   }
 }

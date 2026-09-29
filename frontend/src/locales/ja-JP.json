@@ -873,7 +873,14 @@
       "showHiddenGame": "非表示のゲームを表示",
       "showHiddenGameHint": "有効にすると、大画面モードでもライブラリで非表示にしたゲームを表示します",
       "defaultCategory": "既定のカテゴリ",
-      "defaultCategoryHint": "大画面モードに入ったときに既定で選択されるカテゴリ"
+      "defaultCategoryHint": "大画面モードに入ったときに既定で選択されるカテゴリ",
+      "effectLevel": "雰囲気エフェクト",
+      "effectLevelHint": "大画面モードでフォーカス中のカバーに応じて変化するパーティクルの強度",
+      "effectOff": "オフ",
+      "effectLow": "低",
+      "effectHigh": "高",
+      "soundEnabled": "操作音",
+      "soundEnabledHint": "大画面モードでフォーカス移動・決定・戻る時に合成音を再生します"
     },
     "sections": {
       "basic": "基本設定",
@@ -1769,6 +1776,9 @@
     "hintExit": "終了",
     "hintSwitchButton": "ボタン切り替え",
     "hintBack": "戻る",
-    "playTime": "プレイ時間"
+    "playTime": "プレイ時間",
+    "hintFavorite": "お気に入り",
+    "hintDetails": "詳細",
+    "hintCategory": "カテゴリ切り替え"
   }
 }
