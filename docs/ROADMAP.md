@@ -149,7 +149,17 @@ Wine / Proton / CrossOver 工具链清理（2026-09-28 完成）：
       收敛 `runtime.GOOS` 恒真判断、删除恒假分支，并连带删除
       `IsMacAppBundlePath`（含 6 处调用点）、`repairStaleAppImageProtocolRegistration`
       与孤儿包 `internal/utils/tricksutils`。验证：gofmt / vet / build / test 全绿。
-- [ ] 复核游戏级 `wine_*` 字段在 Windows-only 语境下的存废（见上方"明确保留"说明）
+- [x] 复核游戏级 `wine_*` 字段的存废（2026-09-29）：**结论——保留列、不再单独处理，
+      随阶段 6 的 cloudsync 收敛一并清理**
+      - 事实：`wine_runner` / `wine_args` / `wine_prefix` **完全不在 YukiHub（Android）
+        契约里**（`exporter/yukihub.go`、`importer/yukihub.go`、`models/yukihub` 均无引用）。
+        它们只存在于三处上游遗留：数据库 `games` 列与迁移、上游 `cloudsync` 快照
+        （桌面端 ↔ 桌面端）、以及由此牵出的 `models.Game` 与列表查询
+      - 判断：删列是不可逆迁移，而 Android 方向本来就不读写这三个字段，
+        现在删没有任何收益；上游 `cloudsync` 本身已列入阶段 6「移除墓碑/脏表、
+        改用 Android 侧哈希比对」，到那时这些字段会随整链一起失活
+      - 因此本项不作为独立待办：字段与列保持现状，不在 Windows-only 语境下
+        为它们新增任何读写代码
 
 ## 阶段 2：领域模型统一与双向数据迁移
 
