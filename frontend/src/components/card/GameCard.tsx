@@ -5,6 +5,7 @@ import { memo, useCallback } from "react";
 import { toast } from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 import { enums } from "../../../src/bindings/models";
+import { GAME_STATUS_BADGE_STYLES } from "../../consts/gameStatusBadge";
 import { useAppStore } from "../../store";
 import { formatLocalDate } from "../../utils/time";
 import { GameCoverImage } from "../ui/GameCoverImage";
@@ -71,6 +72,8 @@ interface GameCardProps {
   /** 当前排序维度；名称和厂商已在卡片底部展示，其余字段可在封面底部展示 */
   displaySortField?: enums.GameListSortBy | null;
   cardLayout?: GameCardLayout;
+  /** 非多选模式下点击卡片本体时触发（PC 版用于展开右侧详情面板） */
+  onActivate?: (game: models.Game) => void;
 }
 
 function GameCardComponent({
@@ -81,6 +84,7 @@ function GameCardComponent({
   searchQuery = "",
   displaySortField = null,
   cardLayout = "portrait",
+  onActivate,
 }: GameCardProps) {
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -131,11 +135,23 @@ function GameCardComponent({
     [game, isCurrentGameRunning, startGame, t],
   );
 
-  const handleViewDetails = useCallback(() => {
-    navigate({ to: `/game/${game.id}` });
-  }, [game.id, navigate]);
+  const handleViewDetails = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      navigate({ to: `/game/${game.id}` });
+    },
+    [game.id, navigate],
+  );
 
-  const isCompleted = game.status === enums.GameStatus.StatusCompleted;
+  const handleCardClick = useCallback(() => {
+    if (selectionMode) {
+      onSelectChange?.(!selected);
+      return;
+    }
+    onActivate?.(game);
+  }, [game, onActivate, onSelectChange, selected, selectionMode]);
+
+  const statusBadge = GAME_STATUS_BADGE_STYLES[game.status];
   const companyDisplay = game.company || t("common.unknownDeveloper");
   const sortFieldText = formatSortFieldValue(game, displaySortField, t);
   const isLandscape = cardLayout === "landscape";
@@ -143,8 +159,8 @@ function GameCardComponent({
   return (
     <div
       data-drag-selection-id={selectionMode ? game.id : undefined}
-      className={`group relative flex w-full flex-col overflow-hidden rounded-xl border border-brand-100 bg-white transition-colors duration-200 hover:border-brand-300 dark:border-brand-700 dark:bg-brand-800 dark:hover:border-brand-600 data-glass:border-white/22 data-glass:bg-transparent data-glass:hover:border-white/35 data-glass:dark:border-white/12 data-glass:dark:bg-transparent data-glass:dark:hover:border-white/22 native-webkit:paint-containment ${selectionMode ? "cursor-pointer [touch-action:none]" : ""} ${selectionMode && selected ? "ring-2 ring-inset ring-neutral-500 dark:ring-neutral-400" : ""}`}
-      onClick={selectionMode ? handleToggleSelect : undefined}
+      className={`group relative flex w-full flex-col overflow-hidden rounded-xl border border-primary-200/70 bg-white shadow-sm transition-all duration-200 hover:-translate-y-1 hover:border-primary-300 hover:shadow-lg dark:border-primary-300/30 dark:bg-gradient-to-b dark:from-[#1B2A47] dark:via-[#152039] dark:to-[#0E1729] dark:hover:border-primary-300/55 dark:hover:shadow-black/40 data-glass:border-white/22 data-glass:bg-none data-glass:bg-transparent data-glass:hover:border-white/35 data-glass:dark:border-white/12 data-glass:dark:bg-transparent data-glass:dark:hover:border-white/22 native-webkit:paint-containment ${selectionMode ? "cursor-pointer [touch-action:none]" : ""} ${selectionMode && selected ? "ring-2 ring-inset ring-primary-400 dark:ring-primary-300" : ""}`}
+      onClick={handleCardClick}
     >
       {selectionMode && (
         <button
@@ -153,7 +169,7 @@ function GameCardComponent({
           className={`absolute left-2 top-2 z-10 flex h-6 w-6 items-center justify-center rounded-full border
                       ${
         selected
-          ? "bg-neutral-600 text-white border-neutral-600"
+          ? "border-transparent bg-gradient-to-b from-primary-500 to-primary-700 text-white"
           : "bg-white/90 text-transparent border-brand-300 dark:bg-brand-800/90 dark:border-brand-600"
         }
                       shadow-sm`}
@@ -162,7 +178,7 @@ function GameCardComponent({
         </button>
       )}
       <div
-        className={`relative w-full overflow-hidden bg-brand-200 dark:bg-brand-700 ${
+        className={`relative w-full overflow-hidden bg-brand-200 dark:bg-brand-900/60 ${
           isLandscape ? "aspect-video" : "aspect-[3/3.6]"
         }`}
       >
@@ -183,11 +199,28 @@ function GameCardComponent({
           </div>
         )}
 
-        {/* 已通关奖杯标识 */}
-        {isCompleted && (
-          <div className="absolute top-1.5 right-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-yellow-500 shadow-lg">
-            <div className="i-mdi-trophy text-sm text-white" />
-          </div>
+        {/* 手机版状态徽标（item_game_card.xml 的 tvStatusBadge） */}
+        {statusBadge && (
+          <span
+            className={`absolute right-1.5 top-1.5 inline-flex items-center gap-1 rounded-full border border-white/25 px-2 py-0.5 text-[10px] font-bold leading-none text-white shadow-sm backdrop-blur-sm ${statusBadge.className}`}
+          >
+            <span
+              className={`${statusBadge.icon} text-xs`}
+              aria-hidden="true"
+            />
+            {t(statusBadge.labelKey)}
+          </span>
+        )}
+
+        {/* 手机版封面芯片：评分 */}
+        {!selectionMode && game.rating > 0 && (
+          <span className="absolute left-1.5 top-1.5 inline-flex items-center gap-0.5 rounded-full border border-white/20 bg-black/45 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white backdrop-blur-sm">
+            <span
+              className="i-mdi-star text-[10px] text-yellow-300"
+              aria-hidden="true"
+            />
+            {game.rating.toFixed(1)}
+          </span>
         )}
 
         {/* 当前排序字段值（封面底部覆盖条） */}
@@ -206,7 +239,7 @@ function GameCardComponent({
               onClick={handleStartGame}
               disabled={isCurrentGameRunning}
               aria-label={t("gameCard.startGame")}
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-neutral-600 text-white shadow-lg transition-transform hover:scale-110 hover:bg-neutral-500 active:scale-95 disabled:cursor-not-allowed disabled:opacity-65 disabled:hover:scale-100"
+              className="yh-primary-pill flex h-8 w-8 items-center justify-center rounded-full text-white shadow-lg transition-transform hover:scale-110 active:scale-95 disabled:cursor-not-allowed disabled:opacity-65 disabled:hover:scale-100"
             >
               <div
                 className={
@@ -230,7 +263,7 @@ function GameCardComponent({
       </div>
 
       <div
-        className={`bg-white dark:bg-brand-800 data-glass:bg-white/8 data-glass:backdrop-blur-12 data-glass:backdrop-saturate-180 data-glass:dark:bg-black/12 native-webkit:backdrop-filter-off ${isLandscape ? "px-3 pt-2 pb-3" : "px-2 pt-1 pb-2"}`}
+        className={`data-glass:bg-white/8 data-glass:backdrop-blur-12 data-glass:backdrop-saturate-180 data-glass:dark:bg-black/12 native-webkit:backdrop-filter-off ${isLandscape ? "px-3 pt-2 pb-3" : "px-2 pt-1 pb-2"}`}
       >
         <h3 className="truncate text-sm font-bold text-brand-900 dark:text-white leading-tight">
           <HighlightText text={game.name} query={searchQuery} />

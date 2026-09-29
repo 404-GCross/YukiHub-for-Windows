@@ -70,6 +70,7 @@ import { BetterTooltip } from "../components/ui/better/BetterTooltip";
 import { GameCoverImage } from "../components/ui/GameCoverImage";
 import { GameTags } from "../components/ui/GameTags";
 import { sourceLabel } from "../components/ui/import/importFlow";
+import { GAME_STATUS_BADGE_STYLES } from "../consts/gameStatusBadge";
 import { useAppStore } from "../store";
 import {
   getMetadataSourceIcon,
@@ -760,10 +761,12 @@ function GameDetailPage() {
     [enums.GameStatus.StatusDropped]: {
       label: t("common.dropped"),
       icon: "i-mdi-delete-outline",
-      color:
-        "bg-rose-100 text-rose-700 dark:bg-rose-900 dark:text-rose-300",
+      color: "bg-rose-100 text-rose-700 dark:bg-rose-900 dark:text-rose-300",
     },
   };
+
+  const gameStatusBadge
+    = GAME_STATUS_BADGE_STYLES[game.status || enums.GameStatus.StatusNotStarted];
 
   const performStartGame = async (
     targetGame: models.Game,
@@ -1324,15 +1327,15 @@ function GameDetailPage() {
       <button
         type="button"
         onClick={() => window.history.back()}
-        className="flex rounded-md items-center text-brand-750 hover:text-brand-900 dark:text-brand-400 dark:hover:text-brand-200 transition-colors"
+        className="yh-chip cursor-pointer px-3 py-1.5 text-xs font-bold transition-colors hover:border-primary-300 hover:bg-white dark:hover:bg-[#22314A]"
       >
-        <div className="i-mdi-arrow-left text-2xl mr-1" />
+        <div className="i-mdi-arrow-left text-base" />
         <span>{t("common.back")}</span>
       </button>
 
       {/* Header Section */}
-      <div className="grid min-w-0 grid-cols-[15rem_minmax(0,1fr)] items-stretch gap-6">
-        <div className="flex min-h-64 w-60 items-center">
+      <div className="yh-glass grid min-w-0 grid-cols-[15rem_minmax(0,1fr)] items-stretch gap-6 p-6">
+        <div className="relative flex min-h-64 w-60 items-center">
           {coverImageSrc ? (
             <button
               type="button"
@@ -1356,6 +1359,19 @@ function GameDetailPage() {
             <div className="flex h-full min-h-64 w-full items-center justify-center text-brand-400">
               {t("game.noCover")}
             </div>
+          )}
+
+          {/* 手机版状态徽标，与游戏库卡片保持一致 */}
+          {coverImageSrc && gameStatusBadge && (
+            <span
+              className={`pointer-events-none absolute right-2 top-2 inline-flex items-center gap-1 rounded-full border border-white/25 px-2 py-0.5 text-[10px] font-bold leading-none text-white shadow-sm backdrop-blur-sm ${gameStatusBadge.className}`}
+            >
+              <span
+                className={`${gameStatusBadge.icon} text-xs`}
+                aria-hidden="true"
+              />
+              {t(gameStatusBadge.labelKey)}
+            </span>
           )}
         </div>
 
@@ -1396,15 +1412,18 @@ function GameDetailPage() {
                 {Object.entries(statusConfig).map(([key, config]) => {
                   const isActive
                     = (game.status || enums.GameStatus.StatusNotStarted) === key;
+                  const badge
+                    = GAME_STATUS_BADGE_STYLES[key as enums.GameStatus];
+                  const activeChipClass = `border border-white/25 text-white shadow-sm backdrop-blur-sm ${badge?.className ?? config.color}`;
+                  const idleChipClass
+                    = "yh-chip cursor-pointer hover:border-primary-300 hover:bg-white dark:hover:bg-[#22314A]";
                   return (
                     <button
                       type="button"
                       key={key}
                       onClick={() => handleStatusChange(key)}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
-                        isActive
-                          ? `${config.color} ring-2 ring-offset-1 ring-brand-400 dark:ring-offset-brand-900`
-                          : "bg-brand-150 text-brand-500 dark:bg-brand-700 dark:text-brand-400 hover:bg-brand-200 dark:hover:bg-brand-600"
+                      className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold transition-all ${
+                        isActive ? activeChipClass : idleChipClass
                       }`}
                     >
                       <div className={`${config.icon} text-base`} />
@@ -1589,35 +1608,28 @@ function GameDetailPage() {
       </div>
 
       {/* Tabs */}
-      <div className="border-b border-brand-200 dark:border-brand-700">
-        <div className="flex items-center">
-          <nav className="-mb-px flex space-x-8">
-            {["stats", "edit", "launch", "backup", "progress", "review"].map(
-              tab => (
-                <button
-                  type="button"
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={`
-                  whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm
-                  ${
+      <div className="yh-glass flex items-center gap-1 overflow-x-auto p-1.5">
+        {["stats", "edit", "launch", "backup", "progress", "review"].map(
+          tab => (
+            <button
+              type="button"
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`shrink-0 rounded-full px-4 py-2 text-sm font-bold transition-all ${
                 activeTab === tab
-                  ? "border-neutral-500 text-brand-700 dark:text-neutral-400"
-                  : "border-transparent text-brand-700 hover:text-brand-750 hover:border-brand-300 dark:text-brand-400 dark:hover:text-brand-300"
-                }
-                `}
-                >
-                  {tab === "stats" && t("game.tabs.stats")}
-                  {tab === "edit" && t("common.edit")}
-                  {tab === "launch" && t("game.tabs.launch")}
-                  {tab === "backup" && t("game.tabs.backup")}
-                  {tab === "progress" && t("game.tabs.progress")}
-                  {tab === "review" && t("game.tabs.review")}
-                </button>
-              ),
-            )}
-          </nav>
-        </div>
+                  ? "yh-primary-pill text-white shadow-md"
+                  : "text-brand-700 hover:bg-white/70 dark:text-white/80 dark:hover:bg-white/10"
+              }`}
+            >
+              {tab === "stats" && t("game.tabs.stats")}
+              {tab === "edit" && t("common.edit")}
+              {tab === "launch" && t("game.tabs.launch")}
+              {tab === "backup" && t("game.tabs.backup")}
+              {tab === "progress" && t("game.tabs.progress")}
+              {tab === "review" && t("game.tabs.review")}
+            </button>
+          ),
+        )}
       </div>
 
       {/* Content */}

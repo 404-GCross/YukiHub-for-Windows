@@ -53,10 +53,13 @@
     "backToTop": "トップへ戻る",
     "unknownError": "不明なエラー",
     "close": "閉じる",
+    "details": "詳細を表示",
     "loadMore": "さらに読み込む"
   },
   "library": {
     "title": "ゲームライブラリ",
+    "detailTitle": "ゲーム詳細",
+    "viewFullDetail": "詳細を開く",
     "searchPlaceholder": "ゲームを検索...",
     "emptyState": "ゲームがありません",
     "emptyStateAction": "ゲームを追加して始めましょう",
@@ -783,9 +786,7 @@
   },
   "home": {
     "title": "ホーム",
-    "welcome": "お帰りなさい！",
     "welcomeBack": "お帰りなさい",
-    "noPlayRecord": "まだプレイ記録がありません",
     "noPlayRecordHint": "ゲームライブラリでゲームを選んで始めましょう",
     "browseLibrary": "ゲームライブラリを閲覧",
     "noData": "データがありません",
@@ -795,12 +796,19 @@
     "totalPlayTime": "総プレイ時間: ",
     "gaming": "プレイ中",
     "continueGame": "ゲームを続ける",
-    "recentPlayed": "最近プレイ",
-    "expandCoverPicker": "カバー選択を展開",
-    "collapseCoverPicker": "カバー選択を閉じる",
     "selectGame": "{{name}} に切り替える",
     "scrollRecentPrev": "前の最近プレイを表示",
     "scrollRecentNext": "次の最近プレイを表示",
+    "refresh": "更新",
+    "quickLaunch": "クイック起動",
+    "noRecentPlayedHint": "最近プレイしたゲームはありません",
+    "playTimeShort": "{{duration}}",
+    "todayTitle": "今日のデータ",
+    "todayPlayTime": "今日のプレイ時間",
+    "weeklyPlayTime": "今週のプレイ時間",
+    "libraryGames": "ライブラリのゲーム数",
+    "completedGames": "クリア済み",
+    "viewAll": "すべて表示",
     "toast": {
       "launchFailed": "ゲームの起動に失敗しました"
     }
@@ -860,6 +868,7 @@
   "settings": {
     "github": "GitHubで見る",
     "title": "設定",
+    "subtitle": "YukiHub の動作とデータを管理",
     "preparingSettings": "設定を準備中...",
     "sections": {
       "basic": "基本設定",
@@ -1530,13 +1539,6 @@
     "aiSummarizeTitle": "AI 要約",
     "chartYAxis": "プレイ時間",
     "totalDurationDataset": "総プレイ時間",
-    "library": {
-      "sectionTitle": "ライブラリ概要",
-      "totalGames": "ライブラリ内の全ゲーム",
-      "totalSessions": "総プレイ回数",
-      "totalDuration": "総プレイ時間",
-      "completedGames": "クリア済みゲーム数"
-    },
     "summary": {
       "totalPlayCount": "プレイ回数",
       "totalPlayDuration": "プレイ時間",

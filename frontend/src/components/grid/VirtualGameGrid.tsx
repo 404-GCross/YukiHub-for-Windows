@@ -51,6 +51,8 @@ interface VirtualGameGridProps {
   /** 在每张卡片封面底部显示该排序维度对应的数据 */
   displaySortField?: enums.GameListSortBy | null;
   cardLayout?: GameCardLayout;
+  /** 非多选模式下点击卡片本体时触发（PC 版用于展开右侧详情面板） */
+  onActivate?: (game: models.Game) => void;
 }
 
 interface GameGridCellProps {
@@ -62,6 +64,7 @@ interface GameGridCellProps {
   onSelectChange: (gameId: string, selected: boolean) => void;
   displaySortField?: enums.GameListSortBy | null;
   cardLayout: GameCardLayout;
+  onActivate?: (game: models.Game) => void;
 }
 
 const GameGridCell = memo(
@@ -74,6 +77,7 @@ const GameGridCell = memo(
     onSelectChange,
     displaySortField,
     cardLayout,
+    onActivate,
   }: GameGridCellProps) => {
     const handleSelectChange = useCallback(
       (nextSelected: boolean) => {
@@ -92,6 +96,7 @@ const GameGridCell = memo(
           onSelectChange={handleSelectChange}
           displaySortField={displaySortField}
           cardLayout={cardLayout}
+          onActivate={onActivate}
         />
         {renderOverlay?.(game)}
       </div>
@@ -100,9 +105,9 @@ const GameGridCell = memo(
 );
 
 const GameCardPlaceholder = memo(({ layout }: { layout: GameCardLayout }) => (
-  <div className="glass-card pointer-events-none flex w-full animate-pulse flex-col overflow-hidden rounded-xl border border-brand-100 bg-white dark:border-brand-700 dark:bg-brand-800 native-webkit:paint-containment">
+  <div className="glass-card pointer-events-none flex w-full animate-pulse flex-col overflow-hidden rounded-xl border border-primary-200/70 bg-white dark:border-primary-300/30 dark:bg-gradient-to-b dark:from-[#1B2A47] dark:via-[#152039] dark:to-[#0E1729] native-webkit:paint-containment">
     <div
-      className={`relative w-full bg-brand-200/80 dark:bg-brand-700/80 ${
+      className={`relative w-full bg-brand-200/80 dark:bg-brand-900/60 ${
         layout === "landscape" ? "aspect-video" : "aspect-[3/3.6]"
       }`}
     />
@@ -126,6 +131,7 @@ export function VirtualGameGrid({
   renderOverlay,
   displaySortField = null,
   cardLayout = "portrait",
+  onActivate,
 }: VirtualGameGridProps) {
   const measureRef = useRef<HTMLDivElement | null>(null);
   const lastVisibleRangeRef = useRef("");
@@ -296,6 +302,7 @@ export function VirtualGameGrid({
                   onSelectChange={handleSelectChange}
                   displaySortField={displaySortField}
                   cardLayout={cardLayout}
+                  onActivate={onActivate}
                 />
               );
             },

@@ -159,10 +159,18 @@ function SettingsPage() {
     <div
       className={`mx-auto max-w-8xl space-y-6 p-8 transition-opacity duration-300 ${isLoading ? "pointer-events-none opacity-50" : "opacity-100"}`}
     >
-      <div className="flex items-center justify-between">
-        <h1 className="text-4xl font-bold text-brand-900 dark:text-white">
-          {t("settings.title")}
-        </h1>
+      <div className="yh-glass flex items-center gap-3 px-5 py-4">
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-b from-primary-400 to-primary-600 text-white shadow-md">
+          <span className="i-mdi-cog-outline text-xl" aria-hidden="true" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <h1 className="truncate text-2xl font-bold text-brand-900 dark:text-white">
+            {t("settings.title")}
+          </h1>
+          <p className="truncate text-sm text-brand-500 dark:text-brand-400">
+            {t("settings.subtitle")}
+          </p>
+        </div>
       </div>
 
       <div className="mx-auto w-full max-w-5xl space-y-6">
@@ -316,7 +324,8 @@ function SettingsPage() {
 
       <div className="pt-4 text-center text-brand-500 dark:text-brand-400 pb-8 flex flex-col items-center justify-center">
         <p className="text-xs">
-          YukiHub for Windows — a modified fork of LunaBox by Saramanda9988 &amp; contributors.
+          YukiHub for Windows — a modified fork of LunaBox by Saramanda9988
+          &amp; contributors.
         </p>
         {versionInfo && (
           <p className="mt-1 text-xs opacity-80">
@@ -339,7 +348,7 @@ function SettingsPage() {
           type="button"
           onClick={() =>
             void Browser.OpenURL("https://github.com/xm486/YukiHub")}
-          className="mt-6 flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition-colors border border-brand-200 dark:border-brand-700/80 hover:bg-brand-100 hover:text-brand-800 dark:hover:bg-brand-800 dark:hover:text-brand-100"
+          className="mt-6 inline-flex items-center justify-center gap-2 rounded-full border border-primary-200/70 bg-white/70 px-4 py-2 text-sm font-semibold text-brand-700 transition-colors hover:bg-white dark:border-primary-300/40 dark:bg-[#1D2B3E]/70 dark:text-white/90 dark:hover:bg-[#1D2B3E]"
         >
           <div className="i-mdi-github text-xl" />
           <span>{t("settings.github")}</span>

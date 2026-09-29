@@ -85,7 +85,7 @@ export function SideBar({ bgEnabled = false, bgOpacity = 0.85 }: SideBarProps) {
 
   const sidebarBgClass = bgEnabled
     ? "border-r border-white/20 dark:border-white/10"
-    : "bg-white dark:bg-brand-800 border-r border-brand-200 dark:border-brand-700";
+    : "bg-white dark:bg-yh-sidebar border-r border-brand-200 dark:border-brand-700";
 
   const sidebarStyle = bgEnabled
     ? {
@@ -97,10 +97,12 @@ export function SideBar({ bgEnabled = false, bgOpacity = 0.85 }: SideBarProps) {
         transition: "width 300ms ease",
         width: isSidebarOpen ? "16rem" : "4rem",
       };
+  // 选中态对齐手机版 bg_sidebar_item：半透明蓝底 + 左侧强调条，
+  // 而不是上游那种"整块实心灰底"。
   const navItemClass
-    = "flex items-center rounded-xl p-2 text-brand-700 no-underline transition-colors hover:bg-brand-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400/70 dark:text-brand-300 dark:hover:bg-brand-700 [&.active]:bg-brand-200 [&.active]:text-brand-900 dark:[&.active]:bg-brand-700 dark:[&.active]:text-brand-100 data-glass:hover:bg-white/10 data-glass:hover:dark:bg-black/10 data-glass:[&.active]:bg-white/20 data-glass:[&.active]:dark:bg-black/20";
+    = "flex items-center rounded-lg border-l-2 border-transparent p-2 text-brand-600 no-underline transition-colors hover:bg-brand-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/70 dark:text-brand-300 dark:hover:bg-brand-700/70 [&.active]:border-primary-500 [&.active]:bg-primary-500/12 [&.active]:font-medium [&.active]:text-primary-700 dark:[&.active]:border-primary-300 dark:[&.active]:bg-primary-300/15 dark:[&.active]:text-primary-200 data-glass:hover:bg-white/10 data-glass:hover:dark:bg-black/10 data-glass:[&.active]:bg-white/20 data-glass:[&.active]:dark:bg-black/20";
   const footerActionClass
-    = "relative flex items-center justify-center rounded-xl p-2.5 text-brand-700 transition-colors hover:bg-brand-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400/70 dark:text-brand-300 dark:hover:bg-brand-700 data-glass:hover:bg-white/10 data-glass:hover:dark:bg-black/10";
+    = "relative flex items-center justify-center rounded-lg border-l-2 border-transparent p-2.5 text-brand-600 transition-colors hover:bg-brand-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/70 dark:text-brand-300 dark:hover:bg-brand-700/70 [&.active]:border-primary-500 [&.active]:bg-primary-500/12 [&.active]:text-primary-700 dark:[&.active]:border-primary-300 dark:[&.active]:bg-primary-300/15 dark:[&.active]:text-primary-200 data-glass:hover:bg-white/10 data-glass:hover:dark:bg-black/10";
   const cloudServiceEnabled = Boolean(config?.cloud_backup_enabled);
   const cloudSyncEnabled = Boolean(
     cloudServiceEnabled && config?.cloud_sync_enabled,
@@ -327,7 +329,7 @@ export function SideBar({ bgEnabled = false, bgOpacity = 0.85 }: SideBarProps) {
 
           <Link
             to="/downloads"
-            className={`${footerActionClass} no-underline [&.active]:bg-brand-200 [&.active]:text-brand-900 dark:[&.active]:bg-brand-700 dark:[&.active]:text-brand-100 select-none data-glass:[&.active]:bg-white/20 data-glass:[&.active]:dark:bg-black/20`}
+            className={`${footerActionClass} no-underline select-none data-glass:[&.active]:bg-white/20 data-glass:[&.active]:dark:bg-black/20`}
             onDragStart={e => e.preventDefault()}
           >
             <div className="relative shrink-0">
@@ -344,7 +346,7 @@ export function SideBar({ bgEnabled = false, bgOpacity = 0.85 }: SideBarProps) {
           </Link>
           <Link
             to="/settings"
-            className={`${footerActionClass} no-underline [&.active]:bg-brand-200 [&.active]:text-brand-900 dark:[&.active]:bg-brand-700 dark:[&.active]:text-brand-100 select-none data-glass:[&.active]:bg-white/20 data-glass:[&.active]:dark:bg-black/20`}
+            className={`${footerActionClass} no-underline select-none data-glass:[&.active]:bg-white/20 data-glass:[&.active]:dark:bg-black/20`}
             onDragStart={e => e.preventDefault()}
           >
             <div

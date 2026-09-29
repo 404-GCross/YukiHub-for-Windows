@@ -53,10 +53,13 @@
     "backToTop": "Back to top",
     "unknownError": "Unknown error",
     "close": "Close",
+    "details": "View details",
     "loadMore": "Load more"
   },
   "library": {
     "title": "Game Library",
+    "detailTitle": "Game Details",
+    "viewFullDetail": "Full details",
     "searchPlaceholder": "Search games...",
     "emptyState": "No Games",
     "emptyStateAction": "Add some games to get started",
@@ -783,9 +786,7 @@
   },
   "home": {
     "title": "Home",
-    "welcome": "Welcome back!",
     "welcomeBack": "Welcome back",
-    "noPlayRecord": "No play history yet",
     "noPlayRecordHint": "Go to the game library and pick a game to start",
     "browseLibrary": "Browse Library",
     "noData": "No data available",
@@ -795,12 +796,19 @@
     "totalPlayTime": "Total play time: ",
     "gaming": "Playing",
     "continueGame": "Continue",
-    "recentPlayed": "Recently Played",
-    "expandCoverPicker": "Expand cover picker",
-    "collapseCoverPicker": "Collapse cover picker",
     "selectGame": "Switch to {{name}}",
     "scrollRecentPrev": "Show earlier recent games",
     "scrollRecentNext": "Show later recent games",
+    "refresh": "Refresh",
+    "quickLaunch": "Quick Launch",
+    "noRecentPlayedHint": "No recently played games yet",
+    "playTimeShort": "{{duration}}",
+    "todayTitle": "Today's Data",
+    "todayPlayTime": "Played Today",
+    "weeklyPlayTime": "Played This Week",
+    "libraryGames": "Games in Library",
+    "completedGames": "Games Completed",
+    "viewAll": "View all",
     "toast": {
       "launchFailed": "Failed to launch game"
     }
@@ -860,6 +868,7 @@
   "settings": {
     "github": "View on GitHub",
     "title": "Settings",
+    "subtitle": "Manage how YukiHub runs and stores your data",
     "preparingSettings": "Preparing settings...",
     "sections": {
       "basic": "Basic Configuration",
@@ -1530,13 +1539,6 @@
     "aiSummarizeTitle": "AI Summary",
     "chartYAxis": "Duration",
     "totalDurationDataset": "Total Play Duration",
-    "library": {
-      "sectionTitle": "Library Overview",
-      "totalGames": "All Games in Library",
-      "totalSessions": "Total Play Sessions",
-      "totalDuration": "Total Play Duration",
-      "completedGames": "Games Completed"
-    },
     "summary": {
       "totalPlayCount": "Play Sessions",
       "totalPlayDuration": "Play Duration",

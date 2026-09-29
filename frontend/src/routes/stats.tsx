@@ -193,10 +193,7 @@ const StatsContent = memo(({ stats }: StatsContentProps) => {
       {/* Summary Cards - compact 4/8 cols grid */}
       <div className="grid grid-cols-2 sm:grid-cols-4 2xl:grid-cols-8 gap-3">
         {summaryItems.map(item => (
-          <div
-            key={item.label}
-            className="glass-card bg-white dark:bg-brand-800 px-4 py-3 rounded-xl border border-brand-200 dark:border-brand-700"
-          >
+          <div key={item.label} className="yh-glass px-4 py-3">
             <h3 className="text-xs font-medium text-brand-500 dark:text-brand-400 mb-1 truncate">
               {item.label}
             </h3>
@@ -216,7 +213,7 @@ const StatsContent = memo(({ stats }: StatsContentProps) => {
 
       {/* Row: Leaderboard + Tag Distribution (container-query 2-col) */}
       <div className="grid grid-cols-1 @[1024px]:grid-cols-12 gap-6">
-        <div className="@[1024px]:col-span-7 glass-card bg-white dark:bg-brand-800 p-5 rounded-xl border border-brand-200 dark:border-brand-700 flex flex-col">
+        <div className="@[1024px]:col-span-7 yh-glass p-5 flex flex-col">
           <h3 className="text-base font-semibold text-brand-900 dark:text-white mb-3">
             {t("stats.leaderboard.fullTitle")}
           </h3>
@@ -304,7 +301,7 @@ const StatsContent = memo(({ stats }: StatsContentProps) => {
         </div>
 
         {/* Tag Distribution - @[1024px]:col-span-5 */}
-        <div className="@[1024px]:col-span-5 glass-card bg-white dark:bg-brand-800 p-5 rounded-xl border border-brand-200 dark:border-brand-700 flex flex-col">
+        <div className="@[1024px]:col-span-5 yh-glass p-5 flex flex-col">
           <h3 className="text-base font-semibold text-brand-900 dark:text-white mb-3">
             {t("stats.tagDistribution.title")}
           </h3>
@@ -319,7 +316,7 @@ const StatsContent = memo(({ stats }: StatsContentProps) => {
 
       {/* Row: Time-of-day distribution + Total trend (container-query 2-col) */}
       <div className="grid grid-cols-1 @[1024px]:grid-cols-12 gap-6">
-        <div className="@[1024px]:col-span-5 glass-card bg-white dark:bg-brand-800 p-5 rounded-xl border border-brand-200 dark:border-brand-700">
+        <div className="@[1024px]:col-span-5 yh-glass p-5">
           <h3 className="text-base font-semibold text-brand-900 dark:text-white mb-3">
             {t("stats.timeOfDay.title")}
           </h3>
@@ -328,7 +325,7 @@ const StatsContent = memo(({ stats }: StatsContentProps) => {
             weekday={stats.weekday_distribution}
           />
         </div>
-        <div className="@[1024px]:col-span-7 glass-card bg-white dark:bg-brand-800 p-5 rounded-xl border border-brand-200 dark:border-brand-700 flex flex-col">
+        <div className="@[1024px]:col-span-7 yh-glass p-5 flex flex-col">
           <h3 className="text-base font-semibold text-brand-900 dark:text-white mb-3">
             {t("stats.charts.totalTrend")}
           </h3>
@@ -344,7 +341,7 @@ const StatsContent = memo(({ stats }: StatsContentProps) => {
       </div>
 
       {/* Game Trend - full width */}
-      <div className="glass-card bg-white dark:bg-brand-800 p-5 rounded-xl border border-brand-200 dark:border-brand-700">
+      <div className="yh-glass p-5">
         <h3 className="text-base font-semibold text-brand-900 dark:text-white mb-3">
           {t("stats.charts.gameTrend")}
         </h3>
@@ -510,8 +507,14 @@ function StatsPage() {
       ref={ref}
       className="space-y-6 max-w-8xl mx-auto p-8"
     >
-      <div className="flex items-center justify-between">
-        <h1 className="text-4xl font-bold text-brand-900 dark:text-white">
+      <div className="yh-glass flex items-center gap-3 px-5 py-4">
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-b from-primary-400 to-primary-600 text-white shadow-md">
+          <span
+            className="i-mdi-chart-box-outline text-xl"
+            aria-hidden="true"
+          />
+        </span>
+        <h1 className="min-w-0 flex-1 truncate text-2xl font-bold text-brand-900 dark:text-white">
           {t("stats.title")}
         </h1>
       </div>

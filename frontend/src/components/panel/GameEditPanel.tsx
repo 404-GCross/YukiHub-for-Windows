@@ -1087,7 +1087,7 @@ export function GameEditPanel({
                     }
                   />
                 ) : (
-                  <span className="i-mdi-database-star-outline text-xl" />
+                  <span className="i-mdi-database-outline text-xl" />
                 )}
               </span>
               <div className="min-w-0">

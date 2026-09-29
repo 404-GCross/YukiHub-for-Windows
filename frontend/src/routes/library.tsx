@@ -42,6 +42,7 @@ import {
 } from "../cache/gameCache";
 import { FilterBar } from "../components/bar/FilterBar";
 import { GameFilterPresetMenu } from "../components/bar/GameFilterPresetMenu";
+import { LibraryStatusChipRow } from "../components/bar/LibraryStatusChipRow";
 import { TagFilterMenu } from "../components/bar/TagFilterMenu";
 import { VirtualGameGrid } from "../components/grid/VirtualGameGrid";
 import { AddGameModal } from "../components/modal/AddGameModal";
@@ -50,6 +51,7 @@ import { BatchImportModal } from "../components/modal/BatchImportModal";
 import { ConfirmModal } from "../components/modal/ConfirmModal";
 import { GameImportModal } from "../components/modal/GameImportModal";
 import { SteamBatchImportModal } from "../components/modal/SteamBatchImportModal";
+import { LibraryDetailPanel } from "../components/panel/LibraryDetailPanel";
 import { LibrarySkeleton } from "../components/skeleton/LibrarySkeleton";
 import { BetterButton } from "../components/ui/better/BetterButton";
 import { BetterDropdownMenu } from "../components/ui/better/BetterDropdownMenu";
@@ -155,10 +157,10 @@ function LibraryGridLoadingState({
       {[...Array.from({ length: 16 })].map((_, index) => (
         <div
           key={index}
-          className="glass-card pointer-events-none flex w-full animate-pulse flex-col overflow-hidden rounded-xl border border-brand-100 bg-white shadow-sm data-glass:bg-white/2 dark:border-brand-700 dark:bg-brand-800 data-glass:dark:bg-black/2"
+          className="glass-card pointer-events-none flex w-full animate-pulse flex-col overflow-hidden rounded-xl border border-primary-200/70 bg-white shadow-sm data-glass:bg-white/2 dark:border-primary-300/30 dark:bg-gradient-to-b dark:from-[#1B2A47] dark:via-[#152039] dark:to-[#0E1729] data-glass:dark:bg-black/2"
         >
           <div
-            className={`w-full bg-brand-200/80 dark:bg-brand-700/80 ${
+            className={`w-full bg-brand-200/80 dark:bg-brand-900/60 ${
               cardLayout === "landscape" ? "aspect-video" : "aspect-[3/3.6]"
             }`}
           />
@@ -383,6 +385,8 @@ function LibraryPage() {
   );
   const patchLiveConfig = useAppStore(state => state.patchLiveConfig);
   const fetchHomeData = useAppStore(state => state.fetchHomeData);
+  const startGame = useAppStore(state => state.startGame);
+  const gameRuntimes = useAppStore(state => state.gameRuntimes);
   const handleShowSortFieldChange = useCallback(
     (value: boolean) => {
       void patchLiveConfig({ show_sort_field_on_cover: value });
@@ -391,6 +395,7 @@ function LibraryPage() {
   );
   const debouncedSearchQuery = useDebouncedValue(searchQuery, 250);
   const [batchMode, setBatchMode] = useState(false);
+  const [activeGame, setActiveGame] = useState<models.Game | null>(null);
   const [isOpeningRandomGame, setIsOpeningRandomGame] = useState(false);
   const [selectedGameIds, setSelectedGameIds] = useState<string[]>([]);
   const [isBatchImportingToSteam, setIsBatchImportingToSteam] = useState(false);
@@ -878,10 +883,53 @@ function LibraryPage() {
 
   const handleBatchModeChange = (enabled: boolean) => {
     setBatchMode(enabled);
-    if (!enabled) {
+    if (enabled) {
+      setActiveGame(null);
+    }
+    else {
       setSelectedGameIds([]);
     }
   };
+
+  const handleGameActivate = useCallback((game: models.Game) => {
+    setActiveGame(game);
+  }, []);
+
+  const handleCloseDetailPanel = useCallback(() => {
+    setActiveGame(null);
+  }, []);
+
+  const handleOpenFullDetail = useCallback(
+    (gameId: string) => {
+      void navigate({ to: `/game/${gameId}` });
+    },
+    [navigate],
+  );
+
+  const handleStartFromPanel = useCallback(
+    async (game: models.Game) => {
+      if (!game.id || gameRuntimes[game.id]) {
+        return;
+      }
+      try {
+        const started = await startGame(game);
+        if (!started) {
+          toast.error(
+            t("gameCard.startFailedNotLaunched", { name: game.name }),
+          );
+        }
+      }
+      catch (error) {
+        console.error("Failed to start game:", error);
+        toast.error(t("gameCard.startFailedLog", { name: game.name }));
+      }
+    },
+    [gameRuntimes, startGame, t],
+  );
+
+  const isActiveGameRunning = Boolean(
+    activeGame?.id && gameRuntimes[activeGame.id],
+  );
 
   const setGameSelection = useCallback((gameId: string, selected: boolean) => {
     setSelectedGameIds((prev) => {
@@ -940,8 +988,7 @@ function LibraryPage() {
     [enums.GameStatus.StatusDropped]: {
       label: t("common.dropped"),
       icon: "i-mdi-delete-outline",
-      color:
-        "bg-rose-100 text-rose-700 dark:bg-rose-900 dark:text-rose-300",
+      color: "bg-rose-100 text-rose-700 dark:bg-rose-900 dark:text-rose-300",
     },
   };
 
@@ -1156,13 +1203,21 @@ function LibraryPage() {
       className="h-full w-full overflow-y-auto scrollbar-stable p-8"
     >
       <div className="mx-auto flex min-h-full max-w-8xl flex-col gap-6">
-        <div className="flex flex-col items-left justify-between">
-          <h1 className="text-4xl font-bold text-brand-900 dark:text-white">
-            {t("library.title")}
-          </h1>
-          <p className="text-brand-500 dark:text-brand-400 mt-2">
-            {gameCountText}
-          </p>
+        <div className="yh-glass flex items-center gap-3 px-5 py-4">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-b from-primary-400 to-primary-600 text-white shadow-md">
+            <span
+              className="i-mdi-library-shelves text-xl"
+              aria-hidden="true"
+            />
+          </span>
+          <div className="min-w-0 flex-1">
+            <h1 className="truncate text-2xl font-bold text-brand-900 dark:text-white">
+              {t("library.title")}
+            </h1>
+            <p className="truncate text-sm text-brand-500 dark:text-brand-400">
+              {gameCountText}
+            </p>
+          </div>
         </div>
 
         <div ref={toolbarRef}>
@@ -1407,89 +1462,113 @@ function LibraryPage() {
           />
         </div>
 
-        {isEmptyListWaiting ? (
-          <div className="w-full" aria-busy="true">
-            <LibraryGridLoadingState
-              label={t("common.loading", "加载中...")}
-              cardLayout={gameCardLayout}
-            />
-          </div>
-        ) : total === 0 ? (
-          <div className="flex flex-1 items-center justify-center w-full">
-            <div className="flex w-full flex-col items-center justify-center py-20 text-brand-500 dark:text-brand-400">
-              {hasActiveGameFilters ? (
-                <>
-                  <div className="i-mdi-magnify text-6xl mb-4" />
-                  <p className="text-xl">{t("library.notFound")}</p>
-                </>
-              ) : (
-                <>
-                  <div className="i-mdi-gamepad-variant-outline text-6xl mb-4" />
-                  <p className="text-xl">{t("library.emptyState")}</p>
-                  <p className="text-sm mt-2">
-                    {t("library.emptyStateAction")}
-                  </p>
-                  <div className="mt-5 grid w-full max-w-lg grid-cols-2 gap-3">
-                    {EMPTY_STATE_IMPORT_OPTIONS.map(option => (
-                      <BetterButton
-                        key={option.source}
-                        variant="secondary"
-                        size="lg"
-                        onClick={() => setImportSource(option.source)}
-                        className="w-full rounded-full border-brand-300/70 bg-brand-100/55 px-5 shadow-sm hover:-translate-y-0.5 hover:border-brand-400 hover:bg-brand-150/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400/70 data-glass:bg-white/8 dark:border-brand-600 dark:bg-brand-800/55 dark:hover:border-brand-500 dark:hover:bg-brand-700/70"
-                      >
-                        {"iconSrc" in option ? (
-                          <img
-                            src={option.iconSrc}
-                            alt=""
-                            aria-hidden="true"
-                            className="h-5 w-5 shrink-0 rounded-md object-cover"
-                          />
-                        ) : (
-                          <span
-                            aria-hidden="true"
-                            className={`${option.icon} shrink-0 text-xl`}
-                          />
-                        )}
-                        <span className="truncate">{t(option.labelKey)}</span>
-                      </BetterButton>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        ) : (
-          <div className="relative">
-            <div
-              className={`transition-opacity duration-200 ${
-                loading ? "pointer-events-none opacity-60" : "opacity-100"
-              }`}
-            >
-              <VirtualGameGrid
-                gamesByIndex={gamesByIndex}
-                scrollRestorationId={LIBRARY_SCROLL_RESTORATION_ID}
-                totalItems={total}
-                visibleRangeResetKey={queryKey}
-                searchQuery={debouncedSearchQuery}
-                selectionMode={batchMode}
-                selectedGameIds={selectedGameIdSet}
-                onSelectChange={setGameSelection}
-                onVisibleRangeChange={handleVisibleRangeChange}
-                displaySortField={showSortField ? sortBy : null}
-                cardLayout={gameCardLayout}
-              />
-            </div>
-            {loading && (
-              <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex justify-center py-3 text-sm text-brand-600 dark:text-brand-300">
-                <div className="glass-panel flex items-center rounded-full border border-brand-200/70 bg-white/85 px-3 py-1.5 shadow-sm backdrop-blur dark:border-brand-700/70 dark:bg-brand-900/75">
-                  <div className="i-mdi-loading animate-spin mr-2" />
-                  {t("common.loading", "加载中...")}
+        <LibraryStatusChipRow
+          statusFilter={statusFilter}
+          onStatusFilterChange={setStatusFilter}
+        />
+
+        <div className="flex items-start gap-6">
+          <div className="min-w-0 flex-1">
+            {isEmptyListWaiting ? (
+              <div className="w-full" aria-busy="true">
+                <LibraryGridLoadingState
+                  label={t("common.loading", "加载中...")}
+                  cardLayout={gameCardLayout}
+                />
+              </div>
+            ) : total === 0 ? (
+              <div className="flex w-full flex-1 items-center justify-center">
+                <div className="flex w-full flex-col items-center justify-center py-20 text-brand-500 dark:text-brand-400">
+                  {hasActiveGameFilters ? (
+                    <>
+                      <div className="i-mdi-magnify mb-4 text-6xl" />
+                      <p className="text-xl">{t("library.notFound")}</p>
+                    </>
+                  ) : (
+                    <>
+                      <div className="i-mdi-gamepad-variant-outline mb-4 text-6xl" />
+                      <p className="text-xl">{t("library.emptyState")}</p>
+                      <p className="mt-2 text-sm">
+                        {t("library.emptyStateAction")}
+                      </p>
+                      <div className="mt-5 grid w-full max-w-lg grid-cols-2 gap-3">
+                        {EMPTY_STATE_IMPORT_OPTIONS.map(option => (
+                          <BetterButton
+                            key={option.source}
+                            variant="secondary"
+                            size="lg"
+                            onClick={() => setImportSource(option.source)}
+                            className="w-full rounded-full border-brand-300/70 bg-brand-100/55 px-5 shadow-sm hover:-translate-y-0.5 hover:border-brand-400 hover:bg-brand-150/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400/70 data-glass:bg-white/8 dark:border-brand-600 dark:bg-brand-800/55 dark:hover:border-brand-500 dark:hover:bg-brand-700/70"
+                          >
+                            {"iconSrc" in option ? (
+                              <img
+                                src={option.iconSrc}
+                                alt=""
+                                aria-hidden="true"
+                                className="h-5 w-5 shrink-0 rounded-md object-cover"
+                              />
+                            ) : (
+                              <span
+                                aria-hidden="true"
+                                className={`${option.icon} shrink-0 text-xl`}
+                              />
+                            )}
+                            <span className="truncate">
+                              {t(option.labelKey)}
+                            </span>
+                          </BetterButton>
+                        ))}
+                      </div>
+                    </>
+                  )}
                 </div>
+              </div>
+            ) : (
+              <div className="relative">
+                <div
+                  className={`transition-opacity duration-200 ${
+                    loading ? "pointer-events-none opacity-60" : "opacity-100"
+                  }`}
+                >
+                  <VirtualGameGrid
+                    gamesByIndex={gamesByIndex}
+                    scrollRestorationId={LIBRARY_SCROLL_RESTORATION_ID}
+                    totalItems={total}
+                    visibleRangeResetKey={queryKey}
+                    searchQuery={debouncedSearchQuery}
+                    selectionMode={batchMode}
+                    selectedGameIds={selectedGameIdSet}
+                    onSelectChange={setGameSelection}
+                    onVisibleRangeChange={handleVisibleRangeChange}
+                    displaySortField={showSortField ? sortBy : null}
+                    cardLayout={gameCardLayout}
+                    onActivate={handleGameActivate}
+                  />
+                </div>
+                {loading && (
+                  <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex justify-center py-3 text-sm text-brand-600 dark:text-brand-300">
+                    <div className="glass-panel flex items-center rounded-full border border-brand-200/70 bg-white/85 px-3 py-1.5 shadow-sm backdrop-blur dark:border-brand-700/70 dark:bg-brand-900/75">
+                      <div className="i-mdi-loading mr-2 animate-spin" />
+                      {t("common.loading", "加载中...")}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
-        )}
+
+          {activeGame && !batchMode && (
+            <aside className="sticky top-0 hidden w-72 shrink-0 lg:block xl:w-80">
+              <LibraryDetailPanel
+                game={activeGame}
+                isRunning={isActiveGameRunning}
+                onClose={handleCloseDetailPanel}
+                onOpenDetail={handleOpenFullDetail}
+                onStart={handleStartFromPanel}
+              />
+            </aside>
+          )}
+        </div>
       </div>
 
       <AddGameModal

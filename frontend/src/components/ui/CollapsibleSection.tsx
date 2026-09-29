@@ -26,17 +26,17 @@ export function CollapsibleSection({
   };
 
   return (
-    <section className="glass-settings-section settings-section-render overflow-hidden rounded-xl border border-brand-200 bg-brand-50 dark:border-brand-700 dark:bg-brand-800">
+    <section className="yh-glass settings-section-render overflow-hidden">
       <button
         type="button"
         aria-controls={contentId}
         aria-expanded={isOpen}
         onClick={handleToggle}
-        className="flex w-full items-center justify-between p-4 transition-colors data-glass:bg-white/20 data-glass:dark:bg-black/20"
+        className="flex w-full items-center justify-between p-4 transition-colors hover:bg-white/40 dark:hover:bg-white/6"
       >
         <h2 className="flex items-center gap-2 text-lg font-semibold text-brand-900 dark:text-white">
           <span
-            className={`${icon} text-xl text-neutral-500 dark:text-neutral-400`}
+            className={`${icon} text-xl text-primary-500 dark:text-primary-300`}
           />
           {title}
         </h2>

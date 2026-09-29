@@ -53,10 +53,13 @@
     "backToTop": "回到顶部",
     "unknownError": "未知错误",
     "close": "关闭",
+    "details": "查看详情",
     "loadMore": "加载更多"
   },
   "library": {
     "title": "游戏库",
+    "detailTitle": "游戏详情",
+    "viewFullDetail": "完整详情",
     "searchPlaceholder": "搜索游戏...",
     "emptyState": "暂无游戏",
     "emptyStateAction": "添加一些游戏开始吧",
@@ -783,9 +786,7 @@
   },
   "home": {
     "title": "首页",
-    "welcome": "欢迎回来！",
     "welcomeBack": "欢迎回来",
-    "noPlayRecord": "还没有游玩记录",
     "noPlayRecordHint": "去游戏库选择一款游戏开始吧",
     "browseLibrary": "浏览游戏库",
     "noData": "暂无数据",
@@ -795,12 +796,19 @@
     "totalPlayTime": "总游玩时长：",
     "gaming": "正在游戏",
     "continueGame": "继续游戏",
-    "recentPlayed": "最近游玩",
-    "expandCoverPicker": "展开封面选择",
-    "collapseCoverPicker": "收起封面选择",
     "selectGame": "切换到 {{name}}",
     "scrollRecentPrev": "向前查看更多最近游玩",
     "scrollRecentNext": "向后查看更多最近游玩",
+    "refresh": "刷新",
+    "quickLaunch": "快速启动",
+    "noRecentPlayedHint": "还没有最近游玩的游戏",
+    "playTimeShort": "{{duration}}",
+    "todayTitle": "今日数据",
+    "todayPlayTime": "今日游戏时长",
+    "weeklyPlayTime": "本周游戏时长",
+    "libraryGames": "游戏库总数",
+    "completedGames": "通关游戏",
+    "viewAll": "查看全部",
     "toast": {
       "launchFailed": "启动游戏失败"
     }
@@ -860,6 +868,7 @@
   "settings": {
     "github": "前往 GitHub 仓库",
     "title": "设置",
+    "subtitle": "管理 YukiHub 的运行方式与数据",
     "preparingSettings": "正在准备设置...",
     "sections": {
       "basic": "基础配置",
@@ -1530,13 +1539,6 @@
     "aiSummarizeTitle": "AI总结",
     "chartYAxis": "时长",
     "totalDurationDataset": "总游玩时长",
-    "library": {
-      "sectionTitle": "库概览",
-      "totalGames": "库中所有游戏",
-      "totalSessions": "总游玩次数",
-      "totalDuration": "总游玩时长",
-      "completedGames": "通关游戏数"
-    },
     "summary": {
       "totalPlayCount": "游玩次数",
       "totalPlayDuration": "游玩时长",

@@ -1,3 +1,4 @@
+import mdiIcons from "@iconify-json/mdi/icons.json";
 import { defineConfig, presetIcons, presetWind3 } from "unocss";
 
 export default defineConfig({
@@ -5,7 +6,14 @@ export default defineConfig({
     presetWind3({
       dark: "class",
     }),
-    presetIcons(),
+    // pnpm 严格 node_modules 布局下，preset-icons 的 node loader 无法从
+    // @iconify/utils 的位置解析到 @iconify-json/mdi，图标会全部空白。
+    // 显式注册 mdi：值必须是函数，loader 会对函数求值后按集合查找。
+    presetIcons({
+      collections: {
+        mdi: () => mdiIcons,
+      },
+    }),
   ],
 
   // 启动错误窗通过 main.tsx 动态加载。开发态子窗口首次打开时，
@@ -92,6 +100,46 @@ export default defineConfig({
         "transition-timing-function": "ease",
       },
     ],
+    // 手机版 YukiHub 的签名渐变：主按钮（bg_button_primary.xml）
+    [
+      "yh-primary-gradient",
+      {
+        "background-image": "linear-gradient(90deg, #8AB4FF 0%, #B48AFF 100%)",
+      },
+    ],
+    // 手机版首页横幅渐变（bg_home_gradient.xml）
+    [
+      "yh-hero-gradient",
+      {
+        "background-image":
+          "linear-gradient(90deg, #27336F 0%, #554DA0 50%, #9A68C7 100%)",
+      },
+    ],
+    // 首页横幅渐变的亮色版：同色系抬高明度，供亮色模式使用
+    [
+      "yh-hero-gradient-light",
+      {
+        "background-image":
+          "linear-gradient(120deg, #E3E9FC 0%, #E9E0F9 50%, #F5E3F1 100%)",
+      },
+    ],
+    // 手机版主按钮胶囊（bg_home_primary_pill.xml）：紫→淡紫，带白色描边
+    [
+      "yh-primary-pill",
+      {
+        "background-image": "linear-gradient(0deg, #795BE8 0%, #AA7AF3 100%)",
+        "border": "1px solid rgba(255, 255, 255, 0.5)",
+      },
+    ],
+    // 手机版侧栏/导航选中态（bg_home_nav_active.xml）
+    [
+      "yh-nav-active",
+      {
+        "background-image":
+          "linear-gradient(0deg, rgba(122, 99, 224, 0.33) 0%, rgba(127, 106, 229, 0.4) 100%)",
+        "border": "1px solid rgba(255, 255, 255, 0.28)",
+      },
+    ],
   ],
 
   // 自定义 variants - 支持 data-glass 属性
@@ -145,8 +193,19 @@ export default defineConfig({
       "glass-border": "border border-white/18 dark:border-white/10",
       "glass-text":
         "drop-shadow-[0_1px_2px_rgba(0,0,0,0.3)] drop-shadow-[0_0_8px_rgba(0,0,0,0.2)]",
-      "glass-settings-section":
-        "data-glass:bg-white/8 data-glass:dark:bg-black/12 data-glass:border data-glass:border-white/20 data-glass:dark:border-white/12",
+    },
+
+    // YukiHub 首页玻璃卡（对齐手机版 bg_home_glass：白色半透明 + 白描边 + 16dp 圆角）
+    {
+      "yh-glass":
+        "rounded-2xl border border-white/70 bg-white/55 backdrop-blur-xl dark:border-white/15 dark:bg-white/8",
+      "yh-glass-inner":
+        "rounded-xl border border-white/60 bg-white/45 dark:border-white/10 dark:bg-white/6",
+      "yh-glass-chip":
+        "rounded-lg border border-white/55 bg-white/45 dark:border-white/10 dark:bg-white/6",
+      // 手机版胶囊标签（bg_chip：深蓝半透明 + 蓝描边 + 999 圆角）
+      "yh-chip":
+        "inline-flex items-center gap-1 rounded-full border border-primary-200/70 bg-white/80 px-2 py-0.5 text-[10px] font-bold leading-none text-brand-700 backdrop-blur-sm dark:border-primary-300/45 dark:bg-[#1D2B3E]/75 dark:text-white/90",
     },
 
     // 玻璃态层级系统（从不透明到透明）
@@ -290,33 +349,65 @@ export default defineConfig({
       },
     },
     colors: {
-      // 基础灰度色板
+      // 基础中性色板 —— 冷调深蓝，锚点取自手机版 YukiHub 的 yh_bg / yh_card / yh_line。
+      // 暗端（700~900）是界面的主背景与卡片，直接决定"像不像 YukiHub"；
+      // 亮端（50~300）是同色系的浅色版，供亮色模式使用。
       brand: {
-        50: "#fdfdfdff",
-        100: "#f3f4f6",
-        150: "#ecedf0",
-        200: "#e5e7eb",
-        300: "#d1d5db",
-        400: "#9ca3af",
-        500: "#6b7280",
-        600: "#4b5563",
-        700: "#44484eff",
-        750: "#303235ff",
-        800: "#1c1e1fff",
-        900: "#121416ff",
+        50: "#FAFBFF",
+        100: "#F1F3F9",
+        150: "#E7EAF4",
+        200: "#DDE2F0",
+        300: "#C7CFE3",
+        400: "#9AA4BF", // = yh_text_muted
+        500: "#6E7A9B",
+        600: "#4A5578",
+        700: "#2D3658", // = yh_line
+        750: "#222B49", // = yh_card_2
+        800: "#171E33", // = yh_card
+        900: "#0B1020", // = yh_bg
       },
-      // 主色调 (primary) - 月光紫
+      // 主色调 (primary) - YukiHub 柔和蓝。
+      // 300 是手机版 yh_primary(#8AB4FF) 本身，供暗色模式的前景/强调文字使用；
+      // 500/600 压深一档，保证亮色模式下"白字蓝底"按钮仍有足够对比度。
       primary: {
-        50: "#F5F3FF",
-        100: "#EDE9FE",
-        200: "#DDD6FE",
-        300: "#C4B5FD",
-        400: "#A78BFA",
-        500: "#7C6AEF",
-        600: "#6D5DD3",
-        700: "#5B4CB8",
-        800: "#4A3D96",
-        900: "#2E2660",
+        50: "#F3F7FF",
+        100: "#E5EEFF",
+        200: "#CBDEFF",
+        300: "#8AB4FF",
+        400: "#7FA6F2",
+        500: "#6E96E8",
+        600: "#5A7CC9",
+        700: "#46629F",
+        800: "#35497A",
+        900: "#2E4173",
+      },
+      // 次色调 (secondary) - YukiHub 樱粉 yh_secondary，与主色拉开色相差，用于强调与选中态
+      secondary: {
+        50: "#FFF4F8",
+        100: "#FFE8F1",
+        200: "#FFD0E1",
+        300: "#FFB4CE",
+        400: "#FF9FC0",
+        500: "#FF8AB3",
+        600: "#E8739C",
+        700: "#C95B81",
+        800: "#A34666",
+        900: "#7A3049",
+      },
+      // 手机版原始令牌，按名字直取，便于对照手机版源码
+      yh: {
+        "bg": "#0B1020",
+        "bg2": "#111936",
+        "sidebar": "#10172A",
+        "card": "#171E33",
+        "card2": "#222B49",
+        "primary": "#8AB4FF",
+        "secondary": "#FF8AB3",
+        "text": "#F5F7FF",
+        "text-muted": "#9AA4BF",
+        "line": "#2D3658",
+        "success": "#34C759",
+        "warning": "#FFCC00",
       },
       // 强调色 (Accent) - 星光蓝
       accent: {

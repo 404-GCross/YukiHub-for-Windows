@@ -328,7 +328,7 @@ export function GameReviewPanel({ game }: GameReviewPanelProps) {
         ? "i-mdi-check-circle-outline text-success-600 dark:text-success-400"
         : autoSaveStatus === "error"
           ? "i-mdi-alert-circle-outline text-error-600 dark:text-error-400"
-          : "i-mdi-content-save-clock-outline";
+          : "i-mdi-content-save-outline";
 
   return (
     <div>

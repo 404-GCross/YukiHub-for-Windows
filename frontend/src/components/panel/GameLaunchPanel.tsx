@@ -222,7 +222,7 @@ export function GameLaunchPanel({
               />
               <BetterButton
                 variant="secondary"
-                icon="i-mdi-application-search-outline"
+                icon="i-mdi-magnify-scan"
                 onClick={onSelectRunningProcess}
               >
                 {t("gameLaunch.selectRunningProcess")}
@@ -284,8 +284,7 @@ export function GameLaunchPanel({
               </label>
               <BetterActionInput
                 value={steamLaunchOptions}
-                onChange={e =>
-                  handleSteamLaunchOptionsChange(e.target.value)}
+                onChange={e => handleSteamLaunchOptionsChange(e.target.value)}
                 placeholder={t("gameLaunch.steamLaunchOptionsPlaceholder")}
                 className="font-mono"
                 actions={[
@@ -296,8 +295,7 @@ export function GameLaunchPanel({
                       : "i-mdi-content-save-outline",
                     onClick: handleSaveSteamLaunchOptions,
                     disabled:
-                      isSteamLaunchOptionsSaving
-                      || !onSaveSteamLaunchOptions,
+                      isSteamLaunchOptionsSaving || !onSaveSteamLaunchOptions,
                   },
                 ]}
               />
@@ -314,9 +312,7 @@ export function GameLaunchPanel({
                     onClick={() =>
                       handleApplySteamLaunchOptionsPreset(preset.value)}
                   >
-                    {t(
-                      `gameLaunch.steamLaunchOptionsPresets.${preset.key}`,
-                    )}
+                    {t(`gameLaunch.steamLaunchOptionsPresets.${preset.key}`)}
                   </BetterButton>
                 ))}
               </div>
