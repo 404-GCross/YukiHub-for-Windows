@@ -435,8 +435,8 @@ $arc = "参考文件\YukiHub手机版030p离线展厅成型，进度条跳转.7z
    - 仓库现状：本项目从未移植过该能力（无 OCR 代码、无 `assets/ppocrv6/` 素材），
      此前仅作为计划项列出，现已删除，不再是待办
 5. **社区与好友功能**（REST 契约可复用，界面重做）→ **已移至阶段 6**（依赖服务端）
-6. **大屏模式**（对齐手机端的大屏形态；产品设计可参考 Android 版，桌面端 UI 应能做得更好）
-   → **保留要做，但不急**，随项目进度稳步推进
+6. **大屏模式**（对齐手机端的大屏形态；桌面端 UI 应做得更好）
+   → **要做，2026-09-29 立项并出方案**，首期做 M0+M1（见下方"大屏模式设计"）
    - 注：**音乐厅 = 离线 3D 展厅**（手机端 `assets/exhibition/`）是**同一项**，
      且 **2026-09-29 决定不做**，详见下方"不做：离线 3D 展厅（音乐厅）"。
      此前条目里"音乐厅 / 大屏模式"并列写法有误导，已拆分。
@@ -483,6 +483,122 @@ $arc = "参考文件\YukiHub手机版030p离线展厅成型，进度条跳转.7z
 - **以管理员身份运行**：`game.launch_mode = admin`
 - **Steam 直启**：按注册表定位安装目录，`steam://rungameid/<id>`
 - **进程树/窗口焦点活跃时长统计**：`utils/timerutils/active_time_tracker.go`
+
+## 大屏模式设计（阶段 4 第 6 项）
+
+2026-09-29 立项。对齐手机端 `com.yuki.yukihub.bigscreen`（20 个 Java 文件），
+但**桌面端重做视觉与输入层**：手机端那套是为遥控器 + 横屏小屏设计的，
+桌面端有更大的画布、鼠标键盘手柄三种输入与成熟的 Web 动效能力。
+
+### 定位与形态
+
+横屏沉浸式「浏览 + 原地启动」界面，不是启动器。手机端是独立 Activity
+（`sensorLandscape`、隐藏状态栏/导航栏、常亮），三个入口：游戏库底部导航、
+首页按钮、开机直达。
+
+### 已决策
+
+| 决策 | 结论 | 理由 |
+| --- | --- | --- |
+| 承载形式 | **同窗口无外壳全屏路由** `/bigscreen` | 复用现有 store、`game-runtime:changed` 事件与单例后端，改动最小；`RootLayout` 按 pathname 跳过 TopBar+SideBar。独立全屏窗口（双屏场景）留作后续，`StartupWindow` 已有先例 |
+| 首期范围 | **M0 + M1** | 先做到"能在大屏里真的浏览和启动游戏"，看效果再定后续 |
+| 输入 | 键盘 + 鼠标优先，手柄（Gamepad API）后补 | 桌面端全仓目前无任何手柄代码 |
+
+### 手机端事实基线（迁移参考）
+
+结构（`activity_bigscreen.xml`）：双背景 `bsBgA/B`（当前焦点封面，交叉淡入 600ms
++ KenBurns）→ 左右/底部渐变遮罩 → 氛围层 `bsSnow` → PV 层 `bsBgVideo` →
+顶栏（时钟/手柄状态）→ 侧栏 `bsRail`（6 分类，72dp ⇄ 展开）→ 单排卡片货架
+（上限 500）→ 底栏按键提示（4s 后淡到 28%）→ 信息浮层 `bsInfoBar`（LOGO/标题/
+标签/元数据/操作按钮排）→ 浮层容器（详情层 → 设置 → 菜单，后者盖前者）→
+提示条 `bsBanner` → 入场层。
+
+交互：`InputRouter` 把按键翻译成意图（A 确认 / B 返回 / X 收藏 / Y 详情 /
+LB·RB 切分类 / START 菜单），长按 400ms 后每 80ms 连发；`FocusEngine` 是
+**不持有视图的纯逻辑二维焦点引擎**（支持网格与"每行不等长"两种模型、
+跨行夹紧列、边界回调、按分类记忆焦点），滚动/动效/音效全在上层——这部分可近乎
+零改动复刻到 TS。焦点区三个且互斥：内容区 / 侧栏 / 按钮排。
+
+数据：`GameRepository.getAll()` 全量进内存；分类 ALL/FAV/RECENT/PLAYING/DONE/TODO
+（排除 hidden）；排序 recent（默认）/newest/name；无分页。
+
+详情层 `BigScreenDetailsLayer`：大标题 / 副行（原文名·开发商·发行日期）/
+标签 chips（≤3 + R18）/ 统计块（时长、上次游玩、状态、评分）/ 简介 /
+截图画带（≤8，整块失败即隐藏）/ 封面；操作仅三个：**游玩 / 观看 PV / 详细**。
+大屏化取舍：←→ 只移按钮不切游戏，评分先瘦身，chips 只放标签。
+
+### 视觉参考（`BigScreenSizes` / `colors_bigscreen.xml`）
+
+手机端全部尺寸按横屏短边 `hDp` 等比缩放（夹取区间用于防极端屏幕）：
+
+| 项 | 公式 | 夹取 |
+| --- | --- | --- |
+| 顶栏高 / 底栏高 | h×0.075 / h×0.042 | 36–54 / 20–26 |
+| 行总高 rowTotal | 内容区 / 1.35 | ≥96 |
+| 行标题高 headerH | rowTotal×0.20 | 20–34 |
+| 卡片高 / 宽 | rowTotal−headerH−gap×2 / 高×0.75 | 88–200 / ≤w×0.17 |
+| 行间距 gap | h×0.018 | 4–10 |
+| 侧栏条目 / 图标 | (内容区−12)/6 / item×0.92 | 28–52 / 24–46 |
+| 侧栏收起 / 展开宽 | item+14 / w×0.24 | 50–78 / 168–260 |
+| 大标题 / 标签 / 副行字号 | h×0.052 / 0.027 / 0.030 | 16.5–26 / 9–11 / 9.5–12 |
+
+配色：`bs_bg #0B1020`、`bs_bg2 #111936`、`bs_card #171E33`、`bs_card_focus #222B49`、
+`bs_primary #8AB4FF`、**焦点洋红 `bs_focus #FF8AB3`**、`bs_line #2D3658`、
+`bs_text #F5F7FF`、`bs_text_muted #9AA4BF`。
+
+动效：卡片焦点 140ms（缩放 1.045 + 描边）、侧栏展开 220ms/收起 200ms、
+背景交叉淡入 600ms、提示条进 200ms/出 180ms、入场错峰 42ms×idx。
+
+### 桌面端架构落法
+
+- 路由：新建 `frontend/src/routes/bigscreen.tsx` 导出 `Route`，
+  在 `frontend/src/App.tsx` 的 `rootRoute.addChildren([...])` 注册；
+  `frontend/src/routes/__root.tsx` 用已有的 `useLocation` 按 pathname 跳过外壳。
+- **先验风险**：`wailsruntime.Runtime`（`internal/.../runtime.go`）目前只有
+  Show/Restore/对话框，**没有全屏 API**；M0 必须先确定扩展 Runtime 接口还是直接调
+  Wails window，否则整个方案不成立。
+- 输入：键盘方向键/Enter/Esc；鼠标 hover 预览、滚轮横滑、点击中转（桌面端增强）。
+- 焦点：TS 侧复刻 `FocusEngine` 逻辑模型，视觉动效交给 CSS。
+- 数据：复用 `GameService.GetGames`（`internal/service/game_service.go`）已有的
+  筛选/排序/分页，比手机端更强。**缺口：`vo.GameListResponse` 不含游玩时长**，
+  信息层首期不显示时长，后续补批量时长接口。
+- 设置：`internal/appconf/config.go` 的 `AppConfig` 加 `bigscreen_*` 字段
+  （snake_case，默认值写在 `LoadConfig`），设置页新增分区，4 个语言文件同步。
+- i18n：i18next，新增顶层键组 `bigScreen.*`，4 文件同层补齐。
+
+### 分期
+
+| 期 | 内容 | 风险 |
+| --- | --- | --- |
+| **M0** | 技术验证：窗口全屏 API、横向虚拟货架一屏、键盘焦点环 | 全屏 API 缺口 |
+| **M1** | 可用骨架：路由+绕外壳、双背景+遮罩、侧栏 6 分类、单排虚拟货架、信息浮层、启动/收藏/详情按钮、键盘操作、焦点记忆、i18n、设置分区 | 低（基本全靠复用） |
+| M2 | 详情层；截图画带需先补桌面端截图能力，否则降级为封面大图 | 中 |
+| M3 | PV/预告片：Go 字段 + 本地视频选择 + 播放器 + 悬停延迟起播 | 高（全链路从零） |
+| M4 | 氛围打磨：特效档位、入场动画、界面音效、手柄图标、提示条 | 低 |
+
+### 已核实的缺口
+
+- 桌面端**无截图字段**（`screenshot` 只存在于 Android 契约模型与测试里）
+- 桌面端**无任何预告片能力**（Go 模型 / 配置 / 前端播放器全缺；
+  `docs/mobile-yukihub-migration.md` 已把 `trailer_path` 等列为刻意不导出）
+- **无多尺寸封面**：本地封面最长边 1600px（`image_covers_optimize.go`），
+  4K 背景会糊，必要时回退 `cover_source_url` 原图
+- **无手柄支持**、**无全局快捷键系统**（只有 Ctrl±/0 缩放）
+- 现有 `VirtualGameGrid` 是**纵向**虚拟化，横向单排货架需新写
+
+### 可复用清单
+
+- 后端：`GetGames` / `GetGameByID` / `GetHomePageData` / `StartGameWithTracking` /
+  `StartGameWithOptions`（含 Magpie、转区）、`game-runtime:changed` 事件、
+  收藏（`system:favorites` 分类，不是字段）、筛选排序
+- 前端：`GameCard`、`GameCoverImage` / `ProxyImage`（含 NSFW 模糊，
+  开关为 `config.blur_nsfw_game_covers`）、`GameTags`、UnoCSS 全部令牌与玻璃态
+  shortcuts、`CollapsibleSection` / `BetterSwitch`、i18n 基础设施
+
+### 验证方式
+
+`gofmt` / `go vet` / `go test ./... -count=1` / `pnpm build`（含 typecheck）。
+大屏模式本身以实机运行为准（属阶段 3 延后的实机测试范围）。
 
 ## 不做：离线 3D 展厅（音乐厅）
 
