@@ -81,38 +81,49 @@ export const VirtualGameShelf = memo(
             return (
               <div
                 key={virtualItem.key}
-                className={`absolute left-0 top-0 flex items-center ${
-                  entryAnimation ? "animate-bigscreen-enter" : ""
-                }`}
+                className="absolute left-0 top-0 flex items-center"
                 style={{
-                  animationDelay: entryAnimation
-                    ? `${resolveBigScreenEnterDelay(virtualItem.index)}ms`
-                    : undefined,
                   height: rowHeight,
+                  // 横向虚拟化：偏移必须由 virtualItem.start 给出，
+                  // 少了这一行所有卡片都会叠在 left:0 上，一屏只看得到一张
+                  transform: `translateX(${virtualItem.start}px)`,
                   width: cardWidth,
                 }}
               >
+                {/*
+                  定位（translateX）与入场动画必须分在两层：动画的关键帧也写
+                  `transform`，且 fill-mode 是 both，同层会把定位覆盖掉
+                  （动画结束后依然生效，卡片会一直叠在原点）。
+                */}
                 <div
-                  className="relative transition-transform duration-[140ms] ease-out"
+                  className={`w-full ${entryAnimation ? "animate-bigscreen-enter" : ""}`}
                   style={{
-                    transform: isFocused ? "scale(1.045)" : undefined,
-                    width: cardWidth,
-                    zIndex: isFocused ? 10 : undefined,
+                    animationDelay: entryAnimation
+                      ? `${resolveBigScreenEnterDelay(virtualItem.index)}ms`
+                      : undefined,
                   }}
-                  onMouseEnter={() => onFocusIndexChange(virtualItem.index)}
                 >
-                  <GameCard
-                    game={game}
-                    cardLayout="portrait"
-                    onActivate={onActivate}
-                    onViewDetails={onViewDetails}
-                  />
-                  {isFocused && (
-                    <div
-                      className="pointer-events-none absolute inset-0 z-20 rounded-xl ring-3 ring-secondary-500"
-                      aria-hidden="true"
+                  <div
+                    className="relative transition-transform duration-[140ms] ease-out"
+                    style={{
+                      transform: isFocused ? "scale(1.045)" : undefined,
+                      zIndex: isFocused ? 10 : undefined,
+                    }}
+                    onMouseEnter={() => onFocusIndexChange(virtualItem.index)}
+                  >
+                    <GameCard
+                      game={game}
+                      cardLayout="portrait"
+                      onActivate={onActivate}
+                      onViewDetails={onViewDetails}
                     />
-                  )}
+                    {isFocused && (
+                      <div
+                        className="pointer-events-none absolute inset-0 z-20 rounded-xl ring-3 ring-secondary-500"
+                        aria-hidden="true"
+                      />
+                    )}
+                  </div>
                 </div>
               </div>
             );

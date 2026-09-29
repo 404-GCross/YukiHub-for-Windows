@@ -49,12 +49,31 @@ export const BIG_SCREEN_CARD_GAP = 14;
 /** GameCard 底部标题 + 厂商区的高度（px） */
 const CARD_META_HEIGHT = 52;
 
-const MIN_CARD_WIDTH = 96;
+/**
+ * 封面高度占货架可视高度的比例。
+ *
+ * 对齐手机端 `BigScreenSizes` 的等比思路（手机端 `rowTotal = 内容区 / 1.35`，
+ * 卡片再占掉其中一部分）。桌面端取 0.42：一排卡片约占货架高度的一半，
+ * 上下留出背景与行标题的空间，是「沉浸式货架」而不是「贴满整屏」。
+ *
+ * **尺寸必须随屏幕缩放并夹取**：早先的写法直接把货架可视高度当成卡片高度，
+ * 1080p 全屏下卡片会被放大到近 700px 宽、占满整屏，右侧全是空白。
+ */
+const CARD_HEIGHT_RATIO = 0.42;
 
-/** 由货架可视高度推导卡片宽度（对齐手机端 BigScreenSizes 的等比缩放思路） */
+/** 封面高度的夹取区间（px），防止极端窗口下过小或过大 */
+const MIN_CARD_COVER_HEIGHT = 140;
+const MAX_CARD_COVER_HEIGHT = 520;
+
+/** 由货架可视高度推导卡片宽度（先算封面高度、夹取后再按比例换算宽度） */
 export function resolveBigScreenCardWidth(rowHeight: number) {
-  const available = rowHeight - CARD_META_HEIGHT - BIG_SCREEN_CARD_GAP * 2;
-  return Math.max(MIN_CARD_WIDTH, Math.round(available / COVER_ASPECT_RATIO));
+  // 比例说的是「整张卡（封面 + 标题区）」占货架高度的多少
+  const available = rowHeight * CARD_HEIGHT_RATIO - CARD_META_HEIGHT;
+  const coverHeight = Math.min(
+    Math.max(available, MIN_CARD_COVER_HEIGHT),
+    MAX_CARD_COVER_HEIGHT,
+  );
+  return Math.round(coverHeight / COVER_ASPECT_RATIO);
 }
 
 /** 氛围特效档位 */

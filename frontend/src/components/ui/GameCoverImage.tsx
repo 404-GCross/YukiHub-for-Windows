@@ -1,4 +1,5 @@
 import type { ComponentProps } from "react";
+import { useState } from "react";
 import { useAppStore } from "../../store";
 import { ProxyImage } from "./ProxyImage";
 
@@ -17,12 +18,17 @@ export function GameCoverImage({
   imageClassName,
   isNSFW = false,
   revealNSFWOnHover = false,
+  onError,
   ...props
 }: GameCoverImageProps) {
   const shouldProtectNSFWCover = useAppStore(
     state => isNSFW && state.config?.blur_nsfw_game_covers !== false,
   );
   const shouldShowWatermark = shouldProtectNSFWCover && revealNSFWOnHover;
+  // 记录失败的地址而不是布尔量：换图后自动失效，不必在 effect 里重置
+  const [failedSrc, setFailedSrc] = useState("");
+  const currentSrc = props.src?.trim() ?? "";
+  const isFailed = currentSrc !== "" && failedSrc === currentSrc;
 
   return (
     <span
@@ -34,8 +40,21 @@ export function GameCoverImage({
         revealNSFWOnHover={revealNSFWOnHover}
         className={`${imageClassName ?? "h-full w-full object-cover"} ${
           shouldShowWatermark ? "peer" : ""
-        }`.trim()}
+        } ${isFailed ? "opacity-0" : ""}`.trim()}
+        onError={(event) => {
+          setFailedSrc(currentSrc);
+          onError?.(event);
+        }}
       />
+      {/* 加载失败时盖掉浏览器自带的「碎图」图标，改用应用内占位 */}
+      {isFailed && (
+        <span
+          className="absolute inset-0 flex items-center justify-center bg-brand-200 text-brand-400 dark:bg-brand-900/60"
+          aria-hidden="true"
+        >
+          <span className="i-mdi-image-off text-3xl" />
+        </span>
+      )}
       {shouldShowWatermark && (
         <span className="pointer-events-none absolute inset-0 flex items-center justify-center transition-opacity duration-300 peer-hover:opacity-0">
           <span

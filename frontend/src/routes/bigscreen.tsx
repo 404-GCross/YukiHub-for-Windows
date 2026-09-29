@@ -212,6 +212,10 @@ function BigScreenPage() {
   const activeCategoryIndex = BIG_SCREEN_CATEGORIES.findIndex(
     category => category.id === activeCategory,
   );
+  const activeCategoryLabelKey
+    = activeCategoryIndex >= 0
+      ? BIG_SCREEN_CATEGORIES[activeCategoryIndex].labelKey
+      : "";
   const safeShelfIndex = Math.min(shelfIndex, Math.max(0, games.length - 1));
   const focusedGame = games[safeShelfIndex];
   const { isFavorite, setFavorite } = useGameFavorite(focusedGame?.id);
@@ -645,7 +649,10 @@ function BigScreenPage() {
     = inputDevice ?? (gamepadConnected ? "gamepad" : "keyboard");
 
   return (
-    <div className="relative flex h-screen w-screen select-none overflow-hidden bg-brand-900 text-white">
+    // `dark` 是刻意加的：大屏整体是暗色皮肤（对齐手机端 bs_* 常量），
+    // 而复用的 GameCard 等组件是主题相关的。不加这一层，亮色主题下
+    // 卡片会是白底，在暗色大屏里非常突兀。
+    <div className="dark relative flex h-screen w-screen select-none overflow-hidden bg-brand-900 text-white">
       <BigScreenBackground
         coverUrl={coverUrl}
         coverSourceUrl={focusedGame?.cover_source_url || ""}
@@ -664,7 +671,20 @@ function BigScreenPage() {
           <div
             className="flex h-full"
             onMouseEnter={() => setRailHovered(true)}
-            onMouseLeave={() => setRailHovered(false)}
+            onMouseLeave={() => {
+              setRailHovered(false);
+              // 悬停会把焦点带进侧栏（rail 条目的 onMouseEnter），鼠标离开后必须
+              // 交还出去：侧栏的展开态是「悬停 或 焦点在侧栏」，只清悬停标记不够。
+              // 空分类没有可聚焦的卡片，退回底部按钮排，否则侧栏会一直展开。
+              if (position.zoneId !== BIG_SCREEN_RAIL_ZONE) {
+                return;
+              }
+              if (games.length > 0) {
+                focus(BIG_SCREEN_SHELF_ZONE, safeShelfIndex);
+                return;
+              }
+              focus(BIG_SCREEN_ACTIONS_ZONE, 0);
+            }}
           >
             <BigScreenRail
               activeCategory={activeCategory}
@@ -677,26 +697,42 @@ function BigScreenPage() {
             />
           </div>
 
-          <div ref={shelfAreaRef} className="min-h-0 flex-1 px-8 pt-6">
-            {games.length > 0 && shelfHeight > 0 && (
-              <VirtualGameShelf
-                entryAnimation={entryAnimation}
-                focused={isShelfFocused}
-                focusedIndex={safeShelfIndex}
-                games={games}
-                onActivate={handleStartGame}
-                onFocusIndexChange={index =>
-                  focus(BIG_SCREEN_SHELF_ZONE, index)}
-                onViewDetails={handleOpenDetails}
-                rowHeight={shelfHeight}
-              />
-            )}
+          <div className="flex min-h-0 flex-1 flex-col px-8 pt-6">
+            {/* 行标题：对齐手机端 rowTotal 里留给 headerH 的那一份 */}
+            <div className="flex shrink-0 items-baseline gap-3 pb-4">
+              {activeCategoryLabelKey && (
+                <h2 className="text-2xl font-bold text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.5)]">
+                  {t(activeCategoryLabelKey)}
+                </h2>
+              )}
+              {games.length > 0 && (
+                <span className="text-xs text-brand-400">
+                  {t("category.gameCount", { count: games.length })}
+                </span>
+              )}
+            </div>
 
-            {games.length === 0 && (
-              <div className="flex h-full items-center justify-center text-sm text-brand-400">
-                {t("bigScreen.empty")}
-              </div>
-            )}
+            <div ref={shelfAreaRef} className="min-h-0 flex-1">
+              {games.length > 0 && shelfHeight > 0 && (
+                <VirtualGameShelf
+                  entryAnimation={entryAnimation}
+                  focused={isShelfFocused}
+                  focusedIndex={safeShelfIndex}
+                  games={games}
+                  onActivate={handleStartGame}
+                  onFocusIndexChange={index =>
+                    focus(BIG_SCREEN_SHELF_ZONE, index)}
+                  onViewDetails={handleOpenDetails}
+                  rowHeight={shelfHeight}
+                />
+              )}
+
+              {games.length === 0 && (
+                <div className="flex h-full items-center justify-center text-sm text-brand-400">
+                  {t("bigScreen.empty")}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
