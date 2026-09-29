@@ -22,6 +22,7 @@
     "company": "ゲーム会社",
     "lastPlayedAt": "最終プレイ",
     "createdAt": "追加日",
+    "playTime": "プレイ時間",
     "rating": "評価",
     "releaseDate": "発売日",
     "never": "なし",

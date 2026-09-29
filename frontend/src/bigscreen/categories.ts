@@ -6,6 +6,7 @@ import {
 } from "../../bindings/yukihub/internal/service/categoryservice";
 import { GetGames } from "../../bindings/yukihub/internal/service/gameservice";
 import { enums } from "../../src/bindings/models";
+import { primeGamePlaytimes } from "../hooks/useGamePlaytime";
 import { BIG_SCREEN_PAGE_LIMIT, BIG_SCREEN_SHELF_LIMIT } from "./constants";
 
 /**
@@ -130,6 +131,8 @@ function buildRequest(
     sort_order: plan.sortOrder,
     secondary_sort_by: enums.GameListSortBy.$zero,
     secondary_sort_order: enums.SortOrder.$zero,
+    // 信息浮层与详情层都要显示时长，一次批量带回胜过每次切卡单查。
+    with_play_time: true,
   } as vo.GameListRequest;
 }
 
@@ -166,6 +169,7 @@ export async function fetchBigScreenGames(
 
     const page = response.games ?? [];
     games.push(...page);
+    primeGamePlaytimes(response.play_times ?? undefined);
     if (!response.has_more || page.length === 0) {
       break;
     }

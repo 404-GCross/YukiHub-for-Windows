@@ -22,6 +22,7 @@
     "company": "Game Company",
     "lastPlayedAt": "Last Played",
     "createdAt": "Date Added",
+    "playTime": "Play Time",
     "rating": "Rating",
     "releaseDate": "Release Date",
     "never": "Never",

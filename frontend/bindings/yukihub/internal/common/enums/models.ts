@@ -17,6 +17,7 @@ export enum GameListSortBy {
     GameListSortByCreatedAt = "created_at",
     GameListSortByRating = "rating",
     GameListSortByReleaseDate = "release_date",
+    GameListSortByPlayTime = "play_time",
 };
 
 export enum GameStatus {

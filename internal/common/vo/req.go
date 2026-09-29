@@ -64,6 +64,9 @@ type GameListRequest struct {
 	SortOrder             enums.SortOrder      `json:"sort_order"`
 	SecondarySortBy       enums.GameListSortBy `json:"secondary_sort_by"`
 	SecondarySortOrder    enums.SortOrder      `json:"secondary_sort_order"`
+	// WithPlayTime 为 true 时，响应里额外带回本页每条游戏的累计游玩时长（秒）。
+	// 默认关闭：绝大多数列表调用不需要它，缺省返回避免每次都多一次聚合查询。
+	WithPlayTime bool `json:"with_play_time,omitempty"`
 }
 
 type SaveGameFilterPresetRequest struct {

@@ -128,6 +128,8 @@ func gameListSortTerm(sortBy enums2.GameListSortBy, sortOrder enums2.SortOrder) 
 		return fmt.Sprintf("COALESCE(g.rating, 0) %s", direction)
 	case enums2.GameListSortByReleaseDate:
 		return fmt.Sprintf("NULLIF(TRIM(COALESCE(g.release_date, '')), '') IS NULL ASC, NULLIF(TRIM(COALESCE(g.release_date, '')), '') %s", direction)
+	case enums2.GameListSortByPlayTime:
+		return PlayTimeOrderTerm(direction)
 	default:
 		return fmt.Sprintf("g.created_at %s", direction)
 	}
@@ -146,7 +148,8 @@ func legacyGameListOrderClause(sortBy enums2.GameListSortBy, sortOrder enums2.So
 		return fmt.Sprintf("%s, LOWER(COALESCE(g.name, '')) ASC, g.created_at DESC, g.id ASC", gameListSortTerm(sortBy, sortOrder))
 	case enums2.GameListSortByLastPlayedAt,
 		enums2.GameListSortByRating,
-		enums2.GameListSortByReleaseDate:
+		enums2.GameListSortByReleaseDate,
+		enums2.GameListSortByPlayTime:
 		return fmt.Sprintf("%s, g.created_at DESC, g.id ASC", gameListSortTerm(sortBy, sortOrder))
 	default:
 		return fmt.Sprintf("g.created_at %s, g.id ASC", direction)
@@ -268,7 +271,11 @@ func QueryGameList(ctx context.Context, db *sql.DB, req vo.GameListRequest, scop
 	if len(whereParts) > 0 {
 		whereSQL = "WHERE " + strings.Join(whereParts, " AND ")
 	}
+	// 按时长排序需要额外的会话汇总 JOIN；不排序时省掉，避免给每次列表查询都加上聚合。
 	joinSQL := scope.JoinClause
+	if req.SortBy == enums2.GameListSortByPlayTime || req.SecondarySortBy == enums2.GameListSortByPlayTime {
+		joinSQL = strings.TrimSpace(joinSQL + " " + PlayTimeJoinClause())
+	}
 
 	countQuery := fmt.Sprintf(`
 		SELECT COALESCE(COUNT(*), 0)
@@ -354,8 +361,29 @@ func QueryGameList(ctx context.Context, db *sql.DB, req vo.GameListRequest, scop
 		return resp, fmt.Errorf("iterate game list rows: %w", err)
 	}
 
+	if req.WithPlayTime && len(resp.Games) > 0 {
+		playTimes, playTimeErr := QueryGamesPlayTime(ctx, db, gameIDsOf(resp.Games))
+		if playTimeErr != nil {
+			return resp, playTimeErr
+		}
+		// 本页每条游戏都给出条目，缺省 0，调用方不必区分「没查到」与「没玩过」。
+		filled := make(map[string]int64, len(resp.Games))
+		for _, game := range resp.Games {
+			filled[game.ID] = playTimes[game.ID]
+		}
+		resp.PlayTimes = filled
+	}
+
 	resp.HasMore = req.Offset+len(resp.Games) < resp.Total
 	return resp, nil
+}
+
+func gameIDsOf(games []models.Game) []string {
+	ids := make([]string, 0, len(games))
+	for _, game := range games {
+		ids = append(ids, game.ID)
+	}
+	return ids
 }
 
 type gameScanner interface {

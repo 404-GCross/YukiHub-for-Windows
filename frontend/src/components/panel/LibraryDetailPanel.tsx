@@ -1,7 +1,8 @@
 import type { models } from "../../../src/bindings/models";
 import { useTranslation } from "react-i18next";
 import { GAME_STATUS_BADGE_STYLES } from "../../consts/gameStatusBadge";
-import { formatLocalDate } from "../../utils/time";
+import { useGamePlaytime } from "../../hooks/useGamePlaytime";
+import { formatDuration, formatLocalDate } from "../../utils/time";
 import { GameCoverImage } from "../ui/GameCoverImage";
 
 interface LibraryDetailPanelProps {
@@ -21,10 +22,17 @@ export function LibraryDetailPanel({
   onStart,
 }: LibraryDetailPanelProps) {
   const { t } = useTranslation();
+  // 列表请求已带批量时长并预填缓存；缓存未命中（例如命中本地列表缓存）时才单查
+  const playTime = useGamePlaytime(game.id);
   const coverSrc = game.cover_url || game.cover_source_url || "";
   const statusBadge = GAME_STATUS_BADGE_STYLES[game.status];
 
   const infoRows = [
+    {
+      icon: "i-mdi-timer-outline",
+      label: t("common.playTime"),
+      value: playTime > 0 ? formatDuration(playTime, t) : t("common.never"),
+    },
     {
       icon: "i-mdi-domain",
       label: t("common.company"),

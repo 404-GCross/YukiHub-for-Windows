@@ -413,6 +413,35 @@ INSERT / UPDATE 语句都不含这些列，落库时被**静默丢弃**——这
         作为桌面端增强项，且已有 12 条单测覆盖
       - 仍待真机验证（不在本轮范围）：启动/退出/崩溃/切换用户/开机自启的
         端到端行为
+- [x] 批量游玩时长接口（2026-09-29）：收口「列表不带时长」的缺口
+      - 问题：库页右侧详情面板与大屏信息浮层都要显示总游玩时长，而
+        `vo.GameListResponse` 只有条目本身没有时长，前端只能逐条走
+        `GetGameStats`。大屏货架最多 500 条，逐条单查就是几百次往返
+      - 后端：`internal/service/gamehelper/playtime.go` 新增
+        `QueryGamesPlayTime`（批量、按 game_id 聚合）；`GameListRequest`
+        加 `with_play_time`，`GameListResponse` 加 `play_times`
+        （`game_id → 秒`），**默认关闭**，只有显式请求的调用方才多一次聚合查询
+      - 语义对齐导出方向：单位沿用桌面端的**秒**；清零（`playtime_reset_at`）
+        之前的会话不计入，判定与 `exporter` 的 `sessionsAfterReset` 一致
+        （`COALESCE(end_time, start_time) >= playtime_reset_at`）
+      - 排序：`GameListSortBy` 新增 `play_time`，列表查询在需要时 LEFT JOIN
+        同一套会话汇总（1:1，不改变计数）；时长为 0 的游戏恒排末尾
+      - 前端：`useGamePlaytime` 从 `bigscreen/` 移到 `hooks/`（库页也要用），
+        新增 `primeGamePlaytimes` 用批量结果预填缓存，单查只在未命中时发生；
+        大屏信息浮层副行补时长、库页详情面板补「游玩时长」行、
+        排序下拉新增「游玩时长」（卡片封面覆盖条不重复显示时长）
+      - 测试：`TestQueryGamesPlayTimeSumsAfterReset`（清零前后与边界时刻）、
+        `TestQueryGameListWithPlayTime`（本页每条都有条目、未请求时不返回）、
+        `TestQueryGameListSortsByPlayTime`（顺序与计数不变）。
+        **写测试时抓到一个真实 bug**：`WHERE reset_at IS NULL OR 时间 >= reset_at AND id IN (...)`
+        里 AND 优先级高于 OR，id 过滤只作用在清零判定上，导致返回了全部游戏，
+        已用括号修正
+      - 已知不一致（不本轮改）：`StatsService.GetGameStats` 仍按全量会话求和，
+        不含清零过滤。桌面端不写入清零前的会话（导入方向已过滤），
+        故实际取值等价；若将来桌面端提供清零入口，需一并收敛
+      - 验证：`gofmt` 无输出、`go vet ./...` 干净、`go test ./... -count=1` 全绿；
+        `wails3 generate bindings`（枚举与两个 vo 模型更新）；前端
+        `pnpm typecheck` / `build` / `i18n:check` 通过，改动文件 eslint 0 error
 - [x] 核对验收项 5（WebDAV 自持同步）现状（2026-09-29）：**无需新实现**
       - 结论：上游已内建 WebDAV 云备份后端，且**已是默认 provider**
         （`appconf` 默认 `cloud_backup_provider = "webdav"`），全链路已接线：
@@ -584,9 +613,10 @@ LB·RB 切分类 / START 菜单），长按 400ms 后每 80ms 连发；`FocusEng
 - 输入：键盘方向键/Enter/Esc；鼠标 hover 预览、滚轮横滑、点击中转（桌面端增强）。
 - 焦点：TS 侧复刻 `FocusEngine` 逻辑模型，视觉动效交给 CSS。
 - 数据：复用 `GameService.GetGames`（`internal/service/game_service.go`）已有的
-  筛选/排序/分页，比手机端更强。**缺口：`vo.GameListResponse` 不含游玩时长**，
-  信息浮层不显示时长；详情层（M2）改用 `GetGameStats` 按游戏单查并缓存，
-  批量时长接口仍待补。
+  筛选/排序/分页，比手机端更强。~~缺口：`vo.GameListResponse` 不含游玩时长~~
+  **已补齐（2026-09-29）**：请求带 `with_play_time` 即随列表返回 `play_times`
+  （见阶段 3 进展「批量游玩时长接口」），信息浮层与库页详情面板都能显示时长，
+  详情层（M2）的单查退化为缓存未命中时的兜底。
 - 设置：`internal/appconf/config.go` 的 `AppConfig` 加 `bigscreen_*` 字段
   （snake_case，默认值写在 `LoadConfig`），设置页新增分区，4 个语言文件同步。
 - i18n：i18next，新增顶层键组 `bigScreen.*`，4 文件同层补齐。

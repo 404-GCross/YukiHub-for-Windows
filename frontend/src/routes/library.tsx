@@ -59,6 +59,7 @@ import { sourceLabel } from "../components/ui/import/importFlow";
 import { ScrollToTopButton } from "../components/ui/ScrollToTopButton";
 import { sortOptions, statusOptions } from "../consts/options";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
+import { primeGamePlaytimes } from "../hooks/useGamePlaytime";
 import { usePageScrollControls } from "../hooks/usePageScrollControls";
 import { useTagGameFilter } from "../hooks/useTagGameFilter";
 import { useAppStore } from "../store";
@@ -671,6 +672,8 @@ function LibraryPage() {
       secondary_sort_order: secondarySortBy
         ? secondarySortOrder
         : enums.SortOrder.$zero,
+      // 右侧详情面板要显示总游玩时长，随列表一次带回，避免每选中一张卡单查一次
+      with_play_time: true,
     }),
     [
       debouncedSearchQuery,
@@ -772,6 +775,8 @@ function LibraryPage() {
         const nextTotal = response.total || 0;
         totalRef.current = nextTotal;
         setTotal(nextTotal);
+        // 列表带回的批量时长先灌进缓存，详情面板就不必再逐条单查
+        primeGamePlaytimes(response.play_times ?? undefined);
         const nextGamesByIndex = options.reset
           ? new Map<number, models.Game>()
           : new Map(gamesByIndexRef.current);

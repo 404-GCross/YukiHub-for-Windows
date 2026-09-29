@@ -34,6 +34,10 @@ export const sortOptions: Array<{
     label: "common.releaseDate",
     value: enums.GameListSortBy.GameListSortByReleaseDate,
   },
+  {
+    label: "common.playTime",
+    value: enums.GameListSortBy.GameListSortByPlayTime,
+  },
 ];
 
 export const APP_ZOOM_LEVELS = [0.8, 0.9, 1, 1.1, 1.25, 1.5] as const;

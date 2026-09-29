@@ -9,6 +9,7 @@ const (
 	GameListSortByCreatedAt    GameListSortBy = "created_at"
 	GameListSortByRating       GameListSortBy = "rating"
 	GameListSortByReleaseDate  GameListSortBy = "release_date"
+	GameListSortByPlayTime     GameListSortBy = "play_time"
 )
 
 var AllGameListSortByTypes = []struct {
@@ -21,6 +22,7 @@ var AllGameListSortByTypes = []struct {
 	{GameListSortByCreatedAt, "CREATED_AT"},
 	{GameListSortByRating, "RATING"},
 	{GameListSortByReleaseDate, "RELEASE_DATE"},
+	{GameListSortByPlayTime, "PLAY_TIME"},
 }
 
 type SortOrder string

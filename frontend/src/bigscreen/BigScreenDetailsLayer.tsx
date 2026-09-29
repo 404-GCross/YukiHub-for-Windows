@@ -4,11 +4,11 @@ import { memo } from "react";
 
 import { useTranslation } from "react-i18next";
 import { statusOptions } from "../consts/options";
+import { useGamePlaytime } from "../hooks/useGamePlaytime";
 import { useAppStore } from "../store";
 import { getTagDisplayName } from "../utils/tagTranslation";
 import { formatDurationCompact, formatLocalDate } from "../utils/time";
 import { BigScreenHintBar } from "./BigScreenHintBar";
-import { useGamePlaytime } from "./useGamePlaytime";
 
 export interface BigScreenDetailAction {
   icon: string;

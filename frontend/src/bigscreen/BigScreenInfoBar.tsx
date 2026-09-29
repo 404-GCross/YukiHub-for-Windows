@@ -3,8 +3,10 @@ import { memo } from "react";
 import { useTranslation } from "react-i18next";
 
 import { statusOptions } from "../consts/options";
+import { useGamePlaytime } from "../hooks/useGamePlaytime";
 import { useAppStore } from "../store";
 import { getTagDisplayName } from "../utils/tagTranslation";
+import { formatDuration } from "../utils/time";
 
 export interface BigScreenAction {
   icon: string;
@@ -40,6 +42,8 @@ export const BigScreenInfoBar = memo(
     const enableTagTranslation = useAppStore(
       state => state.config?.enable_tag_translation ?? true,
     );
+    // 货架加载时已批量带回时长并预填缓存，这里通常不会再发起单查
+    const playTime = useGamePlaytime(game?.id);
 
     if (!game) {
       return null;
@@ -70,6 +74,18 @@ export const BigScreenInfoBar = memo(
               <>
                 <span aria-hidden="true">·</span>
                 <span>{t(statusLabel)}</span>
+              </>
+            )}
+            {playTime > 0 && (
+              <>
+                <span aria-hidden="true">·</span>
+                <span className="inline-flex items-center gap-1 text-white">
+                  <span
+                    className="i-mdi-timer-outline text-xs text-primary-300"
+                    aria-hidden="true"
+                  />
+                  {formatDuration(playTime, t)}
+                </span>
               </>
             )}
             {game.rating > 0 && (

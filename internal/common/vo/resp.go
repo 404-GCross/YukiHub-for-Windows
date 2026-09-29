@@ -55,6 +55,9 @@ type GameListResponse struct {
 	Offset  int           `json:"offset"`
 	Total   int           `json:"total"`
 	HasMore bool          `json:"has_more"`
+	// PlayTimes 仅在请求 with_play_time 时返回，键为 game_id，值为累计游玩时长（秒）。
+	// 本页每条游戏都有条目（无有效会话时为 0），调用方不必再逐条单查。
+	PlayTimes map[string]int64 `json:"play_times,omitempty"`
 }
 
 // GameGuideDocument 是游戏安装目录中可供打开的说明文档。

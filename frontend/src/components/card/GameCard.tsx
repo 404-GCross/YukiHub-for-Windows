@@ -57,6 +57,9 @@ function formatSortFieldValue(
       return `${(game.rating ?? 0).toFixed(1)}/10.0`;
     case enums.GameListSortBy.GameListSortByReleaseDate:
       return game.release_date || t("common.unknownDate");
+    case enums.GameListSortBy.GameListSortByPlayTime:
+      // 时长不在列表返回的条目里（由 play_times 单独带回），卡片封面不重复展示
+      return null;
     default:
       return null;
   }

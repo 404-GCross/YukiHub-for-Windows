@@ -22,6 +22,7 @@
     "company": "遊戲廠商",
     "lastPlayedAt": "最近遊玩",
     "createdAt": "新增時間",
+    "playTime": "遊玩時長",
     "rating": "評分",
     "releaseDate": "發售日期",
     "never": "從未",
