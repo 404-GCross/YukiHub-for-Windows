@@ -900,10 +900,6 @@ function LibraryPage() {
     setActiveGame(game);
   }, []);
 
-  const handleCloseDetailPanel = useCallback(() => {
-    setActiveGame(null);
-  }, []);
-
   const handleOpenFullDetail = useCallback(
     (gameId: string) => {
       void navigate({ to: `/game/${gameId}` });
@@ -1557,17 +1553,20 @@ function LibraryPage() {
             )}
           </div>
 
-          {activeGame && !batchMode && (
-            <aside className="sticky top-0 hidden w-72 shrink-0 lg:block xl:w-80">
-              <LibraryDetailPanel
-                game={activeGame}
-                isRunning={isActiveGameRunning}
-                onClose={handleCloseDetailPanel}
-                onOpenDetail={handleOpenFullDetail}
-                onStart={handleStartFromPanel}
-              />
-            </aside>
-          )}
+          {/*
+            详情面板**常驻**（未选中时显示占位，多选时同样保留占位），
+            对齐手机版主界面的三栏布局。面板一旦随状态显隐，网格宽度就会变、
+            列数跟着变，卡片被拉伸/压缩 —— 用户的观感就是「点一下卡片就变大」。
+          */}
+          {/* top-8 与页面自身的 p-8 对齐：否则吸顶时面板会比静止位置高 32px */}
+          <aside className="sticky top-8 hidden w-72 shrink-0 lg:block xl:w-80">
+            <LibraryDetailPanel
+              game={batchMode ? null : activeGame}
+              isRunning={isActiveGameRunning}
+              onOpenDetail={handleOpenFullDetail}
+              onStart={handleStartFromPanel}
+            />
+          </aside>
         </div>
       </div>
 

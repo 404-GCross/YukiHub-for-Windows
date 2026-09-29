@@ -98,7 +98,8 @@
       "batchSteamImportSummary": "インポート成功 {{imported}} 件、スキップ {{skipped}} 件、登録済み {{existing}} 件",
       "batchSteamImportFailed": "選択したゲームを Steam にインポートできませんでした",
       "loadGamesFailed": "ゲームの読み込みに失敗しました"
-    }
+    },
+    "detailPlaceholder": "左側からゲームを選択"
   },
   "filterBar": {
     "randomGame": "ランダムなゲームを開く",

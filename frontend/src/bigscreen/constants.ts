@@ -49,31 +49,114 @@ export const BIG_SCREEN_CARD_GAP = 14;
 /** GameCard 底部标题 + 厂商区的高度（px） */
 const CARD_META_HEIGHT = 52;
 
-/**
- * 封面高度占货架可视高度的比例。
- *
- * 对齐手机端 `BigScreenSizes` 的等比思路（手机端 `rowTotal = 内容区 / 1.35`，
- * 卡片再占掉其中一部分）。桌面端取 0.42：一排卡片约占货架高度的一半，
- * 上下留出背景与行标题的空间，是「沉浸式货架」而不是「贴满整屏」。
- *
- * **尺寸必须随屏幕缩放并夹取**：早先的写法直接把货架可视高度当成卡片高度，
- * 1080p 全屏下卡片会被放大到近 700px 宽、占满整屏，右侧全是空白。
- */
-const CARD_HEIGHT_RATIO = 0.42;
+/** 行标题高度占内容区的比例（对齐手机端 `headerH = rowTotal × 0.20`） */
+const HEADER_HEIGHT_RATIO = 0.2;
+const MIN_HEADER_HEIGHT = 24;
+const MAX_HEADER_HEIGHT = 44;
 
-/** 封面高度的夹取区间（px），防止极端窗口下过小或过大 */
+/** 封面高度的夹取区间（px），对应手机端的 88–200dp */
 const MIN_CARD_COVER_HEIGHT = 140;
-const MAX_CARD_COVER_HEIGHT = 520;
+const MAX_CARD_COVER_HEIGHT = 720;
 
-/** 由货架可视高度推导卡片宽度（先算封面高度、夹取后再按比例换算宽度） */
-export function resolveBigScreenCardWidth(rowHeight: number) {
-  // 比例说的是「整张卡（封面 + 标题区）」占货架高度的多少
-  const available = rowHeight * CARD_HEIGHT_RATIO - CARD_META_HEIGHT;
-  const coverHeight = Math.min(
+/**
+ * 信息浮层要预留的高度占内容区的比例，对应手机端 `infoReserveH = clamp(h×0.34, 100, 150)`。
+ *
+ * 浮层本身是压在背景上的绝对定位块（不占布局高度），这里只是**预留视觉空间**，
+ * 免得卡片排被大标题压住。
+ */
+const INFO_RESERVE_RATIO = 0.3;
+const MIN_INFO_RESERVE_HEIGHT = 120;
+const MAX_INFO_RESERVE_HEIGHT = 190;
+
+/**
+ * 一张卡在行里要留出的上下余量（px）。
+ *
+ * 焦点卡会 `scale(1.045)`，而货架容器是 `overflow-x-auto`（`overflow-y` 必然
+ * 退化成 hidden），没有余量就会被裁掉——这就是「选中后被挤出来」的观感来源之一。
+ */
+const CARD_SCALE_HEADROOM = 16;
+
+/** 卡片宽度占内容区宽度的上限（对齐手机端 `cardW ≤ wDp × 0.17`，保证一屏好几张） */
+const CARD_WIDTH_RATIO_OF_AREA = 0.17;
+
+export type BigScreenShelfMetrics = {
+  cardWidth: number;
+  /** 行标题区高度 */
+  headerHeight: number;
+  /** 信息浮层预留的高度（卡片排上方的空白） */
+  infoReserveHeight: number;
+  /** 卡片行的实际高度（含缩放余量），卡片在其中垂直居中 */
+  rowHeight: number;
+};
+
+/**
+ * 大屏货架的尺寸预算，照搬手机端 `BigScreenSizes`：
+ *
+ * ```
+ * rowTotal = 内容区 / 1.35      // 手机用来露出下一行的一角
+ * headerH  = rowTotal × 0.20    // 行标题
+ * cardH    = rowTotal − headerH − gap×2，夹取 88–200dp
+ * cardW    = min(cardH × 0.75, 屏宽 × 0.17)
+ * ```
+ *
+ * 桌面端是**单排**（不换行），所以把内容区高度整块留给这一行：
+ * 行标题 + 卡片 + 缩放余量必须塞得下，因此先按高度算出封面高，再用宽度上限
+ * 收一次——两个约束取小，卡片就一定不会溢出。
+ */
+export function resolveBigScreenShelfMetrics(area: {
+  height: number;
+  width: number;
+}): BigScreenShelfMetrics {
+  if (area.height <= 0 || area.width <= 0) {
+    return {
+      cardWidth: 0,
+      headerHeight: 0,
+      infoReserveHeight: 0,
+      rowHeight: 0,
+    };
+  }
+
+  // 卡片排在最底部，它上方依次是行标题与信息浮层
+  const infoReserveHeight = Math.round(
+    Math.min(
+      Math.max(area.height * INFO_RESERVE_RATIO, MIN_INFO_RESERVE_HEIGHT),
+      MAX_INFO_RESERVE_HEIGHT,
+    ),
+  );
+  const rowBudget = area.height - infoReserveHeight;
+  const headerHeight = Math.round(
+    Math.min(
+      Math.max(rowBudget * HEADER_HEIGHT_RATIO, MIN_HEADER_HEIGHT),
+      MAX_HEADER_HEIGHT,
+    ),
+  );
+  const available
+    = rowBudget
+      - headerHeight
+      - BIG_SCREEN_CARD_GAP * 2
+      - CARD_META_HEIGHT
+      - CARD_SCALE_HEADROOM * 2;
+  const byHeight = Math.min(
     Math.max(available, MIN_CARD_COVER_HEIGHT),
     MAX_CARD_COVER_HEIGHT,
   );
-  return Math.round(coverHeight / COVER_ASPECT_RATIO);
+  const cardWidth = Math.max(
+    96,
+    Math.min(
+      Math.round(byHeight / COVER_ASPECT_RATIO),
+      Math.round(area.width * CARD_WIDTH_RATIO_OF_AREA),
+    ),
+  );
+
+  return {
+    cardWidth,
+    headerHeight,
+    infoReserveHeight,
+    rowHeight:
+      Math.round(cardWidth * COVER_ASPECT_RATIO)
+      + CARD_META_HEIGHT
+      + CARD_SCALE_HEADROOM * 2,
+  };
 }
 
 /** 氛围特效档位 */

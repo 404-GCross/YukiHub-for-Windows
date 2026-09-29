@@ -45,6 +45,7 @@ import {
   BIG_SCREEN_SHELF_ZONE,
   BIG_SCREEN_TRAILER_ZONE,
   resolveBigScreenEffectLevel,
+  resolveBigScreenShelfMetrics,
 } from "../bigscreen/constants";
 import { useBigScreenFullscreen } from "../bigscreen/useBigScreenFullscreen";
 import { useFocusEngine } from "../bigscreen/useFocusEngine";
@@ -111,7 +112,7 @@ function BigScreenPage() {
   const [shelfIndex, setShelfIndex] = useState(0);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [trailerOpen, setTrailerOpen] = useState(false);
-  const [shelfHeight, setShelfHeight] = useState(0);
+  const [shelfAreaSize, setShelfAreaSize] = useState({ height: 0, width: 0 });
   const [railHovered, setRailHovered] = useState(false);
   const [hintKey, setHintKey] = useState(0);
   // null = 用户还没用过任何输入设备，此时按手柄是否接入决定提示条形态
@@ -164,16 +165,31 @@ function BigScreenPage() {
       return;
     }
 
-    const updateHeight = () => {
+    const updateSize = () => {
+      const next = {
+        height: element.clientHeight,
+        // 左右各 px-8，卡片可用宽度要扣掉
+        width: Math.max(0, element.clientWidth - 64),
+      };
       // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
-      setShelfHeight(element.clientHeight);
+      setShelfAreaSize(previous =>
+        previous.height === next.height && previous.width === next.width
+          ? previous
+          : next,
+      );
     };
-    updateHeight();
+    updateSize();
 
-    const observer = new ResizeObserver(updateHeight);
+    const observer = new ResizeObserver(updateSize);
     observer.observe(element);
     return () => observer.disconnect();
   }, []);
+
+  // 尺寸预算统一由 constants 里的公式算（照搬手机端 BigScreenSizes）
+  const shelfMetrics = useMemo(
+    () => resolveBigScreenShelfMetrics(shelfAreaSize),
+    [shelfAreaSize],
+  );
 
   // 详情层 / 全屏播放器打开时把其余区域清空，让它成为唯一有内容的区域：
   // 否则上下键会顺着 verticalNeighbor 跳出浮层，firstPosition 也不会选中它。
@@ -668,8 +684,12 @@ function BigScreenPage() {
 
       <div className="relative z-10 flex h-full w-full flex-col">
         <div className="flex min-h-0 flex-1">
+          {/*
+            侧栏固定占 76px（对齐手机端 bsRail 的 72dp），展开时由 nav 自己
+            绝对定位浮出去 —— 所以这里宽度恒定，货架永远不会被推着左右跳。
+          */}
           <div
-            className="flex h-full"
+            className="relative h-full w-[76px] shrink-0"
             onMouseEnter={() => setRailHovered(true)}
             onMouseLeave={() => {
               setRailHovered(false);
@@ -697,24 +717,55 @@ function BigScreenPage() {
             />
           </div>
 
-          <div className="flex min-h-0 flex-1 flex-col px-8 pt-6">
-            {/* 行标题：对齐手机端 rowTotal 里留给 headerH 的那一份 */}
-            <div className="flex shrink-0 items-baseline gap-3 pb-4">
+          {/*
+            测量容器只负责给出「可用空间」，内容绝对定位在里面：
+            对齐手机端 `bsShelfContainer` 的 `gravity="bottom"` ——
+            行标题紧贴卡片排上方，卡片排贴着信息浮层的上沿。
+          */}
+          <div ref={shelfAreaRef} className="relative min-h-0 flex-1">
+            <div className="absolute inset-0 flex flex-col justify-end px-8 pb-2">
+              {/*
+                信息浮层：左侧一块，压在背景大图上；下面依次是行标题与卡片排，
+                卡片排贴着最下沿（对齐手机端 `bsShelfContainer gravity="bottom"`）。
+                预留高度由尺寸预算给出，免得大标题压住卡片。
+              */}
+              <div
+                className="flex shrink-0 flex-col justify-end"
+                style={{ minHeight: shelfMetrics.infoReserveHeight }}
+              >
+                <BigScreenInfoBar
+                  actions={actions}
+                  actionsFocused={position.zoneId === BIG_SCREEN_ACTIONS_ZONE}
+                  focusedActionIndex={position.index}
+                  game={focusedGame}
+                  isFavorite={isFavorite}
+                  onActionActivate={(index) => {
+                    focus(BIG_SCREEN_ACTIONS_ZONE, index);
+                    actions[index]?.run();
+                  }}
+                  onActionFocus={index =>
+                    focus(BIG_SCREEN_ACTIONS_ZONE, index)}
+                  tags={tags}
+                />
+              </div>
+
               {activeCategoryLabelKey && (
-                <h2 className="text-2xl font-bold text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.5)]">
+                <h2
+                  className="flex shrink-0 items-end gap-3 pb-1 text-2xl font-bold text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.5)]"
+                  style={{ height: shelfMetrics.headerHeight }}
+                >
                   {t(activeCategoryLabelKey)}
+                  {games.length > 0 && (
+                    <span className="text-xs font-normal text-brand-400">
+                      {t("category.gameCount", { count: games.length })}
+                    </span>
+                  )}
                 </h2>
               )}
-              {games.length > 0 && (
-                <span className="text-xs text-brand-400">
-                  {t("category.gameCount", { count: games.length })}
-                </span>
-              )}
-            </div>
 
-            <div ref={shelfAreaRef} className="min-h-0 flex-1">
-              {games.length > 0 && shelfHeight > 0 && (
+              {games.length > 0 && shelfMetrics.rowHeight > 0 && (
                 <VirtualGameShelf
+                  cardWidth={shelfMetrics.cardWidth}
                   entryAnimation={entryAnimation}
                   focused={isShelfFocused}
                   focusedIndex={safeShelfIndex}
@@ -723,33 +774,17 @@ function BigScreenPage() {
                   onFocusIndexChange={index =>
                     focus(BIG_SCREEN_SHELF_ZONE, index)}
                   onViewDetails={handleOpenDetails}
-                  rowHeight={shelfHeight}
+                  rowHeight={shelfMetrics.rowHeight}
                 />
               )}
 
               {games.length === 0 && (
-                <div className="flex h-full items-center justify-center text-sm text-brand-400">
+                <div className="flex flex-1 items-center justify-center text-sm text-brand-400">
                   {t("bigScreen.empty")}
                 </div>
               )}
             </div>
           </div>
-        </div>
-
-        <div className="shrink-0 pb-4">
-          <BigScreenInfoBar
-            actions={actions}
-            actionsFocused={position.zoneId === BIG_SCREEN_ACTIONS_ZONE}
-            focusedActionIndex={position.index}
-            game={focusedGame}
-            isFavorite={isFavorite}
-            onActionActivate={(index) => {
-              focus(BIG_SCREEN_ACTIONS_ZONE, index);
-              actions[index]?.run();
-            }}
-            onActionFocus={index => focus(BIG_SCREEN_ACTIONS_ZONE, index)}
-            tags={tags}
-          />
         </div>
 
         <BigScreenHintBar

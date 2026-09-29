@@ -3,13 +3,11 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { memo, useEffect, useRef } from "react";
 
 import { GameCard } from "../components/card/GameCard";
-import {
-  BIG_SCREEN_CARD_GAP,
-  resolveBigScreenCardWidth,
-  resolveBigScreenEnterDelay,
-} from "./constants";
+import { BIG_SCREEN_CARD_GAP, resolveBigScreenEnterDelay } from "./constants";
 
 interface VirtualGameShelfProps {
+  /** 卡片宽度（px），由 `resolveBigScreenShelfMetrics` 统一算好传入 */
+  cardWidth: number;
   /** 入场错峰动画：只在首次进入大屏时开启，滚动新挂载的卡片不再重放 */
   entryAnimation?: boolean;
   /** 焦点是否落在这个区域（用于决定要不要画焦点环） */
@@ -19,7 +17,7 @@ interface VirtualGameShelfProps {
   onActivate: (game: models.Game) => void;
   onFocusIndexChange: (index: number) => void;
   onViewDetails: (game: models.Game) => void;
-  /** 货架可视高度（px） */
+  /** 卡片行高度（px，含焦点缩放的上下余量），卡片在其中垂直居中 */
   rowHeight: number;
 }
 
@@ -31,6 +29,7 @@ interface VirtualGameShelfProps {
  */
 export const VirtualGameShelf = memo(
   ({
+    cardWidth,
     entryAnimation = false,
     focused,
     focusedIndex,
@@ -41,7 +40,6 @@ export const VirtualGameShelf = memo(
     rowHeight,
   }: VirtualGameShelfProps) => {
     const scrollRef = useRef<HTMLDivElement | null>(null);
-    const cardWidth = resolveBigScreenCardWidth(rowHeight);
 
     const virtualizer = useVirtualizer({
       count: games.length,

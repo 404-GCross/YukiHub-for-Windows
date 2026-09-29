@@ -35,8 +35,11 @@ export const BigScreenRail = memo(
     const { t } = useTranslation();
 
     return (
+      // 绝对定位 + z-30：展开时**浮在内容之上**，而不是把货架往右推。
+      // 对齐手机端 `bsRail`（固定 72dp + `elevation=10dp`，展开靠叠放层实现），
+      // 这样焦点进出侧栏、鼠标划过侧栏都不会让整排卡片左右跳。
       <nav
-        className="flex h-full shrink-0 flex-col gap-1.5 overflow-hidden border-r border-white/8 bg-brand-900/60 py-6 backdrop-blur-sm transition-[width] duration-[220ms] ease-out"
+        className="absolute inset-y-0 left-0 z-30 flex flex-col gap-1.5 overflow-hidden border-r border-white/8 bg-brand-900/60 py-6 backdrop-blur-sm transition-[width] duration-[220ms] ease-out"
         style={{
           width: expanded
             ? BIG_SCREEN_RAIL_EXPANDED_WIDTH

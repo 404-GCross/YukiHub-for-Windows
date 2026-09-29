@@ -98,7 +98,8 @@
       "batchSteamImportSummary": "Imported {{imported}}, skipped {{skipped}}, already present {{existing}}",
       "batchSteamImportFailed": "None of the selected games could be imported to Steam",
       "loadGamesFailed": "Failed to load games"
-    }
+    },
+    "detailPlaceholder": "Select a game on the left"
   },
   "filterBar": {
     "randomGame": "Open a random game",

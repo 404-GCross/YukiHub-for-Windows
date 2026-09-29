@@ -56,13 +56,30 @@ export const BigScreenInfoBar = memo(
     const visibleTags = tags.slice(0, 3);
 
     return (
-      <div className="pointer-events-none flex items-end justify-between gap-8 px-10">
+      /*
+        对齐手机端 `bsInfoBar`：左侧一块**竖向堆叠**的浮层，顺序是
+        标题 → 标签 chips → 副行（开发商 · 年份…）→ 操作按钮排。
+        它压在背景大图上，卡片排在最底部（见 routes/bigscreen.tsx 的布局）。
+      */
+      <div className="pointer-events-none flex max-w-3xl flex-col items-start gap-3">
         <div className="min-w-0 max-w-3xl">
           <h1 className="truncate text-4xl font-bold leading-tight text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.55)]">
             {game.name}
           </h1>
+        </div>
 
-          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-brand-400">
+        {visibleTags.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2">
+            {visibleTags.map(tag => (
+              <span key={tag.id} className="yh-chip text-[11px]">
+                {getTagDisplayName(tag.name, enableTagTranslation)}
+              </span>
+            ))}
+          </div>
+        )}
+
+        <div className="min-w-0 max-w-3xl">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-brand-400">
             <span className="truncate">{company}</span>
             {game.release_date && (
               <>
@@ -101,16 +118,6 @@ export const BigScreenInfoBar = memo(
               </>
             )}
           </div>
-
-          {visibleTags.length > 0 && (
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              {visibleTags.map(tag => (
-                <span key={tag.id} className="yh-chip text-[11px]">
-                  {getTagDisplayName(tag.name, enableTagTranslation)}
-                </span>
-              ))}
-            </div>
-          )}
         </div>
 
         <div className="pointer-events-auto flex shrink-0 items-center gap-3">

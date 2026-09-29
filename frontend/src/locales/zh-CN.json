@@ -98,7 +98,8 @@
       "batchSteamImportSummary": "成功导入 {{imported}} 个，跳过 {{skipped}} 个，已存在 {{existing}} 个",
       "batchSteamImportFailed": "选中的游戏均未能导入 Steam",
       "loadGamesFailed": "加载游戏失败"
-    }
+    },
+    "detailPlaceholder": "从左侧选择一款游戏"
   },
   "filterBar": {
     "randomGame": "随机打开游戏",
