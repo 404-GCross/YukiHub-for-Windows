@@ -907,7 +907,8 @@
       "fullDataBackup": "全量数据备份",
       "update": "应用更新",
       "portableSetup": "本地集成设置",
-      "about": "关于与开源许可"
+      "about": "关于与开源许可",
+      "shortcuts": "键盘快捷键"
     },
     "about": {
       "appName": "YukiHub for Windows",
@@ -1797,5 +1798,20 @@
     "hintFavorite": "收藏",
     "hintDetails": "详情",
     "hintCategory": "切换分类"
+  },
+  "shortcuts": {
+    "title": "键盘快捷键",
+    "hint": "在输入框内不生效，避免打字被打断；界面缩放是 Ctrl + 加号 / 减号 / 0。",
+    "modifier": "Ctrl",
+    "shift": "Shift",
+    "home": "前往首页",
+    "library": "前往游戏库",
+    "stats": "前往统计",
+    "categories": "前往收藏分类",
+    "downloads": "前往下载",
+    "settings": "前往设置",
+    "bigscreen": "进入大屏模式",
+    "cheatsheet": "打开快捷键速查",
+    "openCheatsheet": "查看速查表"
   }
 }

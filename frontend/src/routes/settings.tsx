@@ -20,6 +20,7 @@ import { GameSettingsPanel } from "../components/panel/GameSettingsPanel";
 import { MetadataSettingsPanel } from "../components/panel/MetadataSettingsPanel";
 import { PortableSetupPanel } from "../components/panel/PortableSetupPanel";
 import { ProxySettingsPanel } from "../components/panel/ProxySettingsPanel";
+import { ShortcutsSettingsPanel } from "../components/panel/ShortcutsSettingsPanel";
 import { UpdateSettingsPanel } from "../components/panel/UpdateSettingsPanel";
 import { SettingsSkeleton } from "../components/skeleton/SettingsSkeleton";
 import { CollapsibleSection } from "../components/ui/CollapsibleSection";
@@ -243,6 +244,14 @@ function SettingsPage() {
             formData={draftConfig}
             onChange={handleDraftChange}
           />
+        </CollapsibleSection>
+
+        <CollapsibleSection
+          title={t("settings.sections.shortcuts")}
+          icon="i-mdi-keyboard-outline"
+          defaultOpen={false}
+        >
+          <ShortcutsSettingsPanel />
         </CollapsibleSection>
 
         <CollapsibleSection

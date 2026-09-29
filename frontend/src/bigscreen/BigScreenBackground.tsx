@@ -6,6 +6,13 @@ import { BackgroundTrailerVideo } from "./BackgroundTrailerVideo";
 interface BigScreenBackgroundProps {
   /** 当前焦点游戏的封面地址；为空时保留上一张 */
   coverUrl: string;
+  /**
+   * 元数据来源的原始封面地址（未压缩）。
+   *
+   * 本地封面最长边被压到 1600px（`image_covers_optimize.go`），铺满 4K 全屏会糊，
+   * 所以这里再叠一层原图：本地封面先出，原图加载完成后淡入替换。
+   */
+  coverSourceUrl?: string;
   isNSFW: boolean;
   /** 当前焦点游戏的本地预告片地址；为空则只有封面层 */
   trailerUrl?: string;
@@ -20,6 +27,7 @@ interface BigScreenBackgroundProps {
  */
 export function BigScreenBackground({
   coverUrl,
+  coverSourceUrl = "",
   isNSFW,
   trailerUrl,
   backgroundTrailerActive = false,
@@ -43,6 +51,12 @@ export function BigScreenBackground({
     });
   }, [coverUrl]);
 
+  const activeUrl = slots.active === "a" ? slots.a : slots.b;
+  const hiResUrl
+    = coverSourceUrl && coverSourceUrl !== activeUrl && activeUrl
+      ? coverSourceUrl
+      : "";
+
   const layerClass = (slot: "a" | "b") =>
     `absolute inset-0 transition-opacity duration-[600ms] ease-out ${
       slots.active === slot ? "opacity-100" : "opacity-0"
@@ -60,6 +74,12 @@ export function BigScreenBackground({
         <div className={layerClass("b")}>
           <BackgroundCover url={slots.b} isNSFW={isNSFW} />
         </div>
+        {/* 高清层只在原图与底图不同且当前槽位有图时才叠 */}
+        {hiResUrl && (
+          <div className={layerClass(slots.active)}>
+            <HiResBackgroundCover url={hiResUrl} isNSFW={isNSFW} />
+          </div>
+        )}
       </div>
 
       <BackgroundTrailerVideo
@@ -86,6 +106,33 @@ function BackgroundCover({ url, isNSFW }: { url: string; isNSFW: boolean }) {
       isNSFW={isNSFW}
       className="h-full w-full object-cover object-center"
       decoding="async"
+    />
+  );
+}
+
+/**
+ * 高清封面层：用 `key={url}` 让它随焦点切换重新挂载，
+ * 这样「是否已加载」的状态天然重置，不必在 effect 里改 state。
+ */
+function HiResBackgroundCover({
+  url,
+  isNSFW,
+}: {
+  url: string;
+  isNSFW: boolean;
+}) {
+  const [loaded, setLoaded] = useState(false);
+
+  return (
+    <ProxyImage
+      key={url}
+      src={url}
+      isNSFW={isNSFW}
+      className={`h-full w-full object-cover object-center transition-opacity duration-[600ms] ease-out ${
+        loaded ? "opacity-100" : "opacity-0"
+      }`}
+      decoding="async"
+      onLoad={() => setLoaded(true)}
     />
   );
 }

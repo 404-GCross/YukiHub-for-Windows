@@ -9,8 +9,10 @@ import { PlayingIsland } from "../components/bar/PlayingIsland";
 import { SideBar } from "../components/bar/SideBar";
 import { TopBar } from "../components/bar/TopBar";
 import { DragDropImportModal } from "../components/modal/DragDropImportModal";
+import { ShortcutsDialog } from "../components/modal/ShortcutsDialog";
 import { AppToaster } from "../components/ui/AppToaster";
 import { APP_MODAL_ROOT_ID } from "../components/ui/ModalPortal";
+import { useGlobalShortcuts } from "../hooks/useGlobalShortcuts";
 import { useAppStore } from "../store";
 
 function RootLayout() {
@@ -25,6 +27,9 @@ function RootLayout() {
   const hasFileDragRef = useRef(false);
   const isDropImportActiveRef = useRef(false);
   const mainRef = useRef<HTMLElement | null>(null);
+
+  // 挂在根上：大屏模式走的是提前 return 的分支，钩子必须在那之前调用
+  useGlobalShortcuts();
 
   const bgEnabled = config?.background_enabled && config?.background_image;
   const bgBlur = config?.background_blur ?? 10;
@@ -136,7 +141,12 @@ function RootLayout() {
 
   // 大屏模式是同窗口的无外壳全屏路由：跳过顶栏、侧栏与背景层。
   if (pathname === BIG_SCREEN_PATH) {
-    return <Outlet />;
+    return (
+      <>
+        <Outlet />
+        <ShortcutsDialog />
+      </>
+    );
   }
 
   return (
@@ -223,6 +233,7 @@ function RootLayout() {
         </div>
 
         <OverlayHost name="window" />
+        <ShortcutsDialog />
       </div>
     </div>
   );

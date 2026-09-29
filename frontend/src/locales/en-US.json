@@ -907,7 +907,8 @@
       "fullDataBackup": "Full Data Backup",
       "update": "App Updates",
       "portableSetup": "Local Integration",
-      "about": "About & Open Source"
+      "about": "About & Open Source",
+      "shortcuts": "Keyboard Shortcuts"
     },
     "about": {
       "appName": "YukiHub for Windows",
@@ -1797,5 +1798,20 @@
     "hintFavorite": "Favorite",
     "hintDetails": "Details",
     "hintCategory": "Switch category"
+  },
+  "shortcuts": {
+    "title": "Keyboard Shortcuts",
+    "hint": "Ignored while typing in an input; UI zoom stays on Ctrl + Plus / Minus / 0.",
+    "modifier": "Ctrl",
+    "shift": "Shift",
+    "home": "Go to Home",
+    "library": "Go to Library",
+    "stats": "Go to Statistics",
+    "categories": "Go to Categories",
+    "downloads": "Go to Downloads",
+    "settings": "Go to Settings",
+    "bigscreen": "Enter Big Screen",
+    "cheatsheet": "Open shortcut cheat sheet",
+    "openCheatsheet": "Open cheat sheet"
   }
 }

@@ -24,6 +24,8 @@ export default defineConfig({
       "settings.portableSetup.toast.*",
       "metadataUpdateFields.*",
       "settings.appearance.gameCardLayout_*",
+      // 快捷键的文案键由 GLOBAL_SHORTCUTS 的 id 拼出来，提取器看不到
+      "shortcuts.*",
     ],
   },
 });

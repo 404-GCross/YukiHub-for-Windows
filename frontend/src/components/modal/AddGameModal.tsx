@@ -9,9 +9,8 @@ import {
   SelectGameExecutable,
 } from "../../../bindings/yukihub/internal/service/gameservice";
 import { enums, models, vo } from "../../../src/bindings/models";
-import brand1Url from "../../assets/branding/brand-1.webp";
-import brand2Url from "../../assets/branding/brand-2.webp";
 import { useAppStore } from "../../store";
+import { AddGameIllustration } from "../branding/AddGameIllustration";
 import { BetterSelect } from "../ui/better/BetterSelect";
 import { sourceLabel } from "../ui/import/importFlow";
 import { MetadataSearchResultsStep } from "../ui/import/MetadataSearchResultsStep";
@@ -359,12 +358,9 @@ export function AddGameModal({
                   onClick={startLocalImport}
                   className="group relative min-h-56 overflow-hidden rounded-xl border border-brand-200 p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-brand-700"
                 >
-                  <img
-                    src={brand1Url}
-                    alt=""
-                    aria-hidden="true"
-                    className="absolute bottom-0 right-0 h-[92%] w-[78%] object-contain object-bottom opacity-65 "
-                    draggable="false"
+                  <AddGameIllustration
+                    variant="local"
+                    className="absolute bottom-0 right-0 h-[92%] w-[78%] opacity-65"
                   />
                   <span className="absolute inset-0 dark:bg-brand-950/20" />
                   <span className="absolute inset-0 bg-gradient-to-r from-white/80 via-white/42 to-transparent dark:from-brand-900/72 dark:via-brand-900/36 dark:to-transparent" />
@@ -383,12 +379,9 @@ export function AddGameModal({
                   onClick={startRemoteImport}
                   className="group relative min-h-56 overflow-hidden rounded-xl border border-brand-200 p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-brand-700"
                 >
-                  <img
-                    src={brand2Url}
-                    alt=""
-                    aria-hidden="true"
-                    className="absolute bottom-0 right-0 h-[92%] w-[78%] object-contain object-bottom opacity-65"
-                    draggable="false"
+                  <AddGameIllustration
+                    variant="remote"
+                    className="absolute bottom-0 right-0 h-[92%] w-[78%] opacity-65"
                   />
                   <span className="absolute inset-0 dark:bg-brand-950/20" />
                   <span className="absolute inset-0 bg-gradient-to-r from-white/80 via-white/42 to-transparent dark:from-brand-900/72 dark:via-brand-900/36 dark:to-transparent" />

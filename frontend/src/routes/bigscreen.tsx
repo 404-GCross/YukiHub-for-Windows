@@ -648,6 +648,7 @@ function BigScreenPage() {
     <div className="relative flex h-screen w-screen select-none overflow-hidden bg-brand-900 text-white">
       <BigScreenBackground
         coverUrl={coverUrl}
+        coverSourceUrl={focusedGame?.cover_source_url || ""}
         isNSFW={Boolean(focusedGame?.is_nsfw)}
         trailerUrl={focusedGame?.trailer_path}
         backgroundTrailerActive={backgroundTrailerActive}

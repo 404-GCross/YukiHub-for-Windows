@@ -907,7 +907,8 @@
       "fullDataBackup": "全量データバックアップ",
       "update": "アプリ更新",
       "portableSetup": "ローカル連携設定",
-      "about": "情報とオープンソースライセンス"
+      "about": "情報とオープンソースライセンス",
+      "shortcuts": "キーボードショートカット"
     },
     "about": {
       "appName": "YukiHub for Windows",
@@ -1797,5 +1798,20 @@
     "hintFavorite": "お気に入り",
     "hintDetails": "詳細",
     "hintCategory": "カテゴリ切り替え"
+  },
+  "shortcuts": {
+    "title": "キーボードショートカット",
+    "hint": "入力中は発火しません。表示倍率の変更は Ctrl + プラス / マイナス / 0 のままです。",
+    "modifier": "Ctrl",
+    "shift": "Shift",
+    "home": "ホームへ移動",
+    "library": "ライブラリへ移動",
+    "stats": "統計へ移動",
+    "categories": "カテゴリへ移動",
+    "downloads": "ダウンロードへ移動",
+    "settings": "設定へ移動",
+    "bigscreen": "大画面モードに入る",
+    "cheatsheet": "ショートカット一覧を開く",
+    "openCheatsheet": "一覧を開く"
   }
 }
