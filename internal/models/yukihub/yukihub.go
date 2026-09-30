@@ -16,23 +16,29 @@ type BackupSettings struct {
 }
 
 type Game struct {
-	LocalID         int64  `json:"local_id"`
-	Title           string `json:"title"`
-	OriginalTitle   string `json:"original_title"`
-	Engine          string `json:"engine"`
+	LocalID       int64  `json:"local_id"`
+	Title         string `json:"title"`
+	OriginalTitle string `json:"original_title"`
+	// Engine 是 Android 侧的引擎类型，桌面端不存储：导出时留空并省略，
+	// 手机端读不到就保留自己那一条的值。
+	Engine          string `json:"engine,omitempty"`
 	RootUri         string `json:"root_uri"`
-	CoverUri        string `json:"cover_uri"`
-	CoverPersistUri string `json:"cover_persist_uri"`
-	CoverSourceType int    `json:"cover_source_type"`
-	// 以下三个字段是 Android 侧的启动方式，桌面端没有对应概念，导出时恒为空串。
-	EmulatorPackage    string `json:"emulator_package"`
-	LaunchTarget       string `json:"launch_target"`
-	WinlatorLaunchMode string `json:"winlator_launch_mode"`
+	CoverUri        string `json:"cover_uri,omitempty"`
+	CoverPersistUri string `json:"cover_persist_uri,omitempty"`
+	// CoverSourceType：0 表示「无来源信息」，省略而非写 0。
+	CoverSourceType int `json:"cover_source_type,omitempty"`
+	// 以下三个字段是 Android 侧的启动方式。桌面端没有对应概念，**必须省略**：
+	// 手机端 importGamesJson 用的是 optString(key, 本地值)，字段存在但为空串
+	// 会被当作「清空」，直接把对端的模拟器配置抹掉。
+	EmulatorPackage    string `json:"emulator_package,omitempty"`
+	LaunchTarget       string `json:"launch_target,omitempty"`
+	WinlatorLaunchMode string `json:"winlator_launch_mode,omitempty"`
 	Description        string `json:"description"`
 	Tags               string `json:"tags"`
 	// GamehubLocalGameId 是 Android 侧无本地目录条目的身份键，桌面端没有对应概念。
-	GamehubLocalGameId string `json:"gamehub_local_game_id"`
-	GamehubLaunchMode  string `json:"gamehub_launch_mode"`
+	// 同样必须省略：写成空串会把对端的身份键抹掉，破坏后续匹配。
+	GamehubLocalGameId string `json:"gamehub_local_game_id,omitempty"`
+	GamehubLaunchMode  string `json:"gamehub_launch_mode,omitempty"`
 	PlayStatus         string `json:"play_status"`
 	TotalPlayTime      int64  `json:"total_play_time"`
 	LastPlayedAt       int64  `json:"last_played_at"`

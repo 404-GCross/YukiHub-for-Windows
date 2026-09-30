@@ -1458,6 +1458,14 @@
         "restoreScheduled": "已安排全量恢復，程式即將退出...",
         "restoreScheduleFailed": "安排全量恢復失敗: {{error}}",
         "selectFileFailed": "選擇檔案失敗: {{error}}"
+      },
+      "yukihub": {
+        "title": "YukiHub 手機版移轉",
+        "hint": "匯出成手機版可直接匯入的 .ykbak 備份（schema 5 快照）。只含遊戲條目、文字中繼資料與遊玩記錄，不含遊戲本體、存檔與封面圖片；在手機版的「設定 → 本機備份 → 匯入」中選擇此檔案即可。",
+        "exportBtn": "匯出為 YukiHub 備份",
+        "exporting": "正在匯出…",
+        "exportSuccess": "已匯出 {{count}} 個遊戲、{{sessions}} 筆遊玩記錄到 {{path}}",
+        "exportFailed": "匯出失敗：{{error}}"
       }
     },
     "update": {

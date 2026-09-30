@@ -459,6 +459,38 @@ INSERT / UPDATE 语句都不含这些列，落库时被**静默丢弃**——这
       - 验证：`gofmt` 无输出、`go vet ./...` 干净、`go test ./... -count=1` 全绿；
         `wails3 generate bindings`（枚举与两个 vo 模型更新）；前端
         `pnpm typecheck` / `build` / `i18n:check` 通过，改动文件 eslint 0 error
+- [x] 用真实手机版备份核对导入导出（2026-09-30）
+      - 输入：用户手机版本地备份 `yukihub_backup_1790751445692.ykbak`
+        （gzip + schema 5，32 游戏 / 30 会话 / 42 条元数据缓存）
+      - 结论：**导入方向此前有 3 个「只映射、没落库」的缺陷**，导出方向**根本没有入口**
+      - 修 1：落库的 `INSERT INTO games` 列清单缺 `status`，32 条状态全被写成列默认值
+        「未玩」（备份里是 completed 21 / unplayed 9 / playing 1 / dropped 1）
+      - 修 2：同一条路径也缺 `aliases`，原文名/罗马字标题全丢（32 条里 30 条本该有）
+      - 修 3：合并路径（`updateImportedItemMetadata`）同样缺这两列，按手机版
+        `importGamesJson` 的规则补上——只有对端 `updated_at` 不早于本地时才覆盖
+      - 新增回归测试 `TestYukiHubImportPersistsStatusAndAliases`；
+        另加按环境变量触发的真实备份探针 `TestYukiHubImportRealBackup`
+      - 导出接线：`exporter` 此前只被测试引用，界面无法导出 `.ykbak`。新增
+        `ImportService.SelectYukiHubExportPath` / `ExportToYukiHub`
+        （`ExportWithSummary` 只 Build 一次），入口放在「设置 → 全量数据备份 →
+        YukiHub 手机版迁移」，4 语言文案同步
+      - 顺手修掉一个会**抹掉手机端数据**的隐患：手机版用
+        `optString(key, 本地值)`，字段存在但为空串等于「清空」。桌面端没有对应概念的
+        字段（engine / emulator_package / launch_target / winlator_launch_mode /
+        gamehub_local_game_id / gamehub_launch_mode / cover_persist_uri /
+        cover_source_type）改为 `omitempty` 省略；`cover_uri` 改为优先取
+        `cover_source_url`（本地缓存文件对端拿不到）
+      - 核对通过：32 游戏 0 失败、收藏、NSFW、隐藏、清零、元数据来源（vndb 30 /
+        bangumi 3 / ymgal 3 / hikarinagi 2）、标签 199、总时长换算（26347745 ms →
+        26347 秒）、会话 60 行 = 30 真实 + 30 聚合补偿
+      - 有意保留的差异（已写进 `docs/mobile-yukihub-migration.md`）：
+        ① 会话上限桌面端是「每游戏 30 条」，Android 是「合计 30 条」；
+        ② 不写 `profile` / `lightweight` / `note` / `backup_type` 头字段
+        （Android 导入只校验 `app`，不影响可用性）；
+        ③ `settings` 只写 `metadata_source`，其余是设备本地偏好
+      - 验证：gofmt 无输出、`go vet ./...` 干净、`go test ./... -count=1` 全绿；
+        前端 typecheck / i18n:check 通过
+
 - [x] 核对验收项 5（WebDAV 自持同步）现状（2026-09-29）：**无需新实现**
       - 结论：上游已内建 WebDAV 云备份后端，且**已是默认 provider**
         （`appconf` 默认 `cloud_backup_provider = "webdav"`），全链路已接线：

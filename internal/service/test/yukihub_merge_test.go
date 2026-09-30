@@ -135,17 +135,25 @@ func TestYukiHubImportMergeSessionsTakesMaxPlaytime(t *testing.T) {
 }
 
 // TestYukiHubImportMergeUpdatesMetadata 验证 merge 动作下元数据被 Android 侧
-// 权威数据覆盖，但桌面端本机字段（path）不受影响。
+// 权威数据覆盖，但桌面端本机字段（path）不受影响；游玩状态按手机版
+// importGamesJson 的规则处理——**对端 updated_at 不早于本地才覆盖**。
 func TestYukiHubImportMergeUpdatesMetadata(t *testing.T) {
 	targetDB, targetCleanup := setupTestDB(t)
 	defer targetCleanup()
 
 	createdAt := time.Date(2026, time.September, 28, 8, 0, 0, 0, time.Local)
+	localNewerAt := createdAt.Add(2 * time.Hour)
 	if _, err := targetDB.Exec(`
 		INSERT INTO games (id, name, summary, status, source_type, source_id, created_at, updated_at, path)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		VALUES
+			(?, ?, ?, ?, ?, ?, ?, ?, ?),
+			(?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		"existing-1", "合并目标", "桌面端旧简介", "completed", "local", "", createdAt, createdAt,
-		"D:\\Games\\local\\game.exe"); err != nil {
+		// 用正斜杠写路径：这里只验证「不被导入覆盖」，不必掺进反斜杠转义
+		"D:/Games/local/game.exe",
+		// 本地更晚更新过：对端是旧快照，状态应保留本地值
+		"existing-2", "本地更新过", "桌面端简介", "dropped", "local", "", createdAt, localNewerAt,
+		"D:/Games/local/game2.exe"); err != nil {
 		t.Fatalf("插入已有游戏失败: %v", err)
 	}
 
@@ -153,15 +161,26 @@ func TestYukiHubImportMergeUpdatesMetadata(t *testing.T) {
 		App:       "YukiHub",
 		Schema:    5,
 		CreatedAt: createdAt.UnixMilli(),
-		Games: []yukihub.Game{{
-			LocalID:       7,
-			Title:         "合并目标",
-			Description:   "Android 侧新简介",
-			PlayStatus:    "playing",
-			TotalPlayTime: 0,
-			CreatedAt:     createdAt.UnixMilli(),
-			UpdatedAt:     createdAt.UnixMilli(),
-		}},
+		Games: []yukihub.Game{
+			{
+				LocalID:       7,
+				Title:         "合并目标",
+				Description:   "Android 侧新简介",
+				PlayStatus:    "playing",
+				TotalPlayTime: 0,
+				CreatedAt:     createdAt.UnixMilli(),
+				UpdatedAt:     createdAt.UnixMilli(),
+			},
+			{
+				LocalID:       8,
+				Title:         "本地更新过",
+				Description:   "Android 侧简介",
+				PlayStatus:    "playing",
+				TotalPlayTime: 0,
+				CreatedAt:     createdAt.UnixMilli(),
+				UpdatedAt:     createdAt.UnixMilli(),
+			},
+		},
 	}
 	snapshotPath := writeSnapshotFile(t, t.TempDir(), backup)
 
@@ -170,8 +189,8 @@ func TestYukiHubImportMergeUpdatesMetadata(t *testing.T) {
 	if err != nil {
 		t.Fatalf("合并导入失败: %v", err)
 	}
-	if result.Success != 1 {
-		t.Fatalf("合并导入结果 = success %d / skipped %d (%v), want 1/0",
+	if result.Success != 2 {
+		t.Fatalf("合并导入结果 = success %d / skipped %d (%v), want 2/0",
 			result.Success, result.Skipped, result.SkippedNames)
 	}
 
@@ -184,12 +203,20 @@ func TestYukiHubImportMergeUpdatesMetadata(t *testing.T) {
 	if summary != "Android 侧新简介" {
 		t.Errorf("summary = %q, want Android 侧新简介（Android 为权威源）", summary)
 	}
-	if gamePath != `D:\Games\local\game.exe` {
+	if gamePath != `D:/Games/local/game.exe` {
 		t.Errorf("path = %q, want 保留桌面端本机路径", gamePath)
 	}
-	// 既有行为：update 路径（updateImportedItemMetadata）不含 status 列，
-	// 游玩状态不会被导入数据覆盖。
-	if status != "completed" {
-		t.Errorf("status = %q, want completed（update 路径不覆盖游玩状态）", status)
+	// 时间戳相等时按手机版规则覆盖（incoming.updated_at >= local.updated_at）。
+	if status != "playing" {
+		t.Errorf("status = %q, want playing（对端不早于本地时应覆盖）", status)
+	}
+
+	// 本地 updated_at 更晚：对端是旧快照，状态保留本地值。
+	if err := targetDB.QueryRow(
+		`SELECT status FROM games WHERE id = 'existing-2'`).Scan(&status); err != nil {
+		t.Fatalf("查询 existing-2 失败: %v", err)
+	}
+	if status != "dropped" {
+		t.Errorf("status = %q, want dropped（本地更新更晚时不得被旧快照覆盖）", status)
 	}
 }

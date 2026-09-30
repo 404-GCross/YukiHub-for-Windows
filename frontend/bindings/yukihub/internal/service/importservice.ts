@@ -35,6 +35,18 @@ export function CheckImportMetadataDuplicates(requests: vo$0.ImportMetadataDupli
 }
 
 /**
+ * ExportToYukiHub 把桌面端库导出为 YukiHub schema 5 备份（.ykbak），手机版可直接导入。
+ * 
+ * 与导入方向对称：导出完成后会把「多少个游戏 / 多少条游玩记录」回报给调用方，
+ * 前端好提示用户。契约细节见 docs/mobile-yukihub-migration.md。
+ */
+export function ExportToYukiHub(path: string): $CancellablePromise<$models.ImportResult> {
+    return $Call.ByID(1445061962, path).then(($result: any) => {
+        return $$createType0($result);
+    });
+}
+
+/**
  * FetchMetadataForCandidate 为单个候选项获取元数据（带限流）
  */
 export function FetchMetadataForCandidate(searchName: string): $CancellablePromise<vo$0.BatchImportCandidate> {
@@ -306,6 +318,16 @@ export function SelectVniteDirectory(): $CancellablePromise<string> {
  */
 export function SelectYukiHubBackup(): $CancellablePromise<string> {
     return $Call.ByID(3404693645);
+}
+
+/**
+ * SelectYukiHubExportPath 选择 YukiHub 备份的保存位置。
+ * 
+ * 对手是手机版：文件名沿用手机版的 `yukihub_backup_<毫秒时间戳>.ykbak`，
+ * 这样用户在两端看到的是同一套命名。
+ */
+export function SelectYukiHubExportPath(): $CancellablePromise<string> {
+    return $Call.ByID(2321192534);
 }
 
 /**

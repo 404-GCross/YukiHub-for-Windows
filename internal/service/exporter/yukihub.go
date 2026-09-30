@@ -97,34 +97,43 @@ func (e *YukiHubExporter) Build() (*yukihub.Backup, error) {
 
 // Export 生成快照并以 gzip 写入文件（与 importer 的 gzip 读取对称）。
 func (e *YukiHubExporter) Export(path string) error {
+	_, _, err := e.ExportWithSummary(path)
+	return err
+}
+
+// ExportWithSummary 与 Export 相同，另外回报写出的游戏数与游玩记录数，
+// 供界面提示用（只 Build 一次，不为了拿计数多跑一遍全库查询）。
+func (e *YukiHubExporter) ExportWithSummary(path string) (int, int, error) {
 	backup, err := e.Build()
 	if err != nil {
-		return err
+		return 0, 0, err
 	}
 	data, err := json.Marshal(backup)
 	if err != nil {
-		return fmt.Errorf("序列化 YukiHub 快照失败: %w", err)
+		return 0, 0, fmt.Errorf("序列化 YukiHub 快照失败: %w", err)
 	}
 
 	file, err := os.Create(path)
 	if err != nil {
-		return fmt.Errorf("创建 YukiHub 快照文件失败: %w", err)
+		return 0, 0, fmt.Errorf("创建 YukiHub 快照文件失败: %w", err)
 	}
 	writer := gzip.NewWriter(file)
 	if _, err := writer.Write(data); err != nil {
 		writer.Close()
 		file.Close()
-		return fmt.Errorf("写入 YukiHub 快照失败: %w", err)
+		return 0, 0, fmt.Errorf("写入 YukiHub 快照失败: %w", err)
 	}
 	if err := writer.Close(); err != nil {
 		file.Close()
-		return fmt.Errorf("关闭 YukiHub 快照失败: %w", err)
+		return 0, 0, fmt.Errorf("关闭 YukiHub 快照失败: %w", err)
 	}
 	if err := file.Close(); err != nil {
-		return fmt.Errorf("保存 YukiHub 快照失败: %w", err)
+		return 0, 0, fmt.Errorf("保存 YukiHub 快照失败: %w", err)
 	}
-	applog.LogInfof(e.ctx, "ExportYukiHub: wrote %d games and %d play sessions", len(backup.Games), len(backup.PlaySessions))
-	return nil
+	games := len(backup.Games)
+	sessions := len(backup.PlaySessions)
+	applog.LogInfof(e.ctx, "ExportYukiHub: wrote %d games and %d play sessions", games, sessions)
+	return games, sessions, nil
 }
 
 func (e *YukiHubExporter) loadGames() ([]models.Game, error) {
@@ -133,6 +142,7 @@ func (e *YukiHubExporter) loadGames() ([]models.Game, error) {
 		COALESCE(g.name, '') as name,
 		COALESCE(g.aliases, '[]') as aliases,
 		COALESCE(g.cover_url, '') as cover_url,
+		COALESCE(g.cover_source_url, '') as cover_source_url,
 		COALESCE(g.summary, '') as summary,
 		COALESCE(g.path, '') as path,
 		COALESCE(g.game_directory, '') as game_directory,
@@ -164,6 +174,7 @@ func (e *YukiHubExporter) loadGames() ([]models.Game, error) {
 			&game.Name,
 			&aliasesJSON,
 			&game.CoverURL,
+			&game.CoverSourceURL,
 			&game.Summary,
 			&game.Path,
 			&game.GameDirectory,
@@ -356,8 +367,11 @@ func buildYukiHubGame(game models.Game, tags []string, sessions []models.PlaySes
 		// TODO(round-trip)：Android 源生的条目（其本地 root_uri 非空）经桌面端
 		// 回导时仍可能在对端产生重复。要彻底解决需新增 legacy_root_uri 列保存
 		// 对端原始路径并在导出时回填，见 ROADMAP 阶段 2。
-		RootUri:         "",
-		CoverUri:        networkCoverURI(game.CoverURL),
+		RootUri: "",
+		// 优先用元数据来源的原始网络地址：本地封面可能只是桌面端的缓存文件，
+		// 对端拿不到；两者都不是 http(s) 时留空（omitempty 会省略该字段），
+		// 手机端便会保留自己已有的封面。
+		CoverUri:        networkCoverURI(firstNetworkURL(game.CoverSourceURL, game.CoverURL)),
 		CoverPersistUri: "",
 		CoverSourceType: 0,
 		Description:     game.Summary,
@@ -452,6 +466,16 @@ func mapGameStatusToYukiHub(status enums.GameStatus) string {
 }
 
 // networkCoverURI 只导出网络封面，本地封面文件跨设备无效（契约明确不迁移）。
+// firstNetworkURL 返回第一个 http(s) 地址，都没有则返回空串。
+func firstNetworkURL(candidates ...string) string {
+	for _, candidate := range candidates {
+		if candidate = strings.TrimSpace(candidate); candidate != "" {
+			return candidate
+		}
+	}
+	return ""
+}
+
 func networkCoverURI(coverURL string) string {
 	coverURL = strings.TrimSpace(coverURL)
 	if !strings.HasPrefix(coverURL, "http://") && !strings.HasPrefix(coverURL, "https://") {

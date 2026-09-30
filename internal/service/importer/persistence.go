@@ -539,12 +539,14 @@ func (c *Committer) addImportedItems(ctx context.Context, conn *sql.Conn, items 
 	_, err := conn.ExecContext(ctx, `CREATE TEMP TABLE temp_import_games (
 		id TEXT,
 		name TEXT,
+		aliases TEXT,
 		cover_url TEXT,
 		cover_source_url TEXT,
 		company TEXT,
 		summary TEXT,
 		rating DOUBLE,
 		release_date TEXT,
+		status TEXT,
 		path TEXT,
 		game_directory TEXT,
 		save_path TEXT,
@@ -601,17 +603,25 @@ func (c *Committer) addImportedItems(ctx context.Context, conn *sql.Conn, items 
 				game.CoverSourceURL = strings.TrimSpace(game.CoverURL)
 			}
 			game.LaunchMode = enums.NormalizeLaunchMode(game.LaunchMode)
+			// 状态与别名都必须显式落库：漏了 status 时全部条目会拿到列默认值
+			// 「未玩」（手机版备份里的 completed/dropped 全部丢失）；漏了 aliases
+			// 则原文名/罗马字标题丢失，按标题匹配与展示都会退化。
+			if game.Status == "" {
+				game.Status = enums.StatusUnplayed
+			}
 			items[i].Game = game
 
 			if err := appender.AppendRow(
 				game.ID,
 				game.Name,
+				gamehelper.EncodeAliases(game.Aliases),
 				game.CoverURL,
 				game.CoverSourceURL,
 				game.Company,
 				game.Summary,
 				game.Rating,
 				game.ReleaseDate,
+				string(game.Status),
 				game.Path,
 				game.GameDirectory,
 				game.SavePath,
@@ -646,7 +656,7 @@ func (c *Committer) addImportedItems(ctx context.Context, conn *sql.Conn, items 
 	}
 
 	if _, err := conn.ExecContext(ctx, `INSERT INTO games (
-		id, name, cover_url, cover_source_url, company, summary, rating, release_date, path, game_directory,
+		id, name, aliases, cover_url, cover_source_url, company, summary, rating, release_date, status, path, game_directory,
 		save_path, process_name, wine_runner, wine_args, wine_prefix, launch_mode,
 		steam_launch_id, steam_launch_kind, steam_user_id, steam_launch_options,
 		source_type, cached_at, source_id, created_at, updated_at,
@@ -654,7 +664,7 @@ func (c *Committer) addImportedItems(ctx context.Context, conn *sql.Conn, items 
 		legacy_local_id, source_device_id, playtime_reset_at, hidden
 	)
 	SELECT
-		id, name, cover_url, cover_source_url, company, summary, rating, release_date, path, game_directory,
+		id, name, aliases, cover_url, cover_source_url, company, summary, rating, release_date, status, path, game_directory,
 		save_path, process_name, wine_runner, wine_args, wine_prefix, launch_mode,
 		steam_launch_id, steam_launch_kind, steam_user_id, steam_launch_options,
 		source_type, cached_at, source_id, created_at, updated_at,
@@ -678,6 +688,11 @@ func (c *Committer) updateImportedItemMetadata(ctx context.Context, conn *sql.Co
 	_, err := conn.ExecContext(ctx, `CREATE TEMP TABLE temp_update_import_games (
 		id TEXT,
 		name TEXT,
+		aliases TEXT,
+		status TEXT,
+		-- 守卫比较用毫秒整数：Appender 与普通 Exec 写 TIMESTAMPTZ 的时区解释
+		-- 不一致（实测 Appender 那条会被当成 UTC 墙钟时间），比时间戳会恒真。
+		updated_at_ms BIGINT,
 		cover_url TEXT,
 		cover_source_url TEXT,
 		company TEXT,
@@ -720,9 +735,15 @@ func (c *Committer) updateImportedItemMetadata(ctx context.Context, conn *sql.Co
 				game.CoverSourceURL = strings.TrimSpace(game.CoverURL)
 			}
 			items[i].Game = game
+			// 这里**不做**空值兜底：空状态代表「本次导入没带状态信息」
+			// （PotatoVN / Playnite 这类格式就没有状态概念），下面的守卫靠它
+			// 区分「没信息」与「明确未玩」。新建条目才需要在插入路径补默认值。
 			if err := appender.AppendRow(
 				game.ID,
 				game.Name,
+				gamehelper.EncodeAliases(game.Aliases),
+				string(game.Status),
+				game.UpdatedAt.UnixMilli(),
 				game.CoverURL,
 				game.CoverSourceURL,
 				game.Company,
@@ -750,6 +771,37 @@ func (c *Committer) updateImportedItemMetadata(ctx context.Context, conn *sql.Co
 
 	if inserted == 0 {
 		return 0, nil
+	}
+
+	// 状态与别名单独一条语句，且必须跑在下面那条之前：
+	// 手机版 importGamesJson 的规则是「对端 updated_at 不早于本地才覆盖状态」，
+	// 而下面的语句会顺手把 games.updated_at 改成对端的值，之后再比就永远成立。
+	// 也不能写成同一条 UPDATE 里的 CASE——`UPDATE ... FROM` 中同语句引用
+	// 目标列的新旧值语义容易踩坑（实测会被当成已更新的值）。
+	// 「非空 + 对端不早于本地」才覆盖，两条规则都要：
+	//   * 非空：PotatoVN / Playnite 这类导入格式不带状态，空值等于「没有信息」，
+	//     照抄会把用户标好的「已通关」冲成「未玩」（别名同理）；
+	//   * 时间：与手机版 importGamesJson 对齐，旧快照不得覆盖本地更新。
+	if _, err := conn.ExecContext(ctx, `
+		UPDATE games
+		SET status = temp_update_import_games.status
+		FROM temp_update_import_games
+		WHERE games.id = temp_update_import_games.id
+		  AND TRIM(COALESCE(temp_update_import_games.status, '')) <> ''
+		  AND temp_update_import_games.updated_at_ms >= epoch_ms(games.updated_at)
+	`); err != nil {
+		return inserted, fmt.Errorf("update imported game status: %w", err)
+	}
+
+	if _, err := conn.ExecContext(ctx, `
+		UPDATE games
+		SET aliases = temp_update_import_games.aliases
+		FROM temp_update_import_games
+		WHERE games.id = temp_update_import_games.id
+		  AND COALESCE(temp_update_import_games.aliases, '') NOT IN ('', '[]')
+		  AND temp_update_import_games.updated_at_ms >= epoch_ms(games.updated_at)
+	`); err != nil {
+		return inserted, fmt.Errorf("update imported game aliases: %w", err)
 	}
 
 	if _, err := conn.ExecContext(ctx, `

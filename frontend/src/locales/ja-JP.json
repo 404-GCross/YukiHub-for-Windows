@@ -1458,6 +1458,14 @@
         "restoreScheduled": "全量復元を予約しました。アプリを終了します...",
         "restoreScheduleFailed": "全量復元の予約に失敗しました: {{error}}",
         "selectFileFailed": "ファイルの選択に失敗しました: {{error}}"
+      },
+      "yukihub": {
+        "title": "YukiHub モバイル版への移行",
+        "hint": "モバイル版がそのまま読み込める .ykbak バックアップ（schema 5 スナップショット）を書き出します。ゲーム項目・テキストメタデータ・プレイ記録のみで、ゲーム本体・セーブ・カバー画像は含みません。スマホ側の「設定 → ローカルバックアップ → 読み込み」でこのファイルを選んでください。",
+        "exportBtn": "YukiHub バックアップとして書き出す",
+        "exporting": "書き出し中…",
+        "exportSuccess": "{{count}} 件のゲームと {{sessions}} 件のプレイ記録を {{path}} に書き出しました",
+        "exportFailed": "書き出しに失敗しました：{{error}}"
       }
     },
     "update": {

@@ -1458,6 +1458,14 @@
         "restoreScheduled": "Full restore scheduled, app will exit shortly...",
         "restoreScheduleFailed": "Failed to schedule full restore: {{error}}",
         "selectFileFailed": "Failed to select file: {{error}}"
+      },
+      "yukihub": {
+        "title": "YukiHub Mobile Migration",
+        "hint": "Export a .ykbak backup (schema 5 snapshot) that the mobile app imports directly. It contains game entries, text metadata and play sessions only — no game files, saves or cover images. On the phone, pick this file under Settings → Local backup → Import.",
+        "exportBtn": "Export as YukiHub backup",
+        "exporting": "Exporting…",
+        "exportSuccess": "Exported {{count}} games and {{sessions}} play sessions to {{path}}",
+        "exportFailed": "Export failed: {{error}}"
       }
     },
     "update": {

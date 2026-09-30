@@ -8,6 +8,10 @@ import {
   SelectBackupSavePath,
 } from "../../../bindings/yukihub/internal/service/backupservice";
 import { SafeQuit } from "../../../bindings/yukihub/internal/service/configservice";
+import {
+  ExportToYukiHub,
+  SelectYukiHubExportPath,
+} from "../../../bindings/yukihub/internal/service/importservice";
 import { useAppStore } from "../../store";
 import { formatLocalDateTime } from "../../utils/time";
 import { ConfirmModal } from "../modal/ConfirmModal";
@@ -17,6 +21,7 @@ export function FullDataBackupPanel() {
   const config = useAppStore(state => state.config);
   const [isFullBackingUp, setIsFullBackingUp] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
+  const [isExportingYukiHub, setIsExportingYukiHub] = useState(false);
 
   const [confirmConfig, setConfirmConfig] = useState<{
     isOpen: boolean;
@@ -56,6 +61,38 @@ export function FullDataBackupPanel() {
     }
     finally {
       setIsFullBackingUp(false);
+    }
+  };
+
+  // 导出成手机版能直接导入的 .ykbak（schema 5 快照）
+  const handleExportToYukiHub = async () => {
+    if (isExportingYukiHub)
+      return;
+
+    try {
+      const savePath = await SelectYukiHubExportPath();
+
+      if (!savePath) {
+        return;
+      }
+
+      setIsExportingYukiHub(true);
+      const result = await ExportToYukiHub(savePath);
+      toast.success(
+        t("settings.fullDataBackup.yukihub.exportSuccess", {
+          count: result?.success ?? 0,
+          path: savePath,
+          sessions: result?.sessions_imported ?? 0,
+        }),
+      );
+    }
+    catch (err: any) {
+      toast.error(
+        t("settings.fullDataBackup.yukihub.exportFailed", { error: err }),
+      );
+    }
+    finally {
+      setIsExportingYukiHub(false);
     }
   };
 
@@ -146,6 +183,29 @@ export function FullDataBackupPanel() {
             {isRestoring
               ? t("settings.fullDataBackup.importing")
               : t("settings.fullDataBackup.importBtn")}
+          </button>
+        </div>
+
+        <div className="mt-6 border-t border-brand-200 pt-5 dark:border-brand-700">
+          <h4 className="text-sm font-bold text-brand-900 dark:text-white">
+            {t("settings.fullDataBackup.yukihub.title")}
+          </h4>
+          <p className="mt-1 text-xs leading-relaxed text-brand-500 dark:text-brand-400">
+            {t("settings.fullDataBackup.yukihub.hint")}
+          </p>
+          <button
+            type="button"
+            onClick={handleExportToYukiHub}
+            disabled={isDisabled}
+            className="glass-btn-neutral mt-3 px-6 py-3 bg-brand-600 text-white rounded-md hover:bg-brand-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            {isExportingYukiHub && (
+              <div className="i-mdi-loading animate-spin" />
+            )}
+            <div className="i-mdi-cellphone-arrow-down text-xl" />
+            {isExportingYukiHub
+              ? t("settings.fullDataBackup.yukihub.exporting")
+              : t("settings.fullDataBackup.yukihub.exportBtn")}
           </button>
         </div>
 

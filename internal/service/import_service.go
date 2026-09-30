@@ -16,6 +16,7 @@ import (
 	"yukihub/internal/common/importpath"
 	"yukihub/internal/common/vo"
 	"yukihub/internal/models"
+	"yukihub/internal/service/exporter"
 	"yukihub/internal/service/gamehelper"
 	"yukihub/internal/service/importer"
 	"yukihub/internal/utils/apputils"
@@ -209,6 +210,51 @@ func (s *ImportService) PreviewImport(zipPath string) ([]PreviewGame, error) {
 }
 
 // =================== YukiHub 导入功能 ====================
+
+// SelectYukiHubExportPath 选择 YukiHub 备份的保存位置。
+//
+// 对手是手机版：文件名沿用手机版的 `yukihub_backup_<毫秒时间戳>.ykbak`，
+// 这样用户在两端看到的是同一套命名。
+func (s *ImportService) SelectYukiHubExportPath() (string, error) {
+	defaultFileName := fmt.Sprintf("yukihub_backup_%d.ykbak", time.Now().UnixMilli())
+
+	selection, err := s.runtime.SaveFile(wailsruntime.SaveDialogOptions{
+		Title:    "选择 YukiHub 备份保存位置",
+		Filename: defaultFileName,
+		Filters: []wailsruntime.FileFilter{
+			{
+				DisplayName: "YukiHub 备份",
+				Pattern:     "*.ykbak",
+			},
+		},
+	})
+	if err != nil {
+		applog.LogErrorf(s.ctx, "failed to open save file dialog: %v", err)
+	}
+	return selection, err
+}
+
+// ExportToYukiHub 把桌面端库导出为 YukiHub schema 5 备份（.ykbak），手机版可直接导入。
+//
+// 与导入方向对称：导出完成后会把「多少个游戏 / 多少条游玩记录」回报给调用方，
+// 前端好提示用户。契约细节见 docs/mobile-yukihub-migration.md。
+func (s *ImportService) ExportToYukiHub(path string) (ImportResult, error) {
+	result := ImportResult{}
+	if strings.TrimSpace(path) == "" {
+		return result, fmt.Errorf("导出路径为空")
+	}
+
+	games, sessions, err := exporter.NewYukiHubExporter(s.ctx, s.db).ExportWithSummary(path)
+	if err != nil {
+		applog.LogErrorf(s.ctx, "ExportToYukiHub: failed: %v", err)
+		return result, err
+	}
+	result.Success = games
+	result.SessionsImported = sessions
+	applog.LogInfof(s.ctx, "ExportToYukiHub: exported %d games / %d sessions to %s",
+		games, sessions, path)
+	return result, nil
+}
 
 // SelectYukiHubBackup 选择 YukiHub 导出的备份文件。
 func (s *ImportService) SelectYukiHubBackup() (string, error) {

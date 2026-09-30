@@ -283,7 +283,10 @@ Android 为权威源的状态合并是否要覆盖，待决策。
   `games.total_play_time` 由清零之后的会话求和后同样换算为毫秒。
 - 清零过滤：与 Android 侧 `exportPlaySessionsJson()` 对称，只导出
   `COALESCE(end_time, start_time) >= playtime_reset_at` 的会话，避免清零历史复活。
-- 条数上限：每个游戏只导出最新的 30 条会话；`total_play_time` 仍按全部（清零之后）会话统计。
+- 条数上限（**与 Android 刻意不同**）：桌面端**每个游戏**导出最新 30 条会话，
+  而 Android 的 `tail(sessions, 30)` 是**所有游戏合计** 30 条（见 §二）。
+  桌面端放宽是因为它的总时长由会话求和得出：少导出会话会让回导后的总时长缩水。
+  Android 导入时不校验条数，收到多少收多少，它自己下一次备份时再裁到 30 条。
 - **`root_uri` 恒为空串**，不写 Windows 绝对路径。对端 Android 会走
   `findByTitleForEmptyRoot` 按标题匹配；这与导入方向对称（桌面端导入 Android 备份时
   同样不把对端的 `content://` 路径写进 `path` / `game_directory`）。
@@ -304,6 +307,55 @@ Android 为权威源的状态合并是否要覆盖，待决策。
   测试：`TestYukiHubMetadataCacheRoundTrip`。
 - 游玩记录另写入 `launch_type = "external"`、`device_id = "desktop"`，
   `game_root_uri` 与游戏条目保持一致（空）。
+
+### 实机核对结论（2026-09-30，用真实手机版备份）
+
+拿一份手机版本地备份（`yukihub_backup_1790751445692.ykbak`，32 游戏 / 30 会话 /
+42 条元数据缓存，gzip + schema 5）跑端到端导入，结论与修掉的问题：
+
+**导入方向可用**（32 条 0 失败、0 跳过），核对通过的项：
+
+| 项 | 手机版备份 | 桌面端导入后 |
+| --- | --- | --- |
+| 游戏条目 | 32 | 32 |
+| 状态分布 | completed 21 / unplayed 9 / playing 1 / dropped 1 | 完全一致 |
+| 收藏 | 1 | 1（写入 `system:favorites` 分类） |
+| NSFW / 隐藏 / 清零 | 2 / 0 / 9 | 2 / 0 / 9 |
+| 元数据来源 | — | 38 条（vndb 30 / bangumi 3 / ymgal 3 / hikarinagi 2） |
+| 标签 | — | 199 |
+| 总时长 | 天使☆嚣嚣 26347745 ms | 26347 秒（÷1000，含清零过滤） |
+| 游玩记录 | 30 条 | 60 行 = 30 真实 + 30 聚合补偿 |
+
+修复的三个缺陷（都属于「只映射、没落库」）：
+
+1. **状态全丢**：落库的 `INSERT INTO games` 列清单里没有 `status`，所有条目
+   拿到列默认值「未玩」。补齐后 4 种状态逐条对上。
+2. **别名全丢**：同一条路径也没有 `aliases`，原文名/罗马字标题丢失，
+   影响展示与按标题匹配。补齐后 32 条里 30 条带别名（另 2 条备份里本身没有原文名）。
+3. **合并路径同样缺**：`updateImportedItemMetadata` 的暂存表与 UPDATE 也没有这两列，
+   已按手机版 `importGamesJson` 的规则补上——只有对端 `updated_at` 不早于本地时才覆盖。
+   回归测试：`TestYukiHubImportPersistsStatusAndAliases`。
+
+**导出方向此前没有任何入口**：`exporter` 包只被测试引用，界面上无法导出 `.ykbak`。
+2026-09-30 接线为 `ImportService.SelectYukiHubExportPath` / `ExportToYukiHub`，
+入口在「设置 → 全量数据备份 → YukiHub 手机版迁移」。
+
+同时修掉一个会**抹掉手机端数据**的隐患：手机版 `importGamesJson` 用的是
+`optString(key, 本地值)`，**字段存在但为空串会被当作「清空」**。桌面端没有对应概念的
+字段（`engine`、`emulator_package`、`launch_target`、`winlator_launch_mode`、
+`gamehub_local_game_id`、`gamehub_launch_mode`、`cover_persist_uri`、
+`cover_source_type`）原先会导出成 `""` / `0`，现在改为 `omitempty` 直接省略，
+对端便会保留自己的值。`cover_uri` 也改为优先取 `cover_source_url`（元数据来源的
+原始网络地址），本地缓存文件对端拿不到，两者都不是网络地址时省略该字段。
+
+**仍未对齐的部分（有意保留）**：
+
+1. 会话条数上限：见上文「条数上限」，桌面端是每游戏 30 条（Android 是合计 30 条）。
+2. 快照头字段：桌面端不写 `profile`（昵称/签名/头像）、`lightweight`、`note`、
+   `backup_type`。Android 的 `importSnapshot` 只校验 `app == "YukiHub"`，
+   因此不影响导入；代价是导入后不会更新手机端的个人资料。
+3. `settings`：桌面端只写 `metadata_source`。手机端的排序/缩放/扫描等偏好属于
+   设备本地偏好，桌面端没有对应概念，不迁移。
 
 ## 六、封面
 
