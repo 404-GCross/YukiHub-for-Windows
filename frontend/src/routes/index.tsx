@@ -331,6 +331,32 @@ function HomePage() {
     setIsCarouselHovered(hovered);
   }, []);
 
+  /**
+   * 手动左右滑动切换轮播。
+   *
+   * 桌面上没有原生的横向手势，只能自己接指针事件（见 HomeHeroCard 的
+   * SWIPE_THRESHOLD_PX）：向左拖看下一张，向右拖看上一张，首尾循环。
+   */
+  const handleCarouselSwipe = useCallback(
+    (direction: "prev" | "next") => {
+      if (carouselGames.length <= 1) {
+        return;
+      }
+      pauseCarouselBriefly();
+      setActiveGameId((current) => {
+        const currentIndex = carouselGames.findIndex(
+          game => game.id === current,
+        );
+        const baseIndex = currentIndex >= 0 ? currentIndex : 0;
+        const step = direction === "next" ? 1 : -1;
+        const nextIndex
+          = (baseIndex + step + carouselGames.length) % carouselGames.length;
+        return carouselGames[nextIndex]?.id ?? current;
+      });
+    },
+    [carouselGames, pauseCarouselBriefly],
+  );
+
   const handleRefresh = useCallback(() => {
     // 手动刷新时清掉封面失败记忆，否则刚修好的地址会被旧记忆挡住。
     clearFailedImageSources();
@@ -450,6 +476,7 @@ function HomePage() {
               onHoverChange={handleCarouselHoverChange}
               onOpenDetail={openGameDetail}
               onSelectGame={handleSelectGame}
+              onSwipe={handleCarouselSwipe}
               showCover={showHeroCover}
               snapshot={displayedHeroSnapshot}
               timeZone={config?.time_zone}

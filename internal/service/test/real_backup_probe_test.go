@@ -55,6 +55,16 @@ func TestYukiHubImportRealBackup(t *testing.T) {
 	dumpCounts(t, targetDB, "别名情况", `SELECT CASE WHEN COALESCE(aliases, '[]') IN ('', '[]') THEN '空' ELSE '有别名' END, COUNT(*) FROM games GROUP BY 1`)
 	dumpCounts(t, targetDB, "每次游玩记录类型", `SELECT CASE WHEN id LIKE 'agg%' OR id LIKE '%aggregate%' THEN '聚合补偿' ELSE '普通' END, COUNT(*) FROM play_sessions GROUP BY 1`)
 	dumpCounts(t, targetDB, "元数据来源分布", `SELECT source_type, COUNT(*) FROM game_metadata_sources GROUP BY 1 ORDER BY 2 DESC`)
+	// 游戏身份来源：备份里 settings.metadata_source = nextmoe，凡是该游戏有
+	// nextmoe 条目的都必须落成 nextmoe，不能退化成 vndb
+	dumpCounts(t, targetDB, "游戏身份来源", `SELECT COALESCE(source_type, '<null>'), COUNT(*) FROM games GROUP BY 1 ORDER BY 2 DESC`)
+	dumpCounts(t, targetDB, "身份来源错落的（本该 nextmoe）", `
+		SELECT g.name || ' → ' || COALESCE(g.source_type, '<null>'), 1
+		FROM games g
+		WHERE EXISTS (
+			SELECT 1 FROM game_metadata_sources s
+			WHERE s.game_id = g.id AND s.source_type = 'nextmoe'
+		) AND COALESCE(g.source_type, '') <> 'nextmoe'`)
 
 	// 时长单位核对：库里是秒（games 没有 total_play_time 列，聚合在 play_sessions）
 	rows, err := targetDB.Query(`

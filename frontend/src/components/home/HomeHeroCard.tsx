@@ -1,4 +1,9 @@
+import type {
+  MouseEvent as ReactMouseEvent,
+  PointerEvent as ReactPointerEvent,
+} from "react";
 import type { models } from "../../../src/bindings/models";
+import { useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { formatDuration, formatLocalDateTime } from "../../utils/time";
 import { GameCoverImage } from "../ui/GameCoverImage";
@@ -20,6 +25,8 @@ interface HomeHeroCardProps {
   onHoverChange?: (hovered: boolean) => void;
   onOpenDetail: (gameId: string) => void;
   onSelectGame: (gameId: string) => void;
+  /** 左右滑动切换上一张/下一张（鼠标拖拽或触屏滑动） */
+  onSwipe?: (direction: "prev" | "next") => void;
   showCover: boolean;
   snapshot: HomeHeroSnapshot | null;
   timeZone?: string;
@@ -27,6 +34,14 @@ interface HomeHeroCardProps {
 
 /** 轮播点超过这个数量就不再渲染，改由下方快速启动滑轨承担选择 */
 const MAX_CAROUSEL_DOTS = 12;
+
+/**
+ * 横向拖动多少像素算一次「滑动切换」。
+ *
+ * 用位移阈值而不是「按下/抬起」判定：卡片内部有标题、按钮、轮播点，
+ * 直接按 pointerup 当翻页会把普通点击也吃掉。
+ */
+const SWIPE_THRESHOLD_PX = 48;
 
 export function HomeHeroCard({
   activeGameId,
@@ -36,11 +51,58 @@ export function HomeHeroCard({
   onHoverChange,
   onOpenDetail,
   onSelectGame,
+  onSwipe,
   showCover,
   snapshot,
   timeZone,
 }: HomeHeroCardProps) {
   const { t } = useTranslation();
+  const dragStartXRef = useRef<number | null>(null);
+  const dragTriggeredRef = useRef(false);
+  const suppressClickRef = useRef(false);
+
+  const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    // 只认左键/单指，别把右键菜单、多指手势算成滑动
+    if (event.button !== 0) {
+      return;
+    }
+    dragStartXRef.current = event.clientX;
+    dragTriggeredRef.current = false;
+    suppressClickRef.current = false;
+  };
+
+  const handlePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const startX = dragStartXRef.current;
+    if (startX === null || dragTriggeredRef.current) {
+      return;
+    }
+    const delta = event.clientX - startX;
+    if (Math.abs(delta) < SWIPE_THRESHOLD_PX) {
+      return;
+    }
+    // 一次手势只切一次：越过阈值立刻切走，之后继续拖不再重复触发
+    dragTriggeredRef.current = true;
+    onSwipe?.(delta < 0 ? "next" : "prev");
+  };
+
+  const handlePointerEnd = () => {
+    if (dragTriggeredRef.current) {
+      // 本次是滑动：吞掉紧随其后的 click。否则松开鼠标时浏览器还会把
+      // 卡片里的标题 /「继续游戏」按钮当成一次点击，顺带打开详情页。
+      suppressClickRef.current = true;
+    }
+    dragStartXRef.current = null;
+    dragTriggeredRef.current = false;
+  };
+
+  const handleClickCapture = (event: ReactMouseEvent<HTMLDivElement>) => {
+    if (!suppressClickRef.current) {
+      return;
+    }
+    suppressClickRef.current = false;
+    event.preventDefault();
+    event.stopPropagation();
+  };
   const game = snapshot?.game ?? null;
   const coverSrc = game?.cover_url || game?.cover_source_url || "";
   const hasCover = showCover && Boolean(coverSrc);
@@ -51,9 +113,20 @@ export function HomeHeroCard({
 
   return (
     <div
-      className="flex min-w-0 flex-1 flex-col gap-3"
+      className="flex min-w-0 flex-1 select-none flex-col gap-3"
+      style={{ touchAction: "pan-y" }}
+      onClickCapture={handleClickCapture}
       onMouseEnter={() => onHoverChange?.(true)}
-      onMouseLeave={() => onHoverChange?.(false)}
+      onMouseLeave={() => {
+        onHoverChange?.(false);
+        // 指针没有经过 pointerup 就离开（拖到卡片外）时，也要结束本次手势
+        handlePointerEnd();
+      }}
+      onPointerCancel={handlePointerEnd}
+      onPointerDown={handlePointerDown}
+      onPointerLeave={handlePointerEnd}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerEnd}
     >
       <div className="relative flex min-h-[14rem] flex-1 flex-col overflow-hidden rounded-2xl border border-white/45 bg-white/30 shadow-lg shadow-black/10 backdrop-blur-xl dark:border-white/12 dark:bg-white/8 dark:shadow-black/30">
         {game ? (

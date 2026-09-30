@@ -459,6 +459,31 @@ INSERT / UPDATE 语句都不含这些列，落库时被**静默丢弃**——这
       - 验证：`gofmt` 无输出、`go vet ./...` 干净、`go test ./... -count=1` 全绿；
         `wails3 generate bindings`（枚举与两个 vo 模型更新）；前端
         `pnpm typecheck` / `build` / `i18n:check` 通过，改动文件 eslint 0 error
+- [x] 导入丢失 nextmoe 来源 + 首页轮播手动滑动（2026-09-30，第二次复测）
+      - 现象①：用户报「好几个 nextmoe 源的游戏，导进来变成 vndb」
+      - 根因（两处漏项叠加）：备份 `settings.metadata_source = "nextmoe"`，但
+        ① `mapYukiHubSourceType` 的 switch 没有 nextmoe → 映射成 `local`，
+        使 `pickYukiHubMetadata` 里 `preferred != Local` 的守卫整体失效；
+        ② 兜底优先级名单硬编码为 `[VNDB, Bangumi, Ymgal, Hikarinagi]`，同样漏了 nextmoe。
+        结果有 nextmoe 条目的游戏被归到名单里靠前的 vndb
+      - 修：补 `NextMoe` 映射（并把 steam / dlsite / touchgal / erogamescape 一并补上，
+        免得对端新增来源时又静默退化成 local）；兜底名单提成具名变量
+        `yukiHubFallbackSourceOrder` 并补全
+      - 回归测试：`yukihub_source_test.go`（映射覆盖全部手机端来源、兜底名单完整性、
+        nextmoe 偏好与唯一来源两种情形）
+      - 实测（真实备份探针新增两个查询）：4 个游戏（local_id 1/10/74/98）落成 nextmoe，
+        「本该 nextmoe 却错落」集合为空
+      - 现象②：用户澄清「轮播图不能**我手动**滑动」（不是自动播放）
+      - 修：`HomeHeroCard` 接 pointer 事件做拖拽切换
+        （`SWIPE_THRESHOLD_PX = 48`，越过阈值立刻切、一次手势只切一次，
+        避免把卡片内按钮的点击吃掉），`index.tsx` 加 `handleCarouselSwipe`
+        （首尾循环，顺带 `pauseCarouselBriefly`）
+      - **备注**：用户本次附的是手机版截图（侧栏为「首页/游戏库/大屏/好友聊天/翻译」，
+        PC 端 SideBar 是「首页/游戏库/统计/分类」）。这条按 PC 首页 hero 实现，
+        已在回复中向用户确认口径
+      - 验证：gofmt 无输出、`go vet ./...` 干净、`go test ./... -count=1` 全绿；
+        前端 typecheck / build / i18n:check 通过
+
 - [x] 封面源优先度 + 首页轮播（2026-09-30，用户上机复测后报的两个问题）
       - 现象①：导完 32 个游戏后多张封面空白，切页就重新加载；用户判断「缓存的源和
         app 里实际用的源不一样」，并建议做封面源优先度
