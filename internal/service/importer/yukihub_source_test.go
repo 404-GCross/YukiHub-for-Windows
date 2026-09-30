@@ -9,7 +9,7 @@ import (
 
 // 手机版支持的全部来源都必须能映射出身份，映射不出来就会变成 local，
 // 进而让 pickYukiHubMetadata 的「偏好来源」判定整体失效。
-func TestMapYukiHubSourceTypeCoversEveryMobileSource(t *testing.T) {
+func TestMapExternalSourceNameCoversEveryMobileSource(t *testing.T) {
 	cases := map[string]enums.SourceType{
 		"vndb":           enums.VNDB,
 		"VNDB":           enums.VNDB,
@@ -27,8 +27,13 @@ func TestMapYukiHubSourceTypeCoversEveryMobileSource(t *testing.T) {
 	}
 
 	for raw, want := range cases {
-		if got := mapYukiHubSourceType(raw); got != want {
-			t.Errorf("mapYukiHubSourceType(%q) = %q, want %q", raw, got, want)
+		if got := mapExternalSourceName(raw); got != want {
+			t.Errorf("mapExternalSourceName(%q) = %q, want %q", raw, got, want)
+		}
+		// Playnite 库的来源是用户手填的自由字符串，必须与备份走同一份映射，
+		// 否则桌面端自己支持的来源在那里会被静默判成 local。
+		if got := stringToSourceType(raw); got != want {
+			t.Errorf("stringToSourceType(%q) = %q, want %q", raw, got, want)
 		}
 	}
 }

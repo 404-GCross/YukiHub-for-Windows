@@ -220,19 +220,13 @@ func (p *PlayniteImporter) convertToGameWithCover(pg playnite.PlayniteGame, game
 	return game
 }
 
+// stringToSourceType 把 Playnite 里自由填写的来源名映射成桌面端的来源枚举。
+//
+// 这里**不再自带一份 switch**：Playnite 的来源是用户手填的字符串，只认 4 个名字的
+// 话，桌面端自己支持的 hikarinagi / nextmoe / bangumi_mirror 会被静默判成 local
+// （和「YukiHub 备份里的 nextmoe 变成 vndb」是同一类漏项）。
 func stringToSourceType(sourceType string) enums.SourceType {
-	switch strings.ToLower(sourceType) {
-	case "bangumi":
-		return enums.Bangumi
-	case "vndb":
-		return enums.VNDB
-	case "ymgal":
-		return enums.Ymgal
-	case "steam":
-		return enums.Steam
-	default:
-		return enums.Local
-	}
+	return mapExternalSourceName(sourceType)
 }
 
 func stringToGameStatus(status string) enums.GameStatus {

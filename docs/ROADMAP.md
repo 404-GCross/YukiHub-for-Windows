@@ -459,6 +459,51 @@ INSERT / UPDATE 语句都不含这些列，落库时被**静默丢弃**——这
       - 验证：`gofmt` 无输出、`go vet ./...` 干净、`go test ./... -count=1` 全绿；
         `wails3 generate bindings`（枚举与两个 vo 模型更新）；前端
         `pnpm typecheck` / `build` / `i18n:check` 通过，改动文件 eslint 0 error
+- [x] 全量审计「按来源名映射 / 来源名单」的所有位置（2026-09-30，用户要求「别只看 nextmoe」）
+      - 手机版支持的来源全集（`MetadataController` / `SyncManager`）：**vndb / bangumi /
+        bangumi_mirror / ymgal / hikarinagi / nextmoe**。逐个位置比对，又查出 3 处同类漏项
+      - **修 1（Playnite）**：`stringToSourceType` 只认 bangumi/vndb/ymgal/steam，
+        其余静默落 local。Playnite 的来源是**用户手填的自由字符串**，桌面端自己支持的
+        hikarinagi / nextmoe / bangumi_mirror 在那边全被判成 local。改为与 YukiHub 备份
+        共用同一份实现 `mapExternalSourceName`（新文件 `importer/source_mapping.go`），
+        删掉两处各自维护的 switch
+      - **修 2（合并导入的 NSFW）**：`updateImportedItemMetadata` 里
+        `is_nsfw = CASE WHEN source_type IN ('bangumi','vndb') ...` 是上游基线带来的硬编码
+        名单。实际 bangumi/vndb/**hikarinagi/nextmoe** 都会把来源侧 NSFW 写进
+        `models.Game.IsNSFW`（ymgal/steam 不会，照抄反而会清掉本地标记）。结果是
+        hikarinagi / nextmoe 的游戏合并导入时 NSFW 永远不更新。名单提成
+        `gamehelper.NSFWAuthoritativeSources()`，SQL 占位符由它生成，
+        Go 侧与 SQL 侧共用同一个集合
+      - **修 3（来源挑选不确定序）**：`game_metadata_source.go` 兜底挑「当前元数据来源」时
+        `for source, sourceID := range available` 直接遍历 map —— Go 的 map 顺序随机，
+        同一个游戏的来源标签会在不同次调用之间跳变。改为排序后取第一个
+      - **核实不是问题的（附证据）**：
+        ① `bangumi_mirror` 折叠成 `bangumi` 是**必须的**：手机版从不把它写成
+           `metadata_cache.source`（缓存里恒为 `bangumi`，只有设置项 `metadata_source`
+           会出现 `bangumi_mirror`），不折叠反而匹配不上偏好来源；
+        ② ID 补全的 4 源清单（`game_id_enrichment.go` 3 处）：内嵌
+           `game_id_mapper.db` 的 `id_map` 表只有 vndb_id / bangumi_id / steam_id /
+           hikarinagiid 四列，名单是数据驱动的，不是漏项；
+        ③ PotatoVN（`RssType` 枚举一一对应）、Vnite（字段式，与其模型字段一致）、
+           Steam（固定）映射完整；
+        ④ 前端 `ALL_METADATA_SOURCES` / 图标表 / `getMetadataSourceURL` 与手机版 6 源一致，
+           且都有安全兜底；
+        ⑤ 云同步 snapshot / mapper 直接存枚举，没有名称映射；
+        ⑥ `gamehelper.IsSupportedMetadataSource`（10 个）/ `ConfiguredMetadataSources` /
+           手动搜索的 getter switch 覆盖完整
+      - **留给用户拍板的两点（未改，避免猜错引入新错映射）**：
+        ① ReinaManager 的 `kun` 源在 6 个字段优先级里被使用，但 `mapReinaManagerSource`
+           没有对应分支 → 不会被记成元数据来源（它不在 `reinaIdentityPriority` 里，
+           所以不会产生「Local + 有 id」的坏身份）。`kun` 是否就是 NextMoe（未萌）待确认：
+           NextMoe 的图片域名是 `image.kungal.iloveren.link`，看着同源但不猜；
+        ② 两套「支持集合」不一致：配置/UI 是 6 个（`allowedMetadataSourceSet`、
+           `ALL_METADATA_SOURCES`），记录级是 10 个
+           （`gamehelper.IsSupportedMetadataSource`）。Steam / DLsite / TouchGal /
+           ErogameScape 有 getter 但**开不出**（`normalizeMetadataSources` 会静默丢弃）。
+           属能力未开放，不是数据损坏
+      - 验证：gofmt 无输出、`go vet ./...` 干净、`go test ./... -count=1` 全绿；
+        真实备份探针复跑：nextmoe 身份 4 个、「本该 nextmoe 却错落」为空
+
 - [x] 导入丢失 nextmoe 来源 + 首页轮播手动滑动（2026-09-30，第二次复测）
       - 现象①：用户报「好几个 nextmoe 源的游戏，导进来变成 vndb」
       - 根因（两处漏项叠加）：备份 `settings.metadata_source = "nextmoe"`，但

@@ -262,7 +262,7 @@ func indexYukiHubMetadata(entries []yukihub.MetadataCache) map[int64][]parsedYuk
 	for _, entry := range entries {
 		parsed := parsedYukiHubMetadata{
 			cache:    entry,
-			source:   mapYukiHubSourceType(entry.Source),
+			source:   mapExternalSourceName(entry.Source),
 			sourceID: strings.TrimSpace(entry.SourceID),
 		}
 		_ = json.Unmarshal([]byte(entry.JSON), &parsed.data)
@@ -283,7 +283,7 @@ func indexYukiHubSessions(entries []yukihub.PlaySession) map[int64][]yukihub.Pla
 }
 
 func pickYukiHubMetadata(items []parsedYukiHubMetadata, preferredSource string) parsedYukiHubMetadata {
-	preferred := mapYukiHubSourceType(preferredSource)
+	preferred := mapExternalSourceName(preferredSource)
 	if preferred != enums.Local {
 		for _, item := range items {
 			if item.source == preferred && item.sourceID != "" {
@@ -309,40 +309,6 @@ func yukiHubIdentity(metadata parsedYukiHubMetadata) (enums.SourceType, string) 
 		return enums.Local, ""
 	}
 	return metadata.source, metadata.sourceID
-}
-
-// mapYukiHubSourceType 把备份里的来源名映射成桌面端的来源枚举。
-//
-// **名单必须涵盖手机端支持的全部来源**。早先这里漏了 nextmoe：手机版的
-// `settings.metadata_source` 可以就是 nextmoe，映射不出来就变成 `local`，
-// 于是「偏好来源」判定被整体跳过（见 pickYukiHubMetadata 里 `preferred != Local`
-// 的守卫），最后落到兜底名单的 vndb 上——用户看到的现象就是
-// 「好几个本来是 nextmoe 源的游戏，导进来变成了 vndb」。
-func mapYukiHubSourceType(source string) enums.SourceType {
-	switch strings.ToLower(strings.TrimSpace(source)) {
-	case string(enums.VNDB):
-		return enums.VNDB
-	case string(enums.Bangumi), "bangumi_mirror":
-		return enums.Bangumi
-	case string(enums.Ymgal):
-		return enums.Ymgal
-	case string(enums.Hikarinagi):
-		return enums.Hikarinagi
-	case string(enums.NextMoe):
-		return enums.NextMoe
-	// 桌面端认得但手机端目前不产的来源，一并保留身份，
-	// 免得将来对端新增来源时又静默退化成 local。
-	case string(enums.Steam):
-		return enums.Steam
-	case string(enums.DLsite):
-		return enums.DLsite
-	case string(enums.TouchGal):
-		return enums.TouchGal
-	case string(enums.ErogameScape):
-		return enums.ErogameScape
-	default:
-		return enums.Local
-	}
 }
 
 // yukiHubFallbackSourceOrder 是「备份里没有可用的偏好来源」时的兜底优先级。

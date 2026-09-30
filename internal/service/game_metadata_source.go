@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -316,10 +317,18 @@ func (s *GameService) selectNextDefaultMetadataSource(tx *sql.Tx, gameID string)
 			return source, sourceID, nil
 		}
 	}
-	for source, sourceID := range available {
-		return source, sourceID, nil
+	// 兜底：这个游戏带了用户没启用的来源。**必须按确定顺序挑**——直接 range map
+	// 会让同一个游戏的「当前元数据来源」在不同次调用之间跳变（Go 的 map 遍历
+	// 顺序是随机的），界面上看起来就是来源标签自己乱换。
+	leftovers := make([]enums.SourceType, 0, len(available))
+	for source := range available {
+		leftovers = append(leftovers, source)
 	}
-	return "", "", nil
+	if len(leftovers) == 0 {
+		return "", "", nil
+	}
+	sort.Slice(leftovers, func(i, j int) bool { return leftovers[i] < leftovers[j] })
+	return leftovers[0], available[leftovers[0]], nil
 }
 
 func (s *GameService) addInitialMetadataSourcesTx(tx *sql.Tx, game models.Game) error {

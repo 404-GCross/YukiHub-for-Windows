@@ -804,7 +804,8 @@ func (c *Committer) updateImportedItemMetadata(ctx context.Context, conn *sql.Co
 		return inserted, fmt.Errorf("update imported game aliases: %w", err)
 	}
 
-	if _, err := conn.ExecContext(ctx, `
+	nsfwSourcePlaceholders, nsfwSourceArgs := nsfwAuthoritativeSourceFilter()
+	if _, err := conn.ExecContext(ctx, fmt.Sprintf(`
 		UPDATE games
 		SET
 			name = temp_update_import_games.name,
@@ -824,8 +825,12 @@ func (c *Committer) updateImportedItemMetadata(ctx context.Context, conn *sql.Co
 			cached_at = temp_update_import_games.cached_at,
 			source_id = temp_update_import_games.source_id,
 			updated_at = temp_update_import_games.updated_at,
+			-- 只有「会给出可信 NSFW 标记」的来源才采信对端的值，名单由
+			-- gamehelper.NSFWAuthoritativeSources 生成（原先硬编码
+			-- IN ('bangumi','vndb')，新增 hikarinagi / nextmoe 后没跟上，
+			-- 这两个来源的游戏合并导入时 NSFW 永远不会更新）。
 			is_nsfw = CASE
-				WHEN temp_update_import_games.source_type IN ('bangumi', 'vndb') THEN temp_update_import_games.is_nsfw
+				WHEN temp_update_import_games.source_type IN (%s) THEN temp_update_import_games.is_nsfw
 				ELSE games.is_nsfw
 			END,
 			-- 身份键与设备标识「非空才覆盖」，避免用空值抹掉桌面端已有的来源信息。
@@ -842,11 +847,26 @@ func (c *Committer) updateImportedItemMetadata(ctx context.Context, conn *sql.Co
 			hidden = temp_update_import_games.hidden
 		FROM temp_update_import_games
 		WHERE games.id = temp_update_import_games.id
-	`); err != nil {
+	`, nsfwSourcePlaceholders), nsfwSourceArgs...); err != nil {
 		return inserted, fmt.Errorf("update imported game metadata from staging: %w", err)
 	}
 
 	return inserted, nil
+}
+
+// nsfwAuthoritativeSourceFilter 生成 SQL `IN (...)` 需要的占位符与参数。
+//
+// 来源名单取自 gamehelper.NSFWAuthoritativeSources()，这样「Go 侧判定」与
+// 「SQL 侧判定」用的是同一个集合，不会像上游那样两处各写一份再漏项。
+func nsfwAuthoritativeSourceFilter() (string, []any) {
+	sources := gamehelper.NSFWAuthoritativeSources()
+	placeholders := make([]string, 0, len(sources))
+	args := make([]any, 0, len(sources))
+	for _, source := range sources {
+		placeholders = append(placeholders, "?")
+		args = append(args, string(source))
+	}
+	return strings.Join(placeholders, ", "), args
 }
 
 func (c *Committer) upsertImportedItemMetadataSources(ctx context.Context, conn *sql.Conn, items []CommitItem) (int, error) {

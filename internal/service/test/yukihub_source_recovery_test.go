@@ -45,8 +45,12 @@ func TestYukiHubImportRestoresNextMoeIdentity(t *testing.T) {
 				LocalID:    1,
 				Title:      gameTitle,
 				PlayStatus: "playing",
-				CreatedAt:  createdAt.UnixMilli(),
-				UpdatedAt:  createdAt.Add(time.Hour).UnixMilli(),
+				// 对端标了 NSFW，本地那条是未标记：合并后必须采信对端。
+				// 身份来源是 nextmoe，而合并路径原先只认 bangumi/vndb——
+				// 这条断言守的就是「来源名单别漏项」。
+				NSFW:      true,
+				CreatedAt: createdAt.UnixMilli(),
+				UpdatedAt: createdAt.Add(time.Hour).UnixMilli(),
 			},
 		},
 		MetadataCache: []yukihub.MetadataCache{
@@ -97,6 +101,13 @@ func TestYukiHubImportRestoresNextMoeIdentity(t *testing.T) {
 	// name 取的是备份里的游戏标题（Android 侧的游戏名），不是元数据标题
 	if name != gameTitle {
 		t.Errorf("name = %q, want %q", name, gameTitle)
+	}
+
+	// NSFW：nextmoe 属于「会给出可信 NSFW 标记」的来源，合并时必须采信对端。
+	// 上游的合并语句把这份名单硬编码成 IN ('bangumi','vndb')，导致
+	// hikarinagi / nextmoe 的游戏 NSFW 永远不会被更新。
+	if nsfw := countRows(t, targetDB, `SELECT COUNT(*) FROM games WHERE COALESCE(is_nsfw, FALSE)`); nsfw != 1 {
+		t.Errorf("is_nsfw 为真的行数 = %d, want 1（nextmoe 来源也该采信对端 NSFW）", nsfw)
 	}
 
 	if count := countRows(t, targetDB, `SELECT COUNT(*) FROM games`); count != 1 {
