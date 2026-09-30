@@ -459,6 +459,23 @@ INSERT / UPDATE 语句都不含这些列，落库时被**静默丢弃**——这
       - 验证：`gofmt` 无输出、`go vet ./...` 干净、`go test ./... -count=1` 全绿；
         `wails3 generate bindings`（枚举与两个 vo 模型更新）；前端
         `pnpm typecheck` / `build` / `i18n:check` 通过，改动文件 eslint 0 error
+- [x] 游戏详情页选中状态胶囊「和背景融合看不见」（2026-09-30，用户截图）
+      - **根因不在组件，在构建配置**：UnoCSS 默认的 `content.pipeline.include` 是
+        `/\.(vue|svelte|[jt]sx|vine.ts|mdx?|astro|elm|php|phtml|marko|html)($|\?)/`
+        —— 只有 jsx/tsx，**不含纯 .ts**。`src/consts/gameStatusBadge.ts` 里的状态徽标
+        配色（`bg-brand-900/55`、`bg-success-600/70`、`bg-warning-600/80`、
+        `bg-orange-600/70`、`bg-error-600/70`）**一个都没进产物**，而
+        `activeChipClass` 里写死了 `text-white` —— 于是选中的状态胶囊在浅色玻璃
+        背景上只剩白色图标和白色文字，整颗看不见（用户圈出来的那颗）
+      - 静默：构建成功、无告警，运行时只是「样式没生效」，纯靠产物比对才能发现
+      - 修：`uno.config.ts` 的 `content.pipeline.include` 在 UnoCSS 默认值基础上加 `ts`。
+        注意 **`content.filesystem` 对 vite 插件是空操作**（`@unocss/vite` 只读
+        `pipeline`），先加 filesystem 试过没生效，产物体积纹丝不动，才定位到这一点
+      - 顺带发现并一起修好：`src/utils/cloudSync.ts` 的云同步状态配色（`ring-*`、
+        `dark:bg-*-900/40` 等）同样缺失 —— 同一个根因
+      - 验证：把 `src/**/*.ts` 里所有形如工具类的 token（43 个）逐个与产物比对，
+        修复前缺 5+7 个、修复后 0 缺失；CSS 体积 271.2 → 272.6 KB
+
 - [x] 全量审计「按来源名映射 / 来源名单」的所有位置（2026-09-30，用户要求「别只看 nextmoe」）
       - 手机版支持的来源全集（`MetadataController` / `SyncManager`）：**vndb / bangumi /
         bangumi_mirror / ymgal / hikarinagi / nextmoe**。逐个位置比对，又查出 3 处同类漏项

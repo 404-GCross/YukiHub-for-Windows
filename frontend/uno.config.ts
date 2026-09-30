@@ -20,6 +20,25 @@ export default defineConfig({
   // 预扫描该文件可确保专属工具类已经进入初始 UnoCSS 样式表。
   content: {
     filesystem: ["src/components/startup/StartupWindow.tsx"],
+
+    pipeline: {
+      // **必须把 `ts` 加进来。** UnoCSS 默认的 pipeline include 是
+      // `/\.(vue|svelte|[jt]sx|vine.ts|mdx?|astro|elm|php|phtml|marko|html)($|\?)/`
+      // ——只有 jsx/tsx，**没有纯 .ts**。写在 .ts 里的工具类会被静默丢掉：
+      // 不报错、不告警，构建也成功，运行时表现为「样式没生效」。
+      //
+      // 踩过的坑：`src/consts/gameStatusBadge.ts` 的状态徽标配色
+      // （bg-brand-900/55、bg-warning-600/80 …）一个都没进产物，游戏详情页
+      // 选中的状态胶囊因此只剩 activeChipClass 里的 `text-white`，落在浅色
+      // 玻璃背景上整个看不见（用户报「选中状态和背景融合了」）；
+      // `src/utils/cloudSync.ts` 的 ring-* 同样缺失。
+      //
+      // 注意 `content.filesystem` 对 vite 插件是**空操作**（它只读 pipeline），
+      // 想放开扫描范围只能改这里。下面前缀保留 UnoCSS 的默认值再加 ts。
+      include: [
+        /\.(vue|svelte|[jt]sx|ts|vine\.ts|mdx?|astro|elm|php|phtml|marko|html)($|\?)/,
+      ],
+    },
   },
 
   rules: [
