@@ -196,6 +196,10 @@ func DownloadAndSaveCoverImageWithProxyConfigContext(ctx context.Context, imageU
 		return imageURL, nil
 	}
 
+	// 封面源优先度：vndb / bgm.tv 的原始地址在国内常常直连不通（备份导入、
+	// 旧缓存都会带着这种地址），下载前统一换成镜像，否则只会超时失败。
+	imageURL = resolvePreferredCoverURL(coverSourcePreferenceProvider(proxyConfig), imageURL)
+
 	client, err := newImageRestyClientFromConfig(30*time.Second, proxyConfig)
 	if err != nil {
 		return imageURL, fmt.Errorf("create cover image download client: %w", err)

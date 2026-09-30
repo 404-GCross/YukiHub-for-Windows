@@ -8,6 +8,7 @@ import (
 	enums2 "yukihub/internal/common/enums"
 	"yukihub/internal/utils"
 	"yukihub/internal/utils/apputils"
+	"yukihub/internal/utils/coverutils"
 	"yukihub/internal/utils/proxyutils"
 )
 
@@ -472,4 +473,19 @@ func (config *AppConfig) NetworkProxyConfig() (string, string) {
 		return proxyutils.ProxyModeSystem, ""
 	}
 	return config.NetworkProxyMode, config.NetworkProxyURL
+}
+
+// CoverSourcePreference 返回 Bangumi / VNDB 两个来源各自取用的封面源。
+//
+// 放在这里是为了让 utils 层（图片下载、图片代理）能在不反向依赖 appconf 的
+// 前提下读到设置，见 imageutils.CoverSourcePreferenceProvider 与
+// coverutils.ResolveURL。
+func (config *AppConfig) CoverSourcePreference() coverutils.Preference {
+	if config == nil {
+		return coverutils.OriginalPreference
+	}
+	return coverutils.Preference{
+		Bangumi: config.BangumiCoverSource,
+		VNDB:    config.VNDBCoverSource,
+	}
 }

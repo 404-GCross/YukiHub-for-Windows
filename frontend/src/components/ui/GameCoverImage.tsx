@@ -1,6 +1,7 @@
 import type { ComponentProps } from "react";
 import { useState } from "react";
 import { useAppStore } from "../../store";
+import { isImageSourceFailed } from "../../utils/imageProxy";
 import { ProxyImage } from "./ProxyImage";
 
 type GameCoverImageProps = Omit<
@@ -28,7 +29,11 @@ export function GameCoverImage({
   // 记录失败的地址而不是布尔量：换图后自动失效，不必在 effect 里重置
   const [failedSrc, setFailedSrc] = useState("");
   const currentSrc = props.src?.trim() ?? "";
-  const isFailed = currentSrc !== "" && failedSrc === currentSrc;
+  // 本组件本次会话里失败过、或这一轮 ProxyImage 因失败记忆直接放弃请求时，
+  // 都直接出占位（后者让重新挂载的卡片立刻有内容，不必再等一次网络超时）。
+  const isFailed
+    = currentSrc !== ""
+      && (failedSrc === currentSrc || isImageSourceFailed(currentSrc));
 
   return (
     <span

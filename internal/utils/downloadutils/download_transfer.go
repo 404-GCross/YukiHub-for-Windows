@@ -1084,34 +1084,123 @@ func equalBytes(left []byte, right []byte) bool {
 	return true
 }
 
-func resolveAllowedAddress(ctx context.Context, address string) (string, error) {
+// resolveAllowedAddresses 解析主机并返回**全部**通过安全校验的地址，IPv4 排在前面。
+//
+// 顺序很关键。早先的实现只取解析结果里的第一个地址，而系统解析器在双栈主机上
+// 通常把 IPv6 排在前面；本机没有可用 IPv6 出口时（国内网络很常见）那一次拨号
+// 会一直挂到超时，表现为「封面下载 30 秒后失败、每次切页都重来一遍」。
+// 这里改为 IPv4 优先 + 逐个回退，见 dialWithFallback。
+func resolveAllowedAddresses(ctx context.Context, address string) ([]string, error) {
 	host, port, err := net.SplitHostPort(address)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	if isBlockedHostname(host) {
-		return "", fmt.Errorf("blocked host: %s", host)
+		return nil, fmt.Errorf("blocked host: %s", host)
 	}
 	if ip := net.ParseIP(host); ip != nil {
 		if isBlockedIP(ip) {
-			return "", fmt.Errorf("blocked ip: %s", host)
+			return nil, fmt.Errorf("blocked ip: %s", host)
 		}
-		return net.JoinHostPort(ip.String(), port), nil
+		return []string{net.JoinHostPort(ip.String(), port)}, nil
 	}
 
 	resolver := net.Resolver{}
 	ips, err := resolver.LookupIPAddr(ctx, host)
 	if err != nil {
-		return "", err
-	}
-	for _, ip := range ips {
-		if isBlockedIP(ip.IP) {
-			continue
-		}
-		return net.JoinHostPort(ip.IP.String(), port), nil
+		return nil, err
 	}
 
-	return "", fmt.Errorf("host %s resolved only to blocked addresses", host)
+	ipv4 := make([]string, 0, len(ips))
+	ipv6 := make([]string, 0, len(ips))
+	seen := make(map[string]struct{}, len(ips))
+	for _, item := range ips {
+		if isBlockedIP(item.IP) {
+			continue
+		}
+		resolved := net.JoinHostPort(item.IP.String(), port)
+		if _, exists := seen[resolved]; exists {
+			continue
+		}
+		seen[resolved] = struct{}{}
+		if item.IP.To4() != nil {
+			ipv4 = append(ipv4, resolved)
+			continue
+		}
+		ipv6 = append(ipv6, resolved)
+	}
+
+	addresses := append(ipv4, ipv6...)
+	if len(addresses) == 0 {
+		return nil, fmt.Errorf("host %s resolved only to blocked addresses", host)
+	}
+	return addresses, nil
+}
+
+// dialFallbackDelay 是切换到下一个候选地址前的等待时间，取 RFC 8305 建议的量级。
+const dialFallbackDelay = 250 * time.Millisecond
+
+type dialResult struct {
+	conn net.Conn
+	err  error
+}
+
+// dialWithFallback 按顺序尝试候选地址，并在首选地址迟迟没有结果时提前发起下一个
+// （Happy Eyeballs 的简化版）。任一成功即返回；全部失败时返回第一个错误。
+func dialWithFallback(ctx context.Context, dialer *net.Dialer, network string, addresses []string) (net.Conn, error) {
+	if len(addresses) == 0 {
+		return nil, fmt.Errorf("no dialable address")
+	}
+	if len(addresses) == 1 {
+		return dialer.DialContext(ctx, network, addresses[0])
+	}
+
+	dialCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	results := make(chan dialResult, len(addresses))
+	next := 0
+	pending := 0
+	startNext := func() {
+		address := addresses[next]
+		next++
+		pending++
+		go func() {
+			conn, err := dialer.DialContext(dialCtx, network, address)
+			results <- dialResult{conn: conn, err: err}
+		}()
+	}
+
+	startNext()
+	timer := time.NewTimer(dialFallbackDelay)
+	defer timer.Stop()
+
+	var firstErr error
+	for {
+		var fallback <-chan time.Time
+		if next < len(addresses) {
+			fallback = timer.C
+		}
+
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case result := <-results:
+			pending--
+			if result.err == nil {
+				return result.conn, nil
+			}
+			if firstErr == nil {
+				firstErr = result.err
+			}
+			if pending == 0 && next >= len(addresses) {
+				return nil, firstErr
+			}
+		case <-fallback:
+			startNext()
+			timer.Reset(dialFallbackDelay)
+		}
+	}
 }
 
 func newSecureHTTPClient(proxyMode string, proxyURL string) (*http.Client, string, error) {
@@ -1141,11 +1230,11 @@ func newSecureHTTPClient(proxyMode string, proxyURL string) (*http.Client, strin
 				return dialer.DialContext(ctx, network, address)
 			}
 
-			resolvedAddress, err := resolveAllowedAddress(ctx, address)
+			resolvedAddresses, err := resolveAllowedAddresses(ctx, address)
 			if err != nil {
 				return nil, err
 			}
-			return dialer.DialContext(ctx, network, resolvedAddress)
+			return dialWithFallback(ctx, dialer, network, resolvedAddresses)
 		},
 	}
 

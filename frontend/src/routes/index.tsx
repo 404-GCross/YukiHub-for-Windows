@@ -3,7 +3,7 @@ import type { models } from "../../src/bindings/models";
 import type { HomeHeroSnapshot } from "../components/home/HomeHeroCard";
 import type { HomeRailGame } from "../components/home/HomeQuickLaunchRail";
 import { createRoute, useNavigate } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 import { GetGlobalPeriodStats } from "../../bindings/yukihub/internal/service/statsservice";
@@ -17,10 +17,19 @@ import { ProxyImage } from "../components/ui/ProxyImage";
 import { useCrossfadeBackground } from "../hooks/useCrossfadeBackground";
 import { useSnapshotVisibilityTransition } from "../hooks/useSnapshotVisibilityTransition";
 import { isGameRuntimeVisible, useAppStore } from "../store";
+import { clearFailedImageSources } from "../utils/imageProxy";
 import { Route as rootRoute } from "./__root";
 
 const DEFAULT_HOME_GAME_CAROUSEL_INTERVAL_SEC = 6;
 const MIN_HOME_GAME_CAROUSEL_INTERVAL_SEC = 4;
+/**
+ * 手动点选某个游戏后暂停自动轮播的时长。
+ *
+ * 点一下轮播点就把自动播放永久关掉是不对的（原先 setIsCarouselPaused(true)
+ * 没有任何恢复路径，点过一次之后轮播就再也不会自己走了），这里改成
+ * 「暂停一会儿，让用户看清刚选的那张，然后继续」。
+ */
+const HOME_GAME_CAROUSEL_RESUME_DELAY_MS = 15000;
 const BACKGROUND_CROSSFADE_MS = 1200;
 const HERO_FADE_OUT_MS = 280;
 const HERO_FADE_IN_DELAY_MS = 90;
@@ -49,6 +58,8 @@ function HomePage() {
   );
   const [activeGameId, setActiveGameId] = useState<string | null>(null);
   const [isCarouselPaused, setIsCarouselPaused] = useState(false);
+  const [isCarouselHovered, setIsCarouselHovered] = useState(false);
+  const carouselResumeTimerRef = useRef<number | null>(null);
   const [libraryPreviewStats, setLibraryPreviewStats]
     = useState<vo.PeriodStats | null>(null);
   const [heatmapStats, setHeatmapStats] = useState<vo.PeriodStats | null>(null);
@@ -145,11 +156,15 @@ function HomePage() {
     );
   }, [carouselItems]);
 
+  // 悬停暂停：鼠标停在轮播上就别切走；离开立刻恢复。
+  // 手动点选暂停：延时恢复，避免「点过一次就永远不动了」。
+  const isCarouselAutoPlayBlocked = isCarouselPaused || isCarouselHovered;
+
   useEffect(() => {
     if (
       carouselGames.length <= 1
       || !isHomeGameCarouselEnabled
-      || isCarouselPaused
+      || isCarouselAutoPlayBlocked
       || hasVisibleGameRuntime
     ) {
       return;
@@ -171,9 +186,18 @@ function HomePage() {
     carouselGames,
     hasVisibleGameRuntime,
     homeGameCarouselIntervalMs,
-    isCarouselPaused,
+    isCarouselAutoPlayBlocked,
     isHomeGameCarouselEnabled,
   ]);
+
+  useEffect(
+    () => () => {
+      if (carouselResumeTimerRef.current !== null) {
+        window.clearTimeout(carouselResumeTimerRef.current);
+      }
+    },
+    [],
+  );
 
   const selectedCarouselItem = useMemo(() => {
     if (carouselItems.length === 0) {
@@ -277,12 +301,39 @@ function HomePage() {
     await launchGame(selectedGame);
   }, [launchGame, selectedGame]);
 
-  const handleSelectGame = useCallback((gameId: string) => {
+  /**
+   * 手动切换轮播：暂停自动播放一小段时间再恢复。
+   *
+   * 之前这里只 setIsCarouselPaused(true) 且没有任何地方置回 false ——
+   * 只要点过一次轮播点或快速启动栏，自动轮播就永久停住，用户看到的就是
+   * 「首页的轮播图不能自己滑动」。
+   */
+  const pauseCarouselBriefly = useCallback(() => {
     setIsCarouselPaused(true);
-    setActiveGameId(gameId);
+    if (carouselResumeTimerRef.current !== null) {
+      window.clearTimeout(carouselResumeTimerRef.current);
+    }
+    carouselResumeTimerRef.current = window.setTimeout(() => {
+      carouselResumeTimerRef.current = null;
+      setIsCarouselPaused(false);
+    }, HOME_GAME_CAROUSEL_RESUME_DELAY_MS);
+  }, []);
+
+  const handleSelectGame = useCallback(
+    (gameId: string) => {
+      pauseCarouselBriefly();
+      setActiveGameId(gameId);
+    },
+    [pauseCarouselBriefly],
+  );
+
+  const handleCarouselHoverChange = useCallback((hovered: boolean) => {
+    setIsCarouselHovered(hovered);
   }, []);
 
   const handleRefresh = useCallback(() => {
+    // 手动刷新时清掉封面失败记忆，否则刚修好的地址会被旧记忆挡住。
+    clearFailedImageSources();
     void fetchHomeData({ showLoading: false, syncRuntime: false });
     void loadLibraryPreviewStats();
     void loadHeatmapStats();
@@ -396,6 +447,7 @@ function HomePage() {
               games={carouselGames}
               isVisible={isHeroVisible}
               onContinuePlay={() => void handleContinuePlay()}
+              onHoverChange={handleCarouselHoverChange}
               onOpenDetail={openGameDetail}
               onSelectGame={handleSelectGame}
               showCover={showHeroCover}

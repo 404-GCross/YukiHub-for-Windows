@@ -459,6 +459,35 @@ INSERT / UPDATE 语句都不含这些列，落库时被**静默丢弃**——这
       - 验证：`gofmt` 无输出、`go vet ./...` 干净、`go test ./... -count=1` 全绿；
         `wails3 generate bindings`（枚举与两个 vo 模型更新）；前端
         `pnpm typecheck` / `build` / `i18n:check` 通过，改动文件 eslint 0 error
+- [x] 封面源优先度 + 首页轮播（2026-09-30，用户上机复测后报的两个问题）
+      - 现象①：导完 32 个游戏后多张封面空白，切页就重新加载；用户判断「缓存的源和
+        app 里实际用的源不一样」，并建议做封面源优先度
+      - 根因：`vndb_cover_source` / `bangumi_cover_source`（默认/用户都设为
+        hikarinagi）这个设置**本来就存在**，但只作用在**刮削**路径
+        （`metadata.resolveMetadataCoverURL`）。从手机版备份导进来的封面是原始
+        `t.vndb.org` / `lain.bgm.tv` 地址，绕过了改写；实测 `lain.bgm.tv` 本机
+        IPv4/IPv6 都连不通，`t.vndb.org` 也出现过 IPv6 拨号超时（日志里每次
+        28–38 秒），所以「空白 + 每次切页重新超时一遍」
+      - 修：新建 `internal/utils/coverutils`（`Preference` / `ResolveURL` /
+        `ResolveURLByHost` / `DetectSource` / `IsProxiedURL`），镜像前缀常量集中于此；
+        改写接到**两个出口**——封面下载
+        （`DownloadAndSaveCoverImageWithProxyConfigContext`）与图片代理
+        （`RemoteImageProxyHandler`），后者才能覆盖库里已有的旧数据。注入用接口
+        `imageutils.CoverSourcePreferenceProvider`（由 `appconf.AppConfig` 实现），
+        imageutils 不反向依赖 appconf。刮削路径行为不变
+      - 同时修拨号：`downloadutils.resolveAllowedAddress` 只取解析结果第一条，
+        系统解析器在双栈主机上常把 IPv6 排前；改为 `resolveAllowedAddresses`
+        （IPv4 优先）+ `dialWithFallback`（250ms 提前回退，RFC 8305 简化版）
+      - 现象②：首页轮播不会自动滑动
+      - 根因：`routes/index.tsx` 里 `setIsCarouselPaused(true)` **没有任何地方置回
+        false**，点过一次轮播点或快速启动栏就永久停住
+      - 修：悬停暂停（离开恢复）+ 手动点选后 15 秒恢复；`HomeHeroCard` 加 `onHoverChange`
+      - 前端另加「封面失败记忆」（`utils/imageProxy.ts`，5 分钟 TTL / 512 上限）：
+        `ProxyImage` 过滤已知失败的候选、全失败则不再发请求，
+        `GameCoverImage` 立即出占位；首页「刷新」按钮清空记忆
+      - 验证：gofmt 无输出、`go vet ./...` 干净、`go test ./... -count=1` 全绿
+        （含新增的 `coverutils` 单测）；前端 typecheck / build / i18n:check 通过
+
 - [x] 用真实手机版备份核对导入导出（2026-09-30）
       - 输入：用户手机版本地备份 `yukihub_backup_1790751445692.ykbak`
         （gzip + schema 5，32 游戏 / 30 会话 / 42 条元数据缓存）

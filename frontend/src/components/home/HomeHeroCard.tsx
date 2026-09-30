@@ -16,6 +16,8 @@ interface HomeHeroCardProps {
   games: models.Game[];
   isVisible: boolean;
   onContinuePlay: () => void;
+  /** 鼠标进出轮播：进入暂停自动播放，离开恢复（由父级控制轮播计时器） */
+  onHoverChange?: (hovered: boolean) => void;
   onOpenDetail: (gameId: string) => void;
   onSelectGame: (gameId: string) => void;
   showCover: boolean;
@@ -31,6 +33,7 @@ export function HomeHeroCard({
   games,
   isVisible,
   onContinuePlay,
+  onHoverChange,
   onOpenDetail,
   onSelectGame,
   showCover,
@@ -47,7 +50,11 @@ export function HomeHeroCard({
     : "translate-y-3 opacity-0";
 
   return (
-    <div className="flex min-w-0 flex-1 flex-col gap-3">
+    <div
+      className="flex min-w-0 flex-1 flex-col gap-3"
+      onMouseEnter={() => onHoverChange?.(true)}
+      onMouseLeave={() => onHoverChange?.(false)}
+    >
       <div className="relative flex min-h-[14rem] flex-1 flex-col overflow-hidden rounded-2xl border border-white/45 bg-white/30 shadow-lg shadow-black/10 backdrop-blur-xl dark:border-white/12 dark:bg-white/8 dark:shadow-black/30">
         {game ? (
           <div

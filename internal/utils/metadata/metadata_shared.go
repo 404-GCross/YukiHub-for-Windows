@@ -8,6 +8,7 @@ import (
 	"time"
 	enums2 "yukihub/internal/common/enums"
 	"yukihub/internal/models"
+	"yukihub/internal/utils/coverutils"
 	"yukihub/internal/utils/httputils"
 	"yukihub/internal/utils/proxyutils"
 
@@ -87,11 +88,6 @@ func exactMetadataCandidateIndexes(query string, candidateNames [][]string) []in
 func normalizeMetadataSearchName(name string) string {
 	return strings.Join(strings.Fields(strings.ToLower(strings.TrimSpace(name))), " ")
 }
-
-const (
-	hikarinagiBangumiImageProxyBaseURL = "https://imagesp.yurari.moe/bangumi/"
-	hikarinagiVNDBImageProxyBaseURL    = "https://imagesp.yurari.moe/vndb/"
-)
 
 type getterConfig struct {
 	client                *http.Client
@@ -214,24 +210,8 @@ func newGetterConfig(options []GetterOption) getterConfig {
 }
 
 func resolveMetadataCoverURL(source enums2.SourceType, coverSource enums2.MetadataCoverSource, originalURL string) string {
-	originalURL = strings.TrimSpace(originalURL)
-	if originalURL == "" || coverSource != enums2.MetadataCoverSourceHikarinagi {
-		return originalURL
-	}
-
-	baseURL := ""
-	switch source {
-	case enums2.Bangumi:
-		baseURL = hikarinagiBangumiImageProxyBaseURL
-	case enums2.VNDB:
-		baseURL = hikarinagiVNDBImageProxyBaseURL
-	default:
-		return originalURL
-	}
-	if strings.HasPrefix(originalURL, baseURL) {
-		return originalURL
-	}
-	return baseURL + originalURL
+	preference := coverutils.Preference{Bangumi: coverSource, VNDB: coverSource}
+	return coverutils.ResolveURL(preference, source, originalURL)
 }
 
 func tagItemsCapacity(total int, limit int) int {

@@ -21,6 +21,10 @@ type remoteImageProxyClientFactory func(time.Duration, proxyutils.ProxyConfigPro
 type RemoteImageProxyHandler struct {
 	proxyConfig   proxyutils.ProxyConfigProvider
 	clientFactory remoteImageProxyClientFactory
+	// coverSource 用于「封面源优先度」：前端拿到的是库里存的原始地址
+	// （可能是国内直连不通的 vndb / bgm.tv），代理这一层是最后一道出口，
+	// 在这里改写才能覆盖到导入的备份数据与旧缓存。未注入时不改写。
+	coverSource CoverSourcePreferenceProvider
 }
 
 func NewRemoteImageProxyHandler(proxyConfig proxyutils.ProxyConfigProvider) *RemoteImageProxyHandler {
@@ -28,6 +32,11 @@ func NewRemoteImageProxyHandler(proxyConfig proxyutils.ProxyConfigProvider) *Rem
 		proxyConfig:   proxyConfig,
 		clientFactory: downloadutils.NewSecureHTTPClientFromConfig,
 	}
+}
+
+// SetCoverSourcePreference 注入封面源偏好；传 nil 表示不改写地址。
+func (h *RemoteImageProxyHandler) SetCoverSourcePreference(provider CoverSourcePreferenceProvider) {
+	h.coverSource = provider
 }
 
 func (h *RemoteImageProxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -42,6 +51,7 @@ func (h *RemoteImageProxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 		http.Error(w, "image url is required", http.StatusBadRequest)
 		return
 	}
+	imageURL = resolvePreferredCoverURL(h.coverSource, imageURL)
 	if err := downloadutils.ValidateDownloadURL(imageURL); err != nil {
 		http.Error(w, "invalid image url", http.StatusBadRequest)
 		return

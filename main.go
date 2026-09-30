@@ -1070,6 +1070,10 @@ func runGUI(
 			appLogger.Error("Failed to create local file handler: " + err.Error())
 		}
 		preparedImageProxyHandler := imageutils.NewRemoteImageProxyHandler(config)
+		// 封面源优先度必须作用在代理这一层：前端拿到的是库里存的原始地址
+		// （备份导入的 vndb / bgm.tv 地址在国内常常直连不通），只改刮削路径
+		// 盖不住这些旧数据。
+		preparedImageProxyHandler.SetCoverSourcePreference(config)
 		assetHandlersMu.Lock()
 		if err == nil {
 			localFileHandler = preparedLocalFileHandler
