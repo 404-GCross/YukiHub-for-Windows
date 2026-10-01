@@ -18,19 +18,25 @@ func (fn hikarinagiRoundTripFunc) RoundTrip(req *http.Request) (*http.Response, 
 }
 
 func TestHikarinagiGetterUsesClientCredentialsAndCachesToken(t *testing.T) {
-	previousClientID := version.HikarinagiOAuthClientID
-	previousClientSecret := version.HikarinagiOAuthClientSecret
+	previousClientID := version.HikarinagiMetadataClientID
+	previousClientSecret := version.HikarinagiMetadataClientSecret
 	previousLimiter := sharedMetadataRateLimiter
 	t.Cleanup(func() {
-		version.HikarinagiOAuthClientID = previousClientID
-		version.HikarinagiOAuthClientSecret = previousClientSecret
+		version.HikarinagiMetadataClientID = previousClientID
+		version.HikarinagiMetadataClientSecret = previousClientSecret
 		sharedMetadataRateLimiter = previousLimiter
 		resetHikarinagiTokenCacheForTest()
 	})
-	version.HikarinagiOAuthClientID = "client-id"
-	version.HikarinagiOAuthClientSecret = "client-secret"
+	version.HikarinagiMetadataClientID = "client-id"
+	version.HikarinagiMetadataClientSecret = "client-secret"
 	sharedMetadataRateLimiter = newMetadataRateLimiter(map[MetadataSource]MetadataRateLimitPolicy{})
 	resetHikarinagiTokenCacheForTest()
+
+	// 元数据应用凭据的 scope 必须与 Hikarinagi 授予该 client 的范围一致，
+	// 写错会被服务端以 invalid_scope 直接拒绝（上游用的 catalog:full 不适用于本 client）。
+	if hikarinagiScope != "catalog:read" {
+		t.Fatalf("元数据应用凭据 scope = %q，应为 catalog:read", hikarinagiScope)
+	}
 
 	var tokenRequests int32
 	client := &http.Client{Transport: hikarinagiRoundTripFunc(func(req *http.Request) (*http.Response, error) {
@@ -59,7 +65,7 @@ func TestHikarinagiGetterUsesClientCredentialsAndCachesToken(t *testing.T) {
 			if req.Form.Get("grant_type") != "client_credentials" || req.Form.Get("scope") != hikarinagiScope {
 				t.Fatalf("unexpected token form: %#v", req.Form)
 			}
-			return response(`{"access_token":"test-access-token","token_type":"Bearer","expires_in":3600,"scope":"catalog:full"}`)
+			return response(`{"access_token":"test-access-token","token_type":"Bearer","expires_in":3600,"scope":"catalog:read"}`)
 		case strings.Contains(req.URL.Path, "/v3/search"):
 			assertHikarinagiBearerToken(t, req)
 			if req.URL.Query().Get("q") != "CLANNAD" || req.URL.Query().Get("types") != "galgame" {
@@ -141,21 +147,32 @@ func TestHikarinagiGetterFetchMetadataUsesDetailDeveloper(t *testing.T) {
 	}
 }
 
-func TestHikarinagiGetterRequiresInjectedCredentials(t *testing.T) {
-	previousClientID := version.HikarinagiOAuthClientID
-	previousClientSecret := version.HikarinagiOAuthClientSecret
+// 元数据凭据是**内置**的（与 Android 端 metadata/HikarinagiClient.java 同源的应用级凭据），
+// 开箱即可用，不再要求构建时注入。这里同时钉住两件事：
+// 内置默认值存在（否则用户什么都没配就完全用不了 Hikarinagi 元数据），
+// 以及注入值优先（便于轮换或自建替代应用）。
+func TestHikarinagiMetadataCredentialsAreBuiltInAndInjectable(t *testing.T) {
+	previousClientID := version.HikarinagiMetadataClientID
+	previousClientSecret := version.HikarinagiMetadataClientSecret
 	t.Cleanup(func() {
-		version.HikarinagiOAuthClientID = previousClientID
-		version.HikarinagiOAuthClientSecret = previousClientSecret
-		resetHikarinagiTokenCacheForTest()
+		version.HikarinagiMetadataClientID = previousClientID
+		version.HikarinagiMetadataClientSecret = previousClientSecret
 	})
-	version.HikarinagiOAuthClientID = ""
-	version.HikarinagiOAuthClientSecret = ""
-	resetHikarinagiTokenCacheForTest()
 
-	_, err := NewHikarinagiInfoGetter().FetchMetadata("1", "")
-	if err == nil || !strings.Contains(err.Error(), "requires injected OAuth client credentials") {
-		t.Fatalf("unexpected error: %v", err)
+	version.HikarinagiMetadataClientID = ""
+	version.HikarinagiMetadataClientSecret = ""
+	clientID, clientSecret := hikarinagiMetadataClientCredentials()
+	if clientID == "" || clientSecret == "" {
+		t.Fatalf("未注入时应回退到内置元数据凭据，实际得到 %q / %q", clientID, clientSecret)
+	}
+	if clientID != hikarinagiMetadataDefaultClientID {
+		t.Fatalf("内置元数据 client id = %q, want %q", clientID, hikarinagiMetadataDefaultClientID)
+	}
+
+	version.HikarinagiMetadataClientID = "injected-id"
+	version.HikarinagiMetadataClientSecret = "injected-secret"
+	if clientID, clientSecret = hikarinagiMetadataClientCredentials(); clientID != "injected-id" || clientSecret != "injected-secret" {
+		t.Fatalf("注入的元数据凭据未生效: %q / %q", clientID, clientSecret)
 	}
 }
 

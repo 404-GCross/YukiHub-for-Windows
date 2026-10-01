@@ -25,19 +25,21 @@ const (
 // 说明：以下第三方服务的凭证必须由 YukiHub 自行申请，不复用上游 LunaBox 的凭据。
 // 留空表示"未配置"，相应功能会给出未配置提示而不是偷偷使用他人的应用身份。
 var (
-	Version                     = "0.1.0-dev" // 版本号，正式构建由 ldflags 覆盖
-	GitCommit                   = "unknown"   // Git commit hash
-	BuildTime                   = "unknown"   // 构建时间
-	BuildMode                   = "portable"  // 构建模式：portable、installer 或 appimage
-	UpdateServiceURL            = ""          // 更新服务根地址，由正式构建注入
-	BangumiOAuthClientID        = ""          // Bangumi OAuth Client ID
-	BangumiOAuthClientSecret    = ""          // Bangumi OAuth Client Secret
-	HikarinagiOAuthClientID     = ""          // Hikarinagi public/native OAuth Client ID
-	HikarinagiOAuthClientSecret = ""          // Hikarinagi OAuth Client Secret
-	HikarinagiOAuthScopes       = ""          // Hikarinagi OAuth scope，留空时用内置默认（与 Android 客户端一致）
-	UmbraOAuthClientID          = ""          // Umbra public/native OAuth Client ID
-	UmbraRegistrationToken      = ""          // Umbra device installation/registration token
-	TouchGalAPIToken            = ""          // TouchGAL API Bearer token
+	Version                        = "0.1.0-dev" // 版本号，正式构建由 ldflags 覆盖
+	GitCommit                      = "unknown"   // Git commit hash
+	BuildTime                      = "unknown"   // 构建时间
+	BuildMode                      = "portable"  // 构建模式：portable、installer 或 appimage
+	UpdateServiceURL               = ""          // 更新服务根地址，由正式构建注入
+	BangumiOAuthClientID           = ""          // Bangumi OAuth Client ID
+	BangumiOAuthClientSecret       = ""          // Bangumi OAuth Client Secret
+	HikarinagiOAuthClientID        = ""          // Hikarinagi public/native OAuth Client ID（登录用）
+	HikarinagiOAuthClientSecret    = ""          // Hikarinagi OAuth Client Secret（登录用 public client 不需要）
+	HikarinagiOAuthScopes          = ""          // Hikarinagi 登录 OAuth scope，留空时用内置默认（与 Android 客户端一致）
+	HikarinagiMetadataClientID     = ""          // Hikarinagi 元数据 API（client_credentials）Client ID
+	HikarinagiMetadataClientSecret = ""          // Hikarinagi 元数据 API（client_credentials）Client Secret
+	UmbraOAuthClientID             = ""          // Umbra public/native OAuth Client ID
+	UmbraRegistrationToken         = ""          // Umbra device installation/registration token
+	TouchGalAPIToken               = ""          // TouchGAL API Bearer token
 )
 
 // GetVersion 返回版本信息

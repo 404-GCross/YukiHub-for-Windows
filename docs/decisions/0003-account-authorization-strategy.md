@@ -78,6 +78,38 @@ OAuth 的 scope 不是想要就能要：服务端校验的是**这个 client 被
 `internal/service/hikarinagi_service_internal_test.go` 里有一个测试钉住默认值，
 防止以后有人又照抄上游那串。
 
+#### 元数据用的是**另一个** client（应用级凭据），与登录无关
+
+Hikarinagi 那边有**两个不同的 OAuth 应用**，用途完全不重叠：
+
+| 用途 | client id | 授权方式 | scope |
+| --- | --- | --- | --- |
+| 用户登录 | `hkn_qtmXMJfBoxcNLA-a` | 授权码 + PKCE（public client，无 secret） | `openid user:read` |
+| **元数据** | `hkn_4poXX7v37j_iM2-o` | **Client Credentials**（Basic 认证，有 secret） | `catalog:read` |
+
+元数据**不经过用户令牌**：用应用级凭据直接换令牌（1 小时有效、60 次/分钟/应用），
+换来的令牌只能读公开目录，与"谁登录了"无关。
+
+上游 LunaBox 把这两件事混在一起（先拿用户 token 去读、失败再回退应用凭据），
+而且两个角色共用同一组注入凭据，结果在 YukiHub 上**两头都不对**：
+
+- 登录用户读元数据时带的是登录令牌（scope 只有 `openid user:read`），
+  而 catalog 接口要 `catalog:read`；
+- 未登录时回退到应用凭据，但那组凭据本身是空的（`_SECRET` 从来没人注入）。
+  更糟的是 LunaBox 用的 scope 是 `catalog:full`，本 client 也没被授权这一项。
+
+正确做法（本仓库已改）：
+
+- **元数据永远走应用级凭据**，`fetchMetadata*` 不再取用户令牌；
+- 凭据**内置**（与 Android 端 `metadata/HikarinagiClient.java` 同源），开箱可用；
+- 需要轮换或换自建应用时，用 `YUKIHUB_HIKARINAGI_METADATA_CLIENT_ID` / `_SECRET` 覆盖；
+- scope 固定 `catalog:read`。
+
+实测（2026-10-01）：内置凭据 + `scope=catalog:read` 向 `id.hikarinagi.org/oidc/token`
+换令牌返回 **200**，用该令牌读 `api.hikarinagi.org/v3/galgames/371` 返回 **200**。
+注意 **Cloudflare 会按 User-Agent 拦截**（Error 1010），请求必须带正常的应用 UA
+（程序内已设，写测试脚本时也要带）。
+
 ### 3. 回调地址：桌面端走 loopback
 
 - Android 用自定义 scheme：`yukihub://hikarinagi/callback`、`yukihub://oauth/callback`。

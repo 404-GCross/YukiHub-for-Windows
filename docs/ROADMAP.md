@@ -459,6 +459,37 @@ INSERT / UPDATE 语句都不含这些列，落库时被**静默丢弃**——这
       - 验证：`gofmt` 无输出、`go vet ./...` 干净、`go test ./... -count=1` 全绿；
         `wails3 generate bindings`（枚举与两个 vo 模型更新）；前端
         `pnpm typecheck` / `build` / `i18n:check` 通过，改动文件 eslint 0 error
+- [x] Hikarinagi **有两个 OAuth 应用**：元数据用独立的 client_credentials 凭据（2026-10-01 第六轮）
+      - 用户提醒「手机上是有两个 hikar 的 id……一个是直接嵌入 app 的硬编码直接用，
+        另一个只有 read 的才是登录」→ **核实后用户说得对**，手机版确实是两套：
+        · 用户登录：`hkn_qtmXMJfBoxcNLA-a`，授权码 + PKCE（public，无 secret），scope `openid user:read`
+          （在 `AuthActivity.java`）
+        · 元数据：`hkn_4poXX7v37j_iM2-o`，**Client Credentials**（Basic 认证，有 secret），
+          scope `catalog:read`（在 `metadata/HikarinagiClient.java`）
+      - **桌面端三处都错**（上一轮只修了「登录」那次 scope）：
+        ① 元数据的 client_credentials 用的是**登录 client 的凭据**
+           （`version.HikarinagiOAuthClientID` + `_SECRET`，后者从来没人注入过）；
+        ② scope 写的是上游的 `catalog:full`，本 client 并未被授权这一项；
+        ③ `fetchMetadataByID` / `fetchMetadataCandidatesByName` **优先传用户令牌** ——
+           于是「已登录」用户读元数据时带的是 scope 只有 `openid user:read` 的登录令牌，
+           反而比未登录时更容易被拒
+      - 修：
+        · 新增元数据专用凭据常量（与 Android 端同源）→ 元数据**开箱可用，不再要求构建注入**
+        · scope `catalog:full` → `catalog:read`
+        · `fetchMetadata*` **不再取用户令牌**，直接走应用级凭据
+        · 新增 `version.HikarinagiMetadataClientID` / `_Secret` + env 覆盖点（便于轮换密钥）
+        · 删掉因此失效的 `IsHikarinagiUnauthorizedError`
+      - **本机联网实测**：内置凭据 + `scope=catalog:read` 向 `id.hikarinagi.org/oidc/token`
+        换令牌返回 **200**（expires_in 3600）；用该令牌读
+        `api.hikarinagi.org/v3/galgames/371` 返回 **200**（CLANNAD 详情）。
+        过程中发现 **Cloudflare 会按 User-Agent 拦截**（Error 1010），
+        请求必须带正常的应用 UA
+      - 测试：`metadata_hikarinagi_test.go` 改为断言「用元数据凭据 + scope=catalog:read」；
+        `TestHikarinagiGetterRequiresInjectedCredentials` 改名为
+        `TestHikarinagiMetadataCredentialsAreBuiltInAndInjectable`
+        （语义从「必须注入」改成「内置可用 + 注入优先」）
+      - 验证：gofmt 无输出、`go vet ./...` 干净、`go test ./... -count=1` 全绿（31 包）
+
 - [x] Hikarinagi 授权失败 `invalid_scope`：scope 必须与该 client 被授权的一致（2026-10-01 第五轮）
       - 现象：用户点 Hikarinagi「去授权」→ 浏览器一页「授权失败 /
         `invalid_scope: requested scope is not allowed`」。用户已确认回调地址登记过了，

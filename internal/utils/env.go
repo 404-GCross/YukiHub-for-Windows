@@ -16,9 +16,12 @@ const (
 	hikarinagiClientIDEnv     = "YUKIHUB_HIKARINAGI_CLIENT_ID"
 	hikarinagiClientSecretEnv = "YUKIHUB_HIKARINAGI_CLIENT_SECRET"
 	hikarinagiScopesEnv       = "YUKIHUB_HIKARINAGI_SCOPES"
-	touchGalTokenEnv          = "YUKIHUB_TOUCHGAL_TOKEN"
-	umbraClientIDEnv          = "YUKIHUB_UMBRA_CLIENT_ID"
-	umbraRegistrationTokenEnv = "YUKIHUB_UMBRA_REGISTRATION_TOKEN"
+
+	hikarinagiMetadataClientIDEnv     = "YUKIHUB_HIKARINAGI_METADATA_CLIENT_ID"
+	hikarinagiMetadataClientSecretEnv = "YUKIHUB_HIKARINAGI_METADATA_CLIENT_SECRET"
+	touchGalTokenEnv                  = "YUKIHUB_TOUCHGAL_TOKEN"
+	umbraClientIDEnv                  = "YUKIHUB_UMBRA_CLIENT_ID"
+	umbraRegistrationTokenEnv         = "YUKIHUB_UMBRA_REGISTRATION_TOKEN"
 )
 
 func LoadEnvFilesIfExists(filenames ...string) error {
@@ -56,6 +59,12 @@ func ApplyDevBuildEnvFallbacks() {
 	}
 	if strings.TrimSpace(version.HikarinagiOAuthScopes) == "" {
 		version.HikarinagiOAuthScopes = strings.TrimSpace(os.Getenv(hikarinagiScopesEnv))
+	}
+	if strings.TrimSpace(version.HikarinagiMetadataClientID) == "" {
+		version.HikarinagiMetadataClientID = strings.TrimSpace(os.Getenv(hikarinagiMetadataClientIDEnv))
+	}
+	if strings.TrimSpace(version.HikarinagiMetadataClientSecret) == "" {
+		version.HikarinagiMetadataClientSecret = strings.TrimSpace(os.Getenv(hikarinagiMetadataClientSecretEnv))
 	}
 	if strings.TrimSpace(version.TouchGalAPIToken) == "" {
 		version.TouchGalAPIToken = strings.TrimSpace(os.Getenv(touchGalTokenEnv))

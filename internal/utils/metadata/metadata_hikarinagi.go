@@ -21,14 +21,42 @@ import (
 const (
 	hikarinagiAPIBaseURL = "https://api.hikarinagi.org/v3"
 	hikarinagiTokenURL   = "https://id.hikarinagi.org/oidc/token"
-	hikarinagiScope      = "catalog:full"
+
+	// 元数据走**应用级凭据**（OAuth 2.0 Client Credentials，Basic 认证换令牌，1 小时有效，
+	// 限速 60 次/分钟/应用）。它与「用户登录」用的是**两个不同的 OAuth 应用**：
+	//
+	//   登录   hkn_qtmXMJfBoxcNLA-a   scope: openid user:read（public client，无 secret）
+	//   元数据 hkn_4poXX7v37j_iM2-o   scope: catalog:read（client_credentials，有 secret）
+	//
+	// **不能混用**：拿登录 client 去换应用令牌会因为没有 catalog:read 被拒；
+	// 拿元数据 client 去做用户登录也没有 user:read。
+	// 上游 LunaBox 把两者统一成一套注入凭据，所以它的 scope 写的是 catalog:full，
+	// 且必须构建时注入——照抄到 YukiHub 上两边都跑不通。
+	//
+	// 下面的默认值与 Android 端 `metadata/HikarinagiClient.java` 同源（YukiHub 自己申请的应用）。
+	// 需要更换时用 YUKIHUB_HIKARINAGI_METADATA_CLIENT_ID / _SECRET 注入覆盖。
+	hikarinagiMetadataDefaultClientID     = "hkn_4poXX7v37j_iM2-o"
+	hikarinagiMetadataDefaultClientSecret = "hks_Wv6tW5O6ev8Mbifvg1tPJ7UexehLATQcKpZJiFhV48Y"
+	hikarinagiScope                       = "catalog:read"
 )
 
-var ErrHikarinagiUnauthorized = errors.New("hikarinagi unauthorized")
-
-func IsHikarinagiUnauthorizedError(err error) bool {
-	return errors.Is(err, ErrHikarinagiUnauthorized)
+// hikarinagiMetadataClientCredentials 返回元数据 API 的应用凭据。
+// 构建注入优先，其次用内置默认值。
+func hikarinagiMetadataClientCredentials() (string, string) {
+	clientID := strings.TrimSpace(version.HikarinagiMetadataClientID)
+	if clientID == "" {
+		clientID = hikarinagiMetadataDefaultClientID
+	}
+	clientSecret := strings.TrimSpace(version.HikarinagiMetadataClientSecret)
+	if clientSecret == "" {
+		clientSecret = hikarinagiMetadataDefaultClientSecret
+	}
+	return clientID, clientSecret
 }
+
+// ErrHikarinagiUnauthorized 表示应用级令牌被拒（401/403），
+// doAuthorizedGet 依赖它决定是否强制刷新令牌后重试一次。
+var ErrHikarinagiUnauthorized = errors.New("hikarinagi unauthorized")
 
 type HikarinagiInfoGetter struct {
 	client   *http.Client
@@ -242,10 +270,9 @@ func (h HikarinagiInfoGetter) FetchMetadataCandidatesByName(name string, accessT
 }
 
 func (h HikarinagiInfoGetter) getAccessToken() (string, error) {
-	clientID := strings.TrimSpace(version.HikarinagiOAuthClientID)
-	clientSecret := strings.TrimSpace(version.HikarinagiOAuthClientSecret)
+	clientID, clientSecret := hikarinagiMetadataClientCredentials()
 	if clientID == "" || clientSecret == "" {
-		return "", errors.New("Hikarinagi API requires injected OAuth client credentials")
+		return "", errors.New("Hikarinagi 元数据 API 缺少应用凭据")
 	}
 
 	hikarinagiTokenCache.mu.Lock()

@@ -367,22 +367,19 @@ func (s *HikarinagiService) refreshAccessToken(ctx context.Context) (string, err
 	return s.refreshAccessTokenLocked(ctx)
 }
 
+// fetchMetadataByID 拉取 galgame 详情。
+//
+// 这里**刻意不传用户令牌**：元数据 API 走的是应用级凭据
+// （OAuth 2.0 Client Credentials，见 metadata.HikarinagiInfoGetter），
+// 与用户登录是两套互不相干的凭据。
+//
+// 上游 LunaBox 把两者混在一起（先试用户 token、失败再回退应用凭据），
+// 结果是**登录用户读元数据时反而更容易失败** —— 带过去的是 scope 只有
+// `openid user:read` 的登录令牌，而 catalog 接口要的是 `catalog:read`。
+// 传空字符串即走应用凭据，与 Android 端 metadata/HikarinagiClient.java 一致。
 func (s *HikarinagiService) fetchMetadataByID(ctx context.Context, sourceID string) (metadata.MetadataResult, error) {
 	getter := metadata.NewHikarinagiInfoGetter(gamehelper.MetadataGetterOptions(s.config)...)
-	token, err := s.getValidAccessToken(ctx)
-	if err != nil {
-		return getter.FetchMetadata(sourceID, "")
-	}
-
-	result, err := getter.FetchMetadata(sourceID, token)
-	if err == nil || !metadata.IsHikarinagiUnauthorizedError(err) {
-		return result, err
-	}
-	refreshedToken, refreshErr := s.refreshAccessToken(ctx)
-	if refreshErr != nil {
-		return metadata.MetadataResult{}, refreshErr
-	}
-	return getter.FetchMetadata(sourceID, refreshedToken)
+	return getter.FetchMetadata(sourceID, "")
 }
 
 func (s *HikarinagiService) fetchMetadataByName(ctx context.Context, name string) (metadata.MetadataResult, error) {
@@ -393,22 +390,11 @@ func (s *HikarinagiService) fetchMetadataByName(ctx context.Context, name string
 	return results[0], nil
 }
 
+// fetchMetadataCandidatesByName 按标题搜索候选。同样走应用级凭据，
+// 理由见 fetchMetadataByID。
 func (s *HikarinagiService) fetchMetadataCandidatesByName(ctx context.Context, name string) ([]metadata.MetadataResult, error) {
 	getter := metadata.NewHikarinagiInfoGetter(gamehelper.MetadataGetterOptions(s.config)...)
-	token, err := s.getValidAccessToken(ctx)
-	if err != nil {
-		return getter.FetchMetadataCandidatesByName(name, "")
-	}
-
-	result, err := getter.FetchMetadataCandidatesByName(name, token)
-	if err == nil || !metadata.IsHikarinagiUnauthorizedError(err) {
-		return result, err
-	}
-	refreshedToken, refreshErr := s.refreshAccessToken(ctx)
-	if refreshErr != nil {
-		return nil, refreshErr
-	}
-	return getter.FetchMetadataCandidatesByName(name, refreshedToken)
+	return getter.FetchMetadataCandidatesByName(name, "")
 }
 
 func (s *HikarinagiService) syncGameStatus(ctx context.Context, game models.Game) error {
