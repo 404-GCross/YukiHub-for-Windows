@@ -12,7 +12,6 @@ import {
   models as modelTypes,
 } from "../../../src/bindings/models";
 import { fetchBangumiAuthStatus } from "../../utils/bangumiAuth";
-import { fetchHikarinagiAuthStatus } from "../../utils/hikarinagiAuth";
 import { BetterButton } from "../ui/better/BetterButton";
 import { BetterSwitch } from "../ui/better/BetterSwitch";
 
@@ -130,12 +129,10 @@ export function GameReviewPanel({ game }: GameReviewPanelProps) {
     async function loadReview() {
       setIsLoading(true);
       setShowLoadingSkeleton(false);
-      const [reviewResult, bangumiResult, hikarinagiResult]
-        = await Promise.allSettled([
-          GetGameReview(game.id),
-          fetchBangumiAuthStatus(),
-          fetchHikarinagiAuthStatus(),
-        ]);
+      const [reviewResult, bangumiResult] = await Promise.allSettled([
+        GetGameReview(game.id),
+        fetchBangumiAuthStatus(),
+      ]);
       if (cancelled) {
         return;
       }
@@ -159,10 +156,6 @@ export function GameReviewPanel({ game }: GameReviewPanelProps) {
           bangumiResult.status === "fulfilled"
           && bangumiResult.value.authorized
           && !bangumiResult.value.needs_reauthorization,
-        [modelEnums.SourceType.Hikarinagi]:
-          hikarinagiResult.status === "fulfilled"
-          && hikarinagiResult.value.authorized
-          && !hikarinagiResult.value.needs_reauthorization,
       };
       setAuth(nextAuth);
       setShowLoadingSkeleton(false);
@@ -307,9 +300,6 @@ export function GameReviewPanel({ game }: GameReviewPanelProps) {
   const canSyncBangumi
     = Boolean(auth[modelEnums.SourceType.Bangumi])
       && gameHasProvider(game, modelEnums.SourceType.Bangumi);
-  const canSyncHikarinagi
-    = Boolean(auth[modelEnums.SourceType.Hikarinagi])
-      && gameHasProvider(game, modelEnums.SourceType.Hikarinagi);
   const hasReviewContent = content.trim().length > 0;
   const autoSaveLabel
     = autoSaveStatus === "pending"
@@ -433,21 +423,6 @@ export function GameReviewPanel({ game }: GameReviewPanelProps) {
                   handleProviderSync(modelEnums.SourceType.Bangumi)}
               >
                 {t("gameReview.syncTo", { provider: "Bangumi" })}
-              </BetterButton>
-              <BetterButton
-                variant="primary"
-                icon="i-mdi-cloud-upload-outline"
-                isLoading={syncingProvider === modelEnums.SourceType.Hikarinagi}
-                disabled={
-                  autoSaveStatus === "saving"
-                  || syncingProvider !== null
-                  || !canSyncHikarinagi
-                  || !hasReviewContent
-                }
-                onClick={() =>
-                  handleProviderSync(modelEnums.SourceType.Hikarinagi)}
-              >
-                {t("gameReview.syncTo", { provider: "Hikarinagi" })}
               </BetterButton>
             </div>
           </div>

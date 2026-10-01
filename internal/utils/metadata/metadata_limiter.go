@@ -60,11 +60,19 @@ func DefaultMetadataRateLimitPolicies() map[MetadataSource]MetadataRateLimitPoli
 			Source:   enums.TouchGal,
 			Interval: 2 * time.Second,
 		},
+		// 上游按**应用**限速 60 次/分钟。注意这个配额是「所有装了 YukiHub 的机器
+		// 共用」的 —— 元数据走的是内置的应用级凭据（见 metadata_hikarinagi.go），
+		// 不是每个用户一份。本机限到 60/分钟只能保证自己不超；
+		// 多台机器同时刮削时仍会撞限，所以退避必须配足：
+		// 默认退避是「等 1 秒重试 1 次」，对 1 分钟窗口毫无意义，撞上就是直接失败。
 		enums.Hikarinagi: {
-			Source:         enums.Hikarinagi,
-			Interval:       time.Second,
-			UpstreamLimit:  60,
-			UpstreamWindow: time.Minute,
+			Source:              enums.Hikarinagi,
+			Interval:            time.Second,
+			UpstreamLimit:       60,
+			UpstreamWindow:      time.Minute,
+			RateLimitRetryDelay: time.Minute,
+			MaxRetryDelay:       2 * time.Minute,
+			MaxRateLimitRetries: 2,
 		},
 		enums.ErogameScape: {
 			Source:   enums.ErogameScape,

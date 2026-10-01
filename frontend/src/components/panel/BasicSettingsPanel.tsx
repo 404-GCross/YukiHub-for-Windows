@@ -13,7 +13,6 @@ import { BetterInput } from "../ui/better/BetterInput";
 import { BetterSelect } from "../ui/better/BetterSelect";
 import { BetterSwitch } from "../ui/better/BetterSwitch";
 import { BangumiAccountSettings } from "./BangumiAccountSettings";
-import { HikarinagiAccountSettings } from "./HikarinagiAccountSettings";
 import { NextMoeAccountSettings } from "./NextMoeAccountSettings";
 
 interface BetterSelectOption {
@@ -21,7 +20,7 @@ interface BetterSelectOption {
   label: string;
 }
 
-type AccountProvider = "bangumi" | "hikarinagi" | "nextmoe";
+type AccountProvider = "bangumi" | "nextmoe";
 
 const ACCOUNT_CONTENT_FADE_MS = 100;
 const ACCOUNT_CARD_RESIZE_MS = 180;
@@ -90,17 +89,15 @@ export function BasicSettingsPanel({
    * 第三张只能被挤到第二行，整个区域就散了——用户点开 Bangumi 后看到的是
    * 「Bangumi 撑满、Hikarinagi 贴在右边、未萌掉到下一行」。
    *
-   * 现在按「展开的那张占 60%，另外两张各 20%」排在同一行：
-   * 位置由卡片在 DOM 里的顺序决定，所以三套模板正好对应三张卡片的展开态。
+   * 现在按「展开的那张占 60%、另一张占 40%」排在同一行：
+   * 位置由卡片在 DOM 里的顺序决定，所以两套模板正好对应两张卡片的展开态。
    */
   const accountGridColumns
     = expandedAccount === "bangumi"
-      ? "sm:grid-cols-[minmax(0,3fr)_minmax(0,1fr)_minmax(0,1fr)]"
-      : expandedAccount === "hikarinagi"
-        ? "sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)_minmax(0,1fr)]"
-        : expandedAccount === "nextmoe"
-          ? "sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,3fr)]"
-          : "sm:grid-cols-3";
+      ? "sm:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]"
+      : expandedAccount === "nextmoe"
+        ? "sm:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]"
+        : "sm:grid-cols-2";
 
   useEffect(() => {
     return () => {
@@ -283,15 +280,6 @@ export function BasicSettingsPanel({
             onChange={onChange}
             onConfigRefresh={onConfigRefresh}
             onExpand={() => handleAccountExpand("bangumi")}
-          />
-
-          <HikarinagiAccountSettings
-            formData={formData}
-            isContentVisible={isAccountContentVisible}
-            isExpanded={expandedAccount === "hikarinagi"}
-            onChange={onChange}
-            onConfigRefresh={onConfigRefresh}
-            onExpand={() => handleAccountExpand("hikarinagi")}
           />
 
           <NextMoeAccountSettings
