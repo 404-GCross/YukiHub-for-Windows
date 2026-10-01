@@ -19,6 +19,10 @@ var defaultMetadataSources = []string{
 	string(enums2.Hikarinagi),
 }
 
+// DefaultCurrentMetadataSource 是「当前资料源」的默认值。
+// 与手机版一致：默认 VNDB（资料最全，且无需 Token）。
+const DefaultCurrentMetadataSource = enums2.VNDB
+
 var allowedMetadataSourceSet = map[string]struct{}{
 	string(enums2.VNDB):          {},
 	string(enums2.Bangumi):       {},
@@ -53,35 +57,39 @@ const DefaultLocalDBBackupRetention = 5
 
 // AppConfig 应用配置结构体
 type AppConfig struct {
-	BangumiAccessToken            string                     `json:"access_token,omitempty"`
-	BangumiRefreshToken           string                     `json:"bangumi_refresh_token,omitempty"`
-	BangumiTokenExpiresAt         string                     `json:"bangumi_token_expires_at,omitempty"`
-	BangumiAuthorizedUserID       string                     `json:"bangumi_authorized_user_id,omitempty"`
-	BangumiAuthorizedUsername     string                     `json:"bangumi_authorized_username,omitempty"`
-	BangumiAuthorizedAvatarURL    string                     `json:"bangumi_authorized_avatar_url,omitempty"`
-	BangumiAuthError              string                     `json:"bangumi_auth_error,omitempty"`
-	BangumiStatusPushEnabled      *bool                      `json:"bangumi_status_push_enabled,omitempty"`
-	HikarinagiAccessToken         string                     `json:"hikarinagi_access_token,omitempty"`
-	HikarinagiRefreshToken        string                     `json:"hikarinagi_refresh_token,omitempty"`
-	HikarinagiTokenExpiresAt      string                     `json:"hikarinagi_token_expires_at,omitempty"`
-	HikarinagiAuthorizedUserID    string                     `json:"hikarinagi_authorized_user_id,omitempty"`
-	HikarinagiAuthorizedUsername  string                     `json:"hikarinagi_authorized_username,omitempty"`
-	HikarinagiAuthorizedAvatarURL string                     `json:"hikarinagi_authorized_avatar_url,omitempty"`
-	HikarinagiAuthError           string                     `json:"hikarinagi_auth_error,omitempty"`
-	HikarinagiStatusPushEnabled   *bool                      `json:"hikarinagi_status_push_enabled,omitempty"`
-	NextMoeAccessToken            string                     `json:"nextmoe_access_token,omitempty"`
-	NextMoeRefreshToken           string                     `json:"nextmoe_refresh_token,omitempty"`
-	NextMoeTokenExpiresAt         string                     `json:"nextmoe_token_expires_at,omitempty"`
-	NextMoeAccountLabel           string                     `json:"nextmoe_account_label,omitempty"`
-	VNDBAccessToken               string                     `json:"vndb_access_token,omitempty"`
-	MetadataSources               []string                   `json:"metadata_sources,omitempty"`      // 元数据拉取来源列表（vndb/bangumi/bangumi_mirror/ymgal/hikarinagi/nextmoe）
-	AllowDuplicateMetadataImport  bool                       `json:"allow_duplicate_metadata_import"` // 批量/外部导入时允许相同 source_type + source_id
-	BangumiCoverSource            enums2.MetadataCoverSource `json:"bangumi_cover_source,omitempty"`  // Bangumi 封面来源
-	VNDBCoverSource               enums2.MetadataCoverSource `json:"vndb_cover_source,omitempty"`     // VNDB 封面来源
-	Theme                         string                     `json:"theme"`                           // light or dark
-	Language                      string                     `json:"language"`                        // zh, en, etc.
-	SidebarOpen                   bool                       `json:"sidebar_open"`                    // 侧边栏是否展开
-	CloseToTray                   bool                       `json:"close_to_tray"`                   // 关闭时最小化到托盘
+	BangumiAccessToken            string   `json:"access_token,omitempty"`
+	BangumiRefreshToken           string   `json:"bangumi_refresh_token,omitempty"`
+	BangumiTokenExpiresAt         string   `json:"bangumi_token_expires_at,omitempty"`
+	BangumiAuthorizedUserID       string   `json:"bangumi_authorized_user_id,omitempty"`
+	BangumiAuthorizedUsername     string   `json:"bangumi_authorized_username,omitempty"`
+	BangumiAuthorizedAvatarURL    string   `json:"bangumi_authorized_avatar_url,omitempty"`
+	BangumiAuthError              string   `json:"bangumi_auth_error,omitempty"`
+	BangumiStatusPushEnabled      *bool    `json:"bangumi_status_push_enabled,omitempty"`
+	HikarinagiAccessToken         string   `json:"hikarinagi_access_token,omitempty"`
+	HikarinagiRefreshToken        string   `json:"hikarinagi_refresh_token,omitempty"`
+	HikarinagiTokenExpiresAt      string   `json:"hikarinagi_token_expires_at,omitempty"`
+	HikarinagiAuthorizedUserID    string   `json:"hikarinagi_authorized_user_id,omitempty"`
+	HikarinagiAuthorizedUsername  string   `json:"hikarinagi_authorized_username,omitempty"`
+	HikarinagiAuthorizedAvatarURL string   `json:"hikarinagi_authorized_avatar_url,omitempty"`
+	HikarinagiAuthError           string   `json:"hikarinagi_auth_error,omitempty"`
+	HikarinagiStatusPushEnabled   *bool    `json:"hikarinagi_status_push_enabled,omitempty"`
+	NextMoeAccessToken            string   `json:"nextmoe_access_token,omitempty"`
+	NextMoeRefreshToken           string   `json:"nextmoe_refresh_token,omitempty"`
+	NextMoeTokenExpiresAt         string   `json:"nextmoe_token_expires_at,omitempty"`
+	NextMoeAccountLabel           string   `json:"nextmoe_account_label,omitempty"`
+	VNDBAccessToken               string   `json:"vndb_access_token,omitempty"`
+	MetadataSources               []string `json:"metadata_sources,omitempty"` // 元数据拉取来源列表（vndb/bangumi/bangumi_mirror/ymgal/hikarinagi/nextmoe）
+	// CurrentMetadataSource 是「当前资料源」：游戏资料优先展示/抓取哪个来源。
+	// 对齐手机版设置里的「右侧资料源」（`metadata_source`）。单个取值，
+	// 与上面「启用了哪些来源」的多选相互独立。
+	CurrentMetadataSource        enums2.SourceType          `json:"current_metadata_source,omitempty"`
+	AllowDuplicateMetadataImport bool                       `json:"allow_duplicate_metadata_import"` // 批量/外部导入时允许相同 source_type + source_id
+	BangumiCoverSource           enums2.MetadataCoverSource `json:"bangumi_cover_source,omitempty"`  // Bangumi 封面来源
+	VNDBCoverSource              enums2.MetadataCoverSource `json:"vndb_cover_source,omitempty"`     // VNDB 封面来源
+	Theme                        string                     `json:"theme"`                           // light or dark
+	Language                     string                     `json:"language"`                        // zh, en, etc.
+	SidebarOpen                  bool                       `json:"sidebar_open"`                    // 侧边栏是否展开
+	CloseToTray                  bool                       `json:"close_to_tray"`                   // 关闭时最小化到托盘
 	// AI 配置
 	AIProvider     string `json:"ai_provider,omitempty"`      // openai, deepseek, etc.
 	AIBaseURL      string `json:"ai_base_url,omitempty"`      // API base URL
@@ -233,6 +241,7 @@ func LoadConfig() (*AppConfig, error) {
 		NextMoeAccountLabel:           "",
 		VNDBAccessToken:               "",
 		MetadataSources:               cloneStringSlice(defaultMetadataSources),
+		CurrentMetadataSource:         DefaultCurrentMetadataSource,
 		AllowDuplicateMetadataImport:  false,
 		BangumiCoverSource:            enums2.MetadataCoverSourceHikarinagi,
 		VNDBCoverSource:               enums2.MetadataCoverSourceHikarinagi,
@@ -356,6 +365,7 @@ func LoadConfig() (*AppConfig, error) {
 	}
 	config.MetadataSources = normalizeMetadataSources(config.MetadataSources)
 	NormalizeMetadataCoverSources(config)
+	NormalizeCurrentMetadataSource(config)
 
 	if config.WindowZoomFactor <= 0 {
 		config.WindowZoomFactor = 1.0
@@ -426,6 +436,7 @@ func SaveConfig(config *AppConfig) error {
 	}
 	config.MetadataSources = normalizeMetadataSources(config.MetadataSources)
 	NormalizeMetadataCoverSources(config)
+	NormalizeCurrentMetadataSource(config)
 	NormalizeProxySettings(config)
 	SanitizeBangumiOAuthConfig(config)
 	SanitizeHikarinagiOAuthConfig(config)

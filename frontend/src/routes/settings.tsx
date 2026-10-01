@@ -19,11 +19,11 @@ import { FullDataBackupPanel } from "../components/panel/FullDataBackupPanel";
 import { GameSettingsPanel } from "../components/panel/GameSettingsPanel";
 import { MetadataSettingsPanel } from "../components/panel/MetadataSettingsPanel";
 import { PortableSetupPanel } from "../components/panel/PortableSetupPanel";
-import { ProxySettingsPanel } from "../components/panel/ProxySettingsPanel";
 import { ShortcutsSettingsPanel } from "../components/panel/ShortcutsSettingsPanel";
 import { UpdateSettingsPanel } from "../components/panel/UpdateSettingsPanel";
 import { SettingsSkeleton } from "../components/skeleton/SettingsSkeleton";
 import { CollapsibleSection } from "../components/ui/CollapsibleSection";
+import { SettingsSubSection } from "../components/ui/SettingsSubSection";
 import { useAppStore } from "../store";
 import { Route as rootRoute } from "./__root";
 
@@ -236,17 +236,6 @@ function SettingsPage() {
         </CollapsibleSection>
 
         <CollapsibleSection
-          title={t("settings.sections.proxy")}
-          icon="i-mdi-lan-connect"
-          defaultOpen={false}
-        >
-          <ProxySettingsPanel
-            formData={draftConfig}
-            onChange={handleDraftChange}
-          />
-        </CollapsibleSection>
-
-        <CollapsibleSection
           title={t("settings.sections.shortcuts")}
           icon="i-mdi-keyboard-outline"
           defaultOpen={false}
@@ -254,28 +243,55 @@ function SettingsPage() {
           <ShortcutsSettingsPanel />
         </CollapsibleSection>
 
+        {/*
+          备份相关的四个顶层分区（云配置 / 同步与备份 / 数据库备份 / 全量数据备份）
+          合并成两个，对齐手机版的「同步中心 + 数据迁移」：
+          用户不用再猜「我到底该点哪一个来备份」。
+        */}
         <CollapsibleSection
-          title={t("settings.sections.cloudBackup")}
-          icon="i-mdi-cloud-upload"
-          defaultOpen={false}
-        >
-          <CloudBackupSettingsPanel
-            formData={draftConfig}
-            onChange={handleDraftChange}
-            onServiceEnabledChange={enabled =>
-              void patchLiveConfig({ cloud_backup_enabled: enabled })}
-          />
-        </CollapsibleSection>
-
-        <CollapsibleSection
-          title={t("settings.sections.autoBackup")}
+          title={t("settings.sections.syncBackup")}
           icon="i-mdi-backup-restore"
           defaultOpen={false}
         >
-          <AutoBackupSettingsPanel
-            formData={draftConfig}
-            onChange={handleDraftChange}
-          />
+          <SettingsSubSection
+            title={t("settings.subSections.cloudService")}
+            hint={t("settings.subSections.cloudServiceHint")}
+            icon="i-mdi-cloud-upload"
+          >
+            <CloudBackupSettingsPanel
+              formData={draftConfig}
+              onChange={handleDraftChange}
+              onServiceEnabledChange={enabled =>
+                void patchLiveConfig({ cloud_backup_enabled: enabled })}
+            />
+          </SettingsSubSection>
+
+          <SettingsSubSection
+            title={t("settings.subSections.autoBackup")}
+            hint={t("settings.subSections.autoBackupHint")}
+            icon="i-mdi-timer-sync-outline"
+          >
+            <AutoBackupSettingsPanel
+              formData={draftConfig}
+              onChange={handleDraftChange}
+            />
+          </SettingsSubSection>
+
+          <SettingsSubSection
+            title={t("settings.subSections.dbBackup")}
+            hint={t("settings.subSections.dbBackupHint")}
+            icon="i-mdi-database-refresh"
+          >
+            <DBBackupPanel />
+          </SettingsSubSection>
+        </CollapsibleSection>
+
+        <CollapsibleSection
+          title={t("settings.sections.migration")}
+          icon="i-mdi-package-variant"
+          defaultOpen={false}
+        >
+          <FullDataBackupPanel />
         </CollapsibleSection>
 
         <CollapsibleSection
@@ -290,57 +306,37 @@ function SettingsPage() {
         </CollapsibleSection>
 
         <CollapsibleSection
-          title={t("settings.sections.dbBackup")}
-          icon="i-mdi-database-refresh"
+          title={t("settings.sections.appData")}
+          icon="i-mdi-folder-cog-outline"
           defaultOpen={false}
         >
-          <DBBackupPanel />
+          <AppDataSettingsPanel />
+          {["portable", "appimage"].includes(versionInfo?.buildMode ?? "") && (
+            <SettingsSubSection
+              title={t("settings.subSections.portableSetup")}
+              icon="i-mdi-toolbox-outline"
+            >
+              <PortableSetupPanel />
+            </SettingsSubSection>
+          )}
         </CollapsibleSection>
 
         <CollapsibleSection
-          title={t("settings.sections.fullDataBackup")}
-          icon="i-mdi-package-variant"
-          defaultOpen={false}
-        >
-          <FullDataBackupPanel />
-        </CollapsibleSection>
-
-        <CollapsibleSection
-          title={t("settings.sections.update")}
-          icon="i-mdi-update"
+          title={t("settings.sections.aboutUpdate")}
+          icon="i-mdi-information-outline"
           defaultOpen={false}
         >
           <UpdateSettingsPanel
             formData={draftConfig}
             onChange={handleDraftChange}
           />
-        </CollapsibleSection>
-
-        <CollapsibleSection
-          title={t("settings.sections.appData")}
-          icon="i-mdi-folder-cog-outline"
-          defaultOpen={false}
-        >
-          <AppDataSettingsPanel />
-        </CollapsibleSection>
-
-        <CollapsibleSection
-          title={t("settings.sections.about")}
-          icon="i-mdi-information-outline"
-          defaultOpen={false}
-        >
-          <AboutPanel />
-        </CollapsibleSection>
-
-        {["portable", "appimage"].includes(versionInfo?.buildMode ?? "") && (
-          <CollapsibleSection
-            title={t("settings.sections.portableSetup")}
-            icon="i-mdi-toolbox-outline"
-            defaultOpen={false}
+          <SettingsSubSection
+            title={t("settings.subSections.about")}
+            icon="i-mdi-license"
           >
-            <PortableSetupPanel />
-          </CollapsibleSection>
-        )}
+            <AboutPanel />
+          </SettingsSubSection>
+        </CollapsibleSection>
       </div>
 
       <div className="pt-4 text-center text-brand-500 dark:text-brand-400 pb-8 flex flex-col items-center justify-center">

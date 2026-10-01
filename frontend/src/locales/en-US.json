@@ -99,7 +99,14 @@
       "batchSteamImportFailed": "None of the selected games could be imported to Steam",
       "loadGamesFailed": "Failed to load games"
     },
-    "detailPlaceholder": "Select a game on the left"
+    "detailPlaceholder": "Select a game on the left",
+    "detailSource": "Source",
+    "detailSourceNone": "None",
+    "detailSourceSwitch": "Switch metadata source",
+    "detailSourceCurrent": "Currently in use",
+    "detailSourceOther": "Switch to this source",
+    "detailSourceSwitched": "Switched to {{source}}",
+    "detailSourceSwitchFailed": "Failed to switch metadata source"
   },
   "filterBar": {
     "randomGame": "Open a random game",
@@ -900,16 +907,11 @@
       "appearance": "Appearance",
       "bigScreen": "Big Screen Mode",
       "game": "Game Settings",
-      "proxy": "Proxy Settings",
-      "cloudBackup": "Cloud Configuration",
-      "autoBackup": "Sync & Backup",
       "ai": "AI Configuration",
-      "dbBackup": "Database Backup",
-      "fullDataBackup": "Full Data Backup",
-      "update": "App Updates",
-      "portableSetup": "Local Integration",
-      "about": "About & Open Source",
-      "shortcuts": "Keyboard Shortcuts"
+      "shortcuts": "Keyboard Shortcuts",
+      "syncBackup": "Sync & backup",
+      "migration": "Data migration",
+      "aboutUpdate": "About & updates"
     },
     "about": {
       "appName": "YukiHub for Windows",
@@ -927,17 +929,6 @@
       "thirdPartyBody": "This program bundles third-party components such as 7-Zip (LGPL) and DuckDB (MIT). See THIRD_PARTY_LICENSES.md in the repository for the full list and their licenses.",
       "openRepo": "Open repository",
       "openUpstream": "Open upstream project"
-    },
-    "proxy": {
-      "globalMode": "Global Network Proxy",
-      "globalModeHint": "Metadata, images, game downloads, AI, WebSearch, app updates, and cloud sync requests all use this proxy policy. Windows / macOS can read static system proxies; PAC, auto-discovery, and TUN-only routing may need manual proxy settings.",
-      "modeSystem": "Follow system proxy",
-      "modeManual": "Use manual proxy",
-      "modeDirect": "Direct connection",
-      "manualProxyURL": "Manual Proxy URL",
-      "manualProxyURLHint": "Only used in manual proxy mode. Supports http://, https://, socks5://, and raw addresses like 127.0.0.1:7890.",
-      "manualProxyURLPlaceholder": "e.g. http://127.0.0.1:7890",
-      "manualProxyURLIdle": "Manual proxy is not active. This address is saved but inactive."
     },
     "basic": {
       "bangumiAuthHint": "Login to your Bangumi account to enable metadata refresh and game status synchronization.",
@@ -1235,7 +1226,9 @@
       "coverSources": {
         "original": "Original source",
         "hikarinagi": "Hikarinagi image host"
-      }
+      },
+      "currentSource": "Current metadata source",
+      "currentSourceHint": "Which site's data to prefer. Matches the mobile app's \"Side panel source\". Used for games that arrive without source info, and preferred for manual searches and bulk rescans. Switch an individual game from the library side panel."
     },
     "cloudBackup": {
       "serviceEnableLabel": "Enable Cloud Services",
@@ -1490,6 +1483,16 @@
       "confirmLabel": "Confirm Password",
       "confirmPlaceholder": "Re-enter password",
       "passwordMismatch": "Passwords do not match"
+    },
+    "subSections": {
+      "cloudService": "Cloud service",
+      "cloudServiceHint": "Set up cloud storage (WebDAV / OneDrive / Umbra). Automatic and database backups can only be uploaded once this is configured.",
+      "autoBackup": "Automatic backup",
+      "autoBackupHint": "Back up saves and the database when quitting or on a fixed interval, and manage how many local and cloud copies to keep.",
+      "dbBackup": "Database backup",
+      "dbBackupHint": "Take a database backup at any time, and restore from a local or cloud backup when needed.",
+      "portableSetup": "Local integration",
+      "about": "About & license"
     }
   },
   "downloads": {

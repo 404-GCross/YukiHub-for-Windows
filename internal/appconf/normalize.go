@@ -213,6 +213,24 @@ func NormalizeMetadataCoverSources(config *AppConfig) {
 	config.VNDBCoverSource = NormalizeMetadataCoverSource(config.VNDBCoverSource)
 }
 
+// NormalizeCurrentMetadataSource 校验「当前资料源」，非法取值回落到默认 VNDB。
+//
+// 只认「可作为资料源开启」的那几个（allowedMetadataSourceSet，与设置页下拉一致）。
+func NormalizeCurrentMetadataSource(config *AppConfig) bool {
+	if config == nil {
+		return false
+	}
+	normalized := enums2.SourceType(strings.ToLower(strings.TrimSpace(string(config.CurrentMetadataSource))))
+	if _, ok := allowedMetadataSourceSet[string(normalized)]; !ok {
+		normalized = DefaultCurrentMetadataSource
+	}
+	if config.CurrentMetadataSource == normalized {
+		return false
+	}
+	config.CurrentMetadataSource = normalized
+	return true
+}
+
 func NormalizeProxySettings(config *AppConfig) bool {
 	if config == nil {
 		return false

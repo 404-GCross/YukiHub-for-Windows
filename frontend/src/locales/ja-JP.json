@@ -99,7 +99,14 @@
       "batchSteamImportFailed": "選択したゲームを Steam にインポートできませんでした",
       "loadGamesFailed": "ゲームの読み込みに失敗しました"
     },
-    "detailPlaceholder": "左側からゲームを選択"
+    "detailPlaceholder": "左側からゲームを選択",
+    "detailSource": "資料ソース",
+    "detailSourceNone": "なし",
+    "detailSourceSwitch": "資料ソースを切り替え",
+    "detailSourceCurrent": "現在使用中",
+    "detailSourceOther": "このソースに切り替え",
+    "detailSourceSwitched": "{{source}} に切り替えました",
+    "detailSourceSwitchFailed": "資料ソースの切り替えに失敗しました"
   },
   "filterBar": {
     "randomGame": "ランダムなゲームを開く",
@@ -900,16 +907,11 @@
       "appearance": "外観設定",
       "bigScreen": "大画面モード",
       "game": "ゲーム設定",
-      "proxy": "プロキシ設定",
-      "cloudBackup": "クラウド設定",
-      "autoBackup": "同期とバックアップ",
       "ai": "AI 設定",
-      "dbBackup": "データベースバックアップ",
-      "fullDataBackup": "全量データバックアップ",
-      "update": "アプリ更新",
-      "portableSetup": "ローカル連携設定",
-      "about": "情報とオープンソースライセンス",
-      "shortcuts": "キーボードショートカット"
+      "shortcuts": "キーボードショートカット",
+      "syncBackup": "同期とバックアップ",
+      "migration": "データ移行",
+      "aboutUpdate": "このアプリと更新"
     },
     "about": {
       "appName": "YukiHub for Windows",
@@ -927,17 +929,6 @@
       "thirdPartyBody": "本ソフトウェアには 7-Zip（LGPL）や DuckDB（MIT）などのサードパーティ製コンポーネントが含まれます。完全な一覧とライセンスはリポジトリの THIRD_PARTY_LICENSES.md を参照してください。",
       "openRepo": "リポジトリを開く",
       "openUpstream": "上流プロジェクトを開く"
-    },
-    "proxy": {
-      "globalMode": "グローバルネットワークプロキシ",
-      "globalModeHint": "メタデータ、画像、ゲームダウンロード、AI、WebSearch、アプリ更新、クラウド同期のリクエストはすべてこのプロキシ設定を使用します。Windows / macOS では静的なシステムプロキシを読み取れますが、PAC、自動検出、TUN のみのルーティングでは手動プロキシ設定が必要になる場合があります。",
-      "modeSystem": "システムプロキシに従う",
-      "modeManual": "手動プロキシを使用",
-      "modeDirect": "直接接続",
-      "manualProxyURL": "手動プロキシ URL",
-      "manualProxyURLHint": "手動プロキシモードでのみ使用します。http://、https://、socks5:// と、127.0.0.1:7890 のようなアドレスをサポートします。",
-      "manualProxyURLPlaceholder": "例: http://127.0.0.1:7890",
-      "manualProxyURLIdle": "手動プロキシは現在有効ではありません。このアドレスは保存されますが有効になりません。"
     },
     "basic": {
       "bangumiAuthHint": "Bangumiアカウントにログインしてメタデータの更新やその他の機能を有効にしてください。",
@@ -1235,7 +1226,9 @@
       "coverSources": {
         "original": "元のソース",
         "hikarinagi": "Hikarinagi 画像ホスト"
-      }
+      },
+      "currentSource": "現在の資料ソース",
+      "currentSourceHint": "どのサイトの資料を優先して使うか。スマホ版の「右側の資料ソース」に相当します。ソース情報を持たないゲームの新規作成・取り込みで使われ、手動検索と一括再取得でも優先されます。ゲームごとの変更はライブラリ右側の詳細から行えます。"
     },
     "cloudBackup": {
       "serviceEnableLabel": "クラウドサービスを有効化",
@@ -1490,6 +1483,16 @@
       "confirmLabel": "パスワードを確認",
       "confirmPlaceholder": "パスワードを再入力",
       "passwordMismatch": "2回入力したパスワードが一致しません"
+    },
+    "subSections": {
+      "cloudService": "クラウドサービス",
+      "cloudServiceHint": "クラウドストレージ（WebDAV / OneDrive / Umbra）を設定します。設定後に下の自動バックアップとデータベースのバックアップをクラウドへ保存できます。",
+      "autoBackup": "自動バックアップ",
+      "autoBackupHint": "終了時または指定間隔でセーブデータとデータベースを自動バックアップし、ローカル / クラウドの保持数を管理します。",
+      "dbBackup": "データベースのバックアップ",
+      "dbBackupHint": "いつでも手動でデータベースをバックアップし、必要に応じてローカルまたはクラウドのバックアップから復元できます。",
+      "portableSetup": "ローカル連携",
+      "about": "このアプリとライセンス"
     }
   },
   "downloads": {

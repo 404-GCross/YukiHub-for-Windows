@@ -400,6 +400,34 @@ export function MetadataSettingsPanel({
   return (
     <>
       <div className="space-y-4">
+        {/*
+          「当前资料源」对齐手机版设置里的「右侧资料源」：单个取值，决定默认
+          优先展示/抓取哪个来源。下面那组开关是「可以用哪些来源」的候选池。
+        */}
+        <div className="space-y-2">
+          <div className="block text-sm font-semibold text-brand-700 dark:text-brand-300">
+            {t("settings.metadata.currentSource")}
+          </div>
+          <BetterSelect
+            value={
+              (formData.current_metadata_source
+                || enums.SourceType.VNDB) as string
+            }
+            onChange={value =>
+              onChange({
+                ...formData,
+                current_metadata_source: value,
+              } as appconf.AppConfig)}
+            options={sourceItems.map(item => ({
+              value: item.value,
+              label: item.label,
+            }))}
+          />
+          <p className="text-xs text-brand-500 dark:text-brand-400">
+            {t("settings.metadata.currentSourceHint")}
+          </p>
+        </div>
+
         <div>
           <div className="block text-sm font-semibold text-brand-700 dark:text-brand-300">
             {t("settings.metadata.sourceTitle")}

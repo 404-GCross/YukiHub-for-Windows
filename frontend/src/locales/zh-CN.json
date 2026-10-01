@@ -99,7 +99,14 @@
       "batchSteamImportFailed": "选中的游戏均未能导入 Steam",
       "loadGamesFailed": "加载游戏失败"
     },
-    "detailPlaceholder": "从左侧选择一款游戏"
+    "detailPlaceholder": "从左侧选择一款游戏",
+    "detailSource": "资料源",
+    "detailSourceNone": "暂无",
+    "detailSourceSwitch": "切换资料源",
+    "detailSourceCurrent": "当前使用中",
+    "detailSourceOther": "切换到该来源",
+    "detailSourceSwitched": "已切换到 {{source}}",
+    "detailSourceSwitchFailed": "切换资料源失败"
   },
   "filterBar": {
     "randomGame": "随机打开游戏",
@@ -900,16 +907,11 @@
       "appearance": "外观设置",
       "bigScreen": "大屏模式",
       "game": "游玩配置",
-      "proxy": "代理配置",
-      "cloudBackup": "云配置",
-      "autoBackup": "同步与备份",
       "ai": "AI 配置",
-      "dbBackup": "数据库备份",
-      "fullDataBackup": "全量数据备份",
-      "update": "应用更新",
-      "portableSetup": "本地集成设置",
-      "about": "关于与开源许可",
-      "shortcuts": "键盘快捷键"
+      "shortcuts": "键盘快捷键",
+      "syncBackup": "同步与备份",
+      "migration": "数据迁移",
+      "aboutUpdate": "关于与更新"
     },
     "about": {
       "appName": "YukiHub for Windows",
@@ -927,17 +929,6 @@
       "thirdPartyBody": "本程序包含 7-Zip（LGPL）、DuckDB（MIT）等第三方组件，完整清单与许可证见仓库中的 THIRD_PARTY_LICENSES.md。",
       "openRepo": "访问本仓库",
       "openUpstream": "访问上游项目"
-    },
-    "proxy": {
-      "globalMode": "全局网络代理",
-      "globalModeHint": "应用内的元数据、图片、游戏下载、AI、WebSearch、应用更新和云同步请求都会使用此代理策略。Windows / macOS 可读取静态系统代理；PAC、自动发现或仅 TUN 的场景无法保证自动识别。",
-      "modeSystem": "自动跟随系统代理",
-      "modeManual": "使用手动代理",
-      "modeDirect": "直连，不使用代理",
-      "manualProxyURL": "手动代理 URL",
-      "manualProxyURLHint": "仅在选择手动代理时生效。支持 http://、https://、socks5://，也可直接填写 127.0.0.1:7890。",
-      "manualProxyURLPlaceholder": "例如 http://127.0.0.1:7890",
-      "manualProxyURLIdle": "当前未使用手动代理，此地址会保存但暂不生效。"
     },
     "basic": {
       "bangumiAuthHint": "登录 Bangumi 账号以启用元数据刷新和游戏状态同步功能。",
@@ -1235,7 +1226,9 @@
       "coverSources": {
         "original": "原始来源",
         "hikarinagi": "Hikarinagi 图床"
-      }
+      },
+      "currentSource": "当前资料源",
+      "currentSourceHint": "当前优先使用哪个站点的资料，对齐手机版的「右侧资料源」。新建或导入时没带来源信息的游戏会用它；手动搜资料与批量重扫也优先它。单个游戏可以在游戏库右侧详情里单独切换。"
     },
     "cloudBackup": {
       "serviceEnableLabel": "启用云服务",
@@ -1490,6 +1483,16 @@
       "confirmLabel": "确认密码",
       "confirmPlaceholder": "再次输入密码",
       "passwordMismatch": "两次输入的密码不一致"
+    },
+    "subSections": {
+      "cloudService": "云服务",
+      "cloudServiceHint": "配置云端存储（WebDAV / OneDrive / Umbra）。配好之后下面的自动备份与数据库备份才能上传到云。",
+      "autoBackup": "自动备份",
+      "autoBackupHint": "退出应用或按设定间隔自动备份游戏存档与数据库，并管理本地 / 云端的保留份数。",
+      "dbBackup": "数据库备份",
+      "dbBackupHint": "随时手动备份一次数据库，并在需要时从本地或云端备份恢复。",
+      "portableSetup": "本地集成",
+      "about": "关于与开源许可"
     }
   },
   "downloads": {

@@ -1563,6 +1563,7 @@ function LibraryPage() {
             <LibraryDetailPanel
               game={batchMode ? null : activeGame}
               isRunning={isActiveGameRunning}
+              onMetadataSourceChanged={invalidateAllGameLists}
               onOpenDetail={handleOpenFullDetail}
               onStart={handleStartFromPanel}
             />

@@ -459,6 +459,37 @@ INSERT / UPDATE 语句都不含这些列，落库时被**静默丢弃**——这
       - 验证：`gofmt` 无输出、`go vet ./...` 干净、`go test ./... -count=1` 全绿；
         `wails3 generate bindings`（枚举与两个 vo 模型更新）；前端
         `pnpm typecheck` / `build` / `i18n:check` 通过，改动文件 eslint 0 error
+- [x] 设置面瘦身 + 「当前资料源」对齐手机版（2026-10-01）
+      - 用户诉求：删掉 LunaBox 带来的「奇奇怪怪」的设置（备份有好多个、有歧义；代理没用），
+        对齐 YukiHub 手机版；游戏库右侧详情要显示当前用的是哪个源；设置里要有「当前游戏源」
+      - **先摸清手机版的模型**（`MainActivity.showSettingsDialog`）：
+        设置里只有一个**「右侧资料源」单选**（VNDB/Bangumi/镜像/月幕/Hikarinagi/NextMoe）
+        + Bangumi Token + 一键重扫 + 重扫间隔；详情面板顶部有**来源徽标**，
+        对不上可点「重新匹配 <源>」；手机版**没有代理设置**；
+        备份只有「同步中心」与「数据迁移」两组
+      - 设置页原本 **16 个顶层分区**、其中**四个**是备份（云配置 / 同步与备份 /
+        数据库备份 / 全量数据备份）→ 合并成两个，对齐手机版：
+        **「同步与备份」**（子分组：云服务 / 自动备份 / 数据库备份）+
+        **「数据迁移」**（原全量数据备份面板）
+        另：「应用更新」并入「关于与更新」，「本地集成设置」并入「应用数据」
+      - **删掉「代理配置」分区**并删除 `ProxySettingsPanel.tsx`。
+        配置字段与后端行为保留（默认跟随系统代理），只是不再暴露给用户
+      - 新增 `frontend/src/components/ui/SettingsSubSection.tsx`：分区内部的子分组标题，
+        被合并的面板靠它分层，避免又变成一坨
+      - **「当前资料源」**（`appconf.CurrentMetadataSource`，默认 vndb）：
+        设置 → 元数据里的单选下拉，对齐手机版「右侧资料源」。
+        行为：`gamehelper.ConfiguredMetadataSources` 把它提到最前（影响手动搜索顺序、
+        以及来源被删时的替补挑选）；`NormalizeCurrentMetadataSource` 校验非法取值
+      - **游戏库右侧详情**（`LibraryDetailPanel`）：标题下新增「资料源」一行，
+        显示该游戏当前使用的源（`games.source_type`）并带来源图标；
+        缓存过多个来源时点开即可切换（`SetDefaultMetadataSource` + 失效列表缓存），
+        即手机版的「重新匹配」。注意**列表行不带 `metadata_sources`**（那是单条查询才补的），
+        所以面板在选中游戏后单独 `GetGameMetadataSources` 取一次
+      - i18n：4 个语言各 +22 个新键（`settings.subSections.*`、`settings.metadata.currentSource*`、
+        `library.detailSource*`），`pnpm run i18n:clean` 清掉 17 个失效键
+      - 验证：gofmt 无输出、`go vet ./...` 干净、`go test ./... -count=1` 全绿；
+        i18n:check 干净、typecheck 通过、改动文件 eslint 0 error
+
 - [x] 游戏详情页选中状态胶囊「和背景融合看不见」（2026-09-30，用户截图）
       - **根因不在组件，在构建配置**：UnoCSS 默认的 `content.pipeline.include` 是
         `/\.(vue|svelte|[jt]sx|vine.ts|mdx?|astro|elm|php|phtml|marko|html)($|\?)/`

@@ -42,6 +42,9 @@ func MetadataGetterOptions(config *appconf.AppConfig) []metadata.GetterOption {
 
 // ConfiguredMetadataSources returns the enabled metadata sources in user-preferred order,
 // falling back to a sensible default when the config is empty or invalid.
+//
+// 「当前资料源」（config.CurrentMetadataSource，对齐手机版设置里的「右侧资料源」）
+// 若已启用，会被提到最前面：手动搜索、被删来源的替补挑选都以它为先。
 func ConfiguredMetadataSources(config *appconf.AppConfig) []enums2.SourceType {
 	defaultSources := []enums2.SourceType{enums2.VNDB, enums2.Bangumi, enums2.Ymgal, enums2.Hikarinagi}
 	if config == nil || len(config.MetadataSources) == 0 {
@@ -63,6 +66,19 @@ func ConfiguredMetadataSources(config *appconf.AppConfig) []enums2.SourceType {
 
 	if len(result) == 0 {
 		return defaultSources
+	}
+
+	if current := NormalizeMetadataSourceType(config.CurrentMetadataSource); current != "" {
+		for index, source := range result {
+			if source != current {
+				continue
+			}
+			if index > 0 {
+				copy(result[1:index+1], result[0:index])
+				result[0] = source
+			}
+			break
+		}
 	}
 	return result
 }

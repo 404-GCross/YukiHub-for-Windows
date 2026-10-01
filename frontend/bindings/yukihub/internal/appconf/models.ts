@@ -41,6 +41,13 @@ export class AppConfig {
     "metadata_sources"?: string[];
 
     /**
+     * CurrentMetadataSource 是「当前资料源」：游戏资料优先展示/抓取哪个来源。
+     * 对齐手机版设置里的「右侧资料源」（`metadata_source`）。单个取值，
+     * 与上面「启用了哪些来源」的多选相互独立。
+     */
+    "current_metadata_source"?: enums$0.SourceType;
+
+    /**
      * 批量/外部导入时允许相同 source_type + source_id
      */
     "allow_duplicate_metadata_import": boolean;

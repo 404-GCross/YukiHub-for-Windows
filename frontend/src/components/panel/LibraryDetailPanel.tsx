@@ -1,14 +1,25 @@
 import type { models } from "../../../src/bindings/models";
+import { useEffect, useState } from "react";
+import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
+import {
+  GetGameMetadataSources,
+  SetDefaultMetadataSource,
+} from "../../../bindings/yukihub/internal/service/gameservice";
 import { GAME_STATUS_BADGE_STYLES } from "../../consts/gameStatusBadge";
 import { useGamePlaytime } from "../../hooks/useGamePlaytime";
+import { getMetadataSourceIcon } from "../../utils/metadataSources";
 import { formatDuration, formatLocalDate } from "../../utils/time";
+import { BetterDropdownMenu } from "../ui/better/BetterDropdownMenu";
 import { GameCoverImage } from "../ui/GameCoverImage";
+import { sourceLabel } from "../ui/import/importFlow";
 
 interface LibraryDetailPanelProps {
   /** 未选中游戏时为 null，面板显示占位（面板常驻，避免网格宽度变化） */
   game: models.Game | null;
   isRunning: boolean;
+  /** 切换该游戏的资料源后回调，由父级刷新列表（对齐手机版的「重新匹配」） */
+  onMetadataSourceChanged?: () => void;
   onOpenDetail: (gameId: string) => void;
   onStart: (game: models.Game) => void;
 }
@@ -24,12 +35,48 @@ interface LibraryDetailPanelProps {
 export function LibraryDetailPanel({
   game,
   isRunning,
+  onMetadataSourceChanged,
   onOpenDetail,
   onStart,
 }: LibraryDetailPanelProps) {
   const { t } = useTranslation();
   // 列表请求已带批量时长并预填缓存；缓存未命中（例如命中本地列表缓存）时才单查
   const playTime = useGamePlaytime(game?.id);
+  const [switchingSource, setSwitchingSource] = useState(false);
+  // 列表行不带 metadata_sources（那是单条查询才补的），选中后单独取一次
+  const [metadataSources, setMetadataSources] = useState<
+    models.GameMetadataSource[]
+  >([]);
+  const [metadataSourceRevision, setMetadataSourceRevision] = useState(0);
+  // 切换后先按用户的选择显示，等列表刷新到最新值再让位
+  const [optimisticSource, setOptimisticSource] = useState<{
+    gameId: string;
+    source: string;
+  } | null>(null);
+  const gameId = game?.id ?? "";
+
+  useEffect(() => {
+    if (!gameId) {
+      setMetadataSources([]);
+      return;
+    }
+    let cancelled = false;
+    void GetGameMetadataSources(gameId)
+      .then((sources) => {
+        if (!cancelled) {
+          setMetadataSources(sources);
+        }
+      })
+      .catch((error) => {
+        console.error("Failed to load game metadata sources:", error);
+        if (!cancelled) {
+          setMetadataSources([]);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [gameId, metadataSourceRevision]);
 
   // 空态：对齐手机版面板里的「选择游戏」占位
   if (!game) {
@@ -48,6 +95,50 @@ export function LibraryDetailPanel({
 
   const coverSrc = game.cover_url || game.cover_source_url || "";
   const statusBadge = GAME_STATUS_BADGE_STYLES[game.status];
+
+  /*
+    该游戏当前使用的资料源：后端把它落在 games.source_type 上。
+    刚切换完的那一刻列表可能还没重新加载回来，所以留一个「乐观值」：
+    它只在和 prop 不一致时生效，等列表刷新到最新值就自动让位（无需 effect 清理）。
+  */
+  const currentMetadataSource
+    = optimisticSource
+      && optimisticSource.gameId === gameId
+      && optimisticSource.source !== game.source_type
+      ? (optimisticSource.source as models.Game["source_type"])
+      : game.source_type;
+  // 这个游戏缓存过哪些来源：来源多于一个时才能切换
+  const availableMetadataSources = metadataSources
+    .map(source => source.source_type)
+    .filter(
+      (source, index, list) =>
+        Boolean(source) && list.indexOf(source) === index,
+    );
+
+  const handleSwitchMetadataSource = async (
+    source: models.GameMetadataSource["source_type"],
+  ) => {
+    if (source === currentMetadataSource || switchingSource) {
+      return;
+    }
+    setSwitchingSource(true);
+    try {
+      await SetDefaultMetadataSource(game.id, source);
+      toast.success(
+        t("library.detailSourceSwitched", { source: sourceLabel(source, t) }),
+      );
+      setOptimisticSource({ gameId, source });
+      setMetadataSourceRevision(revision => revision + 1);
+      onMetadataSourceChanged?.();
+    }
+    catch (error) {
+      console.error("Failed to switch metadata source:", error);
+      toast.error(t("library.detailSourceSwitchFailed"));
+    }
+    finally {
+      setSwitchingSource(false);
+    }
+  };
 
   const infoRows = [
     {
@@ -116,6 +207,74 @@ export function LibraryDetailPanel({
           {game.company || t("common.unknownDeveloper")}
           {game.release_date ? ` · ${game.release_date}` : ""}
         </p>
+      </div>
+
+      {/*
+        当前资料源（对齐手机版 detailPanel 顶部的来源徽标）：
+        显示这个游戏现在用的是哪个源，来源多于一个时点开即可切换
+        —— 就是手机版那颗「重新匹配 <源>」。
+      */}
+      <div className="flex min-w-0 shrink-0 items-center gap-2">
+        <span
+          className="i-mdi-database-search shrink-0 text-sm text-primary-600 dark:text-primary-300"
+          aria-hidden="true"
+        />
+        <span className="shrink-0 text-[11px] text-brand-500 dark:text-white/60">
+          {t("library.detailSource")}
+        </span>
+        {availableMetadataSources.length === 0 ? (
+          <span className="min-w-0 flex-1 truncate text-right text-xs text-brand-400 dark:text-white/45">
+            {t("library.detailSourceNone")}
+          </span>
+        ) : (
+          <BetterDropdownMenu
+            align="end"
+            ariaLabel={t("library.detailSourceSwitch")}
+            menuWidth="min-w-[230px]"
+            title={t("library.detailSourceSwitch")}
+            disabled={availableMetadataSources.length <= 1 || switchingSource}
+            items={availableMetadataSources.map(source => ({
+              key: source,
+              label: sourceLabel(source, t),
+              description:
+                source === currentMetadataSource
+                  ? t("library.detailSourceCurrent")
+                  : t("library.detailSourceOther"),
+              iconSrc: getMetadataSourceIcon(source, "compact") ?? undefined,
+              onClick: () => void handleSwitchMetadataSource(source),
+            }))}
+            trigger={(
+              <button
+                type="button"
+                disabled={
+                  availableMetadataSources.length <= 1 || switchingSource
+                }
+                className="ml-auto inline-flex max-w-full items-center gap-1 rounded-full border border-primary-200/70 bg-white/70 px-2 py-0.5 text-[11px] font-semibold text-brand-700 transition-colors hover:bg-white disabled:cursor-default disabled:hover:bg-white/70 dark:border-primary-300/40 dark:bg-[#1D2B3E]/70 dark:text-white/90 dark:hover:bg-[#1D2B3E] dark:disabled:hover:bg-[#1D2B3E]/70"
+              >
+                {getMetadataSourceIcon(currentMetadataSource, "compact") && (
+                  <img
+                    src={getMetadataSourceIcon(
+                      currentMetadataSource,
+                      "compact",
+                    )}
+                    alt=""
+                    className="h-3.5 w-3.5 shrink-0 object-contain"
+                  />
+                )}
+                <span className="truncate">
+                  {sourceLabel(currentMetadataSource, t)
+                    || t("library.detailSourceNone")}
+                </span>
+                {availableMetadataSources.length > 1 && (
+                  <span
+                    className="i-mdi-chevron-down shrink-0 text-xs"
+                    aria-hidden="true"
+                  />
+                )}
+              </button>
+            )}
+          />
+        )}
       </div>
 
       {/* 按钮紧跟标题（对齐手机版：标题 → 按钮 → 简介 → 元信息），不再贴底 */}
