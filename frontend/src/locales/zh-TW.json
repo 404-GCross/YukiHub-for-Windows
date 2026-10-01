@@ -908,10 +908,9 @@
       "bigScreen": "大屏模式",
       "game": "遊玩配置",
       "ai": "AI 配置",
-      "shortcuts": "鍵盤快捷鍵",
-      "syncBackup": "同步與備份",
       "migration": "資料移轉",
-      "aboutUpdate": "關於與更新"
+      "aboutUpdate": "關於與更新",
+      "dataManagement": "資料與備份"
     },
     "about": {
       "appName": "YukiHub for Windows",
@@ -1031,7 +1030,7 @@
       "remoteStatusSyncFailed": "失敗"
     },
     "portableSetup": {
-      "description": "便攜版和 AppImage 需要單獨註冊 yukihub://；可在這裡為目前使用者註冊協議並安裝 yukihubcli，無需系統管理員權限。",
+      "description": "可攜版需要單獨註冊 yukihub://；可在此為目前使用者註冊通訊協定，無需管理員權限。",
       "loading": "正在讀取狀態...",
       "statusLabel": "狀態",
       "protocolTitle": "yukihub:// 協議處理器",
@@ -1041,20 +1040,10 @@
       "registerProtocol": "註冊協議",
       "reregisterProtocol": "重新註冊到目前位置",
       "unregisterProtocol": "取消註冊",
-      "cliTitle": "yukihubcli 命令列工具",
-      "cliHint": "把 yukihubcli 安裝到使用者命令路徑，方便在終端機直接執行 yukihubcli。",
-      "cliPathLabel": "yukihubcli 路徑",
-      "cliInstallPathLabel": "安裝位置",
-      "cliMissingHint": "目前應用套件中找不到 yukihubcli，請確認套件已完整解壓或完整建置。",
-      "registerCli": "加入 PATH",
-      "reregisterCli": "重新加入",
-      "unregisterCli": "從 PATH 移除",
-      "pathReopenHint": "PATH 變更後，已開啟的終端機需要重新啟動才會生效。",
       "status": {
         "registered": "已註冊",
         "notRegistered": "未註冊",
-        "stalePath": "已註冊到舊路徑",
-        "cliMissing": "未找到 yukihubcli"
+        "stalePath": "已註冊到舊路徑"
       },
       "toast": {
         "loadFailed": "讀取狀態失敗：{{error}}",
@@ -1131,19 +1120,23 @@
       "launchTools": "遊戲啟動工具",
       "lePath": "Locale Emulator 路徑",
       "lePathPlaceholder": "選擇 LEProc.exe 檔案路徑",
-      "lePathHint": "設定後可在遊戲編輯介面啟用 Locale Emulator 轉區啟動",
+      "lePathHint": "若已安裝 Locale Emulator，啟動時會自動找到，不需手動填寫；也可以把整個工具目錄放到程式的 compat-tools 裡。設定後可在遊戲編輯介面啟用轉區啟動。",
       "defaultUseLe": "新遊戲預設啟用 Locale Emulator",
       "magpiePath": "Magpie 路徑",
       "magpiePathPlaceholder": "選擇 Magpie.exe 檔案路徑",
-      "magpiePathHint": "設定後可在遊戲編輯介面啟用 Magpie 超解析度縮放啟動",
+      "magpiePathHint": "若已安裝 Magpie，啟動時會自動找到，不需手動填寫；也可以把整個工具目錄放到程式的 compat-tools 裡。設定後可在遊戲編輯介面啟用超解析度縮放啟動。",
       "defaultUseMagpie": "新遊戲預設啟用 Magpie",
       "selectBtn": "選擇",
       "toast": {
         "leSelectFailed": "選擇 Locale Emulator 失敗",
-        "magpieSelectFailed": "選擇 Magpie 失敗"
+        "magpieSelectFailed": "選擇 Magpie 失敗",
+        "detectSuccess": "已找到並填入：{{path}}",
+        "detectNotFound": "沒找到。請把工具放到 {{dir}}，或手動選擇檔案。",
+        "detectFailed": "自動偵測失敗"
       },
       "muteInBackground": "遊戲在後臺時靜音",
-      "muteInBackgroundHint": "啟用後，透過 YukiHub 啟動的遊戲失去前臺焦點時會靜音，返回遊戲時恢復聲音。"
+      "muteInBackgroundHint": "啟用後，透過 YukiHub 啟動的遊戲失去前臺焦點時會靜音，返回遊戲時恢復聲音。",
+      "detectBtn": "自動偵測"
     },
     "metadata": {
       "sourceTitle": "後設資料拉取來源",
@@ -1491,8 +1484,8 @@
       "autoBackupHint": "結束應用或依設定間隔自動備份遊戲存檔與資料庫，並管理本機 / 雲端的保留份數。",
       "dbBackup": "資料庫備份",
       "dbBackupHint": "隨時手動備份一次資料庫，並可在需要時從本機或雲端備份還原。",
-      "portableSetup": "本機整合",
-      "about": "關於與開源授權"
+      "about": "關於與開源授權",
+      "appDataHint": "應用的資料目錄位置，以及匯出日誌以供排查問題。"
     }
   },
   "downloads": {

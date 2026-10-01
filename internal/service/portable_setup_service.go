@@ -36,16 +36,6 @@ type PortableProtocolStatus struct {
 	UpToDate       bool   `json:"upToDate"`
 }
 
-// PortableCLIStatus describes the yukihubcli presence and command registration.
-type PortableCLIStatus struct {
-	Available   bool   `json:"available"`
-	CLIPath     string `json:"cliPath"`
-	CLIDir      string `json:"cliDir"`
-	InstallPath string `json:"installPath"`
-	InstallDir  string `json:"installDir"`
-	Registered  bool   `json:"registered"`
-}
-
 // PortableSetupStatus is the aggregate snapshot consumed by the settings UI.
 type PortableSetupStatus struct {
 	BuildMode      string                 `json:"buildMode"`
@@ -53,10 +43,9 @@ type PortableSetupStatus struct {
 	Platform       string                 `json:"platform"`
 	ExecutablePath string                 `json:"executablePath"`
 	Protocol       PortableProtocolStatus `json:"protocol"`
-	CLI            PortableCLIStatus      `json:"cli"`
 }
 
-// GetStatus returns the portable protocol and yukihubcli registration state.
+// GetStatus returns the portable yukihub:// protocol registration state.
 func (s *PortableSetupService) GetStatus() (PortableSetupStatus, error) {
 	status := PortableSetupStatus{
 		BuildMode:  apputils.GetBuildMode(),
@@ -86,29 +75,6 @@ func (s *PortableSetupService) GetStatus() (PortableSetupStatus, error) {
 	status.Protocol.RegisteredPath = registeredExe
 	status.Protocol.Registered = registeredExe != ""
 	status.Protocol.UpToDate = status.Protocol.Registered && protocolRegistrationMatchesPath(registeredExe, status.ExecutablePath)
-
-	cliExists, cliPath, cliErr := apputils.CLIExists()
-	if cliErr != nil {
-		return status, fmt.Errorf("probe yukihubcli: %w", cliErr)
-	}
-	status.CLI.Available = cliExists
-	status.CLI.CLIPath = cliPath
-	if cliPath != "" {
-		status.CLI.CLIDir = filepath.Dir(cliPath)
-	}
-	installPath, err := apputils.GetCLIInstallPath()
-	if err != nil {
-		return status, fmt.Errorf("resolve yukihubcli install path: %w", err)
-	}
-	status.CLI.InstallPath = installPath
-	if installPath != "" {
-		status.CLI.InstallDir = filepath.Dir(installPath)
-	}
-	registered, err := apputils.IsCLIInstalled()
-	if err != nil {
-		return status, fmt.Errorf("query CLI install status: %w", err)
-	}
-	status.CLI.Registered = registered
 
 	return status, nil
 }
@@ -144,22 +110,6 @@ func (s *PortableSetupService) UnregisterProtocol() (PortableSetupStatus, error)
 	}
 	if err := protocol.UnregisterPortableURLScheme(); err != nil {
 		return PortableSetupStatus{}, fmt.Errorf("unregister portable protocol: %w", err)
-	}
-	return s.GetStatus()
-}
-
-// RegisterCLIPath installs yukihubcli into the current user's command path.
-func (s *PortableSetupService) RegisterCLIPath() (PortableSetupStatus, error) {
-	if _, err := apputils.InstallCLI(); err != nil {
-		return PortableSetupStatus{}, fmt.Errorf("install yukihubcli: %w", err)
-	}
-	return s.GetStatus()
-}
-
-// UnregisterCLIPath removes the yukihubcli registration for the current platform.
-func (s *PortableSetupService) UnregisterCLIPath() (PortableSetupStatus, error) {
-	if _, err := apputils.UninstallCLI(); err != nil {
-		return PortableSetupStatus{}, fmt.Errorf("uninstall yukihubcli: %w", err)
 	}
 	return s.GetStatus()
 }

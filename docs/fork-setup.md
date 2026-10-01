@@ -165,17 +165,14 @@ go build -tags production -trimpath -buildvcs=false \
   -ldflags "$BASE -H windowsgui" -o build/windows/payload/amd64/YukiHub.exe .
 rm -f wails_windows_amd64.syso
 
-# 3. CLI 与独立更新器
+# 3. 独立更新器
 go build -tags production -trimpath -buildvcs=false -ldflags "$BASE" \
-  -o build/windows/payload/amd64/yukihubcli.exe ./cmd/yukihubcli
 go -C updater build -trimpath -buildvcs=false \
   -ldflags "-s -w -H windowsgui" -o "../build/bin/YukiHubUpdater.exe" ./cmd/yukihub-updater
 
 # 4. 运行库
 rm -rf build/bin/7z && mkdir -p build/bin/7z
 cp lib/winamd64/7z/7z.exe lib/winamd64/7z/7z.dll build/bin/7z/
-# project.nsi 还会从 build/bin 取 CLI，手动构建时容易漏
-cp build/windows/payload/amd64/yukihubcli.exe build/bin/yukihubcli.exe
 
 # 5. WebView2 引导器（内嵌在 wails3 二进制里，不需要联网）
 wails3 generate webview2bootstrapper -dir build/windows/webview2bootstrapper
@@ -197,7 +194,7 @@ mv -f build/bin/YukiHub-amd64-installer.exe \
    用 `MSYS2_ARG_CONV_EXCL='*'` 只对这一条命令排除转换。
    **不要**全局 `export MSYS_NO_PATHCONV=1`——那会把传给 node 的 PATH
    也搞坏，导致 `MODULE_NOT_FOUND`。
-2. **`build/bin` 下三样东西都要在**：`YukiHubUpdater.exe`、`yukihubcli.exe`、
-   `7z/{7z.exe,7z.dll}`。CI 上由 `build.bat` 自动准备，手动构建最容易漏 CLI。
+2. **`build/bin` 下两样东西都要在**：`YukiHubUpdater.exe` 与 `7z/{7z.exe,7z.dll}`。
+   CI 上由 `build.bat` 自动准备，手动构建最容易漏。
 3. **`duckdb.dll` 对 amd64 不是必需的**：amd64 走 DuckDB 静态链接，
    `project.nsi` 用 `!if /FileExists` 判断，缺失不会报错。

@@ -5,18 +5,12 @@ import { useTranslation } from "react-i18next";
 
 import {
   GetStatus,
-  RegisterCLIPath,
   RegisterProtocol,
-  UnregisterCLIPath,
   UnregisterProtocol,
 } from "../../../bindings/yukihub/internal/service/portablesetupservice";
 import { BetterButton } from "../ui/better/BetterButton";
 
-type ActionKey
-  = | "registerProtocol"
-    | "unregisterProtocol"
-    | "registerCli"
-    | "unregisterCli";
+type ActionKey = "registerProtocol" | "unregisterProtocol";
 
 export function PortableSetupPanel() {
   const { t } = useTranslation();
@@ -84,7 +78,6 @@ export function PortableSetupPanel() {
   }
 
   const protocolBadge = describeProtocolStatus(status.protocol, t);
-  const cliBadge = describeCLIStatus(status.cli, t);
 
   const handleProtocolRegister = () =>
     run(
@@ -100,21 +93,6 @@ export function PortableSetupPanel() {
       t("settings.portableSetup.toast.protocolUnregistered"),
       "settings.portableSetup.toast.protocolUnregisterFailed",
     );
-  const handleCliRegister = () =>
-    run(
-      "registerCli",
-      RegisterCLIPath,
-      t("settings.portableSetup.toast.cliRegistered"),
-      "settings.portableSetup.toast.cliRegisterFailed",
-    );
-  const handleCliUnregister = () =>
-    run(
-      "unregisterCli",
-      UnregisterCLIPath,
-      t("settings.portableSetup.toast.cliUnregistered"),
-      "settings.portableSetup.toast.cliUnregisterFailed",
-    );
-
   return (
     <div className="space-y-6">
       <p className="text-xs text-brand-500 dark:text-brand-400">
@@ -168,63 +146,6 @@ export function PortableSetupPanel() {
           )}
         </div>
       </div>
-
-      <div className="space-y-2">
-        <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
-          {t("settings.portableSetup.cliTitle")}
-        </label>
-        <p className="text-xs text-brand-500 dark:text-brand-400">
-          {t("settings.portableSetup.cliHint")}
-        </p>
-        <StatusLine
-          label={t("settings.portableSetup.statusLabel")}
-          value={cliBadge.text}
-          tone={cliBadge.tone}
-        />
-        <DetailLine
-          label={t("settings.portableSetup.cliPathLabel")}
-          value={status.cli.cliPath || "-"}
-        />
-        {status.cli.installPath && (
-          <DetailLine
-            label={t("settings.portableSetup.cliInstallPathLabel")}
-            value={status.cli.installPath}
-          />
-        )}
-        {!status.cli.available && (
-          <p className="text-xs text-amber-600 dark:text-amber-400">
-            {t("settings.portableSetup.cliMissingHint")}
-          </p>
-        )}
-        <div className="flex flex-wrap gap-2 pt-1">
-          <BetterButton
-            type="button"
-            variant="primary"
-            icon="i-mdi-console-line"
-            isLoading={busy === "registerCli"}
-            disabled={!status.cli.available}
-            onClick={handleCliRegister}
-          >
-            {status.cli.registered
-              ? t("settings.portableSetup.reregisterCli")
-              : t("settings.portableSetup.registerCli")}
-          </BetterButton>
-          {status.cli.registered && (
-            <BetterButton
-              type="button"
-              variant="secondary"
-              icon="i-mdi-console-line"
-              isLoading={busy === "unregisterCli"}
-              onClick={handleCliUnregister}
-            >
-              {t("settings.portableSetup.unregisterCli")}
-            </BetterButton>
-          )}
-        </div>
-        <p className="text-xs text-brand-500 dark:text-brand-400">
-          {t("settings.portableSetup.pathReopenHint")}
-        </p>
-      </div>
     </div>
   );
 }
@@ -245,25 +166,6 @@ function describeProtocolStatus(
     return { text: t("settings.portableSetup.status.stalePath"), tone: "warn" };
   }
   return { text: t("settings.portableSetup.status.registered"), tone: "ok" };
-}
-
-function describeCLIStatus(
-  cli: service.PortableCLIStatus,
-  t: (key: string) => string,
-): { text: string; tone: Tone } {
-  if (!cli.available) {
-    return {
-      text: t("settings.portableSetup.status.cliMissing"),
-      tone: "warn",
-    };
-  }
-  if (cli.registered) {
-    return { text: t("settings.portableSetup.status.registered"), tone: "ok" };
-  }
-  return {
-    text: t("settings.portableSetup.status.notRegistered"),
-    tone: "off",
-  };
 }
 
 function StatusLine({

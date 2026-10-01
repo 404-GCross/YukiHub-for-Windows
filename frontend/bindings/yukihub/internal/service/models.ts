@@ -12,6 +12,46 @@ import * as enums$0 from "../common/enums/models.js";
 // @ts-ignore: Unused imports
 import * as vo$0 from "../common/vo/models.js";
 
+/**
+ * CompatToolsDetection 是自动检测到的转区 / 超分工具路径。
+ * 
+ * 为什么需要它：这两样都是第三方程序，不能随我们的安装包分发（各自的许可证 +
+ * Magpie 还依赖 .NET 桌面运行时）。所以做成「零配置」——用户装过就自动认出来，
+ * 或者把整个工具目录丢到程序目录下的 compat-tools\ 里也能被认出来。
+ */
+export class CompatToolsDetection {
+    "localeEmulatorPath": string;
+    "magpiePath": string;
+
+    /**
+     * PortableToolsDir 是「把工具丢进这里就能被认出来」的目录，供设置界面提示。
+     */
+    "portableToolsDir": string;
+
+    /** Creates a new CompatToolsDetection instance. */
+    constructor($$source: Partial<CompatToolsDetection> = {}) {
+        if (!("localeEmulatorPath" in $$source)) {
+            this["localeEmulatorPath"] = "";
+        }
+        if (!("magpiePath" in $$source)) {
+            this["magpiePath"] = "";
+        }
+        if (!("portableToolsDir" in $$source)) {
+            this["portableToolsDir"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new CompatToolsDetection instance from a string or object.
+     */
+    static createFrom($$source: any = {}): CompatToolsDetection {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new CompatToolsDetection($$parsedSource as Partial<CompatToolsDetection>);
+    }
+}
+
 export class CoverImageDownloadItem {
     "GameID": string;
     "GameName": string;
@@ -533,50 +573,6 @@ export class LibraryDirectorySelection {
 }
 
 /**
- * PortableCLIStatus describes the yukihubcli presence and command registration.
- */
-export class PortableCLIStatus {
-    "available": boolean;
-    "cliPath": string;
-    "cliDir": string;
-    "installPath": string;
-    "installDir": string;
-    "registered": boolean;
-
-    /** Creates a new PortableCLIStatus instance. */
-    constructor($$source: Partial<PortableCLIStatus> = {}) {
-        if (!("available" in $$source)) {
-            this["available"] = false;
-        }
-        if (!("cliPath" in $$source)) {
-            this["cliPath"] = "";
-        }
-        if (!("cliDir" in $$source)) {
-            this["cliDir"] = "";
-        }
-        if (!("installPath" in $$source)) {
-            this["installPath"] = "";
-        }
-        if (!("installDir" in $$source)) {
-            this["installDir"] = "";
-        }
-        if (!("registered" in $$source)) {
-            this["registered"] = false;
-        }
-
-        Object.assign(this, $$source);
-    }
-
-    /**
-     * Creates a new PortableCLIStatus instance from a string or object.
-     */
-    static createFrom($$source: any = {}): PortableCLIStatus {
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        return new PortableCLIStatus($$parsedSource as Partial<PortableCLIStatus>);
-    }
-}
-
-/**
  * PortableProtocolStatus describes the current yukihub:// scheme binding.
  */
 export class PortableProtocolStatus {
@@ -621,7 +617,6 @@ export class PortableSetupStatus {
     "platform": string;
     "executablePath": string;
     "protocol": PortableProtocolStatus;
-    "cli": PortableCLIStatus;
 
     /** Creates a new PortableSetupStatus instance. */
     constructor($$source: Partial<PortableSetupStatus> = {}) {
@@ -640,9 +635,6 @@ export class PortableSetupStatus {
         if (!("protocol" in $$source)) {
             this["protocol"] = (new PortableProtocolStatus());
         }
-        if (!("cli" in $$source)) {
-            this["cli"] = (new PortableCLIStatus());
-        }
 
         Object.assign(this, $$source);
     }
@@ -652,13 +644,9 @@ export class PortableSetupStatus {
      */
     static createFrom($$source: any = {}): PortableSetupStatus {
         const $$createField4_0 = $$createType8;
-        const $$createField5_0 = $$createType9;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("protocol" in $$parsedSource) {
             $$parsedSource["protocol"] = $$createField4_0($$parsedSource["protocol"]);
-        }
-        if ("cli" in $$parsedSource) {
-            $$parsedSource["cli"] = $$createField5_0($$parsedSource["cli"]);
         }
         return new PortableSetupStatus($$parsedSource as Partial<PortableSetupStatus>);
     }
@@ -778,7 +766,7 @@ export class SteamBatchImportItemResult {
      * Creates a new SteamBatchImportItemResult instance from a string or object.
      */
     static createFrom($$source: any = {}): SteamBatchImportItemResult {
-        const $$createField1_0 = $$createType10;
+        const $$createField1_0 = $$createType9;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("status" in $$parsedSource) {
             $$parsedSource["status"] = $$createField1_0($$parsedSource["status"]);
@@ -819,7 +807,7 @@ export class SteamBatchImportResult {
      * Creates a new SteamBatchImportResult instance from a string or object.
      */
     static createFrom($$source: any = {}): SteamBatchImportResult {
-        const $$createField0_0 = $$createType12;
+        const $$createField0_0 = $$createType11;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("items" in $$parsedSource) {
             $$parsedSource["items"] = $$createField0_0($$parsedSource["items"]);
@@ -852,7 +840,7 @@ export class SteamImportResult {
      * Creates a new SteamImportResult instance from a string or object.
      */
     static createFrom($$source: any = {}): SteamImportResult {
-        const $$createField0_0 = $$createType10;
+        const $$createField0_0 = $$createType9;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("status" in $$parsedSource) {
             $$parsedSource["status"] = $$createField0_0($$parsedSource["status"]);
@@ -1010,7 +998,7 @@ export class UpdateCheckResult {
      */
     static createFrom($$source: any = {}): UpdateCheckResult {
         const $$createField4_0 = $$createType7;
-        const $$createField5_0 = $$createType13;
+        const $$createField5_0 = $$createType12;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("changelog" in $$parsedSource) {
             $$parsedSource["changelog"] = $$createField4_0($$parsedSource["changelog"]);
@@ -1032,8 +1020,7 @@ const $$createType5 = GameLibraryPathChangeItem.createFrom;
 const $$createType6 = $Create.Array($$createType5);
 const $$createType7 = $Create.Array($Create.Any);
 const $$createType8 = PortableProtocolStatus.createFrom;
-const $$createType9 = PortableCLIStatus.createFrom;
-const $$createType10 = SteamLaunchStatus.createFrom;
-const $$createType11 = SteamBatchImportItemResult.createFrom;
-const $$createType12 = $Create.Array($$createType11);
-const $$createType13 = $Create.Map($Create.Any, $Create.Any);
+const $$createType9 = SteamLaunchStatus.createFrom;
+const $$createType10 = SteamBatchImportItemResult.createFrom;
+const $$createType11 = $Create.Array($$createType10);
+const $$createType12 = $Create.Map($Create.Any, $Create.Any);

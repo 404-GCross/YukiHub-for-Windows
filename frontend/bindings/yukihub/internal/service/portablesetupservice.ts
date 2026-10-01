@@ -17,19 +17,10 @@ import { Call as $Call, CancellablePromise as $CancellablePromise, Create as $Cr
 import * as $models from "./models.js";
 
 /**
- * GetStatus returns the portable protocol and yukihubcli registration state.
+ * GetStatus returns the portable yukihub:// protocol registration state.
  */
 export function GetStatus(): $CancellablePromise<$models.PortableSetupStatus> {
     return $Call.ByID(1196311803).then(($result: any) => {
-        return $$createType0($result);
-    });
-}
-
-/**
- * RegisterCLIPath installs yukihubcli into the current user's command path.
- */
-export function RegisterCLIPath(): $CancellablePromise<$models.PortableSetupStatus> {
-    return $Call.ByID(810421819).then(($result: any) => {
         return $$createType0($result);
     });
 }
@@ -40,15 +31,6 @@ export function RegisterCLIPath(): $CancellablePromise<$models.PortableSetupStat
  */
 export function RegisterProtocol(): $CancellablePromise<$models.PortableSetupStatus> {
     return $Call.ByID(854825170).then(($result: any) => {
-        return $$createType0($result);
-    });
-}
-
-/**
- * UnregisterCLIPath removes the yukihubcli registration for the current platform.
- */
-export function UnregisterCLIPath(): $CancellablePromise<$models.PortableSetupStatus> {
-    return $Call.ByID(1590275518).then(($result: any) => {
         return $$createType0($result);
     });
 }

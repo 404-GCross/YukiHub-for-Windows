@@ -1,61 +1,32 @@
+// Package ipcserver 在 GUI 进程里开一个本地 HTTP 端点，供 yukihub:// 协议转发使用。
+//
+// 场景：用户点击 yukihub://install?... / yukihub://launch?... 时如果已经有一个
+// YukiHub 在跑，新起的进程会把请求 POST 到这里（见 internal/ipc/core），
+// 由正在运行的实例处理，而不是再开一份。
+//
+// 历史：这个端点原本还承载 yukihubcli 的 /run（把命令行参数转发给 GUI 执行）。
+// CLI 已下线，端点只剩协议转发需要的 /ping、/install、/launch。
 package ipcserver
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"time"
 	"yukihub/internal/common/vo"
 
 	"yukihub/internal/applog"
-	"yukihub/internal/cli"
+	"yukihub/internal/service"
 	"yukihub/internal/wailsruntime"
 )
 
-// StartServer 启动 IPC 服务器 (在 GUI 进程中运行)
-func StartServer(app *cli.CoreApp, runtime wailsruntime.Runtime) *http.Server {
+// StartServer 启动协议转发端点 (在 GUI 进程中运行)
+func StartServer(ctx context.Context, startService *service.StartService, runtime wailsruntime.Runtime) *http.Server {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("pong"))
-	})
-
-	mux.HandleFunc("/run", func(w http.ResponseWriter, r *http.Request) {
-		defer func() {
-			if r := recover(); r != nil {
-				err := fmt.Errorf("panic in CLI handler: %v", r)
-				applog.LogErrorf(app.Ctx, "%v", err)
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-			}
-		}()
-
-		if r.Method != http.MethodPost {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-
-		var req CommandRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, "Invalid request body", http.StatusBadRequest)
-			return
-		}
-
-		// 捕获输出
-		var outputBuf bytes.Buffer
-		err := cli.RunCommand(&outputBuf, app, req.Args)
-
-		resp := CommandResponse{
-			Output: outputBuf.String(),
-		}
-		if err != nil {
-			resp.Error = err.Error()
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(resp)
 	})
 
 	// /install: 接收来自新启动实例转发的 yukihub:// 安装请求
@@ -89,7 +60,7 @@ func StartServer(app *cli.CoreApp, runtime wailsruntime.Runtime) *http.Server {
 		}
 
 		resp := LaunchResponse{}
-		if err := app.StartService.HandleProtocolLaunch(req); err != nil {
+		if err := startService.HandleProtocolLaunch(req); err != nil {
 			resp.Error = err.Error()
 		} else {
 			resp.Started = true
@@ -101,16 +72,16 @@ func StartServer(app *cli.CoreApp, runtime wailsruntime.Runtime) *http.Server {
 
 	listener, port, err := chooseIPCListener()
 	if err != nil {
-		applog.LogErrorf(app.Ctx, "IPC Server failed to acquire port: %v", err)
+		applog.LogErrorf(ctx, "IPC Server failed to acquire port: %v", err)
 		return nil
 	}
 	savePort(port)
 	server := &http.Server{Handler: mux}
 
-	applog.LogInfof(app.Ctx, "IPC Server starting on %s", listener.Addr().String())
+	applog.LogInfof(ctx, "IPC Server starting on %s", listener.Addr().String())
 	go func() {
 		if err := server.Serve(listener); err != nil && err != http.ErrServerClosed {
-			applog.LogErrorf(app.Ctx, "IPC Server failed: %v", err)
+			applog.LogErrorf(ctx, "IPC Server failed: %v", err)
 		}
 	}()
 

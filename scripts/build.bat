@@ -346,31 +346,19 @@ if exist "!WAILS_SYSO!" del /q "!WAILS_SYSO!"
 if not "!GUI_BUILD_EXIT!"=="0" exit /b !GUI_BUILD_EXIT!
 exit /b 0
 
-:build_cli
-powershell -NoProfile -Command "$ErrorActionPreference = 'Stop'; & go build -tags $env:GO_BUILD_TAGS -trimpath -buildvcs=false -ldflags $env:YUKIHUB_GO_LDFLAGS -o $env:YUKIHUB_GO_OUTPUT ./cmd/yukihubcli; exit $LASTEXITCODE"
-if errorlevel 1 exit /b 1
-exit /b 0
-
 :build_portable
-echo [portable 1/4] Building GUI...
+echo [portable 1/3] Building GUI...
 set "PORTABLE_GUI=build\bin\yukihub-%TARGET_ARCH%-portable.exe"
 set "YUKIHUB_GO_OUTPUT=!PORTABLE_GUI!"
 set "YUKIHUB_GO_LDFLAGS=!LDFLAGS_GUI_PORTABLE!"
 call :build_gui
 if errorlevel 1 exit /b 1
 
-echo [portable 2/4] Building CLI...
-set "PORTABLE_CLI=build\bin\yukihub-cli.exe"
-set "YUKIHUB_GO_OUTPUT=!PORTABLE_CLI!"
-set "YUKIHUB_GO_LDFLAGS=!LDFLAGS_PORTABLE!"
-call :build_cli
-if errorlevel 1 exit /b 1
-
-echo [portable 3/4] Building standalone updater...
+echo [portable 2/3] Building standalone updater...
 call :build_updater
 if errorlevel 1 exit /b 1
 
-echo [portable 4/4] Creating ZIP...
+echo [portable 3/3] Creating ZIP...
 set "PORTABLE_DIR=build\bin\YukiHub-%VERSION%-windows-%TARGET_ARCH%-portable"
 set "PORTABLE_ZIP=!PORTABLE_DIR!.zip"
 if exist "!PORTABLE_DIR!" rmdir /s /q "!PORTABLE_DIR!"
@@ -380,7 +368,6 @@ mkdir "!PORTABLE_DIR!\covers"
 mkdir "!PORTABLE_DIR!\backgrounds"
 mkdir "!PORTABLE_DIR!\logs"
 copy /Y "!PORTABLE_GUI!" "!PORTABLE_DIR!\YukiHub.exe" >nul
-copy /Y "!PORTABLE_CLI!" "!PORTABLE_DIR!\yukihubcli.exe" >nul
 copy /Y "build\bin\YukiHubUpdater.exe" "!PORTABLE_DIR!\YukiHubUpdater.exe" >nul
 if defined DUCKDB_DLL copy /Y "!DUCKDB_DLL!" "!PORTABLE_DIR!\duckdb.dll" >nul
 mkdir "!PORTABLE_DIR!\7z"
@@ -391,15 +378,7 @@ copy /Y "!SEVENZIP_SOURCE_DIR!\7z.dll" "!PORTABLE_DIR!\7z\7z.dll" >nul
 >>"!PORTABLE_DIR!\README.txt" echo.
 >>"!PORTABLE_DIR!\README.txt" echo This package contains:
 >>"!PORTABLE_DIR!\README.txt" echo   - YukiHub.exe  : GUI version ^(double-click to launch^)
->>"!PORTABLE_DIR!\README.txt" echo   - yukihubcli.exe  : CLI version ^(use in a terminal^)
 >>"!PORTABLE_DIR!\README.txt" echo   - YukiHubUpdater.exe : standalone update helper
->>"!PORTABLE_DIR!\README.txt" echo.
->>"!PORTABLE_DIR!\README.txt" echo CLI usage:
->>"!PORTABLE_DIR!\README.txt" echo   yukihubcli list
->>"!PORTABLE_DIR!\README.txt" echo   yukihubcli start ^<game-id^>
->>"!PORTABLE_DIR!\README.txt" echo   yukihubcli protocol register
->>"!PORTABLE_DIR!\README.txt" echo   yukihubcli protocol unregister
->>"!PORTABLE_DIR!\README.txt" echo   yukihubcli help
 
 if exist "!PORTABLE_ZIP!" del /q "!PORTABLE_ZIP!"
 powershell -NoProfile -Command "Compress-Archive -LiteralPath '!PORTABLE_DIR!' -DestinationPath '!PORTABLE_ZIP!' -CompressionLevel Optimal"
@@ -446,13 +425,7 @@ exit /b 0
 
 :build_installer_payload
 if not exist "!WINDOWS_PAYLOAD_DIR!" mkdir "!WINDOWS_PAYLOAD_DIR!"
-echo [installer payload 1/4] Building CLI...
-set "YUKIHUB_GO_OUTPUT=!WINDOWS_PAYLOAD_DIR!\yukihubcli.exe"
-set "YUKIHUB_GO_LDFLAGS=!LDFLAGS_INSTALLER!"
-call :build_cli
-if errorlevel 1 exit /b 1
-
-echo [installer payload 2/4] Building GUI...
+echo [installer payload 1/3] Building GUI...
 set "YUKIHUB_GO_OUTPUT=!WINDOWS_PAYLOAD_DIR!\YukiHub.exe"
 set "YUKIHUB_GO_LDFLAGS=!LDFLAGS_GUI_INSTALLER!"
 call :build_gui
@@ -460,14 +433,14 @@ if errorlevel 1 exit /b 1
 call :prepare_installer_runtime
 if errorlevel 1 exit /b 1
 
-echo [installer payload 3/4] Building standalone updater...
+echo [installer payload 2/3] Building standalone updater...
 call :build_updater
 if errorlevel 1 exit /b 1
 
-echo [installer payload 4/4] Creating signing payload...
+echo [installer payload 3/3] Creating signing payload...
 set "INSTALLER_PAYLOAD_ZIP=build\bin\YukiHub-%VERSION%-windows-%TARGET_ARCH%-installer-payload.zip"
 if exist "!INSTALLER_PAYLOAD_ZIP!" del /q "!INSTALLER_PAYLOAD_ZIP!"
-powershell -NoProfile -Command "$Files = (Join-Path $env:WINDOWS_PAYLOAD_DIR 'YukiHub.exe'), (Join-Path $env:WINDOWS_PAYLOAD_DIR 'yukihubcli.exe'), (Join-Path $PWD 'build\bin\YukiHubUpdater.exe'); Compress-Archive -LiteralPath $Files -DestinationPath '!INSTALLER_PAYLOAD_ZIP!' -CompressionLevel Optimal"
+powershell -NoProfile -Command "$Files = (Join-Path $env:WINDOWS_PAYLOAD_DIR 'YukiHub.exe'), (Join-Path $PWD 'build\bin\YukiHubUpdater.exe'); Compress-Archive -LiteralPath $Files -DestinationPath '!INSTALLER_PAYLOAD_ZIP!' -CompressionLevel Optimal"
 if errorlevel 1 exit /b 1
 echo Created: !INSTALLER_PAYLOAD_ZIP!
 echo.

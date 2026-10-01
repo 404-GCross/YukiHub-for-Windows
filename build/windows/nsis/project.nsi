@@ -71,7 +71,6 @@ ${UnStrRep}
 # !insertmacro MUI_PAGE_LICENSE "resources\eula.txt" # Adds a EULA page to the installer
 !define MUI_PAGE_CUSTOMFUNCTION_PRE skip_directory_page
 !insertmacro MUI_PAGE_DIRECTORY # In which folder install page.
-Page custom ShowCLIOptions ValidateCLIOptions # CLI 选项页面
 !insertmacro MUI_PAGE_INSTFILES # Installing page.
 !insertmacro MUI_PAGE_FINISH # Finished installation page.
 
@@ -97,40 +96,15 @@ Var IS_UPDATE
 Var UN_DELETE_USERDATA
 # Variable to store whether to install CLI and add to PATH
 Var INSTALL_CLI_TO_PATH
-# Variable to store the checkbox handle
-Var CHECKBOX_CLI
-
 Function .onInit
    !insertmacro wails.checkArchitecture
 
    # Initialize update flag
    StrCpy $IS_UPDATE "0"
 
-   # Initialize CLI installation flag
-   # Check registry to see if CLI was installed in previous version
-   SetRegView 64
-   ReadRegStr $0 HKLM "${UNINST_KEY}" "CLIInstalled"
-   ${If} $0 == "1"
-       # Was installed before (registry flag), keep it during update
-       StrCpy $INSTALL_CLI_TO_PATH "1"
-   ${ElseIf} $0 == "0"
-       # Was explicitly NOT installed before, keep it that way
-       StrCpy $INSTALL_CLI_TO_PATH "0"
-   ${Else}
-       # Registry flag not found (maybe older version or first install)
-       # Check if yukihubcli.exe exists in the target directory
-       # Need to find install location first
-       ReadRegStr $1 HKLM "${UNINST_KEY}" "InstallLocation"
-       ${If} $1 != ""
-           IfFileExists "$1\yukihubcli.exe" 0 +3
-               StrCpy $INSTALL_CLI_TO_PATH "1"
-               Goto cli_check_done
-       ${EndIf}
-       
-       # Default to checked for fresh install
-       StrCpy $INSTALL_CLI_TO_PATH "1"
-       cli_check_done:
-   ${EndIf}
+   # 命令行工具（yukihubcli）已下线：不再随安装包分发，也不再写入 PATH。
+   # 安装段/卸载段里按这个标志位的既有逻辑保留，用于升级时清理旧版本留下的 PATH 项。
+   StrCpy $INSTALL_CLI_TO_PATH "0"
 
    # Check if old version is installed FIRST (before process check)
    SetRegView 64
@@ -226,46 +200,6 @@ FunctionEnd
 Function skip_directory_page
    ${If} $IS_UPDATE == "1"
       Abort
-   ${EndIf}
-FunctionEnd
-
-# Show CLI installation options page
-Function ShowCLIOptions
-   # Skip in silent mode
-   IfSilent 0 +2
-      Abort
-
-   !insertmacro MUI_HEADER_TEXT "命令行工具" "选择是否安装命令行支持"
-
-   nsDialogs::Create 1018
-   Pop $0
-
-   ${NSD_CreateLabel} 0 0 100% 50u "YukiHub 提供命令行工具 (CLI) 支持，您可以在终端中使用 'yukihubcli' 命令来启动和管理游戏。"
-   Pop $0
-
-   ${NSD_CreateCheckbox} 15 65u 100% 15u "安装命令行工具 (CLI) 并添加到 PATH (推荐)"
-   Pop $CHECKBOX_CLI
-   
-   # Set initial state based on $INSTALL_CLI_TO_PATH
-   ${If} $INSTALL_CLI_TO_PATH == "1"
-      ${NSD_SetState} $CHECKBOX_CLI ${BST_CHECKED}
-   ${Else}
-      ${NSD_SetState} $CHECKBOX_CLI ${BST_UNCHECKED}
-   ${EndIf}
-
-   ${NSD_CreateLabel} 30 85u 100% 20u "注意：添加到 PATH 后，您可以在任何位置的终端中直接使用 'yukihubcli' 命令。"
-   Pop $0
-
-   nsDialogs::Show
-FunctionEnd
-
-# Validate CLI options (save the checkbox state)
-Function ValidateCLIOptions
-   ${NSD_GetState} $CHECKBOX_CLI $0
-   ${If} $0 == ${BST_CHECKED}
-      StrCpy $INSTALL_CLI_TO_PATH "1"
-   ${Else}
-      StrCpy $INSTALL_CLI_TO_PATH "0"
    ${EndIf}
 FunctionEnd
 
@@ -467,11 +401,9 @@ Section
         SetOutPath $INSTDIR
     !endif
 
-    # Install CLI version and add to PATH only if user selected it
+    # 命令行工具已下线：$INSTALL_CLI_TO_PATH 恒为 0，这一段只作为
+    # 「旧版本装过 CLI 时清 PATH」的兼容代码保留。
     ${If} $INSTALL_CLI_TO_PATH == "1"
-        # Install CLI version (yukihubcli.exe) for command-line usage
-        File "..\..\bin\yukihubcli.exe"
-
         # Add install directory to system PATH (for CLI usage)
         Call AddInstallDirToPath
         # Broadcast WM_SETTINGCHANGE to notify of PATH change

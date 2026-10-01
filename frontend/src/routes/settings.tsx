@@ -19,7 +19,6 @@ import { FullDataBackupPanel } from "../components/panel/FullDataBackupPanel";
 import { GameSettingsPanel } from "../components/panel/GameSettingsPanel";
 import { MetadataSettingsPanel } from "../components/panel/MetadataSettingsPanel";
 import { PortableSetupPanel } from "../components/panel/PortableSetupPanel";
-import { ShortcutsSettingsPanel } from "../components/panel/ShortcutsSettingsPanel";
 import { UpdateSettingsPanel } from "../components/panel/UpdateSettingsPanel";
 import { SettingsSkeleton } from "../components/skeleton/SettingsSkeleton";
 import { CollapsibleSection } from "../components/ui/CollapsibleSection";
@@ -235,22 +234,15 @@ function SettingsPage() {
           />
         </CollapsibleSection>
 
-        <CollapsibleSection
-          title={t("settings.sections.shortcuts")}
-          icon="i-mdi-keyboard-outline"
-          defaultOpen={false}
-        >
-          <ShortcutsSettingsPanel />
-        </CollapsibleSection>
-
         {/*
-          备份相关的四个顶层分区（云配置 / 同步与备份 / 数据库备份 / 全量数据备份）
-          合并成两个，对齐手机版的「同步中心 + 数据迁移」：
-          用户不用再猜「我到底该点哪一个来备份」。
+          所有「我的数据」相关的东西都收在这一个分区里：云端、自动备份、
+          数据库备份、导入导出、数据目录与日志。
+          原本它们分成四个顶层分区（云配置 / 同步与备份 / 数据库备份 /
+          全量数据备份 / 应用数据），用户根本分不清该点哪个。
         */}
         <CollapsibleSection
-          title={t("settings.sections.syncBackup")}
-          icon="i-mdi-backup-restore"
+          title={t("settings.sections.dataManagement")}
+          icon="i-mdi-database-cog-outline"
           defaultOpen={false}
         >
           <SettingsSubSection
@@ -284,14 +276,24 @@ function SettingsPage() {
           >
             <DBBackupPanel />
           </SettingsSubSection>
-        </CollapsibleSection>
 
-        <CollapsibleSection
-          title={t("settings.sections.migration")}
-          icon="i-mdi-package-variant"
-          defaultOpen={false}
-        >
-          <FullDataBackupPanel />
+          <SettingsSubSection
+            title={t("settings.sections.migration")}
+            icon="i-mdi-package-variant"
+          >
+            <FullDataBackupPanel />
+          </SettingsSubSection>
+
+          <SettingsSubSection
+            title={t("settings.sections.appData")}
+            hint={t("settings.subSections.appDataHint")}
+            icon="i-mdi-folder-cog-outline"
+          >
+            <AppDataSettingsPanel />
+            {["portable", "appimage"].includes(
+              versionInfo?.buildMode ?? "",
+            ) && <PortableSetupPanel />}
+          </SettingsSubSection>
         </CollapsibleSection>
 
         <CollapsibleSection
@@ -303,22 +305,6 @@ function SettingsPage() {
             formData={draftConfig}
             onChange={handleDraftChange}
           />
-        </CollapsibleSection>
-
-        <CollapsibleSection
-          title={t("settings.sections.appData")}
-          icon="i-mdi-folder-cog-outline"
-          defaultOpen={false}
-        >
-          <AppDataSettingsPanel />
-          {["portable", "appimage"].includes(versionInfo?.buildMode ?? "") && (
-            <SettingsSubSection
-              title={t("settings.subSections.portableSetup")}
-              icon="i-mdi-toolbox-outline"
-            >
-              <PortableSetupPanel />
-            </SettingsSubSection>
-          )}
         </CollapsibleSection>
 
         <CollapsibleSection

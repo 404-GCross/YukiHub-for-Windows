@@ -55,6 +55,7 @@ export {
 };
 
 export {
+    CompatToolsDetection,
     CoverImageDownloadItem,
     DownloadStatus,
     DownloadTask,
@@ -67,7 +68,6 @@ export {
     GameLibraryPathChangeResult,
     ImportResult,
     LibraryDirectorySelection,
-    PortableCLIStatus,
     PortableProtocolStatus,
     PortableSetupStatus,
     PreviewGame,

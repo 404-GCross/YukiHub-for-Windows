@@ -10,7 +10,7 @@ YukiHub 使用独立的 `YukiHubUpdater.exe` 完成伪应用内更新，不依�
 - `YukiHubUpdater.exe prepare` 在 YukiHub 运行时重建并验证新文件，不修改应用目录。
 - `YukiHubUpdater.exe commit` 等待 YukiHub 退出，再事务性替换发生变化的文件并重启应用。
 - 只为上一稳定版本的 `YukiHub.exe` 生成 Zstandard dictionary patch（`.zsdiff`）。源版本或源 SHA-256 不完全匹配时直接选择完整 `.zst`。
-- CLI、updater、7z 和 DuckDB 不做 patch；它们未变化时不下载，变化时使用各自的完整 `.zst`。
+- updater、7z 和 DuckDB 不做 patch；它们未变化时不下载，变化时使用各自的完整 `.zst`。
 - patch 重建或验证失败时，YukiHub 保持运行并下载 `YukiHub.exe` 的完整 `.zst` 后重新 prepare。
 
 发布清单包含四个独立 channel：
@@ -26,9 +26,9 @@ windows-arm64-installer
 
 - 清单和每个下载产物必须使用 HTTPS，并记录大小和 SHA-256。
 - prepare 标记绑定完整 task；prepare 后修改路径、哈希、重启参数等都会使 commit 拒绝执行。
-- `YukiHub.exe`、`YukiHubUpdater.exe` 和 `yukihubcli.exe` 在替换前通过 Windows Authenticode 校验。
+- `YukiHub.exe` 与 `YukiHubUpdater.exe` 在替换前通过 Windows Authenticode 校验。
 - updater 只允许修改代码内列出的运行时文件，拒绝绝对路径、目录穿越和任意数据文件。
-- 每次替换都有 journal 和备份。文件被 CLI/7z 等进程短暂锁定时会在 10 秒内重试，仍无法替换则按逆序回滚，但不会强杀用户进程；YukiHub 尚未退出时发生的验证/等待错误不会启动第二个实例，回滚本身失败时也不会冒险启动混合版本。
+- 每次替换都有 journal 和备份。文件被 7z 等进程短暂锁定时会在 10 秒内重试，仍无法替换则按逆序回滚，但不会强杀用户进程；YukiHub 尚未退出时发生的验证/等待错误不会启动第二个实例，回滚本身失败时也不会冒险启动混合版本。
 - 安装版 commit 通过 UAC 提权，仅更新文件和卸载项中的 `DisplayVersion`，不会重建 NSIS uninstaller。
 - `duckdb.dll` 和 `7z.dll` 本身没有 YukiHub Authenticode 校验，其真实性依赖更新清单、S3 发布凭据和发布任务权限。自定义更新源的维护者需要承担同等的发布安全责任。
 
@@ -38,7 +38,6 @@ windows-arm64-installer
 
 ```text
 YukiHub.exe
-yukihubcli.exe
 YukiHubUpdater.exe
 ```
 

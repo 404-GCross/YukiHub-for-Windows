@@ -175,7 +175,7 @@ jobs:
 
           $SigningDir = 'build/signing/test-portable-payload'
           New-Item -ItemType Directory -Force -Path $SigningDir | Out-Null
-          foreach ($Name in @('YukiHub.exe', 'yukihubcli.exe', 'YukiHubUpdater.exe')) {
+          foreach ($Name in @('YukiHub.exe', 'YukiHubUpdater.exe')) {
             $Source = Join-Path $PayloadDir $Name
             if (!(Test-Path -LiteralPath $Source)) {
               throw "Portable artifact is missing $Name."
@@ -199,8 +199,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
           $PayloadDir = 'build/windows/payload/${{ matrix.arch }}'
-          if (!(Test-Path -LiteralPath "$PayloadDir/YukiHub.exe") -or !(Test-Path -LiteralPath "$PayloadDir/yukihubcli.exe") -or !(Test-Path -LiteralPath 'build/bin/YukiHubUpdater.exe')) {
-            throw 'Installer payload must contain YukiHub.exe, yukihubcli.exe, and YukiHubUpdater.exe.'
+          if (!(Test-Path -LiteralPath "$PayloadDir/YukiHub.exe") -or !(Test-Path -LiteralPath 'build/bin/YukiHubUpdater.exe')) {
+            throw 'Installer payload must contain YukiHub.exe and YukiHubUpdater.exe.'
           }
 
           $SigningDir = 'build/signing/test-installer-payload'
@@ -209,7 +209,6 @@ jobs:
           }
           New-Item -ItemType Directory -Force -Path $SigningDir | Out-Null
           Copy-Item -LiteralPath "$PayloadDir/YukiHub.exe" -Destination $SigningDir -Force
-          Copy-Item -LiteralPath "$PayloadDir/yukihubcli.exe" -Destination $SigningDir -Force
           Copy-Item -LiteralPath 'build/bin/YukiHubUpdater.exe' -Destination $SigningDir -Force
 
       - name: Upload unsigned portable artifact
@@ -243,7 +242,7 @@ jobs:
           $ErrorActionPreference = 'Stop'
           $UnsignedArtifact = 'build/bin/YukiHub-${{ needs.prepare.outputs.version }}-windows-${{ matrix.arch }}-portable.zip'
           $SignedPayloadDir = 'signed-portable-payload'
-          foreach ($Name in @('YukiHub.exe', 'yukihubcli.exe', 'YukiHubUpdater.exe')) {
+          foreach ($Name in @('YukiHub.exe', 'YukiHubUpdater.exe')) {
             $SignedFile = Join-Path $SignedPayloadDir $Name
             if (!(Test-Path -LiteralPath $SignedFile)) {
               Get-ChildItem -Path $SignedPayloadDir -Recurse | ForEach-Object { Write-Host $_.FullName }
@@ -262,7 +261,7 @@ jobs:
           if ([string]::IsNullOrWhiteSpace($PayloadDir)) {
             throw 'Portable artifact does not contain YukiHub.exe.'
           }
-          foreach ($Name in @('YukiHub.exe', 'yukihubcli.exe', 'YukiHubUpdater.exe')) {
+          foreach ($Name in @('YukiHub.exe', 'YukiHubUpdater.exe')) {
             Copy-Item -LiteralPath (Join-Path $SignedPayloadDir $Name) -Destination $PayloadDir -Force
           }
 
@@ -274,7 +273,7 @@ jobs:
           $RuntimeDir = Join-Path $PWD 'update-runtime'
           if (Test-Path $RuntimeDir) { Remove-Item $RuntimeDir -Recurse -Force }
           New-Item -ItemType Directory -Force -Path $RuntimeDir | Out-Null
-          foreach ($Name in @('YukiHub.exe', 'yukihubcli.exe', 'YukiHubUpdater.exe', 'duckdb.dll')) {
+          foreach ($Name in @('YukiHub.exe', 'YukiHubUpdater.exe', 'duckdb.dll')) {
             $Source = Join-Path $PayloadDir $Name
             if (Test-Path $Source) { Copy-Item $Source -Destination $RuntimeDir -Force }
           }
@@ -320,11 +319,10 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           $SignedGui = 'signed-payload/YukiHub.exe'
-          $SignedCli = 'signed-payload/yukihubcli.exe'
           $SignedUpdater = 'signed-payload/YukiHubUpdater.exe'
           if (!(Test-Path -LiteralPath $SignedGui) -or !(Test-Path -LiteralPath $SignedCli) -or !(Test-Path -LiteralPath $SignedUpdater)) {
             Get-ChildItem -Path signed-payload -Recurse | ForEach-Object { Write-Host $_.FullName }
-            throw 'Signed installer payload must contain YukiHub.exe, yukihubcli.exe, and YukiHubUpdater.exe.'
+            throw 'Signed installer payload must contain YukiHub.exe and YukiHubUpdater.exe.'
           }
           foreach ($Path in @($SignedGui, $SignedCli, $SignedUpdater)) {
             $Signature = Get-AuthenticodeSignature $Path
@@ -335,7 +333,6 @@ jobs:
 
           $PayloadDir = 'build/windows/payload/${{ matrix.arch }}'
           Copy-Item -LiteralPath $SignedGui -Destination "$PayloadDir/YukiHub.exe" -Force
-          Copy-Item -LiteralPath $SignedCli -Destination "$PayloadDir/yukihubcli.exe" -Force
           Copy-Item -LiteralPath $SignedUpdater -Destination 'build/bin/YukiHubUpdater.exe' -Force
 
           .\scripts\build.bat installer-package '${{ needs.prepare.outputs.version }}' '${{ matrix.arch }}'
@@ -354,7 +351,7 @@ jobs:
             $Source = Join-Path "build/bin" $Name
             if (Test-Path $Source) { Copy-Item $Source -Destination $RuntimeDir -Force }
           }
-          foreach ($Name in @("YukiHub.exe", "yukihubcli.exe")) {
+          foreach ($Name in @("YukiHub.exe")) {
             $Source = Join-Path $PayloadDir $Name
             if (Test-Path $Source) { Copy-Item $Source -Destination $RuntimeDir -Force }
           }

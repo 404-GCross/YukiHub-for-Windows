@@ -1,3 +1,11 @@
+// Package ipccore 是 yukihub:// 协议转发的客户端侧。
+//
+// 用途：用户点击 yukihub:// 链接时可能已经有一个 YukiHub 在跑，这时新起的
+// 进程必须把请求交给那个进程（IPC 通道），而不是自己再开一份。
+// 服务端在 internal/ipc/server。
+//
+// 历史：这里原本还带着一整套 yukihubcli 命令行工具（/run 端点、命令执行、
+// cobra 命令树）。CLI 已下线，只保留协议转发真正需要的那部分。
 package ipccore
 
 import (
@@ -15,15 +23,6 @@ const (
 	Port        = 56789
 	PingTimeout = 500 * time.Millisecond
 )
-
-type CommandRequest struct {
-	Args []string `json:"args"`
-}
-
-type CommandResponse struct {
-	Output string `json:"output"`
-	Error  string `json:"error,omitempty"`
-}
 
 type endpointInfo struct {
 	Port int `json:"port"`
@@ -149,37 +148,6 @@ func RemoteLaunch(req interface{}) error {
 	}
 
 	return nil
-}
-
-func RemoteRun(args []string) (string, error) {
-	serverURL, ok := findRunningServerURL()
-	if !ok {
-		return "", fmt.Errorf("failed to connect to server: IPC server not running")
-	}
-
-	reqBody := CommandRequest{Args: args}
-	jsonBody, _ := json.Marshal(reqBody)
-
-	resp, err := http.Post(serverURL+"/run", "application/json", bytes.NewReader(jsonBody))
-	if err != nil {
-		return "", fmt.Errorf("failed to connect to server: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("server returned error status: %d", resp.StatusCode)
-	}
-
-	var cmdResp CommandResponse
-	if err := json.NewDecoder(resp.Body).Decode(&cmdResp); err != nil {
-		return "", fmt.Errorf("failed to decode response: %w", err)
-	}
-
-	if cmdResp.Error != "" {
-		return cmdResp.Output, fmt.Errorf("%s", cmdResp.Error)
-	}
-
-	return cmdResp.Output, nil
 }
 
 type LaunchResponse struct {

@@ -40,7 +40,7 @@ YukiHub for Windows 是 YukiHub 项目的 Windows 桌面版本。
    - 应用标识 `io.github.saramanda9988.lunabox` → `com.yukihub.desktop`
    - URL 协议 `lunabox://` → `yukihub://`
    - 数据目录 / 数据库 `LunaBox`、`lunabox.db` → `YukiHub`、`yukihub.db`
-   - CLI 名称 `lunacli` → `yukihubcli`；更新器命令 `lunabox-updater` / `lunabox-update-builder`
+   - 更新器命令 `lunabox-updater` / `lunabox-update-builder`
      → `yukihub-updater` / `yukihub-update-builder`
    - 前端工作区包 `@lunabox/desktop-shell-*` → `@yukihub/desktop-shell-*`，
      Wails 生成绑定路径 `frontend/bindings/lunabox/` → `frontend/bindings/yukihub/`

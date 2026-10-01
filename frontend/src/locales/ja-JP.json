@@ -908,10 +908,9 @@
       "bigScreen": "大画面モード",
       "game": "ゲーム設定",
       "ai": "AI 設定",
-      "shortcuts": "キーボードショートカット",
-      "syncBackup": "同期とバックアップ",
       "migration": "データ移行",
-      "aboutUpdate": "このアプリと更新"
+      "aboutUpdate": "このアプリと更新",
+      "dataManagement": "データとバックアップ"
     },
     "about": {
       "appName": "YukiHub for Windows",
@@ -1031,7 +1030,7 @@
       "remoteStatusSyncFailed": "失敗"
     },
     "portableSetup": {
-      "description": "ポータブル版と AppImage では yukihub:// を個別に登録する必要があります。ここから現在のユーザー用に登録し、管理者権限なしで yukihubcli をインストールできます。",
+      "description": "ポータブル版は yukihub:// を個別に登録する必要があります。ここで現在のユーザー向けに登録できます（管理者権限は不要）。",
       "loading": "状態を読み込み中...",
       "statusLabel": "状態",
       "protocolTitle": "yukihub:// プロトコルハンドラー",
@@ -1041,20 +1040,10 @@
       "registerProtocol": "プロトコルを登録",
       "reregisterProtocol": "現在の場所に再登録",
       "unregisterProtocol": "登録を解除",
-      "cliTitle": "yukihubcli コマンドラインツール",
-      "cliHint": "yukihubcli をユーザーのコマンドパスにインストールし、ターミナルから直接実行できるようにします。",
-      "cliPathLabel": "yukihubcli のパス",
-      "cliInstallPathLabel": "インストール先",
-      "cliMissingHint": "現在のアプリパッケージ内に yukihubcli が見つかりません。パッケージが完全に展開またはビルドされていることを確認してください。",
-      "registerCli": "PATH に追加",
-      "reregisterCli": "再追加",
-      "unregisterCli": "PATH から削除",
-      "pathReopenHint": "PATH の変更はこの後に開くターミナルにのみ反映されます。",
       "status": {
         "registered": "登録済み",
         "notRegistered": "未登録",
-        "stalePath": "以前の場所に登録されています",
-        "cliMissing": "yukihubcli が見つかりません"
+        "stalePath": "以前の場所に登録されています"
       },
       "toast": {
         "loadFailed": "状態の読み込みに失敗しました：{{error}}",
@@ -1131,19 +1120,23 @@
       "launchTools": "ゲーム起動ツール",
       "lePath": "Locale Emulator パス",
       "lePathPlaceholder": "LEProc.exe のパスを選択",
-      "lePathHint": "設定後、ゲーム編集画面で Locale Emulator のロケール切替起動を有効化できます",
+      "lePathHint": "Locale Emulator をインストール済みなら起動時に自動で見つかるため、パスの入力は不要です。ツールのフォルダをアプリの compat-tools に置いても認識します。設定するとゲーム編集画面で転区起動を選べます。",
       "defaultUseLe": "新しいゲームで Locale Emulator を有効化",
       "magpiePath": "Magpie パス",
       "magpiePathPlaceholder": "Magpie.exe のパスを選択",
-      "magpiePathHint": "設定後、ゲーム編集画面で Magpie の超解像スケーリング起動を有効化できます",
+      "magpiePathHint": "Magpie をインストール済みなら起動時に自動で見つかるため、パスの入力は不要です。ツールのフォルダをアプリの compat-tools に置いても認識します。設定するとゲーム編集画面で超解像スケーリングを選べます。",
       "defaultUseMagpie": "新しいゲームで Magpie を有効化",
       "selectBtn": "選択",
       "toast": {
         "leSelectFailed": "Locale Emulator の選択に失敗しました",
-        "magpieSelectFailed": "Magpie の選択に失敗しました"
+        "magpieSelectFailed": "Magpie の選択に失敗しました",
+        "detectSuccess": "見つけて入力しました：{{path}}",
+        "detectNotFound": "見つかりませんでした。{{dir}} に置くか、手動でファイルを選択してください。",
+        "detectFailed": "自動検出に失敗しました"
       },
       "muteInBackground": "バックグラウンドのゲームをミュート",
-      "muteInBackgroundHint": "YukiHub から起動したゲームが前面のフォーカスを失うとミュートし、ゲームに戻ると音声を復元します。"
+      "muteInBackgroundHint": "YukiHub から起動したゲームが前面のフォーカスを失うとミュートし、ゲームに戻ると音声を復元します。",
+      "detectBtn": "自動検出"
     },
     "metadata": {
       "sourceTitle": "メタデータ取得ソース",
@@ -1491,8 +1484,8 @@
       "autoBackupHint": "終了時または指定間隔でセーブデータとデータベースを自動バックアップし、ローカル / クラウドの保持数を管理します。",
       "dbBackup": "データベースのバックアップ",
       "dbBackupHint": "いつでも手動でデータベースをバックアップし、必要に応じてローカルまたはクラウドのバックアップから復元できます。",
-      "portableSetup": "ローカル連携",
-      "about": "このアプリとライセンス"
+      "about": "このアプリとライセンス",
+      "appDataHint": "アプリのデータ保存先と、問題調査用のログ書き出し。"
     }
   },
   "downloads": {

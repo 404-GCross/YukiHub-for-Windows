@@ -1,7 +1,10 @@
 import type { appconf } from "../../../src/bindings/models";
 import { toast } from "react-hot-toast";
 import { useTranslation } from "react-i18next";
-import { SelectGameExecutable } from "../../../bindings/yukihub/internal/service/gameservice";
+import {
+  DetectCompatTools,
+  SelectGameExecutable,
+} from "../../../bindings/yukihub/internal/service/gameservice";
 import { BetterActionInput } from "../ui/better/BetterActionInput";
 import { BetterSelect } from "../ui/better/BetterSelect";
 import { BetterSwitch } from "../ui/better/BetterSwitch";
@@ -44,6 +47,39 @@ export function GameSettingsPanel({
     catch (error) {
       console.error("Failed to select Locale Emulator:", error);
       toast.error(t("settings.game.toast.leSelectFailed"));
+    }
+  };
+
+  /**
+   * 自动检测转区 / 超分工具。
+   *
+   * 后端在启动时已经自动找过一遍并写进配置，这里只是给「装了新工具但没重启」
+   * 的情况留一个手动触发口，顺带告诉用户没找到时该把工具放哪里。
+   */
+  const handleDetectCompatTools = async (kind: "le" | "magpie") => {
+    try {
+      const detected = await DetectCompatTools();
+      const found
+        = kind === "le" ? detected.localeEmulatorPath : detected.magpiePath;
+      if (!found) {
+        toast.error(
+          t("settings.game.toast.detectNotFound", {
+            dir: detected.portableToolsDir || "compat-tools",
+          }),
+        );
+        return;
+      }
+      onChange({
+        ...formData,
+        ...(kind === "le"
+          ? { locale_emulator_path: found }
+          : { magpie_path: found }),
+      } as appconf.AppConfig);
+      toast.success(t("settings.game.toast.detectSuccess", { path: found }));
+    }
+    catch (error) {
+      console.error("Failed to detect compat tools:", error);
+      toast.error(t("settings.game.toast.detectFailed"));
     }
   };
 
@@ -162,6 +198,11 @@ export function GameSettingsPanel({
               placeholder={t("settings.game.lePathPlaceholder")}
               actions={[
                 {
+                  ariaLabel: t("settings.game.detectBtn"),
+                  icon: "i-mdi-magnify-scan",
+                  onClick: () => void handleDetectCompatTools("le"),
+                },
+                {
                   ariaLabel: t("settings.game.selectBtn"),
                   icon: "i-mdi-file-search-outline",
                   onClick: handleSelectLocaleEmulatorPath,
@@ -202,6 +243,11 @@ export function GameSettingsPanel({
                 } as appconf.AppConfig)}
               placeholder={t("settings.game.magpiePathPlaceholder")}
               actions={[
+                {
+                  ariaLabel: t("settings.game.detectBtn"),
+                  icon: "i-mdi-magnify-scan",
+                  onClick: () => void handleDetectCompatTools("magpie"),
+                },
                 {
                   ariaLabel: t("settings.game.selectBtn"),
                   icon: "i-mdi-file-search-outline",

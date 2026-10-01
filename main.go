@@ -18,10 +18,9 @@ import (
 	"sync/atomic"
 	"time"
 	"yukihub/internal/applog"
-	"yukihub/internal/cli"
-	"yukihub/internal/cli/ipcclient"
-	"yukihub/internal/cli/ipcserver"
 	"yukihub/internal/common/vo"
+	ipccore "yukihub/internal/ipc/core"
+	ipcserver "yukihub/internal/ipc/server"
 	"yukihub/internal/migrations"
 	"yukihub/internal/platform"
 	"yukihub/internal/protocol"
@@ -350,9 +349,9 @@ func forwardProtocolRequestToRunningInstance(req *pendingProtocolRequest) error 
 	case req == nil:
 		return nil
 	case req.install != nil:
-		return ipcclient.RemoteInstall(req.install)
+		return ipccore.RemoteInstall(req.install)
 	case req.launch != nil:
-		return ipcclient.RemoteLaunch(req.launch)
+		return ipccore.RemoteLaunch(req.launch)
 	default:
 		return fmt.Errorf("unsupported protocol request: %s", req.rawURL)
 	}
@@ -456,7 +455,7 @@ func main() {
 			fmt.Fprintf(os.Stderr, "Error parsing protocol URL: %v\n", err)
 			os.Exit(1)
 		}
-		if ipcclient.IsServerRunning() {
+		if ipccore.IsServerRunning() {
 			if err := forwardProtocolRequestToRunningInstance(req); err != nil {
 				appLogger.Error("failed to forward protocol request to running instance: " + err.Error())
 				fmt.Fprintf(os.Stderr, "Error forwarding protocol request to YukiHub: %v\n", err)
@@ -989,12 +988,8 @@ func runGUI(
 		if err := mcpServerService.ApplyConfig(*config); err != nil {
 			appLogger.Error("failed to apply MCP server config: " + err.Error())
 		}
-		cliApp := &cli.CoreApp{
-			Config: config, DB: db, Ctx: ctx, GameService: gameService,
-			StartService: startService, SessionService: sessionService,
-			BackupService: backupService, VersionService: versionService,
-		}
-		ipcHTTPServer = ipcserver.StartServer(cliApp, guiRuntime)
+		// 只为 yukihub:// 协议转发保留的本地端点（CLI 已下线）
+		ipcHTTPServer = ipcserver.StartServer(ctx, startService, guiRuntime)
 		if shouldRunAutomaticCloudSync(config) {
 			cloudSyncService.RunStartupSync()
 		}
@@ -1012,6 +1007,10 @@ func runGUI(
 			return fmt.Errorf("读取应用配置失败: %w", err)
 		}
 		config = loadedConfig
+
+		// 转区 / 超分工具不随包分发（第三方，各自有许可证，Magpie 还要 .NET 运行时），
+		// 所以启动时自动找一遍：用户装过就直接认出来，不用自己去设置里挑路径。
+		service.ApplyDetectedCompatTools(config)
 
 		if config.PendingFullRestore != "" || config.PendingDBRestore != "" {
 		}

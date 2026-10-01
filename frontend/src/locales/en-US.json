@@ -908,10 +908,9 @@
       "bigScreen": "Big Screen Mode",
       "game": "Game Settings",
       "ai": "AI Configuration",
-      "shortcuts": "Keyboard Shortcuts",
-      "syncBackup": "Sync & backup",
       "migration": "Data migration",
-      "aboutUpdate": "About & updates"
+      "aboutUpdate": "About & updates",
+      "dataManagement": "Data & backup"
     },
     "about": {
       "appName": "YukiHub for Windows",
@@ -1031,7 +1030,7 @@
       "remoteStatusSyncFailed": "Failed"
     },
     "portableSetup": {
-      "description": "Portable and AppImage builds must register yukihub:// separately. Register it for the current user and install yukihubcli here without admin privileges.",
+      "description": "Portable builds must register yukihub:// separately. Register it for the current user here — no admin privileges needed.",
       "loading": "Loading status...",
       "statusLabel": "Status",
       "protocolTitle": "yukihub:// Protocol Handler",
@@ -1041,20 +1040,10 @@
       "registerProtocol": "Register protocol",
       "reregisterProtocol": "Re-register to current location",
       "unregisterProtocol": "Unregister",
-      "cliTitle": "yukihubcli Command-Line Tool",
-      "cliHint": "Installs yukihubcli into your user command path so you can run `yukihubcli` directly from a terminal.",
-      "cliPathLabel": "yukihubcli path",
-      "cliInstallPathLabel": "Install path",
-      "cliMissingHint": "yukihubcli was not found in the current app package. Make sure the package was extracted or built in full.",
-      "registerCli": "Add to PATH",
-      "reregisterCli": "Add again",
-      "unregisterCli": "Remove from PATH",
-      "pathReopenHint": "PATH changes only apply to terminals opened after this action.",
       "status": {
         "registered": "Registered",
         "notRegistered": "Not registered",
-        "stalePath": "Registered to a previous location",
-        "cliMissing": "yukihubcli not found"
+        "stalePath": "Registered to a previous location"
       },
       "toast": {
         "loadFailed": "Failed to load status: {{error}}",
@@ -1131,19 +1120,23 @@
       "launchTools": "Game Launch Tools",
       "lePath": "Locale Emulator Path",
       "lePathPlaceholder": "Select LEProc.exe file path",
-      "lePathHint": "Once set, you can enable Locale Emulator region switching in the game edit interface",
+      "lePathHint": "Found automatically at startup if Locale Emulator is installed — no need to type a path. You can also drop the tool folder into the app's compat-tools directory. Once set, region-switching launch becomes available in the game editor.",
       "defaultUseLe": "Enable Locale Emulator for new games",
       "magpiePath": "Magpie Path",
       "magpiePathPlaceholder": "Select Magpie.exe file path",
-      "magpiePathHint": "Once set, you can enable Magpie super-resolution upscaling in the game edit interface",
+      "magpiePathHint": "Found automatically at startup if Magpie is installed — no need to type a path. You can also drop the tool folder into the app's compat-tools directory. Once set, super-resolution scaling becomes available in the game editor.",
       "defaultUseMagpie": "Enable Magpie for new games",
       "selectBtn": "Select",
       "toast": {
         "leSelectFailed": "Failed to select Locale Emulator",
-        "magpieSelectFailed": "Failed to select Magpie"
+        "magpieSelectFailed": "Failed to select Magpie",
+        "detectSuccess": "Found and filled in: {{path}}",
+        "detectNotFound": "Not found. Put the tool in {{dir}}, or pick the file manually.",
+        "detectFailed": "Auto-detection failed"
       },
       "muteInBackground": "Mute Games in the Background",
-      "muteInBackgroundHint": "Mutes games launched through YukiHub when they lose foreground focus and restores sound when you return to them."
+      "muteInBackgroundHint": "Mutes games launched through YukiHub when they lose foreground focus and restores sound when you return to them.",
+      "detectBtn": "Auto-detect"
     },
     "metadata": {
       "sourceTitle": "Metadata Sources",
@@ -1491,8 +1484,8 @@
       "autoBackupHint": "Back up saves and the database when quitting or on a fixed interval, and manage how many local and cloud copies to keep.",
       "dbBackup": "Database backup",
       "dbBackupHint": "Take a database backup at any time, and restore from a local or cloud backup when needed.",
-      "portableSetup": "Local integration",
-      "about": "About & license"
+      "about": "About & license",
+      "appDataHint": "Where the app keeps its data, plus log export for troubleshooting."
     }
   },
   "downloads": {

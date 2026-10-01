@@ -459,6 +459,37 @@ INSERT / UPDATE 语句都不含这些列，落库时被**静默丢弃**——这
       - 验证：`gofmt` 无输出、`go vet ./...` 干净、`go test ./... -count=1` 全绿；
         `wails3 generate bindings`（枚举与两个 vo 模型更新）；前端
         `pnpm typecheck` / `build` / `i18n:check` 通过，改动文件 eslint 0 error
+- [x] 设置继续瘦身 + 删除 CLI + 转区/超分工具零配置（2026-10-01 第二轮）
+      - 用户诉求：截图指「超分和转区工具还得自己加，不自带的吗」；删掉「键盘快捷键」；
+        「同步与备份 / 数据迁移 / 应用数据」合并成一个；CLI 不要了
+      - **设置页**（本轮再 11 → 9 个顶层分区）：
+        ① 删掉「键盘快捷键」分区与 `ShortcutsSettingsPanel`（速查弹窗仍可用
+           Ctrl+Shift+/ 打开，不受影响）；
+        ② 把「同步与备份 / 数据迁移 / 应用数据」合并成一个 **「数据与备份」**，
+           内部子分组：云服务 / 自动备份 / 数据库备份 / 数据迁移 / 应用数据（含本地集成）
+      - **删除 yukihubcli 命令行工具**（整条链路）：
+        - 删 `internal/cli/`（16 文件）、`cmd/yukihubcli/`、`utils/apputils/app_cli_path*.go`
+        - 仍需要的**协议转发通道**搬到 `internal/ipc/`：`ipc/core`（客户端）+`ipc/server`
+          （本地端点）。`StartServer` 从 `*cli.CoreApp` 瘦成 `(ctx, *service.StartService, runtime)`，
+          并删掉只服务 CLI 的 `/run` 端点；`yukihub://` 已运行实例转发（/ping /install /launch）保持不变
+        - `PortableSetupService` 去掉 CLI 状态与 Register/UnregisterCLIPath；前端「本地集成」同步删掉 CLI 区块
+        - 构建链路：`scripts/build.bat`（删 :build_cli、portable 与 installer-payload 重新编号）、
+          NSIS（移除 CLI 选项页，标志位固定 0，保留旧版本 PATH 清理的兼容代码）、
+          三个 workflow（payload 校验与签名清单去掉 cli）、文档 4 篇
+        - **注意**：`yukihub://` 协议注册本来就走主 GUI exe（`RegisterPortableURLScheme` 用
+          `os.Executable()`），与 CLI 无关，所以删 CLI 不影响深链
+      - **转区 / 超分工具零配置**（不随包分发，改为自动识别）：
+        - 为什么不自带：Locale Emulator 与 Magpie 都是第三方程序（Magpie 是 GPL-3.0
+          且依赖 .NET 桌面运行时，整包上百 MB），塞进 AGPL 安装包不合适
+        - 新增 `apputils.DetectLocaleEmulator/DetectMagpie`：扫程序目录（含约定的
+          `compat-tools\`、`tools\`，以及 `Magpie-0.11.0\` 这类带版本号的解压目录）、
+          `%LOCALAPPDATA%\Programs`、`%PROGRAMFILES%` 等常见位置
+        - 启动时 `service.ApplyDetectedCompatTools(config)` 自动补齐空路径并落盘
+          （只在原本为空时写，不覆盖用户手选）；设置页新增「自动检测」按钮，
+          找不到时提示把工具放到 `compat-tools\`
+      - 验证：gofmt 无输出、`go vet ./...` 干净、`go test ./... -count=1` 全绿；
+        i18n:check 干净（4 语言各 -13 键）、typecheck 通过、改动文件 eslint 0 error
+
 - [x] 设置面瘦身 + 「当前资料源」对齐手机版（2026-10-01）
       - 用户诉求：删掉 LunaBox 带来的「奇奇怪怪」的设置（备份有好多个、有歧义；代理没用），
         对齐 YukiHub 手机版；游戏库右侧详情要显示当前用的是哪个源；设置里要有「当前游戏源」

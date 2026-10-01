@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"yukihub/internal/cli/ipccore"
+	ipccore "yukihub/internal/ipc/core"
 )
 
 const (
@@ -85,9 +85,6 @@ func chooseIPCListener() (net.Listener, int, error) {
 
 	return nil, 0, fmt.Errorf("no available ipc port in range %d-%d", Port, PortMax)
 }
-
-type CommandRequest = ipccore.CommandRequest
-type CommandResponse = ipccore.CommandResponse
 
 // InstallResponse IPC /install 响应
 type InstallResponse struct {
