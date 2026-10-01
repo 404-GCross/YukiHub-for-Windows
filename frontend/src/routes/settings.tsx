@@ -9,12 +9,10 @@ import { GetVersionInfo } from "../../bindings/yukihub/internal/service/versions
 import { AboutPanel } from "../components/panel/AboutPanel";
 import { AISettingsPanel } from "../components/panel/AISettingsPanel";
 import { AppDataSettingsPanel } from "../components/panel/AppDataSettingsPanel";
-import { AutoBackupSettingsPanel } from "../components/panel/AutoBackupSettingsPanel";
 import { BackgroundSettingsPanel } from "../components/panel/BackgroundSettingsPanel";
+import { BackupSettingsPanel } from "../components/panel/BackupSettingsPanel";
 import { BasicSettingsPanel } from "../components/panel/BasicSettingsPanel";
 import { BigScreenSettingsPanel } from "../components/panel/BigScreenSettingsPanel";
-import { CloudBackupSettingsPanel } from "../components/panel/CloudBackupSettingsPanel";
-import { DBBackupPanel } from "../components/panel/DBBackupPanel";
 import { FullDataBackupPanel } from "../components/panel/FullDataBackupPanel";
 import { GameSettingsPanel } from "../components/panel/GameSettingsPanel";
 import { MetadataSettingsPanel } from "../components/panel/MetadataSettingsPanel";
@@ -246,35 +244,14 @@ function SettingsPage() {
           defaultOpen={false}
         >
           <SettingsSubSection
-            title={t("settings.subSections.cloudService")}
-            hint={t("settings.subSections.cloudServiceHint")}
-            icon="i-mdi-cloud-upload"
+            title={t("settings.subSections.backup")}
+            hint={t("settings.subSections.backupHint")}
+            icon="i-mdi-backup-restore"
           >
-            <CloudBackupSettingsPanel
-              formData={draftConfig}
-              onChange={handleDraftChange}
-              onServiceEnabledChange={enabled =>
-                void patchLiveConfig({ cloud_backup_enabled: enabled })}
-            />
-          </SettingsSubSection>
-
-          <SettingsSubSection
-            title={t("settings.subSections.autoBackup")}
-            hint={t("settings.subSections.autoBackupHint")}
-            icon="i-mdi-timer-sync-outline"
-          >
-            <AutoBackupSettingsPanel
+            <BackupSettingsPanel
               formData={draftConfig}
               onChange={handleDraftChange}
             />
-          </SettingsSubSection>
-
-          <SettingsSubSection
-            title={t("settings.subSections.dbBackup")}
-            hint={t("settings.subSections.dbBackupHint")}
-            icon="i-mdi-database-refresh"
-          >
-            <DBBackupPanel />
           </SettingsSubSection>
 
           <SettingsSubSection

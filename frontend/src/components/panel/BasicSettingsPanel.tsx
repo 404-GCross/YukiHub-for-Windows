@@ -83,13 +83,23 @@ export function BasicSettingsPanel({
     { value: "UTC", label: "Coordinated Universal Time (UTC)" },
   ];
 
+  /**
+   * 展开某张账户卡片时的列宽。
+   *
+   * **必须始终是 3 列**：这里原本写成 2 列（例如 `7fr_3fr`），三张卡片塞不进去，
+   * 第三张只能被挤到第二行，整个区域就散了——用户点开 Bangumi 后看到的是
+   * 「Bangumi 撑满、Hikarinagi 贴在右边、未萌掉到下一行」。
+   *
+   * 现在按「展开的那张占 60%，另外两张各 20%」排在同一行：
+   * 位置由卡片在 DOM 里的顺序决定，所以三套模板正好对应三张卡片的展开态。
+   */
   const accountGridColumns
     = expandedAccount === "bangumi"
-      ? "sm:grid-cols-[minmax(0,7fr)_minmax(0,3fr)]"
+      ? "sm:grid-cols-[minmax(0,3fr)_minmax(0,1fr)_minmax(0,1fr)]"
       : expandedAccount === "hikarinagi"
-        ? "sm:grid-cols-[minmax(0,3fr)_minmax(0,7fr)]"
+        ? "sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)_minmax(0,1fr)]"
         : expandedAccount === "nextmoe"
-          ? "sm:grid-cols-[minmax(0,2fr)_minmax(0,8fr)]"
+          ? "sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,3fr)]"
           : "sm:grid-cols-3";
 
   useEffect(() => {

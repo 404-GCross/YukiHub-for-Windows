@@ -459,6 +459,26 @@ INSERT / UPDATE 语句都不含这些列，落库时被**静默丢弃**——这
       - 验证：`gofmt` 无输出、`go vet ./...` 干净、`go test ./... -count=1` 全绿；
         `wails3 generate bindings`（枚举与两个 vo 模型更新）；前端
         `pnpm typecheck` / `build` / `i18n:check` 通过，改动文件 eslint 0 error
+- [x] 修账户授权展开布局 + 备份彻底简化（2026-10-01 第三轮）
+      - **账户授权卡片展开后布局散架**（用户三张截图）：
+        根因是 `BasicSettingsPanel` 的 `accountGridColumns` 把**三张卡片塞进两列网格**
+        （展开 Bangumi 用 `7fr_3fr`），第三张只能换行 —— 于是「Bangumi 撑满、
+        Hikarinagi 贴右边、未萌掉到下一行」，换一张展开又是另一副样子。
+        改成**始终 3 列**、展开的那张占 60%（`3fr_1fr_1fr` / `1fr_3fr_1fr` / `1fr_1fr_3fr`），
+        三张卡片排在同一行。动画仍然走 `grid-template-columns` 过渡，不受影响
+      - **备份简化**（用户：「云备份删了」「最多搞个自动备份就得了」）：
+        - 删掉 `CloudBackupSettingsPanel` / `AutoBackupSettingsPanel` / `DBBackupPanel`
+          三个面板（合计约 68KB），新建**一个** `BackupSettingsPanel`
+        - 现在「数据与备份 → 备份」里只有四项：**自动备份开关**（一次写
+          `auto_backup_db` + `auto_backup_game_save`，不再拆两个开关）、
+          **保留份数**（一次写两个 retention）、**立即备份一次**、**本机备份列表（恢复/删除）**
+        - **云端备份整块移除**（等账号系统上线后单独做）。注意：云同步的*运行时*
+          （侧栏状态、定时任务）保留，只是不再在设置里暴露配置入口；
+          已配置过的用户配置仍然生效
+        - i18n 清掉 145 个失效键/语言
+      - 验证：gofmt 无输出、`go vet ./...` 干净、`go test ./... -count=1` 全绿；
+        i18n:check 干净、typecheck 通过、改动文件 eslint 0 error
+
 - [x] 设置继续瘦身 + 删除 CLI + 转区/超分工具零配置（2026-10-01 第二轮）
       - 用户诉求：截图指「超分和转区工具还得自己加，不自带的吗」；删掉「键盘快捷键」；
         「同步与备份 / 数据迁移 / 应用数据」合并成一个；CLI 不要了
