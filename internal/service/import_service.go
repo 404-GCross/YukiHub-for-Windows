@@ -408,6 +408,48 @@ func (s *ImportService) ImportFromReinaManagerWithSelection(dbPath string, skipN
 	return ImportResult(result), err
 }
 
+// =================== 上游 LunaBox 数据库导入 ====================
+
+// SelectLunaBoxDatabase 选择上游 LunaBox 的数据库文件。
+func (s *ImportService) SelectLunaBoxDatabase() (string, error) {
+	selection, err := s.runtime.OpenFile(wailsruntime.OpenDialogOptions{
+		Title: "选择 LunaBox 数据库",
+		Filters: []wailsruntime.FileFilter{
+			{
+				DisplayName: "LunaBox 数据库",
+				Pattern:     "*.db",
+			},
+		},
+	})
+	return selection, err
+}
+
+// PreviewLunaBoxImport 预览 LunaBox 数据库中的游戏。
+func (s *ImportService) PreviewLunaBoxImport(dbPath string) ([]PreviewGame, error) {
+	previews, err := importer.NewLunaBoxImporter(s.importerDependencies()).Preview(dbPath)
+	return previewGamesFromImporter(previews), err
+}
+
+// ImportFromLunaBox 从上游 LunaBox 数据库导入游戏与游玩记录。
+func (s *ImportService) ImportFromLunaBox(dbPath string, skipNoPath bool) (ImportResult, error) {
+	return s.ImportFromLunaBoxWithOptions(dbPath, skipNoPath, importer.SamePathActionSkip)
+}
+
+// ImportFromLunaBoxWithOptions 按同名路径处理策略导入 LunaBox 数据。
+func (s *ImportService) ImportFromLunaBoxWithOptions(dbPath string, skipNoPath bool, samePathAction string) (ImportResult, error) {
+	result, err := importer.NewLunaBoxImporter(s.importerDependencies()).Import(dbPath, skipNoPath, samePathAction)
+	return ImportResult(result), err
+}
+
+// ImportFromLunaBoxWithSelection 只导入 LunaBox 数据库里被选中的条目。
+func (s *ImportService) ImportFromLunaBoxWithSelection(dbPath string, skipNoPath bool, samePathAction string, selections []vo.ImportSelection) (ImportResult, error) {
+	if len(selections) == 0 {
+		return emptyServiceImportResult(), nil
+	}
+	result, err := importer.NewLunaBoxImporter(s.importerDependencies()).ImportSelected(dbPath, skipNoPath, samePathAction, selections)
+	return ImportResult(result), err
+}
+
 // =================== Steam 本地库导入功能 ====================
 
 // PreviewSteamLocalImport 扫描本机已安装 Steam 游戏并预览导入内容。

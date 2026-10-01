@@ -459,6 +459,33 @@ INSERT / UPDATE 语句都不含这些列，落库时被**静默丢弃**——这
       - 验证：`gofmt` 无输出、`go vet ./...` 干净、`go test ./... -count=1` 全绿；
         `wails3 generate bindings`（枚举与两个 vo 模型更新）；前端
         `pnpm typecheck` / `build` / `i18n:check` 通过，改动文件 eslint 0 error
+- [x] 删 Hikarinagi 授权卡片 + 限速补足 + 新增「从 LunaBox 导入」（2026-10-01 第七轮）
+      - 用户确认四个渠道都能用了，接着提了三件事
+      - ① **删掉 Hikarinagi 授权卡片**：元数据已走内置应用级凭据，登录只剩「显示账号名」，
+        而它唯一的实质功能（状态回写）需要拿不到的 `status:write`。
+        账户授权区 3 张卡片 → 2 张（`accountGridColumns` 三列模板改两列）；
+        连带删掉已无使用者的 `utils/hikarinagiAuth.ts`，以及 `GameReviewPanel` 里
+        「同步到 Hikarinagi」按钮 —— 那条链路既依赖登录状态又需要 `status:write`，
+        留着就是永远禁用的死按钮；i18n 清掉 18 个失效键/语言
+      - ② **Hikarinagi 限速**：上游按**应用**限 60 次/分钟，而这个配额是所有装了
+        YukiHub 的机器**共用**的。原策略没配 `RateLimitRetryDelay` / `MaxRetryDelay` /
+        `MaxRateLimitRetries`，退避落到默认的「等 1 秒重试 1 次」——
+        对 1 分钟窗口毫无意义，撞上即失败。补成等 1 分钟、封顶 2 分钟、最多 2 次
+      - ③ **新增「从 LunaBox 导入」**（用户选：手动选 .db + 游戏与游玩记录）
+        · 表结构与本仓库基本一致（13 张表同名，硬分叉），两边 DuckDB 都是
+          `duckdb-go/v2 v2.5.6` → 存储格式兼容，`sql.Open("duckdb", path)` 直接读
+        · **两处必须显式换算，否则静默归错**：`games.status`
+          （`not_started` / `want_to_play` → `unplayed`，`on_hold` → `onhold`，
+          没有「想玩」这一态）；`games` 少 5 列（`legacy_local_id`、`source_device_id`、
+          `playtime_reset_at`、`hidden`、`trailer_path`）按零值处理
+        · 读取刻意按**列名**取值而非固定列顺序 Scan：既不怕 LunaBox 少那 5 列，
+          也能直接读本仓库自己的库文件（互为备份）
+        · 复用 ReinaManager 的链路（选文件 → 预览 → 导入），`ImportService` 新增
+          5 个方法并重新生成绑定；前端 `GameImportModal` 与游戏库菜单新增入口
+        · 回归测试 3 个：status 映射全覆盖、来源透传与兜底、按列名取值容忍缺列
+      - 验证：gofmt 无输出、`go vet ./...` 干净、`go test ./... -count=1` 全绿；
+        typecheck 通过、i18n:check 干净
+
 - [x] Hikarinagi **有两个 OAuth 应用**：元数据用独立的 client_credentials 凭据（2026-10-01 第六轮）
       - 用户提醒「手机上是有两个 hikar 的 id……一个是直接嵌入 app 的硬编码直接用，
         另一个只有 read 的才是登录」→ **核实后用户说得对**，手机版确实是两套：

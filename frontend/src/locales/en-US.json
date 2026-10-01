@@ -106,7 +106,9 @@
     "detailSourceCurrent": "Currently in use",
     "detailSourceOther": "Switch to this source",
     "detailSourceSwitched": "Switched to {{source}}",
-    "detailSourceSwitchFailed": "Failed to switch metadata source"
+    "detailSourceSwitchFailed": "Failed to switch metadata source",
+    "importLunaBox": "Import from LunaBox",
+    "importLunaBoxDesc": "Migrate games and play sessions from an upstream LunaBox DuckDB database"
   },
   "filterBar": {
     "randomGame": "Open a random game",
@@ -395,7 +397,13 @@
       "failed": "Failed"
     },
     "skippedGames": "Skipped Games:",
-    "failedGames": "Failed Games:"
+    "failedGames": "Failed Games:",
+    "lunabox": {
+      "title": "Import from LunaBox",
+      "desc": "Select the LunaBox database file",
+      "hint": "Accepts .db files and imports games plus play sessions; play status is converted to YukiHub's five states",
+      "btn": "Select database file"
+    }
   },
   "game": {
     "notFound": "Game not found",

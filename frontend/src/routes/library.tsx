@@ -123,6 +123,11 @@ const EMPTY_STATE_IMPORT_OPTIONS = [
     iconSrc: reinaManagerIconUrl,
   },
   {
+    source: "lunabox",
+    labelKey: "library.importLunaBox",
+    icon: "i-mdi-database-import-outline",
+  },
+  {
     source: "steam",
     labelKey: "library.importSteam",
     icon: "i-mdi-steam",
@@ -1443,6 +1448,14 @@ function LibraryPage() {
                     description: t("library.importReinaManagerDesc"),
                     iconSrc: reinaManagerIconUrl,
                     onClick: () => setImportSource("reinamanager"),
+                  },
+                  {
+                    key: "lunabox",
+                    label: t("library.importLunaBox"),
+                    description: t("library.importLunaBoxDesc"),
+                    icon: "i-mdi-database-import-outline",
+                    iconColor: "text-teal-500",
+                    onClick: () => setImportSource("lunabox"),
                   },
                   {
                     key: "steam",

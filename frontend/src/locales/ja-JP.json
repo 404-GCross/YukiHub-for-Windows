@@ -106,7 +106,9 @@
     "detailSourceCurrent": "現在使用中",
     "detailSourceOther": "このソースに切り替え",
     "detailSourceSwitched": "{{source}} に切り替えました",
-    "detailSourceSwitchFailed": "資料ソースの切り替えに失敗しました"
+    "detailSourceSwitchFailed": "資料ソースの切り替えに失敗しました",
+    "importLunaBox": "LunaBox から取り込み",
+    "importLunaBoxDesc": "上流 LunaBox の DuckDB データベースからゲームとプレイ履歴を移行"
   },
   "filterBar": {
     "randomGame": "ランダムなゲームを開く",
@@ -395,7 +397,13 @@
       "failed": "インポート失敗"
     },
     "skippedGames": "スキップしたゲーム:",
-    "failedGames": "インポートに失敗したゲーム:"
+    "failedGames": "インポートに失敗したゲーム:",
+    "lunabox": {
+      "title": "LunaBox から取り込み",
+      "desc": "LunaBox のデータベースファイルを選択",
+      "hint": ".db ファイルに対応。ゲームとプレイ履歴を取り込み、プレイ状況は YukiHub の 5 状態に変換されます",
+      "btn": "データベースファイルを選択"
+    }
   },
   "game": {
     "notFound": "このゲームは見つかりません",

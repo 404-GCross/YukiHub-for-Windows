@@ -4,6 +4,7 @@ import { useState } from "react";
 import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 import {
+  ImportFromLunaBoxWithSelection,
   ImportFromPlayniteWithSelection,
   ImportFromPotatoVNWithSelection,
   ImportFromReinaManagerWithSelection,
@@ -11,12 +12,14 @@ import {
   ImportFromVniteWithSelection,
   ImportFromYukiHubWithSelection,
   PreviewImport,
+  PreviewLunaBoxImport,
   PreviewPlayniteImport,
   PreviewReinaManagerImport,
   PreviewSteamLocalImport,
   PreviewVniteImport,
   PreviewYukiHubImport,
   SelectJSONFile,
+  SelectLunaBoxDatabase,
   SelectReinaManagerDatabase,
   SelectVniteDirectory,
   SelectYukiHubBackup,
@@ -32,7 +35,8 @@ import { BetterDataTable } from "../ui/better/BetterDataTable";
 import { ModalPortal } from "../ui/ModalPortal";
 
 export type ImportSource
-  = | "playnite"
+  = | "lunabox"
+    | "playnite"
     | "potatovn"
     | "reinamanager"
     | "steam"
@@ -142,6 +146,19 @@ function getImportConfigs(t: any): Record<ImportSource, ImportConfig> {
       selectFile: SelectReinaManagerDatabase,
       previewImport: PreviewReinaManagerImport,
       doImport: ImportFromReinaManagerWithSelection,
+    },
+    lunabox: {
+      title: t("gameImportModal.lunabox.title"),
+      icon: "i-mdi-database-import-outline",
+      fileType: "DB",
+      fileDescription: t("gameImportModal.lunabox.desc"),
+      fileHint: t("gameImportModal.lunabox.hint"),
+      buttonText: t("gameImportModal.lunabox.btn"),
+      primaryColor: "bg-teal-500",
+      hoverColor: "hover:bg-teal-600",
+      selectFile: SelectLunaBoxDatabase,
+      previewImport: PreviewLunaBoxImport,
+      doImport: ImportFromLunaBoxWithSelection,
     },
     steam: {
       title: t("gameImportModal.steam.title"),
@@ -255,7 +272,12 @@ export function GameImportModal({
               nextPreviewGames
                 .map((game, index) => ({ game, index }))
                 .filter(({ game }) =>
-                  isPreviewGameActionable(game, nextSkipNoPath, samePathAction, source === "yukihub"),
+                  isPreviewGameActionable(
+                    game,
+                    nextSkipNoPath,
+                    samePathAction,
+                    source === "yukihub",
+                  ),
                 )
                 .map(({ game, index }) => previewGameKey(game, index)),
             ),
@@ -293,7 +315,12 @@ export function GameImportModal({
           previewGames.filter(
             (game, index) =>
               selectedPreviewKeys.has(previewGameKey(game, index))
-              && isPreviewGameActionable(game, skipNoPath, samePathAction, source === "yukihub"),
+              && isPreviewGameActionable(
+                game,
+                skipNoPath,
+                samePathAction,
+                source === "yukihub",
+              ),
           ),
         ),
       );
@@ -334,7 +361,12 @@ export function GameImportModal({
   ).length;
   const shouldMergeSamePath = samePathAction !== "skip";
   const isRowActionable = (game: service.PreviewGame) =>
-    isPreviewGameActionable(game, skipNoPath, samePathAction, source === "yukihub");
+    isPreviewGameActionable(
+      game,
+      skipNoPath,
+      samePathAction,
+      source === "yukihub",
+    );
   const isRowSelected = (game: service.PreviewGame, index: number) =>
     selectedPreviewKeys.has(previewGameKey(game, index));
   const newGamesCount = previewGames.filter(
@@ -394,26 +426,30 @@ export function GameImportModal({
       ? "text-purple-500"
       : source === "reinamanager"
         ? "text-rose-500"
-        : source === "vnite"
-          ? "text-sky-500"
-          : source === "yukihub"
-            ? "text-brand-600 dark:text-brand-300"
-            : source === "steam"
-              ? "text-slate-600 dark:text-slate-300"
-              : "text-neutral-500";
+        : source === "lunabox"
+          ? "text-teal-600 dark:text-teal-400"
+          : source === "vnite"
+            ? "text-sky-500"
+            : source === "yukihub"
+              ? "text-brand-600 dark:text-brand-300"
+              : source === "steam"
+                ? "text-slate-600 dark:text-slate-300"
+                : "text-neutral-500";
   const spinnerColorClass = iconColorClass;
   const resultButtonClass
     = source === "playnite"
       ? "bg-purple-600 hover:bg-purple-700"
       : source === "reinamanager"
         ? "bg-rose-600 hover:bg-rose-700"
-        : source === "vnite"
-          ? "bg-sky-600 hover:bg-sky-700"
-          : source === "yukihub"
-            ? "bg-brand-600 hover:bg-brand-700"
-            : source === "steam"
-              ? "bg-slate-700 hover:bg-slate-800"
-              : "bg-neutral-600 hover:bg-neutral-700";
+        : source === "lunabox"
+          ? "bg-teal-600 hover:bg-teal-700"
+          : source === "vnite"
+            ? "bg-sky-600 hover:bg-sky-700"
+            : source === "yukihub"
+              ? "bg-brand-600 hover:bg-brand-700"
+              : source === "steam"
+                ? "bg-slate-700 hover:bg-slate-800"
+                : "bg-neutral-600 hover:bg-neutral-700";
   const importButtonClass = resultButtonClass;
   const statusBadgeClass
     = "inline-flex min-w-[4.5rem] items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium leading-none";
@@ -454,8 +490,7 @@ export function GameImportModal({
       cellClassName: "text-center",
       render: (game) => {
         const willBeUpdated
-          = isSamePathConflict(game, includeTitleMatches)
-            && shouldMergeSamePath;
+          = isSamePathConflict(game, includeTitleMatches) && shouldMergeSamePath;
         if (game.exists) {
           return (
             <span
