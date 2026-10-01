@@ -45,6 +45,18 @@ const (
 	hikarinagiOAuthClientIDEnv = "YUKIHUB_HIKARINAGI_CLIENT_ID"
 	hikarinagiOAuthScopes      = "openid catalog:full user:read status:write offline_access"
 
+	// hikarinagiOAuthDefaultClientID 是「YukiHub Android」客户端的公开标识（native
+	// public client，非机密，与 Android 端 AuthActivity.HIKARINAGI_ANDROID_CLIENT_ID 同源）。
+	// 桌面端默认复用它，省得每个自建者都要单独申请一个 OAuth 应用。
+	//
+	// 注意：客户端 ID 本身不区分平台，真正需要配的是**回调地址白名单**。
+	// Android 端登记的是 `yukihub://hikarinagi/callback`，桌面端走 loopback
+	// （RFC 8252 的 native app 标准做法）`http://127.0.0.1:14791/callback`。
+	// 所以要么在 Hikarinagi 后台给这个应用追加一条 loopback 回调，
+	// 要么另建一个桌面端应用、用 YUKIHUB_HIKARINAGI_CLIENT_ID 构建注入覆盖
+	// （注入值优先于本默认值）。
+	hikarinagiOAuthDefaultClientID = "hkn_qtmXMJfBoxcNLA-a"
+
 	hikarinagiOAuthCallbackPort = 14791
 	hikarinagiOAuthCallbackPath = "/callback"
 	hikarinagiOAuthRedirectURI  = "http://127.0.0.1:14791/callback"
@@ -138,7 +150,7 @@ func NewHikarinagiService() *HikarinagiService {
 		openURL:   runtime.OpenURL,
 		emitEvent: func(name string, data ...interface{}) { runtime.Emit(name, data...) },
 		now:       time.Now,
-		clientID:  strings.TrimSpace(version.HikarinagiOAuthClientID),
+		clientID:  firstNonEmptyString(version.HikarinagiOAuthClientID, hikarinagiOAuthDefaultClientID),
 	}
 }
 
@@ -147,7 +159,7 @@ func (s *HikarinagiService) Init(ctx context.Context, db *sql.DB, config *appcon
 	s.ctx = ctx
 	s.db = db
 	s.config = config
-	s.clientID = firstNonEmptyString(s.clientID, version.HikarinagiOAuthClientID)
+	s.clientID = firstNonEmptyString(s.clientID, version.HikarinagiOAuthClientID, hikarinagiOAuthDefaultClientID)
 	if s.httpClient == nil {
 		client, _, err := httputils.NewClient(httputils.ClientOptions{
 			Timeout:     hikarinagiHTTPTimeout,
@@ -240,7 +252,7 @@ func (s *HikarinagiService) GetProfile() (vo.HikarinagiProfile, error) {
 
 func (s *HikarinagiService) StartAuth() (vo.HikarinagiAuthStatus, error) {
 	if strings.TrimSpace(s.clientID) == "" {
-		return vo.HikarinagiAuthStatus{}, fmt.Errorf("Hikarinagi OAuth 未配置，请在构建时通过 %s 注入 public client ID", hikarinagiOAuthClientIDEnv)
+		return vo.HikarinagiAuthStatus{}, errors.New("Hikarinagi 授权客户端未配置")
 	}
 
 	session, err := newHikarinagiAuthSession()
@@ -491,7 +503,7 @@ func (s *HikarinagiService) refreshAccessTokenLocked(ctx context.Context) (strin
 		return "", fmt.Errorf("Hikarinagi 未授权")
 	}
 	if strings.TrimSpace(s.clientID) == "" {
-		return "", fmt.Errorf("Hikarinagi OAuth 未配置，请在构建时通过 %s 注入 public client ID", hikarinagiOAuthClientIDEnv)
+		return "", errors.New("Hikarinagi 授权客户端未配置")
 	}
 
 	form := url.Values{

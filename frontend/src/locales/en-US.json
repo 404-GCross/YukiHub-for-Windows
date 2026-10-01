@@ -930,19 +930,16 @@
       "openUpstream": "Open upstream project"
     },
     "basic": {
-      "bangumiAuthHint": "Login to your Bangumi account to enable metadata refresh and game status synchronization.",
+      "bangumiAuthHint": "Paste a Bangumi personal access token to refresh metadata and sync your game status.",
       "bangumiAuthNeedsReauth": "Reconnect required",
       "bangumiAuthUnauthorized": "Not connected",
       "bangumiAuthLastErrorLabel": "Last error",
       "bangumiStatusPushLabel": "Sync game status to Bangumi",
       "bangumiStatusPushHint": "When enabled, YukiHub will automatically push local game status changes to the linked Bangumi entry.",
-      "bangumiAuthorize": "Authorize",
-      "bangumiReauthorize": "Reauthorize",
       "bangumiDisconnect": "Disconnect",
-      "bangumiAuthReconnectHint": "If authorization or refresh fails, run authorization again from here.",
+      "bangumiAuthReconnectHint": "If the token stops working, disconnect and paste a new one.",
       "bangumiDisconnectConfirmTitle": "Disconnect Bangumi?",
-      "bangumiDisconnectConfirmMsg": "This clears YukiHub's local Bangumi OAuth credentials. Metadata refreshes and status push will stop until you authorize again.",
-      "bangumiAuthSuccess": "Bangumi authorized successfully",
+      "bangumiDisconnectConfirmMsg": "This clears the Bangumi token and account info stored on this machine. Metadata refresh and status sync stay off until you paste a new token.",
       "bangumiDisconnectSuccess": "Bangumi disconnected locally",
       "bangumiAuthActionFailed": "Bangumi authorization action failed: {{error}}",
       "bangumiStatusPushFailed": "Bangumi status push failed for {{game}}: {{error}}",
@@ -1027,7 +1024,13 @@
       "remoteStatusSyncPreparing": "Preparing game entries…",
       "remoteStatusSyncEmpty": "There are no {{provider}} game entries to synchronize",
       "remoteStatusSyncSucceeded": "Succeeded",
-      "remoteStatusSyncFailed": "Failed"
+      "remoteStatusSyncFailed": "Failed",
+      "bangumiTokenPlaceholder": "Paste your Bangumi access token",
+      "bangumiTokenSave": "Save",
+      "bangumiTokenHint": "Create one under Bangumi -> Settings -> Applications -> New Personal Access Token (the collection scope is enough). The token stays on this machine and is never uploaded.",
+      "bangumiTokenRequired": "Enter a Bangumi access token first",
+      "bangumiTokenSaved": "Bangumi connected: {{name}}",
+      "bangumiTokenInvalid": "Token check failed: {{error}}"
     },
     "portableSetup": {
       "description": "Portable builds must register yukihub:// separately. Register it for the current user here — no admin privileges needed.",

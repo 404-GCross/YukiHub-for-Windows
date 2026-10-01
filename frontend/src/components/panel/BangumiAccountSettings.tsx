@@ -13,12 +13,12 @@ import {
   fetchBangumiAuthStatus,
   fetchBangumiProfile,
   mergeBangumiAuthStatus,
-  startBangumiAuthorization,
   syncAllBangumiGameStatuses,
 } from "../../utils/bangumiAuth";
 import { ConfirmModal } from "../modal/ConfirmModal";
 import { RemoteStatusSyncProgressModal } from "../modal/RemoteStatusSyncProgressModal";
 import { BetterButton } from "../ui/better/BetterButton";
+import { BetterInput } from "../ui/better/BetterInput";
 import { BetterSwitch } from "../ui/better/BetterSwitch";
 
 type BangumiStatusPushConfig = appconf.AppConfig & {
@@ -47,8 +47,13 @@ export function BangumiAccountSettings({
   const [profile, setProfile] = useState<vo.BangumiProfile | null>(null);
   const [isStatusLoading, setIsStatusLoading] = useState(false);
   const [isProfileLoading, setIsProfileLoading] = useState(false);
-  const [isAuthorizing, setIsAuthorizing] = useState(false);
   const [isDisconnecting, setIsDisconnecting] = useState(false);
+  // Bangumi 走「个人令牌」而不是 OAuth（与手机版一致，见 ADR）：
+  // 用户从 bgm.tv 个人设置里建一个 Personal Access Token 粘进来即可，
+  // 既不需要我们去申请 OAuth 应用，也不需要回调地址白名单。
+  // 令牌不回显（已保存的不回填输入框），要换就「断开」后重填。
+  const [tokenInput, setTokenInput] = useState("");
+  const [isSavingToken, setIsSavingToken] = useState(false);
   const [showDisconnectConfirm, setShowDisconnectConfirm] = useState(false);
   const [showSyncConfirm, setShowSyncConfirm] = useState(false);
 
@@ -118,27 +123,6 @@ export function BangumiAccountSettings({
     void refreshStatus();
   }, [refreshStatus]);
 
-  const handleAuthorize = async () => {
-    setIsAuthorizing(true);
-    try {
-      await startBangumiAuthorization();
-      await onConfigRefresh();
-      await refreshStatus();
-      toast.success(t("settings.basic.bangumiAuthSuccess"));
-    }
-    catch (error) {
-      toast.error(
-        t("settings.basic.bangumiAuthActionFailed", {
-          error: error instanceof Error ? error.message : String(error),
-        }),
-      );
-      await refreshStatus();
-    }
-    finally {
-      setIsAuthorizing(false);
-    }
-  };
-
   const handleDisconnect = async () => {
     setIsDisconnecting(true);
     try {
@@ -156,6 +140,63 @@ export function BangumiAccountSettings({
     }
     finally {
       setIsDisconnecting(false);
+    }
+  };
+
+  /**
+   * 保存手填的 Bangumi 个人令牌。
+   *
+   * 走的是后端已有的「legacy token」通路（`access_token` 有值、
+   * `bangumi_refresh_token` 为空时直接把它当 Bearer token 用），所以不需要 OAuth。
+   * 保存时一并清掉 refresh token 与过期时间，免得后端拿旧的 refresh 去续期。
+   */
+  const handleSaveToken = async () => {
+    const token = tokenInput.trim();
+    if (!token) {
+      toast.error(t("settings.basic.bangumiTokenRequired"));
+      return;
+    }
+
+    setIsSavingToken(true);
+    try {
+      onChange({
+        ...formData,
+        access_token: token,
+        bangumi_refresh_token: "",
+        bangumi_token_expires_at: "",
+        bangumi_auth_error: "",
+      } as appconf.AppConfig);
+
+      // 设置页的草稿是 250ms 防抖才落盘的（routes/settings.tsx），
+      // 这里必须等它写完，否则下面读到的还是旧配置。
+      await new Promise(resolve => setTimeout(resolve, 400));
+      await onConfigRefresh();
+      setSnapshot(await fetchBangumiAuthStatus());
+
+      // GetAuthStatus 只判断「token 是否非空」，所以再发一次真实请求，
+      // 确认这个令牌真的能用（顺便把昵称/头像带回来）。
+      const nextProfile = await fetchBangumiProfile();
+      setProfile(nextProfile);
+      setTokenInput("");
+      toast.success(
+        t("settings.basic.bangumiTokenSaved", {
+          name:
+            nextProfile.nickname?.trim()
+            || nextProfile.username?.trim()
+            || "Bangumi",
+        }),
+      );
+    }
+    catch (error) {
+      toast.error(
+        t("settings.basic.bangumiTokenInvalid", {
+          error: error instanceof Error ? error.message : String(error),
+        }),
+      );
+      void refreshStatus();
+    }
+    finally {
+      setIsSavingToken(false);
     }
   };
 
@@ -250,7 +291,7 @@ export function BangumiAccountSettings({
                 </div>
               </div>
 
-              <div className="flex self-end gap-2 lg:self-auto">
+              <div className="flex w-full gap-2 self-stretch lg:w-auto lg:max-w-md lg:flex-1 lg:self-auto">
                 {isAuthorized ? (
                   <>
                     <BetterButton
@@ -275,19 +316,44 @@ export function BangumiAccountSettings({
                     />
                   </>
                 ) : (
-                  <BetterButton
-                    variant="primary"
-                    icon="i-mdi-account-key-outline"
-                    isLoading={isAuthorizing}
-                    onClick={handleAuthorize}
-                  >
-                    {auth.state === "needs_reauth"
-                      ? t("settings.basic.bangumiReauthorize")
-                      : t("settings.basic.bangumiAuthorize")}
-                  </BetterButton>
+                  <>
+                    <BetterInput
+                      type="text"
+                      name="bangumi_access_token"
+                      value={tokenInput}
+                      placeholder={t("settings.basic.bangumiTokenPlaceholder")}
+                      autoComplete="off"
+                      spellCheck={false}
+                      fullWidth={false}
+                      className="shrink min-w-0 flex-1 !py-1.5 text-sm"
+                      onChange={event => setTokenInput(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                          event.preventDefault();
+                          void handleSaveToken();
+                        }
+                      }}
+                    />
+                    <BetterButton
+                      variant="primary"
+                      size="sm"
+                      icon="i-mdi-content-save-outline"
+                      isLoading={isSavingToken}
+                      disabled={!tokenInput.trim()}
+                      className="shrink-0 !rounded-full"
+                      aria-label={t("settings.basic.bangumiTokenSave")}
+                      onClick={() => void handleSaveToken()}
+                    />
+                  </>
                 )}
               </div>
             </div>
+
+            {!isAuthorized ? (
+              <p className="text-[11px] leading-relaxed text-brand-500 dark:text-brand-400">
+                {t("settings.basic.bangumiTokenHint")}
+              </p>
+            ) : null}
 
             {isAuthorized ? (
               <>

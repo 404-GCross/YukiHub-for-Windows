@@ -17,16 +17,33 @@
 
 ## 2. 第三方服务凭据（必须自行申请）
 
-上游硬编码了自家的 Hikarinagi OAuth Client ID，本仓库已将其移除。
-以下凭据全部需要 YukiHub 自行申请，并通过 CI Variables / Secrets 或本地 `.env.build` 注入：
+上游硬编码了自家的凭据，本仓库不使用。账号授权的完整方案见
+[ADR-0003](decisions/0003-account-authorization-strategy.md)：**Bangumi 走个人令牌**
+（用户自己粘贴，我们不需要 OAuth 应用），**Hikarinagi / NextMoe 走原生 OAuth**
+（native public client，默认复用 YukiHub Android 客户端的 id）。
+
+以下凭据按需申请，并通过 CI Variables / Secrets 或本地 `.env.build` 注入：
 
 | 服务 | 变量 | 用途 |
 | --- | --- | --- |
-| Bangumi | `YUKIHUB_BANGUMI_CLIENT_ID` / `_SECRET` | 账号授权、状态回写 |
-| Hikarinagi | `YUKIHUB_HIKARINAGI_CLIENT_ID` / `_SECRET` | 账号登录、元数据 |
+| Bangumi | *不需要* | 改用用户自填的个人 Access Token（见 ADR-0003） |
+| Hikarinagi | `YUKIHUB_HIKARINAGI_CLIENT_ID` | 账号登录、元数据。默认复用 YukiHub Android 客户端，**仅在另建桌面端 OAuth 应用时才需要注入** |
 | TouchGAL | `YUKIHUB_TOUCHGAL_TOKEN` | 元数据接口 |
 | Umbra | `YUKIHUB_UMBRA_CLIENT_ID` / `YUKIHUB_UMBRA_REGISTRATION_TOKEN` | 可选云备份后端 |
 | 更新服务 | `YUKIHUB_UPDATE_SERVICE_URL` | 应用内更新检查地址 |
+
+### 桌面端第三方 OAuth 回调地址
+
+桌面端按 RFC 8252 走 loopback，**端口固定**，所以 redirect_uri 是确定的、注册一次长期有效：
+
+| 服务 | 桌面端 redirect_uri | Android 版 redirect_uri |
+| --- | --- | --- |
+| Hikarinagi | `http://127.0.0.1:14791/callback` | `yukihub://hikarinagi/callback` |
+| NextMoe | `http://127.0.0.1:14792/callback` | `yukihub://oauth/callback` |
+
+去平台后台确认**能否给同一个 OAuth 应用追加多条 redirect_uri**：
+能就复用现有应用（首选，少申请一次），不能就另建一个桌面端应用并把新 client id 注入。
+
 
 未配置时相关功能应给出"未配置"提示，而不是回退到他人的应用身份。
 

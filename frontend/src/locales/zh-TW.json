@@ -930,19 +930,16 @@
       "openUpstream": "前往上游專案"
     },
     "basic": {
-      "bangumiAuthHint": "登入 Bangumi 賬號以啟用後設資料重新整理和遊戲狀態同步功能。",
+      "bangumiAuthHint": "填入 Bangumi 個人權杖後，即可更新資料並同步遊戲狀態。",
       "bangumiAuthNeedsReauth": "需要重新連線",
       "bangumiAuthUnauthorized": "未連線",
       "bangumiAuthLastErrorLabel": "最近錯誤",
       "bangumiStatusPushLabel": "同步遊戲狀態到 Bangumi",
       "bangumiStatusPushHint": "開啟後會在本地修改遊戲狀態時，自動將 Bangumi 條目狀態同步到遠端。",
-      "bangumiAuthorize": "去授權",
-      "bangumiReauthorize": "重新授權",
       "bangumiDisconnect": "斷開",
-      "bangumiAuthReconnectHint": "如果授權或重新整理失敗，可以隨時在這裡重新執行授權。",
+      "bangumiAuthReconnectHint": "若權杖失效，中斷後重新填入即可。",
       "bangumiDisconnectConfirmTitle": "斷開 Bangumi 連線？",
-      "bangumiDisconnectConfirmMsg": "這會清除 YukiHub 本地儲存的 Bangumi OAuth 憑據。在您重新授權之前，Bangumi 後設資料重新整理和狀態推送都會停止。",
-      "bangumiAuthSuccess": "Bangumi 授權成功",
+      "bangumiDisconnectConfirmMsg": "這會清除本機保存的 Bangumi 權杖與帳號資訊。在重新填入之前，Bangumi 資料更新與狀態同步都會停止。",
       "bangumiDisconnectSuccess": "已斷開本地 Bangumi 連線",
       "bangumiAuthActionFailed": "Bangumi 授權操作失敗：{{error}}",
       "bangumiStatusPushFailed": "Bangumi 狀態推送失敗：{{game}}，{{error}}",
@@ -1027,7 +1024,13 @@
       "remoteStatusSyncPreparing": "正在準備遊戲條目…",
       "remoteStatusSyncEmpty": "收藏庫中沒有可同步的 {{provider}} 遊戲條目",
       "remoteStatusSyncSucceeded": "成功",
-      "remoteStatusSyncFailed": "失敗"
+      "remoteStatusSyncFailed": "失敗",
+      "bangumiTokenPlaceholder": "貼上 Bangumi 個人權杖（Access Token）",
+      "bangumiTokenSave": "儲存",
+      "bangumiTokenHint": "權杖請在 Bangumi 個人設定 → 應用 → 新建「個人權杖」產生（勾選「收藏」權限即可）。權杖只保存在本機，不會上傳。",
+      "bangumiTokenRequired": "請先填入 Bangumi 個人權杖",
+      "bangumiTokenSaved": "Bangumi 已連線：{{name}}",
+      "bangumiTokenInvalid": "權杖驗證失敗：{{error}}"
     },
     "portableSetup": {
       "description": "可攜版需要單獨註冊 yukihub://；可在此為目前使用者註冊通訊協定，無需管理員權限。",

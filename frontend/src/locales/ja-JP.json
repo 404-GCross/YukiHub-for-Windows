@@ -930,19 +930,16 @@
       "openUpstream": "上流プロジェクトを開く"
     },
     "basic": {
-      "bangumiAuthHint": "Bangumiアカウントにログインしてメタデータの更新やその他の機能を有効にしてください。",
+      "bangumiAuthHint": "Bangumi の個人アクセストークンを入力すると、資料の更新とゲーム状態の同期が使えます。",
       "bangumiAuthNeedsReauth": "再接続が必要",
       "bangumiAuthUnauthorized": "未接続",
       "bangumiAuthLastErrorLabel": "直近のエラー",
       "bangumiStatusPushLabel": "ゲーム状態を Bangumi に同期",
       "bangumiStatusPushHint": "有効にすると、YukiHub はローカルのゲーム状態変更を自動的に Bangumi のコレクション状態へ反映します。",
-      "bangumiAuthorize": "認証する",
-      "bangumiReauthorize": "再認証",
       "bangumiDisconnect": "切断",
-      "bangumiAuthReconnectHint": "認証またはトークン更新に失敗した場合は、ここから再度認証できます。",
+      "bangumiAuthReconnectHint": "トークンが無効になったら、切断して入力し直してください。",
       "bangumiDisconnectConfirmTitle": "Bangumi との接続を解除しますか？",
-      "bangumiDisconnectConfirmMsg": "YukiHub に保存された Bangumi OAuth 資格情報をローカルから削除します。再認証するまで、Bangumi メタデータ更新と状態 Push は停止します。",
-      "bangumiAuthSuccess": "Bangumi の認証に成功しました",
+      "bangumiDisconnectConfirmMsg": "この PC に保存された Bangumi のトークンとアカウント情報を削除します。再入力するまで、資料の更新と状態同期は停止します。",
       "bangumiDisconnectSuccess": "Bangumi とのローカル接続を解除しました",
       "bangumiAuthActionFailed": "Bangumi 認証操作に失敗しました: {{error}}",
       "bangumiStatusPushFailed": "Bangumi への状態 Push に失敗しました: {{game}}、{{error}}",
@@ -1027,7 +1024,13 @@
       "remoteStatusSyncPreparing": "ゲーム項目を準備中…",
       "remoteStatusSyncEmpty": "同期できる {{provider}} ゲーム項目がありません",
       "remoteStatusSyncSucceeded": "成功",
-      "remoteStatusSyncFailed": "失敗"
+      "remoteStatusSyncFailed": "失敗",
+      "bangumiTokenPlaceholder": "Bangumi 個人アクセストークンを貼り付け",
+      "bangumiTokenSave": "保存",
+      "bangumiTokenHint": "Bangumi の個人設定 → アプリ → 「個人アクセストークン」を新規作成して生成します（コレクション権限だけで十分です）。トークンはこの PC 内にのみ保存され、送信されません。",
+      "bangumiTokenRequired": "先に Bangumi 個人アクセストークンを入力してください",
+      "bangumiTokenSaved": "Bangumi に接続しました：{{name}}",
+      "bangumiTokenInvalid": "トークンの確認に失敗しました：{{error}}"
     },
     "portableSetup": {
       "description": "ポータブル版は yukihub:// を個別に登録する必要があります。ここで現在のユーザー向けに登録できます（管理者権限は不要）。",

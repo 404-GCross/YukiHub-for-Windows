@@ -459,6 +459,34 @@ INSERT / UPDATE 语句都不含这些列，落库时被**静默丢弃**——这
       - 验证：`gofmt` 无输出、`go vet ./...` 干净、`go test ./... -count=1` 全绿；
         `wails3 generate bindings`（枚举与两个 vo 模型更新）；前端
         `pnpm typecheck` / `build` / `i18n:check` 通过，改动文件 eslint 0 error
+- [x] 授权方式对齐手机版：Bangumi 改个人令牌、Hikarinagi 修「构建时注入」报错（2026-10-01 第四轮）
+      - 用户诉求：三个来源的授权怎么做？倾向手机版做法（Bangumi/镜像 = token，Hikarinagi 保留授权，
+        NextMoe 同手机版）；并问「PC 与手机要不要去后台各开一个项目 id」
+      - 摸清手机版的真实做法（`AuthActivity.java`）：
+        ① Bangumi/镜像 = **用户自填 Access Token**（`KEY_BANGUMI_TOKEN`），完全不做 OAuth；
+        ② Hikarinagi = OAuth（client id `hkn_qtmXMJfBoxcNLA-a`，redirect `yukihub://hikarinagi/callback`）；
+        ③ NextMoe/鲲 = OAuth（client id `16cc006913d6b666c6b1a1a115f644de`，redirect `yukihub://oauth/callback`）；
+        ④ 另有自建账号后端 `yukihub.zh.kg`（邮箱/密码 + 云同步），与第三方授权无关，PC 端尚未接入
+      - **报错根因**：`version.BangumiOAuthClientID` / `HikarinagiOAuthClientID` 默认空串，
+        CI 里 `vars.YUKIHUB_*` 也没配，于是 `StartAuth` 直接返回「请在构建时通过 XXX 注入」
+      - **修 1（Bangumi 改 token，后端零改动）**：`getValidAccessToken` 本来就有
+        「access_token 有值 + refresh_token 为空 → 直接当 Bearer 用」的 legacy 通路，
+        `buildAuthStatusLocked` 也把它判为 authorized（`legacy_token` 标志），
+        `Disconnect` 清的正是指标字段，语义天然吻合。
+        只改前端：账户卡片「去授权」换成令牌输入框 + 保存（令牌不回显，换令牌走「断开」再填），
+        保存后发一次真实 `GetProfile` 确认令牌确实可用。**不再需要任何 OAuth 应用**
+      - **修 2（Hikarinagi 开箱可授权）**：新增默认 client id 常量
+        `hikarinagiOAuthDefaultClientID = "hkn_qtmXMJfBoxcNLA-a"`（与 Android 同源的公开标识，
+        native public client、非机密），构建注入值优先于它；错误文案去掉「构建时注入」措辞
+      - **回答「要不要新开项目 id」**：Bangumi **不用开**（改 token 后不需要 OAuth 应用）；
+        Hikarinagi / NextMoe **优先复用现有应用 + 后台追加 loopback 回调地址**
+        （桌面端端口固定：Hikarinagi 14791 / NextMoe 14792，redirect_uri 确定、注册一次长期有效），
+        只有后台限制「一个应用只能一条 redirect_uri」时才新开桌面端应用
+      - 新增 `docs/decisions/0003-account-authorization-strategy.md` 记录该决策；
+        `docs/fork-setup.md` 的凭据表与新增的「回调地址表」同步更新
+      - 验证：gofmt 无输出、`go vet ./...` 干净、`go test ./... -count=1` 全绿；
+        typecheck 通过、i18n:clean 每语言 -3 个失效键、改动文件 eslint 0 error
+
 - [x] 修账户授权展开布局 + 备份彻底简化（2026-10-01 第三轮）
       - **账户授权卡片展开后布局散架**（用户三张截图）：
         根因是 `BasicSettingsPanel` 的 `accountGridColumns` 把**三张卡片塞进两列网格**

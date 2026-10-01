@@ -284,7 +284,7 @@ func (s *BangumiService) Disconnect() (vo.BangumiAuthStatus, error) {
 	}
 
 	s.emitAuthStatusChanged(status)
-	applog.LogInfof(s.ctx, "Bangumi OAuth disconnected locally")
+	applog.LogInfof(s.ctx, "Bangumi credentials cleared locally")
 	return status, nil
 }
 
