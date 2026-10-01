@@ -27,6 +27,7 @@ import {
   GetGameSteamStatus,
 } from "../../bindings/yukihub/internal/service/integrationservice";
 import { enums } from "../../src/bindings/models";
+import lunaBoxIconUrl from "../assets/importers/lunabox.png";
 import playniteIconUrl from "../assets/importers/playnite.png";
 import potatovnIconUrl from "../assets/importers/potatovn.png";
 import reinaManagerIconUrl from "../assets/importers/reinamanager.png";
@@ -125,7 +126,7 @@ const EMPTY_STATE_IMPORT_OPTIONS = [
   {
     source: "lunabox",
     labelKey: "library.importLunaBox",
-    icon: "i-mdi-database-import-outline",
+    iconSrc: lunaBoxIconUrl,
   },
   {
     source: "steam",
@@ -1453,8 +1454,7 @@ function LibraryPage() {
                     key: "lunabox",
                     label: t("library.importLunaBox"),
                     description: t("library.importLunaBoxDesc"),
-                    icon: "i-mdi-database-import-outline",
-                    iconColor: "text-teal-500",
+                    iconSrc: lunaBoxIconUrl,
                     onClick: () => setImportSource("lunabox"),
                   },
                   {

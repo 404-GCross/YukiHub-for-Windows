@@ -408,45 +408,62 @@ func (s *ImportService) ImportFromReinaManagerWithSelection(dbPath string, skipN
 	return ImportResult(result), err
 }
 
-// =================== 上游 LunaBox 数据库导入 ====================
+// =================== 上游 LunaBox 备份导入 ====================
 
-// SelectLunaBoxDatabase 选择上游 LunaBox 的数据库文件。
-func (s *ImportService) SelectLunaBoxDatabase() (string, error) {
+// SelectLunaBoxBackup 选择上游 LunaBox 的 ZIP 备份文件。
+//
+// LunaBox 的备份是 ZIP（默认落在 %APPDATA%\LunaBox\backups\database\），
+// 对话框存在该目录时直接以它为起始目录。
+func (s *ImportService) SelectLunaBoxBackup() (string, error) {
 	selection, err := s.runtime.OpenFile(wailsruntime.OpenDialogOptions{
-		Title: "选择 LunaBox 数据库",
+		Title:     "选择 LunaBox 备份文件",
+		Directory: lunaBoxDefaultBackupDir(),
 		Filters: []wailsruntime.FileFilter{
 			{
-				DisplayName: "LunaBox 数据库",
-				Pattern:     "*.db",
+				DisplayName: "LunaBox 备份 (*.zip)",
+				Pattern:     "*.zip",
 			},
 		},
 	})
 	return selection, err
 }
 
-// PreviewLunaBoxImport 预览 LunaBox 数据库中的游戏。
-func (s *ImportService) PreviewLunaBoxImport(dbPath string) ([]PreviewGame, error) {
-	previews, err := importer.NewLunaBoxImporter(s.importerDependencies()).Preview(dbPath)
+// lunaBoxDefaultBackupDir 返回 LunaBox 的备份目录，不存在时返回空串。
+func lunaBoxDefaultBackupDir() string {
+	configDir, err := os.UserConfigDir()
+	if err != nil {
+		return ""
+	}
+	dir := filepath.Join(configDir, "LunaBox", "backups", "database")
+	if info, statErr := os.Stat(dir); statErr == nil && info.IsDir() {
+		return dir
+	}
+	return ""
+}
+
+// PreviewLunaBoxImport 预览 LunaBox 备份中的游戏。
+func (s *ImportService) PreviewLunaBoxImport(zipPath string) ([]PreviewGame, error) {
+	previews, err := importer.NewLunaBoxImporter(s.importerDependencies()).Preview(zipPath)
 	return previewGamesFromImporter(previews), err
 }
 
-// ImportFromLunaBox 从上游 LunaBox 数据库导入游戏与游玩记录。
-func (s *ImportService) ImportFromLunaBox(dbPath string, skipNoPath bool) (ImportResult, error) {
-	return s.ImportFromLunaBoxWithOptions(dbPath, skipNoPath, importer.SamePathActionSkip)
+// ImportFromLunaBox 从上游 LunaBox 备份导入游戏与游玩记录。
+func (s *ImportService) ImportFromLunaBox(zipPath string, skipNoPath bool) (ImportResult, error) {
+	return s.ImportFromLunaBoxWithOptions(zipPath, skipNoPath, importer.SamePathActionSkip)
 }
 
 // ImportFromLunaBoxWithOptions 按同名路径处理策略导入 LunaBox 数据。
-func (s *ImportService) ImportFromLunaBoxWithOptions(dbPath string, skipNoPath bool, samePathAction string) (ImportResult, error) {
-	result, err := importer.NewLunaBoxImporter(s.importerDependencies()).Import(dbPath, skipNoPath, samePathAction)
+func (s *ImportService) ImportFromLunaBoxWithOptions(zipPath string, skipNoPath bool, samePathAction string) (ImportResult, error) {
+	result, err := importer.NewLunaBoxImporter(s.importerDependencies()).Import(zipPath, skipNoPath, samePathAction)
 	return ImportResult(result), err
 }
 
-// ImportFromLunaBoxWithSelection 只导入 LunaBox 数据库里被选中的条目。
-func (s *ImportService) ImportFromLunaBoxWithSelection(dbPath string, skipNoPath bool, samePathAction string, selections []vo.ImportSelection) (ImportResult, error) {
+// ImportFromLunaBoxWithSelection 只导入 LunaBox 备份里被选中的条目。
+func (s *ImportService) ImportFromLunaBoxWithSelection(zipPath string, skipNoPath bool, samePathAction string, selections []vo.ImportSelection) (ImportResult, error) {
 	if len(selections) == 0 {
 		return emptyServiceImportResult(), nil
 	}
-	result, err := importer.NewLunaBoxImporter(s.importerDependencies()).ImportSelected(dbPath, skipNoPath, samePathAction, selections)
+	result, err := importer.NewLunaBoxImporter(s.importerDependencies()).ImportSelected(zipPath, skipNoPath, samePathAction, selections)
 	return ImportResult(result), err
 }
 

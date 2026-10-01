@@ -108,7 +108,7 @@
     "detailSourceSwitched": "已切換至 {{source}}",
     "detailSourceSwitchFailed": "切換資料來源失敗",
     "importLunaBox": "從 LunaBox 匯入",
-    "importLunaBoxDesc": "從上游 LunaBox 的 DuckDB 資料庫遷移遊戲與遊玩記錄"
+    "importLunaBoxDesc": "從上游 LunaBox 的備份遷移遊戲、遊玩記錄與封面"
   },
   "filterBar": {
     "randomGame": "隨機開啟遊戲",
@@ -400,9 +400,9 @@
     "failedGames": "匯入失敗的遊戲:",
     "lunabox": {
       "title": "從 LunaBox 匯入",
-      "desc": "選擇 LunaBox 的資料庫檔案",
-      "hint": "支援 .db 檔案，會匯入遊戲條目與遊玩記錄；遊玩狀態會依 YukiHub 的五態自動換算",
-      "btn": "選擇資料庫檔案"
+      "desc": "選擇 LunaBox 的備份檔案（.zip）",
+      "hint": "在 LunaBox 的「設定 → 備份」匯出，或直接選 %APPDATA%\\LunaBox\\backups\\database 下的 .zip；會匯入遊戲、遊玩記錄、標籤與封面，遊玩狀態會自動換算成 YukiHub 的五態",
+      "btn": "選擇備份檔案"
     }
   },
   "game": {

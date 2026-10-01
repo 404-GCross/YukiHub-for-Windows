@@ -459,6 +459,35 @@ INSERT / UPDATE 语句都不含这些列，落库时被**静默丢弃**——这
       - 验证：`gofmt` 无输出、`go vet ./...` 干净、`go test ./... -count=1` 全绿；
         `wails3 generate bindings`（枚举与两个 vo 模型更新）；前端
         `pnpm typecheck` / `build` / `i18n:check` 通过，改动文件 eslint 0 error
+- [x] LunaBox 导入改读 **ZIP 备份**（上一轮读 .db 是错的）+ 换 LunaBox 图标（2026-10-02）
+      - 用户指出两处：① 导入菜单的图标不对，要用 LunaBox 的 logo；
+        ② 「lunabox 备份的是这种」—— 给出的实际路径是
+        `%APPDATA%\LunaBox\backups\database\lunabox_<时间戳>.zip`
+      - **上一轮的实现方向错了**：LunaBox 的备份**不是 .db 数据库文件**，而是
+        **ZIP**（DuckDB 的 `COPY TO csv` 导出 + 封面图片），结构为：
+        `database/games.csv`、`play_sessions.csv`、`game_tags.csv`、`categories.csv` 等，
+        以及 `covers/<游戏 ID>.webp`
+      - 手机版早就这么做了（`LunaBoxImporter.java`），本仓库照搬其结构并做两处增强：
+        · **保留启动路径**：桌面端 path 是有效的 Windows 路径（手机版因路径不可达而丢弃）
+        · 主键由本机生成（与其它导入器一致），游玩记录 / 标签 / 封面一律按 LunaBox 的 id 关联
+      - 读取改用 `archive/zip` + `encoding/csv`：
+        · 按**列名**取值（LunaBox 各版本列数不同，v1.12.1 才加 `is_nsfw` / `aliases` 等）
+        · 手工剥掉 BOM（否则第一列名会带 `\ufeff`，取不到值）
+        · 引号内的逗号与换行交给标准库（简介就是多行的）
+        · 时间戳是 PostgreSQL 风格 `2026-07-16 11:56:43.468941+08`（含时区偏移）
+        · `duration` 单位是**秒**，与桌面端库内一致，直接透传（不做毫秒换算）
+      - 封面：从 ZIP 的 `covers/` 取字节，经 `imageutils.SaveCoverImageBytes` 落成本地封面
+        （走 `ImportItem.CoverLoader`，由后台 worker 异步写回）
+      - 选择对话框改 `*.zip`，起始目录默认 `%APPDATA%\LunaBox\backups\database`
+      - 图标换成 LunaBox 官方 appicon（从上游仓库提取到
+        `frontend/src/assets/importers/lunabox.png`，1024×1024、透明底，与其它导入器图标一致）
+      - 测试：8 个单测（含造 ZIP 的端到端解析：引号内逗号与换行、缺列容忍、
+        非 ZIP 报错、游玩记录 rekey）+ 1 个真实备份核对（环境变量触发，CI 自动跳过）。
+        **实测用户真实备份**：5 个游戏、2 条游玩记录、3 个本地封面全部命中无缺失，
+        `on_hold` → `onhold` 映射生效
+      - 验证：gofmt 无输出、`go vet ./...` 干净、`go test ./... -count=1` 全绿；
+        i18n:check 干净（无增删键）、typecheck 通过、改动文件 eslint 0 error
+
 - [x] 删 Hikarinagi 授权卡片 + 限速补足 + 新增「从 LunaBox 导入」（2026-10-01 第七轮）
       - 用户确认四个渠道都能用了，接着提了三件事
       - ① **删掉 Hikarinagi 授权卡片**：元数据已走内置应用级凭据，登录只剩「显示账号名」，

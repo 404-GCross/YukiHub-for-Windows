@@ -108,7 +108,7 @@
     "detailSourceSwitched": "{{source}} に切り替えました",
     "detailSourceSwitchFailed": "資料ソースの切り替えに失敗しました",
     "importLunaBox": "LunaBox から取り込み",
-    "importLunaBoxDesc": "上流 LunaBox の DuckDB データベースからゲームとプレイ履歴を移行"
+    "importLunaBoxDesc": "上流 LunaBox のバックアップからゲーム・プレイ履歴・カバーを移行"
   },
   "filterBar": {
     "randomGame": "ランダムなゲームを開く",
@@ -400,9 +400,9 @@
     "failedGames": "インポートに失敗したゲーム:",
     "lunabox": {
       "title": "LunaBox から取り込み",
-      "desc": "LunaBox のデータベースファイルを選択",
-      "hint": ".db ファイルに対応。ゲームとプレイ履歴を取り込み、プレイ状況は YukiHub の 5 状態に変換されます",
-      "btn": "データベースファイルを選択"
+      "desc": "LunaBox のバックアップファイル（.zip）を選択",
+      "hint": "LunaBox の「設定 → バックアップ」から書き出すか、%APPDATA%\\LunaBox\\backups\\database の .zip を選びます。ゲーム、プレイ履歴、タグ、カバーを取り込み、プレイ状況は YukiHub の 5 状態に変換されます",
+      "btn": "バックアップファイルを選択"
     }
   },
   "game": {

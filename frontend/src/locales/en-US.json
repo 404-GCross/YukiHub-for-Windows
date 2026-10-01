@@ -108,7 +108,7 @@
     "detailSourceSwitched": "Switched to {{source}}",
     "detailSourceSwitchFailed": "Failed to switch metadata source",
     "importLunaBox": "Import from LunaBox",
-    "importLunaBoxDesc": "Migrate games and play sessions from an upstream LunaBox DuckDB database"
+    "importLunaBoxDesc": "Migrate games, play sessions and covers from an upstream LunaBox backup"
   },
   "filterBar": {
     "randomGame": "Open a random game",
@@ -400,9 +400,9 @@
     "failedGames": "Failed Games:",
     "lunabox": {
       "title": "Import from LunaBox",
-      "desc": "Select the LunaBox database file",
-      "hint": "Accepts .db files and imports games plus play sessions; play status is converted to YukiHub's five states",
-      "btn": "Select database file"
+      "desc": "Select the LunaBox backup file (.zip)",
+      "hint": "Export it from LunaBox under Settings -> Backup, or pick a .zip from %APPDATA%\\LunaBox\\backups\\database. Games, play sessions, tags and covers are imported; play status is converted to YukiHub's five states",
+      "btn": "Select backup file"
     }
   },
   "game": {

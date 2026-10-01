@@ -1,33 +1,45 @@
 package importer
 
 import (
-	"database/sql"
+	"archive/zip"
+	"bytes"
+	"encoding/csv"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/google/uuid"
 
 	"yukihub/internal/applog"
 	"yukihub/internal/common/enums"
 	"yukihub/internal/common/vo"
 	"yukihub/internal/models"
+	"yukihub/internal/utils/imageutils"
+	"yukihub/internal/utils/metadata"
 )
 
-// LunaBoxImporter 从上游 LunaBox 的数据库导入游戏与游玩记录。
+// LunaBoxImporter 从上游 LunaBox 的 ZIP 备份导入游戏、游玩记录与标签。
 //
-// LunaBox 是本仓库的硬分叉：13 张表同名、games 表字段也基本一致，
-// 所以不需要格式转换，按列名直接映射即可。但有两处**必须显式处理**，
-// 否则不会报错、只会「静默归错」：
+// LunaBox 的备份是 **ZIP**（默认落在
+// `%APPDATA%\LunaBox\backups\database\lunabox_<时间戳>.zip`），
+// 里面是 DuckDB 导出的 CSV 与封面图片：
 //
-//   - games.status：LunaBox 是 not_started / want_to_play / on_hold，
-//     本仓库按手机版规范合并为 unplayed / onhold（没有「想玩」这一态）
-//   - games 少了 5 列（legacy_local_id、source_device_id、playtime_reset_at、
-//     hidden、trailer_path），这些按零值处理
+//	database/games.csv            游戏列表
+//	database/play_sessions.csv    游玩记录（duration 单位：秒）
+//	database/game_tags.csv        标签（每个游戏多条）
+//	covers/<游戏 ID>.webp         封面，对应 games.cover_url 里的 /local/covers/<文件名>
 //
-// 读取刻意按**列名**取值、而不是按固定列顺序 Scan：
-// 既不怕 LunaBox 少那 5 列，也能直接读本仓库自己的库文件（互为备份）。
+// 只依赖 CSV 的**列名**取值，所以 LunaBox 之后增删列都不会影响解析；
+// 也正因为读的是导出文件而不是数据库，导入时不会碰到对方库的写锁。
+//
+// 与手机版（`LunaBoxImporter.java`）的差异：桌面端 path 是有效的 Windows 路径，
+// 因此**保留启动路径**（手机版因为路径不可达而丢弃），游玩记录与封面同样照搬。
 type LunaBoxImporter struct {
 	deps Dependencies
 }
@@ -37,11 +49,41 @@ func NewLunaBoxImporter(deps Dependencies) *LunaBoxImporter {
 	return &LunaBoxImporter{deps: deps}
 }
 
-// Preview 预览 LunaBox 数据库中的游戏。
-func (l *LunaBoxImporter) Preview(dbPath string) ([]PreviewGame, error) {
-	games, _, err := loadLunaBoxData(dbPath)
+const (
+	lunaBoxGamesFileName    = "games.csv"
+	lunaBoxSessionsFileName = "play_sessions.csv"
+	lunaBoxTagsFileName     = "game_tags.csv"
+	// LunaBox 的本地封面统一写成 /local/covers/<文件名>，图片本体在 ZIP 的 covers/ 下。
+	lunaBoxLocalCoverPrefix = "/local/covers/"
+	// 与手机版一致：每个游戏最多带 20 个标签，避免标签爆炸。
+	lunaBoxMaxTagsPerGame = 20
+	// 单个 ZIP 条目的读取上限，纯属防呆（正常备份的 CSV 只有几十 KB）。
+	lunaBoxMaxEntryBytes = 64 << 20
+)
+
+// lunaBoxEntry 是一条待导入的游戏，附带只在导入期需要的旁路信息。
+type lunaBoxEntry struct {
+	game models.Game
+	tags []metadata.TagItem
+	// lunaBoxID 是 LunaBox 侧的 id。主键（game.ID）由本机重新生成，
+	// 因此游玩记录、标签、封面都必须靠这个 id 关联 —— 不能拿 game.ID 去查。
+	lunaBoxID string
+	// coverFile 是 ZIP 里 covers/ 下的文件名（games.cover_url 为本地封面时才有值）。
+	coverFile string
+}
+
+// lunaBoxArchive 是一次解析出来的完整备份内容。
+type lunaBoxArchive struct {
+	entries  []lunaBoxEntry
+	sessions map[string][]models.PlaySession // LunaBox 游戏 ID -> 游玩记录
+	covers   map[string][]byte               // covers/ 下的文件名 -> 图片内容
+}
+
+// Preview 预览 LunaBox 备份中的游戏。
+func (l *LunaBoxImporter) Preview(zipPath string) ([]PreviewGame, error) {
+	archive, err := readLunaBoxArchive(zipPath)
 	if err != nil {
-		applog.LogErrorf(l.deps.Ctx, "PreviewLunaBoxImport: 读取数据库失败: %v", err)
+		applog.LogErrorf(l.deps.Ctx, "PreviewLunaBoxImport: 读取备份失败: %v", err)
 		return nil, err
 	}
 
@@ -51,8 +93,9 @@ func (l *LunaBoxImporter) Preview(dbPath string) ([]PreviewGame, error) {
 	}
 	existingIndex := newExistingPreviewIndex(existingGames)
 
-	previews := make([]PreviewGame, 0, len(games))
-	for _, game := range games {
+	previews := make([]PreviewGame, 0, len(archive.entries))
+	for _, entry := range archive.entries {
+		game := entry.game
 		if game.Name == "" {
 			continue
 		}
@@ -74,20 +117,20 @@ func (l *LunaBoxImporter) Preview(dbPath string) ([]PreviewGame, error) {
 	return previews, nil
 }
 
-// Import 导入 LunaBox 数据库中的游戏与游玩记录。
-func (l *LunaBoxImporter) Import(dbPath string, skipNoPath bool, samePathAction string) (ImportResult, error) {
-	return l.ImportSelected(dbPath, skipNoPath, samePathAction, nil)
+// Import 导入 LunaBox 备份中的全部游戏与游玩记录。
+func (l *LunaBoxImporter) Import(zipPath string, skipNoPath bool, samePathAction string) (ImportResult, error) {
+	return l.ImportSelected(zipPath, skipNoPath, samePathAction, nil)
 }
 
-// ImportSelected 导入 LunaBox 数据库中被选中的游戏。
-func (l *LunaBoxImporter) ImportSelected(dbPath string, skipNoPath bool, samePathAction string, selections []vo.ImportSelection) (ImportResult, error) {
+// ImportSelected 只导入被选中的条目。
+func (l *LunaBoxImporter) ImportSelected(zipPath string, skipNoPath bool, samePathAction string, selections []vo.ImportSelection) (ImportResult, error) {
 	result := newImportResult()
 	samePathAction = NormalizeSamePathAction(samePathAction)
 	selectionFilter := newImportSelectionFilter(selections)
 
-	games, sessionsByID, err := loadLunaBoxData(dbPath)
+	archive, err := readLunaBoxArchive(zipPath)
 	if err != nil {
-		applog.LogErrorf(l.deps.Ctx, "ImportFromLunaBox: 读取数据库失败: %v", err)
+		applog.LogErrorf(l.deps.Ctx, "ImportFromLunaBox: 读取备份失败: %v", err)
 		return result, err
 	}
 
@@ -96,12 +139,12 @@ func (l *LunaBoxImporter) ImportSelected(dbPath string, skipNoPath bool, samePat
 		return result, err
 	}
 
-	items := make([]ImportItem, 0, len(games))
-	for _, game := range games {
-		sessions := sessionsByID[game.ID]
+	items := make([]ImportItem, 0, len(archive.entries))
+	for _, entry := range archive.entries {
+		game := entry.game
 		if game.Name == "" {
 			result.Failed++
-			result.FailedNames = append(result.FailedNames, fmt.Sprintf("LunaBox #%s (缺少名称)", game.ID))
+			result.FailedNames = append(result.FailedNames, "LunaBox 条目 (缺少名称)")
 			continue
 		}
 		if !selectionFilter.includes(game.Name, game.Path, string(game.SourceType), game.SourceID) {
@@ -113,6 +156,8 @@ func (l *LunaBoxImporter) ImportSelected(dbPath string, skipNoPath bool, samePat
 			continue
 		}
 
+		// 游玩记录按 LunaBox 的 id 关联，并换成本机主键
+		sessions := rekeyLunaBoxSessions(archive.sessions[entry.lunaBoxID], game.ID)
 		action := ImportActionCreate
 		existingGameID := ""
 		if conflict, exists := findExistingGameConflict(existingGames, existingNames, existingPaths, game.Name, game.Path); exists {
@@ -138,12 +183,13 @@ func (l *LunaBoxImporter) ImportSelected(dbPath string, skipNoPath bool, samePat
 		}
 
 		items = append(items, ImportItem{
-			Source:         vo.GameMetadataFromWebVO{Source: game.SourceType, Game: game},
+			Source:         vo.GameMetadataFromWebVO{Source: game.SourceType, Game: game, Tags: entry.tags},
 			Sessions:       sessions,
 			DisplayName:    game.Name,
 			Path:           game.Path,
 			Action:         action,
 			ExistingGameID: existingGameID,
+			CoverLoader:    l.coverLoader(entry.coverFile, archive.covers),
 		})
 		if action == ImportActionCreate {
 			updateExistingIndexes(existingNames, existingPaths, game, game.Name, game.Path)
@@ -164,171 +210,331 @@ func (l *LunaBoxImporter) ImportSelected(dbPath string, skipNoPath bool, samePat
 	return result, nil
 }
 
-// loadLunaBoxData 打开 LunaBox 数据库并读出游戏与按 game_id 分组的游玩记录。
-func loadLunaBoxData(dbPath string) ([]models.Game, map[string][]models.PlaySession, error) {
-	dbPath = strings.TrimSpace(dbPath)
-	if dbPath == "" {
-		return nil, nil, errors.New("LunaBox 数据库路径为空")
+// rekeyLunaBoxSessions 复制一份游玩记录并把 GameID 换成本机主键。
+//
+// LunaBox 记录里的 game_id 是它自己的 uuid，与本机新生成的主键不同；
+// 不换就会写出一批「指向不存在的游戏」的孤立记录（不报错，但游玩时长全丢）。
+func rekeyLunaBoxSessions(sessions []models.PlaySession, gameID string) []models.PlaySession {
+	if len(sessions) == 0 {
+		return nil
 	}
-	info, err := os.Stat(dbPath)
+	cloned := make([]models.PlaySession, len(sessions))
+	copy(cloned, sessions)
+	for i := range cloned {
+		cloned[i].GameID = gameID
+	}
+	return cloned
+}
+
+// coverLoader 把 ZIP 里的封面字节落成本地封面。
+//
+// 返回的闭包持有整份封面映射；ZIP 只有几百 KB（封面是缩略图级别），
+// 放内存里可以避免「临时目录在异步落盘前就被清掉」的问题。
+func (l *LunaBoxImporter) coverLoader(coverFile string, covers map[string][]byte) func(models.Game) (string, error) {
+	if coverFile == "" {
+		return nil
+	}
+	data := covers[coverFile]
+	if len(data) == 0 {
+		return nil
+	}
+	return func(game models.Game) (string, error) {
+		savedPath, err := imageutils.SaveCoverImageBytes(data, game.ID, "image/webp")
+		if err != nil {
+			return "", fmt.Errorf("保存 LunaBox 封面失败: %w", err)
+		}
+		return savedPath, nil
+	}
+}
+
+// readLunaBoxArchive 打开 ZIP 并解析出游戏、游玩记录与封面。
+func readLunaBoxArchive(zipPath string) (*lunaBoxArchive, error) {
+	zipPath = strings.TrimSpace(zipPath)
+	if zipPath == "" {
+		return nil, errors.New("LunaBox 备份路径为空")
+	}
+	info, err := os.Stat(zipPath)
 	if err != nil {
-		return nil, nil, fmt.Errorf("读取 LunaBox 数据库失败: %w", err)
+		return nil, fmt.Errorf("读取 LunaBox 备份失败: %w", err)
 	}
 	if info.IsDir() {
-		return nil, nil, errors.New("LunaBox 数据库路径不能是目录")
+		return nil, errors.New("LunaBox 备份路径不能是目录")
 	}
 
-	// LunaBox 与本仓库用的是同一个 DuckDB 版本（duckdb-go/v2 v2.5.6），
-	// 存储格式兼容，可以直接打开；改建成副本也不会动到原文件。
-	db, err := sql.Open("duckdb", dbPath)
+	reader, err := zip.OpenReader(zipPath)
 	if err != nil {
-		return nil, nil, fmt.Errorf("打开 LunaBox 数据库失败: %w", err)
+		return nil, fmt.Errorf("打开 LunaBox 备份失败（需要 .zip 备份文件）: %w", err)
 	}
-	defer func() { _ = db.Close() }()
+	defer func() { _ = reader.Close() }()
 
-	games, err := readLunaBoxGames(db)
-	if err != nil {
-		return nil, nil, err
-	}
-	sessions, err := readLunaBoxSessions(db)
-	if err != nil {
-		return nil, nil, err
-	}
-	return games, sessions, nil
-}
+	var gamesCSV, sessionsCSV, tagsCSV []byte
+	covers := make(map[string][]byte)
 
-// readLunaBoxGames 读取 games 表。按列名取值，不假设列顺序与列数。
-func readLunaBoxGames(db *sql.DB) ([]models.Game, error) {
-	rows, columns, targets, err := startLunaBoxScan(db, "games")
-	if err != nil {
-		return nil, err
-	}
-	defer func() { _ = rows.Close() }()
-
-	games := make([]models.Game, 0)
-	for rows.Next() {
-		if err := rows.Scan(targets...); err != nil {
-			return nil, fmt.Errorf("解析 LunaBox games 行失败: %w", err)
-		}
-		game := lunaBoxGameFromRow(lunaBoxRowValues(columns, targets))
-		if game.ID == "" || game.Name == "" {
+	for _, file := range reader.File {
+		if file.FileInfo().IsDir() {
 			continue
 		}
-		games = append(games, game)
+		name := filepath.ToSlash(file.Name)
+		switch {
+		case matchesLunaBoxFileName(name, lunaBoxGamesFileName):
+			if gamesCSV, err = readLunaBoxZipEntry(file); err != nil {
+				return nil, err
+			}
+		case matchesLunaBoxFileName(name, lunaBoxSessionsFileName):
+			if sessionsCSV, err = readLunaBoxZipEntry(file); err != nil {
+				return nil, err
+			}
+		case matchesLunaBoxFileName(name, lunaBoxTagsFileName):
+			if tagsCSV, err = readLunaBoxZipEntry(file); err != nil {
+				return nil, err
+			}
+		case strings.HasPrefix(name, "covers/") && isLunaBoxImageFile(name):
+			data, readErr := readLunaBoxZipEntry(file)
+			if readErr != nil {
+				return nil, readErr
+			}
+			covers[filepath.Base(name)] = data
+		}
 	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("遍历 LunaBox games 失败: %w", err)
+
+	if len(gamesCSV) == 0 {
+		return nil, fmt.Errorf("备份里没有找到 database/%s", lunaBoxGamesFileName)
 	}
-	return games, nil
+
+	archive := &lunaBoxArchive{
+		sessions: parseLunaBoxSessions(sessionsCSV),
+		covers:   covers,
+	}
+	tagsByGameID := parseLunaBoxTags(tagsCSV)
+	archive.entries = parseLunaBoxGames(gamesCSV, tagsByGameID)
+	if len(archive.entries) == 0 {
+		return nil, errors.New("LunaBox 备份里没有游戏条目")
+	}
+	return archive, nil
 }
 
-// readLunaBoxSessions 读取 play_sessions 表并按 game_id 分组。
-func readLunaBoxSessions(db *sql.DB) (map[string][]models.PlaySession, error) {
-	rows, columns, targets, err := startLunaBoxScan(db, "play_sessions")
-	if err != nil {
-		return nil, err
-	}
-	defer func() { _ = rows.Close() }()
+// matchesLunaBoxFileName 兼容「database/xxx.csv」与「xxx.csv」两种打包方式，
+// 也容忍大小写差异。
+func matchesLunaBoxFileName(name string, fileName string) bool {
+	return strings.EqualFold(filepath.Base(name), fileName)
+}
 
+func isLunaBoxImageFile(name string) bool {
+	switch strings.ToLower(filepath.Ext(name)) {
+	case ".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp", ".avif":
+		return true
+	default:
+		return false
+	}
+}
+
+func readLunaBoxZipEntry(file *zip.File) ([]byte, error) {
+	opened, err := file.Open()
+	if err != nil {
+		return nil, fmt.Errorf("读取备份条目 %s 失败: %w", file.Name, err)
+	}
+	defer func() { _ = opened.Close() }()
+
+	data, err := io.ReadAll(io.LimitReader(opened, lunaBoxMaxEntryBytes+1))
+	if err != nil {
+		return nil, fmt.Errorf("读取备份条目 %s 失败: %w", file.Name, err)
+	}
+	if int64(len(data)) > lunaBoxMaxEntryBytes {
+		return nil, fmt.Errorf("备份条目 %s 过大，已跳过", file.Name)
+	}
+	return data, nil
+}
+
+// parseLunaBoxGames 解析 games.csv。按列名取值，因此列的顺序与数量都不敏感。
+func parseLunaBoxGames(data []byte, tagsByGameID map[string][]metadata.TagItem) []lunaBoxEntry {
+	records, err := readLunaBoxCSV(data)
+	if err != nil || len(records) < 2 {
+		return nil
+	}
+
+	header := lunaBoxHeaderIndex(records[0])
+	entries := make([]lunaBoxEntry, 0, len(records)-1)
+	for _, record := range records[1:] {
+		name := lunaBoxField(record, header, "name")
+		if name == "" {
+			continue
+		}
+
+		lunaBoxID := lunaBoxField(record, header, "id")
+		game := models.Game{
+			// 与其它导入器一致：主键由本机生成，LunaBox 的 id 只用于关联
+			// 游玩记录、标签与封面文件。
+			ID:                 uuid.New().String(),
+			Name:               name,
+			Aliases:            parseLunaBoxAliases(lunaBoxField(record, header, "aliases")),
+			CoverSourceURL:     lunaBoxField(record, header, "cover_source_url"),
+			Company:            lunaBoxField(record, header, "company"),
+			Summary:            lunaBoxField(record, header, "summary"),
+			Rating:             parseLunaBoxFloat(lunaBoxField(record, header, "rating")),
+			ReleaseDate:        lunaBoxField(record, header, "release_date"),
+			Path:               normalizeImportPath(lunaBoxField(record, header, "path")),
+			GameDirectory:      lunaBoxField(record, header, "game_directory"),
+			SavePath:           lunaBoxField(record, header, "save_path"),
+			ProcessName:        lunaBoxField(record, header, "process_name"),
+			LaunchMode:         enums.LaunchMode(lunaBoxField(record, header, "launch_mode")),
+			SteamLaunchID:      lunaBoxField(record, header, "steam_launch_id"),
+			SteamLaunchKind:    lunaBoxField(record, header, "steam_launch_kind"),
+			SteamUserID:        lunaBoxField(record, header, "steam_user_id"),
+			SteamLaunchOptions: lunaBoxField(record, header, "steam_launch_options"),
+			Status:             mapLunaBoxStatus(lunaBoxField(record, header, "status")),
+			// 来源名映射沿用 importer 里唯一的一份实现（source_mapping.go），
+			// 不要在这里另写一个 switch：漏项的后果是静默归成 local。
+			SourceType:        mapExternalSourceName(lunaBoxField(record, header, "source_type")),
+			SourceID:          lunaBoxField(record, header, "source_id"),
+			CachedAt:          parseLunaBoxTime(lunaBoxField(record, header, "cached_at")),
+			CreatedAt:         parseLunaBoxTime(lunaBoxField(record, header, "created_at")),
+			UpdatedAt:         parseLunaBoxTime(lunaBoxField(record, header, "updated_at")),
+			UseLocaleEmulator: parseLunaBoxBool(lunaBoxField(record, header, "use_locale_emulator")),
+			UseMagpie:         parseLunaBoxBool(lunaBoxField(record, header, "use_magpie")),
+			IsNSFW:            parseLunaBoxBool(lunaBoxField(record, header, "is_nsfw")),
+			MetadataLocked:    parseLunaBoxBool(lunaBoxField(record, header, "metadata_locked")),
+			LastPlayedAt:      parseLunaBoxTimePtr(lunaBoxField(record, header, "last_played_at")),
+		}
+		now := time.Now()
+		if game.CreatedAt.IsZero() {
+			game.CreatedAt = now
+		}
+		if game.UpdatedAt.IsZero() {
+			game.UpdatedAt = game.CreatedAt
+		}
+
+		entry := lunaBoxEntry{game: game, tags: tagsByGameID[lunaBoxID], lunaBoxID: lunaBoxID}
+		entry.coverFile = lunaBoxLocalCoverFile(lunaBoxField(record, header, "cover_url"))
+		if entry.coverFile == "" {
+			// 远程封面（http/https）交给常规的封面下载流程。
+			coverURL := lunaBoxField(record, header, "cover_url")
+			if strings.HasPrefix(coverURL, "http://") || strings.HasPrefix(coverURL, "https://") {
+				entry.game.CoverURL = coverURL
+			}
+		}
+		entries = append(entries, entry)
+	}
+	return entries
+}
+
+// lunaBoxLocalCoverFile 把 /local/covers/<文件名> 换成 ZIP 里的文件名。
+func lunaBoxLocalCoverFile(coverURL string) string {
+	if !strings.HasPrefix(coverURL, lunaBoxLocalCoverPrefix) {
+		return ""
+	}
+	fileName := strings.TrimPrefix(coverURL, lunaBoxLocalCoverPrefix)
+	fileName = strings.TrimSpace(filepath.Base(filepath.ToSlash(fileName)))
+	if fileName == "" || fileName == "." {
+		return ""
+	}
+	return fileName
+}
+
+// parseLunaBoxSessions 解析 play_sessions.csv 并按游戏分组。
+func parseLunaBoxSessions(data []byte) map[string][]models.PlaySession {
 	sessions := make(map[string][]models.PlaySession)
-	for rows.Next() {
-		if err := rows.Scan(targets...); err != nil {
-			return nil, fmt.Errorf("解析 LunaBox play_sessions 行失败: %w", err)
-		}
-		row := lunaBoxRowValues(columns, targets)
-		session := models.PlaySession{
-			ID:        lunaBoxString(row, "id"),
-			GameID:    lunaBoxString(row, "game_id"),
-			StartTime: lunaBoxTime(row, "start_time"),
-			EndTime:   lunaBoxTime(row, "end_time"),
-			// 桌面端库内 duration 单位是秒（见 docs/mobile-yukihub-migration.md），
-			// LunaBox 同为桌面端，直接透传，不做毫秒换算。
-			Duration:  int(lunaBoxFloat(row, "duration")),
-			UpdatedAt: lunaBoxTime(row, "updated_at"),
-		}
-		if session.GameID == "" {
+	if len(data) == 0 {
+		return sessions
+	}
+	records, err := readLunaBoxCSV(data)
+	if err != nil || len(records) < 2 {
+		return sessions
+	}
+
+	header := lunaBoxHeaderIndex(records[0])
+	for _, record := range records[1:] {
+		lunaBoxGameID := lunaBoxField(record, header, "game_id")
+		if lunaBoxGameID == "" {
 			continue
+		}
+		startTime := parseLunaBoxTime(lunaBoxField(record, header, "start_time"))
+		session := models.PlaySession{
+			ID:        lunaBoxField(record, header, "id"),
+			GameID:    lunaBoxGameID,
+			StartTime: startTime,
+			EndTime:   parseLunaBoxTime(lunaBoxField(record, header, "end_time")),
+			// LunaBox 的 duration 单位是秒，与桌面端库内一致，直接透传。
+			// （手机版的同步格式才是毫秒，从手机版导入时需 ×1000。）
+			Duration:  parseLunaBoxInt(lunaBoxField(record, header, "duration")),
+			UpdatedAt: parseLunaBoxTime(lunaBoxField(record, header, "updated_at")),
 		}
 		if session.UpdatedAt.IsZero() {
 			session.UpdatedAt = session.StartTime
 		}
-		sessions[session.GameID] = append(sessions[session.GameID], session)
+		sessions[lunaBoxGameID] = append(sessions[lunaBoxGameID], session)
 	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("遍历 LunaBox play_sessions 失败: %w", err)
-	}
-	return sessions, nil
+	return sessions
 }
 
-// startLunaBoxScan 打开一张表的全表查询并准备好按列扫描的容器。
-func startLunaBoxScan(db *sql.DB, table string) (*sql.Rows, []string, []any, error) {
-	rows, err := db.Query(fmt.Sprintf("SELECT * FROM %s", table))
-	if err != nil {
-		return nil, nil, nil, fmt.Errorf("读取 LunaBox %s 表失败: %w", table, err)
+// parseLunaBoxTags 解析 game_tags.csv，返回「LunaBox 游戏 ID -> 标签」。
+func parseLunaBoxTags(data []byte) map[string][]metadata.TagItem {
+	tagsByGameID := make(map[string][]metadata.TagItem)
+	if len(data) == 0 {
+		return tagsByGameID
 	}
-	columns, err := rows.Columns()
-	if err != nil {
-		_ = rows.Close()
-		return nil, nil, nil, fmt.Errorf("读取 LunaBox %s 列名失败: %w", table, err)
+	records, err := readLunaBoxCSV(data)
+	if err != nil || len(records) < 2 {
+		return tagsByGameID
 	}
-	targets := make([]any, len(columns))
-	for i := range targets {
-		targets[i] = new(any)
-	}
-	return rows, columns, targets, nil
-}
 
-func lunaBoxRowValues(columns []string, targets []any) map[string]any {
-	row := make(map[string]any, len(columns))
-	for i, name := range columns {
-		pointer, ok := targets[i].(*any)
-		if !ok {
+	header := lunaBoxHeaderIndex(records[0])
+	for _, record := range records[1:] {
+		lunaBoxGameID := lunaBoxField(record, header, "game_id")
+		name := lunaBoxField(record, header, "name")
+		if lunaBoxGameID == "" || name == "" {
 			continue
 		}
-		row[name] = *pointer
+		if len(tagsByGameID[lunaBoxGameID]) >= lunaBoxMaxTagsPerGame {
+			continue
+		}
+		tagsByGameID[lunaBoxGameID] = append(tagsByGameID[lunaBoxGameID], metadata.TagItem{
+			Name:      name,
+			Source:    lunaBoxField(record, header, "source"),
+			Weight:    parseLunaBoxFloat(lunaBoxField(record, header, "weight")),
+			IsSpoiler: parseLunaBoxBool(lunaBoxField(record, header, "is_spoiler")),
+		})
 	}
-	return row
+	return tagsByGameID
 }
 
-func lunaBoxGameFromRow(row map[string]any) models.Game {
-	now := time.Now()
-	game := models.Game{
-		ID:                 lunaBoxString(row, "id"),
-		Name:               lunaBoxString(row, "name"),
-		CoverURL:           lunaBoxString(row, "cover_url"),
-		CoverSourceURL:     lunaBoxString(row, "cover_source_url"),
-		Company:            lunaBoxString(row, "company"),
-		Summary:            lunaBoxString(row, "summary"),
-		Rating:             lunaBoxFloat(row, "rating"),
-		ReleaseDate:        lunaBoxString(row, "release_date"),
-		Path:               normalizeImportPath(lunaBoxString(row, "path")),
-		GameDirectory:      lunaBoxString(row, "game_directory"),
-		SavePath:           lunaBoxString(row, "save_path"),
-		ProcessName:        lunaBoxString(row, "process_name"),
-		LaunchMode:         enums.LaunchMode(lunaBoxString(row, "launch_mode")),
-		SteamLaunchID:      lunaBoxString(row, "steam_launch_id"),
-		SteamLaunchKind:    lunaBoxString(row, "steam_launch_kind"),
-		SteamUserID:        lunaBoxString(row, "steam_user_id"),
-		SteamLaunchOptions: lunaBoxString(row, "steam_launch_options"),
-		Status:             mapLunaBoxStatus(lunaBoxString(row, "status")),
-		SourceType:         lunaBoxSourceType(lunaBoxString(row, "source_type")),
-		CachedAt:           lunaBoxTime(row, "cached_at"),
-		SourceID:           lunaBoxString(row, "source_id"),
-		CreatedAt:          lunaBoxTime(row, "created_at"),
-		UpdatedAt:          lunaBoxTime(row, "updated_at"),
-		UseLocaleEmulator:  lunaBoxBool(row, "use_locale_emulator"),
-		UseMagpie:          lunaBoxBool(row, "use_magpie"),
-		IsNSFW:             lunaBoxBool(row, "is_nsfw"),
-		MetadataLocked:     lunaBoxBool(row, "metadata_locked"),
-		LastPlayedAt:       lunaBoxTimePtr(row, "last_played_at"),
+// readLunaBoxCSV 解析 CSV。DuckDB 导出时字段可能含逗号与换行（简介就是），
+// 都会被双引号包裹，标准库即可正确处理；首行的 BOM 需要手工去掉，
+// 否则第一列的名字会带上 \ufeff 而取不到值。
+func readLunaBoxCSV(data []byte) ([][]string, error) {
+	reader := csv.NewReader(bytes.NewReader(bytes.TrimPrefix(data, []byte("\ufeff"))))
+	// 列数不固定时不报错（LunaBox 各版本列数不同）。
+	reader.FieldsPerRecord = -1
+	// 容忍个别未转义的引号，避免一条脏数据让整份备份导入失败。
+	reader.LazyQuotes = true
+	records, err := reader.ReadAll()
+	if err != nil {
+		return nil, fmt.Errorf("解析 LunaBox CSV 失败: %w", err)
 	}
-	if game.CreatedAt.IsZero() {
-		game.CreatedAt = now
+	return records, nil
+}
+
+// lunaBoxHeaderIndex 把表头行变成「列名 -> 下标」。
+func lunaBoxHeaderIndex(header []string) map[string]int {
+	index := make(map[string]int, len(header))
+	for i, name := range header {
+		key := strings.ToLower(strings.TrimSpace(strings.TrimPrefix(name, "\ufeff")))
+		if key == "" {
+			continue
+		}
+		if _, exists := index[key]; !exists {
+			index[key] = i
+		}
 	}
-	if game.UpdatedAt.IsZero() {
-		game.UpdatedAt = game.CreatedAt
+	return index
+}
+
+// lunaBoxField 按列名取值，缺列或越界一律返回空串 —— LunaBox 增删列都不会出错。
+func lunaBoxField(record []string, header map[string]int, column string) string {
+	index, ok := header[column]
+	if !ok || index >= len(record) {
+		return ""
 	}
-	return game
+	return strings.TrimSpace(record[index])
 }
 
 // mapLunaBoxStatus 把 LunaBox 的游玩状态换成 YukiHub 的五态。
@@ -352,127 +558,91 @@ func mapLunaBoxStatus(status string) enums.GameStatus {
 	}
 }
 
-// LunaBox 的来源取值是本仓库的子集（它 9 个，我们多了 bangumi_mirror 与 nextmoe），
-// 所以直接透传即可；未知值兜底为 local。
-var lunaBoxKnownSources = map[enums.SourceType]struct{}{
-	enums.Local:        {},
-	enums.Bangumi:      {},
-	enums.VNDB:         {},
-	enums.Ymgal:        {},
-	enums.Steam:        {},
-	enums.DLsite:       {},
-	enums.TouchGal:     {},
-	enums.Hikarinagi:   {},
-	enums.ErogameScape: {},
-	// 本仓库比 LunaBox 多出来的两个来源：读本仓库自己的库文件时会遇到，
-	// 同样透传（按列名取值的设计本来就允许两边互为备份）。
-	enums.BangumiMirror: {},
-	enums.NextMoe:       {},
-}
-
-func lunaBoxSourceType(raw string) enums.SourceType {
-	source := enums.SourceType(strings.ToLower(strings.TrimSpace(raw)))
-	if _, ok := lunaBoxKnownSources[source]; ok {
-		return source
+// parseLunaBoxAliases 解析别名列（DuckDB 导出的是 JSON 数组字面量，如 ["a","b"]）。
+func parseLunaBoxAliases(raw string) []string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" || raw == "[]" {
+		return nil
 	}
-	return enums.Local
-}
-
-func lunaBoxString(row map[string]any, key string) string {
-	value, ok := row[key]
-	if !ok || value == nil {
-		return ""
+	var aliases []string
+	if err := json.Unmarshal([]byte(raw), &aliases); err != nil {
+		return nil
 	}
-	switch typed := value.(type) {
-	case string:
-		return strings.TrimSpace(typed)
-	case []byte:
-		return strings.TrimSpace(string(typed))
-	default:
-		return strings.TrimSpace(fmt.Sprintf("%v", typed))
-	}
-}
-
-func lunaBoxFloat(row map[string]any, key string) float64 {
-	value, ok := row[key]
-	if !ok || value == nil {
-		return 0
-	}
-	switch typed := value.(type) {
-	case float64:
-		return typed
-	case float32:
-		return float64(typed)
-	case int64:
-		return float64(typed)
-	case int32:
-		return float64(typed)
-	case int:
-		return float64(typed)
-	case string:
-		parsed, err := strconv.ParseFloat(strings.TrimSpace(typed), 64)
-		if err != nil {
-			return 0
+	cleaned := make([]string, 0, len(aliases))
+	for _, alias := range aliases {
+		if trimmed := strings.TrimSpace(alias); trimmed != "" {
+			cleaned = append(cleaned, trimmed)
 		}
-		return parsed
-	default:
-		return 0
 	}
+	if len(cleaned) == 0 {
+		return nil
+	}
+	return cleaned
 }
 
-func lunaBoxBool(row map[string]any, key string) bool {
-	value, ok := row[key]
-	if !ok || value == nil {
-		return false
-	}
-	switch typed := value.(type) {
-	case bool:
-		return typed
-	case int64:
-		return typed != 0
-	case int32:
-		return typed != 0
-	case string:
-		lowered := strings.ToLower(strings.TrimSpace(typed))
-		return lowered == "true" || lowered == "1"
-	default:
-		return false
-	}
-}
-
-func lunaBoxTime(row map[string]any, key string) time.Time {
-	value, ok := row[key]
-	if !ok || value == nil {
+// parseLunaBoxTime 解析 LunaBox 的时间戳，形如 2026-07-16 11:56:43.468941+08
+// （PostgreSQL 风格，带时区偏移；小数位数不定，偶有无时区的情况）。
+func parseLunaBoxTime(raw string) time.Time {
+	value := strings.TrimSpace(raw)
+	if value == "" || strings.EqualFold(value, "null") {
 		return time.Time{}
 	}
-	switch typed := value.(type) {
-	case time.Time:
-		return typed
-	case string:
-		trimmed := strings.TrimSpace(typed)
-		for _, layout := range []string{
-			time.RFC3339Nano,
-			time.RFC3339,
-			"2006-01-02 15:04:05.999999",
-			"2006-01-02 15:04:05",
-			"2006-01-02",
-		} {
-			if parsed, err := time.Parse(layout, trimmed); err == nil {
-				return parsed
-			}
+	for _, layout := range []string{
+		"2006-01-02 15:04:05.999999999-07",
+		"2006-01-02 15:04:05.999999-07",
+		"2006-01-02 15:04:05-07",
+		"2006-01-02 15:04:05.999999999Z07:00",
+		time.RFC3339Nano,
+		"2006-01-02 15:04:05.999999999",
+		"2006-01-02 15:04:05",
+		"2006-01-02",
+	} {
+		if parsed, err := time.Parse(layout, value); err == nil {
+			return parsed
 		}
-		return time.Time{}
-	case int64:
-		return time.Unix(typed, 0)
-	default:
-		return time.Time{}
 	}
+	return time.Time{}
 }
 
-func lunaBoxTimePtr(row map[string]any, key string) *time.Time {
-	parsed := lunaBoxTime(row, key)
+func parseLunaBoxTimePtr(raw string) *time.Time {
+	parsed := parseLunaBoxTime(raw)
 	if parsed.IsZero() {
 		return nil
 	}
 	return &parsed
+}
+
+func parseLunaBoxFloat(raw string) float64 {
+	value := strings.TrimSpace(raw)
+	if value == "" || strings.EqualFold(value, "null") {
+		return 0
+	}
+	parsed, err := strconv.ParseFloat(value, 64)
+	if err != nil {
+		return 0
+	}
+	return parsed
+}
+
+func parseLunaBoxInt(raw string) int {
+	value := strings.TrimSpace(raw)
+	if value == "" || strings.EqualFold(value, "null") {
+		return 0
+	}
+	parsed, err := strconv.ParseFloat(value, 64)
+	if err != nil {
+		return 0
+	}
+	return int(parsed)
+}
+
+// parseLunaBoxBool 解析布尔列。DuckDB 导出的是小写 true / false，
+// 这里同时容忍 t / 1 / yes；缺列或空值按 false，与 LunaBox 的 DEFAULT FALSE 一致。
+func parseLunaBoxBool(raw string) bool {
+	switch strings.ToLower(strings.TrimSpace(raw)) {
+	case "true", "t", "1", "yes":
+		return true
+	default:
+		return false
+	}
 }

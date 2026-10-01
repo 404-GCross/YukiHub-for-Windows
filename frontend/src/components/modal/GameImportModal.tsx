@@ -19,13 +19,14 @@ import {
   PreviewVniteImport,
   PreviewYukiHubImport,
   SelectJSONFile,
-  SelectLunaBoxDatabase,
+  SelectLunaBoxBackup,
   SelectReinaManagerDatabase,
   SelectVniteDirectory,
   SelectYukiHubBackup,
   SelectZipFile,
 } from "../../../bindings/yukihub/internal/service/importservice";
 import { vo } from "../../../src/bindings/models";
+import lunaBoxIconUrl from "../../assets/importers/lunabox.png";
 import playniteIconUrl from "../../assets/importers/playnite.png";
 import potatovnIconUrl from "../../assets/importers/potatovn.png";
 import reinaManagerIconUrl from "../../assets/importers/reinamanager.png";
@@ -150,13 +151,14 @@ function getImportConfigs(t: any): Record<ImportSource, ImportConfig> {
     lunabox: {
       title: t("gameImportModal.lunabox.title"),
       icon: "i-mdi-database-import-outline",
-      fileType: "DB",
+      iconSrc: lunaBoxIconUrl,
+      fileType: "ZIP",
       fileDescription: t("gameImportModal.lunabox.desc"),
       fileHint: t("gameImportModal.lunabox.hint"),
       buttonText: t("gameImportModal.lunabox.btn"),
       primaryColor: "bg-teal-500",
       hoverColor: "hover:bg-teal-600",
-      selectFile: SelectLunaBoxDatabase,
+      selectFile: SelectLunaBoxBackup,
       previewImport: PreviewLunaBoxImport,
       doImport: ImportFromLunaBoxWithSelection,
     },

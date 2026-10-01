@@ -67,10 +67,10 @@ export function FetchMetadataForCandidateWithPreference(searchName: string, pref
 }
 
 /**
- * ImportFromLunaBox 从上游 LunaBox 数据库导入游戏与游玩记录。
+ * ImportFromLunaBox 从上游 LunaBox 备份导入游戏与游玩记录。
  */
-export function ImportFromLunaBox(dbPath: string, skipNoPath: boolean): $CancellablePromise<$models.ImportResult> {
-    return $Call.ByID(3701756226, dbPath, skipNoPath).then(($result: any) => {
+export function ImportFromLunaBox(zipPath: string, skipNoPath: boolean): $CancellablePromise<$models.ImportResult> {
+    return $Call.ByID(3701756226, zipPath, skipNoPath).then(($result: any) => {
         return $$createType0($result);
     });
 }
@@ -78,17 +78,17 @@ export function ImportFromLunaBox(dbPath: string, skipNoPath: boolean): $Cancell
 /**
  * ImportFromLunaBoxWithOptions 按同名路径处理策略导入 LunaBox 数据。
  */
-export function ImportFromLunaBoxWithOptions(dbPath: string, skipNoPath: boolean, samePathAction: string): $CancellablePromise<$models.ImportResult> {
-    return $Call.ByID(239242528, dbPath, skipNoPath, samePathAction).then(($result: any) => {
+export function ImportFromLunaBoxWithOptions(zipPath: string, skipNoPath: boolean, samePathAction: string): $CancellablePromise<$models.ImportResult> {
+    return $Call.ByID(239242528, zipPath, skipNoPath, samePathAction).then(($result: any) => {
         return $$createType0($result);
     });
 }
 
 /**
- * ImportFromLunaBoxWithSelection 只导入 LunaBox 数据库里被选中的条目。
+ * ImportFromLunaBoxWithSelection 只导入 LunaBox 备份里被选中的条目。
  */
-export function ImportFromLunaBoxWithSelection(dbPath: string, skipNoPath: boolean, samePathAction: string, selections: vo$0.ImportSelection[]): $CancellablePromise<$models.ImportResult> {
-    return $Call.ByID(2705419384, dbPath, skipNoPath, samePathAction, selections).then(($result: any) => {
+export function ImportFromLunaBoxWithSelection(zipPath: string, skipNoPath: boolean, samePathAction: string, selections: vo$0.ImportSelection[]): $CancellablePromise<$models.ImportResult> {
+    return $Call.ByID(2705419384, zipPath, skipNoPath, samePathAction, selections).then(($result: any) => {
         return $$createType0($result);
     });
 }
@@ -229,10 +229,10 @@ export function PreviewImport(zipPath: string): $CancellablePromise<$models.Prev
 }
 
 /**
- * PreviewLunaBoxImport 预览 LunaBox 数据库中的游戏。
+ * PreviewLunaBoxImport 预览 LunaBox 备份中的游戏。
  */
-export function PreviewLunaBoxImport(dbPath: string): $CancellablePromise<$models.PreviewGame[]> {
-    return $Call.ByID(2556415936, dbPath).then(($result: any) => {
+export function PreviewLunaBoxImport(zipPath: string): $CancellablePromise<$models.PreviewGame[]> {
+    return $Call.ByID(2556415936, zipPath).then(($result: any) => {
         return $$createType6($result);
     });
 }
@@ -336,10 +336,13 @@ export function SelectLibraryDirectory(initialDirectory: string): $CancellablePr
 }
 
 /**
- * SelectLunaBoxDatabase 选择上游 LunaBox 的数据库文件。
+ * SelectLunaBoxBackup 选择上游 LunaBox 的 ZIP 备份文件。
+ * 
+ * LunaBox 的备份是 ZIP（默认落在 %APPDATA%\LunaBox\backups\database\），
+ * 对话框存在该目录时直接以它为起始目录。
  */
-export function SelectLunaBoxDatabase(): $CancellablePromise<string> {
-    return $Call.ByID(2063569688);
+export function SelectLunaBoxBackup(): $CancellablePromise<string> {
+    return $Call.ByID(3168666687);
 }
 
 /**
