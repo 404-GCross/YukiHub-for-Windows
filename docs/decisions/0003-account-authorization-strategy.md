@@ -48,6 +48,36 @@
 - **Hikarinagi**：默认复用 Android 客户端 id（`hkn_...`），
   可用 `YUKIHUB_HIKARINAGI_CLIENT_ID` 构建注入覆盖。
 
+#### scope 必须与「该 client 被授权的那一组」完全一致
+
+OAuth 的 scope 不是想要就能要：服务端校验的是**这个 client 被授予了哪些 scope**，
+多要一个就整条授权失败，而且用户只会看到浏览器里一页
+`invalid_scope: requested scope is not allowed` —— YukiHub 这边**拿不到任何错误信息**。
+
+上游 LunaBox 用的是 `openid catalog:full user:read status:write offline_access`，
+那是配它自己申请的 client id 的。YukiHub 复用的 Android 客户端只被授权了
+`openid user:read`，照抄上游那串必然被拒（这正是第一版 PC 端授权失败的原因）。
+
+默认值因此取 Android 的那一组：
+
+| scope | 作用 |
+| --- | --- |
+| `openid` | 必须，用于拿 id_token |
+| `user:read` | 读 `/v3/user/me`（账号名、头像） |
+
+元数据走的是**公开 API**（`api.hikarinagi.org/v3`），不需要额外 scope。
+
+**相对的代价**（与上游那串比）：
+
+- 没有 `status:write` → 「同步游戏状态到 Hikarinagi」会被服务端拒绝；
+- 没有 `offline_access` → 服务端可能不下发 refresh token，
+  access token 过期后需要用户重新授权。
+
+想拿回这两项：先在 Hikarinagi 后台给应用加上对应权限，
+再用 `YUKIHUB_HIKARINAGI_SCOPES` 注入覆盖（注入值优先于默认值）。
+`internal/service/hikarinagi_service_internal_test.go` 里有一个测试钉住默认值，
+防止以后有人又照抄上游那串。
+
 ### 3. 回调地址：桌面端走 loopback
 
 - Android 用自定义 scheme：`yukihub://hikarinagi/callback`、`yukihub://oauth/callback`。

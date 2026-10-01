@@ -16,7 +16,8 @@ func TestBuildHikarinagiAuthURLUsesPublicClientPKCE(t *testing.T) {
 		codeVerifier: "verifier-value",
 		redirectURI:  hikarinagiOAuthRedirectURI,
 	}
-	authURL, err := url.Parse(buildHikarinagiAuthURL("public-client-id", session))
+	const scopes = "openid user:read"
+	authURL, err := url.Parse(buildHikarinagiAuthURL("public-client-id", scopes, session))
 	if err != nil {
 		t.Fatalf("解析授权地址失败: %v", err)
 	}
@@ -38,7 +39,7 @@ func TestBuildHikarinagiAuthURLUsesPublicClientPKCE(t *testing.T) {
 	if query.Get("code_challenge") != expectedChallenge {
 		t.Fatalf("PKCE challenge 不符合预期")
 	}
-	for _, scope := range []string{"openid", "catalog:full", "user:read", "status:write", "offline_access"} {
+	for _, scope := range strings.Split(scopes, " ") {
 		if !strings.Contains(" "+query.Get("scope")+" ", " "+scope+" ") {
 			t.Fatalf("授权请求缺少 scope %q: %q", scope, query.Get("scope"))
 		}
@@ -75,5 +76,28 @@ func TestResolveHikarinagiAssetURLUsesImageHost(t *testing.T) {
 	const absoluteURL = "https://cdn.example.com/avatar.webp"
 	if actualURL := resolveHikarinagiAssetURL(absoluteURL); actualURL != absoluteURL {
 		t.Fatalf("Hikarinagi 绝对图片地址发生变化: %q", actualURL)
+	}
+}
+
+// TestHikarinagiDefaultScopesStayWithinGrantedSet 钉住默认 scope。
+//
+// 服务端对未授权的 scope 会直接返回
+// `invalid_scope: requested scope is not allowed` 并中断整个授权流程
+// （用户看到的只是浏览器里一页「授权失败」）。
+// 上游 LunaBox 写的是 "openid catalog:full user:read status:write offline_access"，
+// 那是配它自己申请的 client id 的，照抄过来必然失败。
+// 改这个值之前，先去 Hikarinagi 后台确认该 client 被授予了哪些 scope。
+func TestHikarinagiDefaultScopesStayWithinGrantedSet(t *testing.T) {
+	const expected = "openid user:read"
+	if hikarinagiOAuthDefaultScopes != expected {
+		t.Fatalf(
+			"默认 scope 被改成了 %q，与 Android 客户端被授权的 %q 不一致；多加的 scope 会被服务端以 invalid_scope 拒绝",
+			hikarinagiOAuthDefaultScopes, expected,
+		)
+	}
+	for _, forbidden := range []string{"catalog:full", "status:write", "offline_access"} {
+		if strings.Contains(hikarinagiOAuthDefaultScopes, forbidden) {
+			t.Fatalf("默认 scope 里出现了未经授权的 %q: %q", forbidden, hikarinagiOAuthDefaultScopes)
+		}
 	}
 }

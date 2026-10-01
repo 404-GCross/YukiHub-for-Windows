@@ -43,7 +43,25 @@ const (
 	hikarinagiImageBaseURL      = "https://imagesp.yurari.moe/"
 
 	hikarinagiOAuthClientIDEnv = "YUKIHUB_HIKARINAGI_CLIENT_ID"
-	hikarinagiOAuthScopes      = "openid catalog:full user:read status:write offline_access"
+
+	// hikarinagiOAuthDefaultScopes 是 Hikarinagi 这个 OAuth 应用**实际被授权**的 scope 集合，
+	// 与 Android 端 `AuthActivity.HIKARINAGI_OAUTH_SCOPE` 完全一致。
+	//
+	// **不要凭感觉加项**：多要一个服务端就直接回
+	// `invalid_scope: requested scope is not allowed`，整条授权走不下去。
+	// 上游 LunaBox 写的是
+	// "openid catalog:full user:read status:write offline_access"，
+	// 那是配它自己申请的 client id 的；套到 YukiHub 的客户端上必然被拒。
+	//
+	// 各项含义：
+	//   - openid    : 必须，用于拿 id_token
+	//   - user:read : 读 /v3/user/me（账号名、头像）
+	//   - 元数据走的是公开 API（api.hikarinagi.org/v3），不需要额外 scope
+	//
+	// 若将来在 Hikarinagi 后台给应用加上了权限，「状态回写」需要 status:write、
+	// 「令牌自动刷新」需要 offline_access，两者都可以用
+	// YUKIHUB_HIKARINAGI_SCOPES 注入覆盖（注入值优先于本默认值）。
+	hikarinagiOAuthDefaultScopes = "openid user:read"
 
 	// hikarinagiOAuthDefaultClientID 是「YukiHub Android」客户端的公开标识（native
 	// public client，非机密，与 Android 端 AuthActivity.HIKARINAGI_ANDROID_CLIENT_ID 同源）。
@@ -139,6 +157,7 @@ type HikarinagiService struct {
 	emitEvent   func(string, ...interface{})
 	now         func() time.Time
 	clientID    string
+	scopes      string
 	mu          sync.Mutex
 	batchSyncMu sync.Mutex
 }
@@ -151,6 +170,7 @@ func NewHikarinagiService() *HikarinagiService {
 		emitEvent: func(name string, data ...interface{}) { runtime.Emit(name, data...) },
 		now:       time.Now,
 		clientID:  firstNonEmptyString(version.HikarinagiOAuthClientID, hikarinagiOAuthDefaultClientID),
+		scopes:    firstNonEmptyString(version.HikarinagiOAuthScopes, hikarinagiOAuthDefaultScopes),
 	}
 }
 
@@ -160,6 +180,7 @@ func (s *HikarinagiService) Init(ctx context.Context, db *sql.DB, config *appcon
 	s.db = db
 	s.config = config
 	s.clientID = firstNonEmptyString(s.clientID, version.HikarinagiOAuthClientID, hikarinagiOAuthDefaultClientID)
+	s.scopes = firstNonEmptyString(s.scopes, version.HikarinagiOAuthScopes, hikarinagiOAuthDefaultScopes)
 	if s.httpClient == nil {
 		client, _, err := httputils.NewClient(httputils.ClientOptions{
 			Timeout:     hikarinagiHTTPTimeout,
@@ -261,7 +282,7 @@ func (s *HikarinagiService) StartAuth() (vo.HikarinagiAuthStatus, error) {
 	}
 	defer session.shutdown()
 
-	authURL := buildHikarinagiAuthURL(s.clientID, session)
+	authURL := buildHikarinagiAuthURL(s.clientID, s.scopes, session)
 	if err := s.openURL(authURL); err != nil {
 		return vo.HikarinagiAuthStatus{}, fmt.Errorf("打开 Hikarinagi 授权页面失败: %w", err)
 	}
@@ -847,13 +868,13 @@ func tokenExpiryDuration(expiresIn int) time.Duration {
 	return time.Duration(expiresIn) * time.Second
 }
 
-func buildHikarinagiAuthURL(clientID string, session *hikarinagiAuthSession) string {
+func buildHikarinagiAuthURL(clientID string, scopes string, session *hikarinagiAuthSession) string {
 	challengeBytes := sha256.Sum256([]byte(session.codeVerifier))
 	params := url.Values{
 		"response_type":         {"code"},
 		"client_id":             {clientID},
 		"redirect_uri":          {session.redirectURI},
-		"scope":                 {hikarinagiOAuthScopes},
+		"scope":                 {scopes},
 		"prompt":                {"consent"},
 		"state":                 {session.state},
 		"nonce":                 {session.nonce},

@@ -34,6 +34,7 @@ var (
 	BangumiOAuthClientSecret    = ""          // Bangumi OAuth Client Secret
 	HikarinagiOAuthClientID     = ""          // Hikarinagi public/native OAuth Client ID
 	HikarinagiOAuthClientSecret = ""          // Hikarinagi OAuth Client Secret
+	HikarinagiOAuthScopes       = ""          // Hikarinagi OAuth scope，留空时用内置默认（与 Android 客户端一致）
 	UmbraOAuthClientID          = ""          // Umbra public/native OAuth Client ID
 	UmbraRegistrationToken      = ""          // Umbra device installation/registration token
 	TouchGalAPIToken            = ""          // TouchGAL API Bearer token

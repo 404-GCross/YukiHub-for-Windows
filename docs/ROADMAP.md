@@ -459,6 +459,30 @@ INSERT / UPDATE 语句都不含这些列，落库时被**静默丢弃**——这
       - 验证：`gofmt` 无输出、`go vet ./...` 干净、`go test ./... -count=1` 全绿；
         `wails3 generate bindings`（枚举与两个 vo 模型更新）；前端
         `pnpm typecheck` / `build` / `i18n:check` 通过，改动文件 eslint 0 error
+- [x] Hikarinagi 授权失败 `invalid_scope`：scope 必须与该 client 被授权的一致（2026-10-01 第五轮）
+      - 现象：用户点 Hikarinagi「去授权」→ 浏览器一页「授权失败 /
+        `invalid_scope: requested scope is not allowed`」。用户已确认回调地址登记过了，
+        且 NextMoe 授权成功（说明本轮问题与回调、与 client id 都无关）
+      - **根因：scope 不匹配**。上游 LunaBox 写的是
+        `openid catalog:full user:read status:write offline_access`，
+        那是配**它自己申请的 client id** 的；YukiHub 复用的是 Android 客户端 `hkn_...`，
+        只被授权了 `openid user:read`（Android 端 `AuthActivity.HIKARINAGI_OAUTH_SCOPE` 正是这个），
+        多要一项服务端就直接拒绝整个授权
+      - **关键认知**：OAuth 的 scope 由**服务端按 client 授权**决定，不是"想要就能要"；
+        而且被拒时错误只出现在浏览器那一页，**客户端拿不到任何错误信息**
+      - 修：默认 scope 改为 `openid user:read`（与 Android 完全一致）。
+        `hikarinagiOAuthScopes` → `hikarinagiOAuthDefaultScopes`，服务实例持有 `scopes` 字段，
+        `buildHikarinagiAuthURL` 增加 scopes 参数
+      - 留口子：新增 `version.HikarinagiOAuthScopes` + 环境变量 `YUKIHUB_HIKARINAGI_SCOPES`，
+        注入值优先于默认值 —— 以后在后台给应用加了权限，注入即可拿回完整功能，不用改代码
+      - 已知代价（已写进 ADR-0003）：没有 `status:write` → 「同步游戏状态到 Hikarinagi」
+        会被服务端拒绝；没有 `offline_access` → 可能拿不到 refresh token，
+        access token 过期后需要用户重新授权
+      - 回归测试 `TestHikarinagiDefaultScopesStayWithinGrantedSet`：钉住默认值，
+        并显式禁止 `catalog:full` / `status:write` / `offline_access` 混进默认值
+      - 验证：gofmt 无输出、`go build ./...` 通过、
+        `go test ./internal/service/ -run Hikarinagi -count=1` 4 个用例全过
+
 - [x] 授权方式对齐手机版：Bangumi 改个人令牌、Hikarinagi 修「构建时注入」报错（2026-10-01 第四轮）
       - 用户诉求：三个来源的授权怎么做？倾向手机版做法（Bangumi/镜像 = token，Hikarinagi 保留授权，
         NextMoe 同手机版）；并问「PC 与手机要不要去后台各开一个项目 id」

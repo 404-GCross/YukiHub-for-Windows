@@ -15,6 +15,7 @@ const (
 	bangumiClientSecretEnv    = "YUKIHUB_BANGUMI_CLIENT_SECRET"
 	hikarinagiClientIDEnv     = "YUKIHUB_HIKARINAGI_CLIENT_ID"
 	hikarinagiClientSecretEnv = "YUKIHUB_HIKARINAGI_CLIENT_SECRET"
+	hikarinagiScopesEnv       = "YUKIHUB_HIKARINAGI_SCOPES"
 	touchGalTokenEnv          = "YUKIHUB_TOUCHGAL_TOKEN"
 	umbraClientIDEnv          = "YUKIHUB_UMBRA_CLIENT_ID"
 	umbraRegistrationTokenEnv = "YUKIHUB_UMBRA_REGISTRATION_TOKEN"
@@ -52,6 +53,9 @@ func ApplyDevBuildEnvFallbacks() {
 	}
 	if strings.TrimSpace(version.HikarinagiOAuthClientSecret) == "" {
 		version.HikarinagiOAuthClientSecret = strings.TrimSpace(os.Getenv(hikarinagiClientSecretEnv))
+	}
+	if strings.TrimSpace(version.HikarinagiOAuthScopes) == "" {
+		version.HikarinagiOAuthScopes = strings.TrimSpace(os.Getenv(hikarinagiScopesEnv))
 	}
 	if strings.TrimSpace(version.TouchGalAPIToken) == "" {
 		version.TouchGalAPIToken = strings.TrimSpace(os.Getenv(touchGalTokenEnv))

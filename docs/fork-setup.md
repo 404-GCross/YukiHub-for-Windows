@@ -28,6 +28,7 @@
 | --- | --- | --- |
 | Bangumi | *不需要* | 改用用户自填的个人 Access Token（见 ADR-0003） |
 | Hikarinagi | `YUKIHUB_HIKARINAGI_CLIENT_ID` | 账号登录、元数据。默认复用 YukiHub Android 客户端，**仅在另建桌面端 OAuth 应用时才需要注入** |
+| Hikarinagi | `YUKIHUB_HIKARINAGI_SCOPES` | 授权范围，默认 `openid user:read`（= Android 客户端被授权的那一组）。**多要一项服务端就会以 `invalid_scope` 拒绝整个授权**；想启用「状态回写 / 令牌自动刷新」需先在后台给应用加权限，再注入覆盖 |
 | TouchGAL | `YUKIHUB_TOUCHGAL_TOKEN` | 元数据接口 |
 | Umbra | `YUKIHUB_UMBRA_CLIENT_ID` / `YUKIHUB_UMBRA_REGISTRATION_TOKEN` | 可选云备份后端 |
 | 更新服务 | `YUKIHUB_UPDATE_SERVICE_URL` | 应用内更新检查地址 |
