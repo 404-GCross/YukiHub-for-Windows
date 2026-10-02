@@ -171,7 +171,14 @@ func (s *HomeService) fetchGalgameNewsLocked() ([]vo.HomeNewsItem, error) {
 	if err != nil {
 		return nil, fmt.Errorf("读取资讯响应失败: %w", err)
 	}
+	return parseNextMoeNews(body)
+}
 
+// parseNextMoeNews 解析 /v2/news 响应。
+//
+// 抽成纯函数便于用单测钉住契约（字段名、无标题条目跳过、条数上限都与
+// 手机版 parseNewsJson 一致）。
+func parseNextMoeNews(body []byte) ([]vo.HomeNewsItem, error) {
 	var payload nextMoeNewsResponse
 	if err := json.Unmarshal(body, &payload); err != nil {
 		return nil, fmt.Errorf("解析资讯响应失败: %w", err)
@@ -218,8 +225,8 @@ func (s *HomeService) loadNewsCacheLocked() {
 	if err != nil {
 		return
 	}
-	var payload homeNewsCachePayload
-	if err := json.Unmarshal(raw, &payload); err != nil {
+	payload, ok := unmarshalHomeNewsCache(raw)
+	if !ok {
 		return
 	}
 	if len(payload.Items) == 0 {
@@ -240,7 +247,7 @@ func (s *HomeService) writeNewsCacheLocked(items []vo.HomeNewsItem) {
 		FetchedAt: time.Now().UnixMilli(),
 		Items:     items,
 	}
-	raw, err := json.Marshal(payload)
+	raw, err := marshalHomeNewsCache(payload)
 	if err != nil {
 		applog.LogWarningf(s.ctx, "Galgame 资讯：序列化缓存失败：%v", err)
 		return
@@ -248,6 +255,21 @@ func (s *HomeService) writeNewsCacheLocked(items []vo.HomeNewsItem) {
 	if err := os.WriteFile(path, raw, 0o644); err != nil {
 		applog.LogWarningf(s.ctx, "Galgame 资讯：写入缓存失败：%v", err)
 	}
+}
+
+// marshalHomeNewsCache / unmarshalHomeNewsCache 是缓存编解码的单一入口
+// （抽出来以便单测钉住落盘结构：fetched_at 毫秒 + items 数组）。
+func marshalHomeNewsCache(payload homeNewsCachePayload) ([]byte, error) {
+	return json.Marshal(payload)
+}
+
+// unmarshalHomeNewsCache 解析缓存；ok=false 表示内容不可用（当作没有缓存）。
+func unmarshalHomeNewsCache(raw []byte) (homeNewsCachePayload, bool) {
+	var payload homeNewsCachePayload
+	if err := json.Unmarshal(raw, &payload); err != nil {
+		return homeNewsCachePayload{}, false
+	}
+	return payload, true
 }
 
 func (s *HomeService) homeNewsCachePath() (string, error) {
