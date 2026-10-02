@@ -849,7 +849,19 @@
       "evening": "晚安"
     },
     "openAccount": "開啟帳號面板",
-    "loginPrompt": "點擊登入 YukiHub 帳號"
+    "loginPrompt": "點擊登入 YukiHub 帳號",
+    "news": {
+      "title": "Galgame 資訊",
+      "refresh": "重新整理資訊",
+      "loading": "正在取得資訊…",
+      "loadSlow": "資訊載入較慢，請稍後再試",
+      "loadFailed": "資訊取得失敗，點右上角重新整理",
+      "openDetail": "檢視資訊詳情",
+      "noSummary": "暫無摘要。",
+      "publishedAt": "發佈於 {{date}}",
+      "viaNextMoe": "via NextMoe·未萌",
+      "readOriginal": "閱讀原文"
+    }
   },
   "playingIsland": {
     "launching": "正在啟動",
@@ -1520,7 +1532,6 @@
       "countHint": "共 {{count}} 項"
     },
     "heatmap": {
-      "title": "遊玩熱力圖",
       "empty": "本期間內無遊玩記錄",
       "noPlay": "未遊玩",
       "less": "少",

@@ -42,6 +42,8 @@ export {
     HeatmapCell,
     HikarinagiAuthStatus,
     HikarinagiProfile,
+    HomeNewsItem,
+    HomeNewsResult,
     HomePageData,
     HourPlayPoint,
     ImportMetadataDuplicateRequest,

@@ -1845,6 +1845,109 @@ export class HikarinagiProfile {
     }
 }
 
+/**
+ * HomeNewsItem 首页「Galgame 资讯」的一条。
+ * 
+ * 字段与手机版 HomeActivity.NewsItem 一一对应，取值直接来自 NextMoe
+ * /v2/news 的响应（无信封集合 items[]）。
+ */
+export class HomeNewsItem {
+    "id": string;
+    "title": string;
+    "summary": string;
+
+    /**
+     * BannerURL 是题图（手机版当前源覆盖率 100%，仍做空值兜底）。
+     */
+    "banner_url": string;
+
+    /**
+     * SourceURL 是原文地址（详情弹窗的「阅读原文」）。
+     */
+    "source_url": string;
+
+    /**
+     * Attribution 是来源署名：NextMoe 要求引用资讯必须标注来源。
+     */
+    "attribution": string;
+    "published_at": string;
+
+    /** Creates a new HomeNewsItem instance. */
+    constructor($$source: Partial<HomeNewsItem> = {}) {
+        if (!("id" in $$source)) {
+            this["id"] = "";
+        }
+        if (!("title" in $$source)) {
+            this["title"] = "";
+        }
+        if (!("summary" in $$source)) {
+            this["summary"] = "";
+        }
+        if (!("banner_url" in $$source)) {
+            this["banner_url"] = "";
+        }
+        if (!("source_url" in $$source)) {
+            this["source_url"] = "";
+        }
+        if (!("attribution" in $$source)) {
+            this["attribution"] = "";
+        }
+        if (!("published_at" in $$source)) {
+            this["published_at"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new HomeNewsItem instance from a string or object.
+     */
+    static createFrom($$source: any = {}): HomeNewsItem {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new HomeNewsItem($$parsedSource as Partial<HomeNewsItem>);
+    }
+}
+
+/**
+ * HomeNewsResult 是首页资讯的返回。
+ * 
+ * Items 为空表示「没有可用内容」，前端据此显示提示文案；Stale 表示本次
+ * 联网失败、用的是过期缓存（与手机版一致：静默展示旧内容，不打扰用户）。
+ * TimedOut 用于区分头部文案（手机版也有「加载较慢」与「获取失败」两种）。
+ */
+export class HomeNewsResult {
+    "items": HomeNewsItem[];
+    "stale": boolean;
+    "timed_out": boolean;
+
+    /** Creates a new HomeNewsResult instance. */
+    constructor($$source: Partial<HomeNewsResult> = {}) {
+        if (!("items" in $$source)) {
+            this["items"] = [];
+        }
+        if (!("stale" in $$source)) {
+            this["stale"] = false;
+        }
+        if (!("timed_out" in $$source)) {
+            this["timed_out"] = false;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new HomeNewsResult instance from a string or object.
+     */
+    static createFrom($$source: any = {}): HomeNewsResult {
+        const $$createField0_0 = $$createType26;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("items" in $$parsedSource) {
+            $$parsedSource["items"] = $$createField0_0($$parsedSource["items"]);
+        }
+        return new HomeNewsResult($$parsedSource as Partial<HomeNewsResult>);
+    }
+}
+
 export class HomePageData {
     /**
      * 上次游玩的游戏
@@ -1880,8 +1983,8 @@ export class HomePageData {
      * Creates a new HomePageData instance from a string or object.
      */
     static createFrom($$source: any = {}): HomePageData {
-        const $$createField0_0 = $$createType26;
-        const $$createField1_0 = $$createType27;
+        const $$createField0_0 = $$createType28;
+        const $$createField1_0 = $$createType29;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("last_played" in $$parsedSource) {
             $$parsedSource["last_played"] = $$createField0_0($$parsedSource["last_played"]);
@@ -2528,13 +2631,13 @@ export class PeriodStats {
      * Creates a new PeriodStats instance from a string or object.
      */
     static createFrom($$source: any = {}): PeriodStats {
-        const $$createField17_0 = $$createType29;
+        const $$createField17_0 = $$createType31;
         const $$createField18_0 = $$createType24;
-        const $$createField19_0 = $$createType31;
-        const $$createField20_0 = $$createType33;
-        const $$createField21_0 = $$createType35;
-        const $$createField22_0 = $$createType37;
-        const $$createField23_0 = $$createType39;
+        const $$createField19_0 = $$createType33;
+        const $$createField20_0 = $$createType35;
+        const $$createField21_0 = $$createType37;
+        const $$createField22_0 = $$createType39;
+        const $$createField23_0 = $$createType41;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("play_time_leaderboard" in $$parsedSource) {
             $$parsedSource["play_time_leaderboard"] = $$createField17_0($$parsedSource["play_time_leaderboard"]);
@@ -2727,7 +2830,7 @@ export class RenderTemplateRequest {
      * Creates a new RenderTemplateRequest instance from a string or object.
      */
     static createFrom($$source: any = {}): RenderTemplateRequest {
-        const $$createField1_0 = $$createType40;
+        const $$createField1_0 = $$createType42;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("data" in $$parsedSource) {
             $$parsedSource["data"] = $$createField1_0($$parsedSource["data"]);
@@ -2972,9 +3075,9 @@ export class StatsExportData {
      * Creates a new StatsExportData instance from a string or object.
      */
     static createFrom($$source: any = {}): StatsExportData {
-        const $$createField7_0 = $$createType42;
-        const $$createField8_0 = $$createType44;
-        const $$createField9_0 = $$createType46;
+        const $$createField7_0 = $$createType44;
+        const $$createField8_0 = $$createType46;
+        const $$createField9_0 = $$createType48;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("leaderboard" in $$parsedSource) {
             $$parsedSource["leaderboard"] = $$createField7_0($$parsedSource["leaderboard"]);
@@ -3099,7 +3202,7 @@ export class StatsGameTrend {
      * Creates a new StatsGameTrend instance from a string or object.
      */
     static createFrom($$source: any = {}): StatsGameTrend {
-        const $$createField2_0 = $$createType44;
+        const $$createField2_0 = $$createType46;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("points" in $$parsedSource) {
             $$parsedSource["points"] = $$createField2_0($$parsedSource["points"]);
@@ -3415,25 +3518,27 @@ const $$createType21 = GameReviewProviderSyncResult.createFrom;
 const $$createType22 = $Create.Array($$createType21);
 const $$createType23 = TimePoint.createFrom;
 const $$createType24 = $Create.Array($$createType23);
-const $$createType25 = LastPlayedGame.createFrom;
-const $$createType26 = $Create.Nullable($$createType25);
-const $$createType27 = $Create.Array($$createType25);
-const $$createType28 = GamePlayStats.createFrom;
-const $$createType29 = $Create.Array($$createType28);
-const $$createType30 = GameTrendSeries.createFrom;
+const $$createType25 = HomeNewsItem.createFrom;
+const $$createType26 = $Create.Array($$createType25);
+const $$createType27 = LastPlayedGame.createFrom;
+const $$createType28 = $Create.Nullable($$createType27);
+const $$createType29 = $Create.Array($$createType27);
+const $$createType30 = GamePlayStats.createFrom;
 const $$createType31 = $Create.Array($$createType30);
-const $$createType32 = TagPlayStats.createFrom;
+const $$createType32 = GameTrendSeries.createFrom;
 const $$createType33 = $Create.Array($$createType32);
-const $$createType34 = HeatmapCell.createFrom;
+const $$createType34 = TagPlayStats.createFrom;
 const $$createType35 = $Create.Array($$createType34);
-const $$createType36 = HourPlayPoint.createFrom;
+const $$createType36 = HeatmapCell.createFrom;
 const $$createType37 = $Create.Array($$createType36);
-const $$createType38 = WeekdayPlayPoint.createFrom;
+const $$createType38 = HourPlayPoint.createFrom;
 const $$createType39 = $Create.Array($$createType38);
-const $$createType40 = StatsExportData.createFrom;
-const $$createType41 = StatsGameItem.createFrom;
-const $$createType42 = $Create.Array($$createType41);
-const $$createType43 = StatsTimePoint.createFrom;
+const $$createType40 = WeekdayPlayPoint.createFrom;
+const $$createType41 = $Create.Array($$createType40);
+const $$createType42 = StatsExportData.createFrom;
+const $$createType43 = StatsGameItem.createFrom;
 const $$createType44 = $Create.Array($$createType43);
-const $$createType45 = StatsGameTrend.createFrom;
+const $$createType45 = StatsTimePoint.createFrom;
 const $$createType46 = $Create.Array($$createType45);
+const $$createType47 = StatsGameTrend.createFrom;
+const $$createType48 = $Create.Array($$createType47);

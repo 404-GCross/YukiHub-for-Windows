@@ -849,7 +849,19 @@
       "evening": "こんばんは"
     },
     "openAccount": "アカウントパネルを開く",
-    "loginPrompt": "クリックして YukiHub アカウントにログイン"
+    "loginPrompt": "クリックして YukiHub アカウントにログイン",
+    "news": {
+      "title": "Galgame ニュース",
+      "refresh": "ニュースを更新",
+      "loading": "ニュースを取得中…",
+      "loadSlow": "ニュースの読み込みが遅いようです。後でもう一度お試しください",
+      "loadFailed": "ニュースの取得に失敗しました。右上の更新をお試しください",
+      "openDetail": "ニュースの詳細を見る",
+      "noSummary": "概要はありません。",
+      "publishedAt": "{{date}} 公開",
+      "viaNextMoe": "via NextMoe",
+      "readOriginal": "原文を読む"
+    }
   },
   "playingIsland": {
     "launching": "起動中",
@@ -1520,7 +1532,6 @@
       "countHint": "全 {{count}} 件"
     },
     "heatmap": {
-      "title": "プレイヒートマップ",
       "empty": "この期間内のプレイ記録はありません",
       "noPlay": "未プレイ",
       "less": "少",

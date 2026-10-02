@@ -12,18 +12,32 @@ import * as vo$0 from "../common/vo/models.js";
 // @ts-ignore: Unused imports
 import * as models$0 from "../models/models.js";
 
+/**
+ * GetGalgameNews 取首页 Galgame 资讯。
+ * 
+ * force=false 时优先用 2 小时内的缓存；force=true（前端点刷新）则强制联网。
+ * 联网失败会回退过期缓存（Stale=true），两者都没有时返回空 Items 而不报错——
+ * 首页不该因为一个资讯接口就弹错误。
+ */
+export function GetGalgameNews(force: boolean): $CancellablePromise<vo$0.HomeNewsResult> {
+    return $Call.ByID(1706535637, force).then(($result: any) => {
+        return $$createType0($result);
+    });
+}
+
 export function GetHomePageData(): $CancellablePromise<vo$0.HomePageData> {
     return $Call.ByID(2695613148).then(($result: any) => {
-        return $$createType0($result);
+        return $$createType1($result);
     });
 }
 
 export function GetOrCreateCurrentUser(): $CancellablePromise<models$0.User> {
     return $Call.ByID(1300715365).then(($result: any) => {
-        return $$createType1($result);
+        return $$createType2($result);
     });
 }
 
 // Private type creation functions
-const $$createType0 = vo$0.HomePageData.createFrom;
-const $$createType1 = models$0.User.createFrom;
+const $$createType0 = vo$0.HomeNewsResult.createFrom;
+const $$createType1 = vo$0.HomePageData.createFrom;
+const $$createType2 = models$0.User.createFrom;

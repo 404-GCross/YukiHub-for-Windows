@@ -9,8 +9,8 @@ import { useTranslation } from "react-i18next";
 import { GetGlobalPeriodStats } from "../../bindings/yukihub/internal/service/statsservice";
 import { enums, vo } from "../../src/bindings/models";
 import { SnowflakeMark } from "../components/branding/SnowflakeMark";
-import { HomeHeatmapCard } from "../components/home/HomeHeatmapCard";
 import { HomeHeroCard } from "../components/home/HomeHeroCard";
+import { HomeNewsCard } from "../components/home/HomeNewsCard";
 import { HomeQuickLaunchRail } from "../components/home/HomeQuickLaunchRail";
 import { HomeTodayStatsCard } from "../components/home/HomeTodayStatsCard";
 import { HomeUserProfile } from "../components/home/HomeUserProfile";
@@ -63,9 +63,8 @@ function HomePage() {
   const carouselResumeTimerRef = useRef<number | null>(null);
   const [libraryPreviewStats, setLibraryPreviewStats]
     = useState<vo.PeriodStats | null>(null);
-  const [heatmapStats, setHeatmapStats] = useState<vo.PeriodStats | null>(null);
-  const [isHeatmapLoading, setIsHeatmapLoading] = useState(false);
-  const [heatmapLoadFailed, setHeatmapLoadFailed] = useState(false);
+  // 顶部「刷新」按钮的资讯刷新信号（自增即触发强制刷新，见 HomeNewsCard）
+  const [newsRefreshToken, setNewsRefreshToken] = useState(0);
 
   const loadLibraryPreviewStats = useCallback(async () => {
     try {
@@ -83,33 +82,10 @@ function HomePage() {
     }
   }, []);
 
-  const loadHeatmapStats = useCallback(async () => {
-    setIsHeatmapLoading(true);
-    setHeatmapLoadFailed(false);
-    try {
-      const data = await GetGlobalPeriodStats(
-        new vo.PeriodStatsRequest({
-          dimension: enums.Period.Year,
-          start_date: "",
-          end_date: "",
-        }),
-      );
-      setHeatmapStats(data);
-    }
-    catch (error) {
-      console.error("Failed to fetch home heatmap stats:", error);
-      setHeatmapLoadFailed(true);
-    }
-    finally {
-      setIsHeatmapLoading(false);
-    }
-  }, []);
-
   useEffect(() => {
     void fetchHomeData();
     void loadLibraryPreviewStats();
-    void loadHeatmapStats();
-  }, [fetchHomeData, loadLibraryPreviewStats, loadHeatmapStats]);
+  }, [fetchHomeData, loadLibraryPreviewStats]);
 
   const carouselItems = useMemo(() => {
     const items = [...(homeData?.recent_played || [])];
@@ -363,8 +339,8 @@ function HomePage() {
     clearFailedImageSources();
     void fetchHomeData({ showLoading: false, syncRuntime: false });
     void loadLibraryPreviewStats();
-    void loadHeatmapStats();
-  }, [fetchHomeData, loadHeatmapStats, loadLibraryPreviewStats]);
+    setNewsRefreshToken(token => token + 1);
+  }, [fetchHomeData, loadLibraryPreviewStats]);
 
   if (isLoading) {
     return null;
@@ -500,13 +476,9 @@ function HomePage() {
               todayPlayTimeSec={Number(homeData.today_play_time_sec || 0)}
               weeklyPlayTimeSec={Number(homeData.weekly_play_time_sec || 0)}
             />
-            <HomeHeatmapCard
-              cells={heatmapStats?.heatmap ?? []}
-              hasFailed={heatmapLoadFailed}
-              isLoading={isHeatmapLoading || !heatmapStats}
-              onRetry={() => void loadHeatmapStats()}
-              onViewStats={() => navigate({ to: "/stats" })}
-            />
+            {/* 手机版首页右侧是「数据卡 + Galgame 资讯卡」，桌面端此前放的是
+                 游玩热力图，现在对齐手机版换成资讯卡。 */}
+            <HomeNewsCard refreshToken={newsRefreshToken} />
           </aside>
         </div>
       </div>

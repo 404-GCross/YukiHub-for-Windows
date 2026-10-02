@@ -849,7 +849,19 @@
       "evening": "晚上好"
     },
     "openAccount": "打开账号面板",
-    "loginPrompt": "点击登录 YukiHub 账号"
+    "loginPrompt": "点击登录 YukiHub 账号",
+    "news": {
+      "title": "Galgame 资讯",
+      "refresh": "刷新资讯",
+      "loading": "正在获取资讯…",
+      "loadSlow": "资讯加载较慢，稍后再试",
+      "loadFailed": "资讯获取失败，点右上角刷新重试",
+      "openDetail": "查看资讯详情",
+      "noSummary": "暂无摘要。",
+      "publishedAt": "发布于 {{date}}",
+      "viaNextMoe": "via NextMoe·未萌",
+      "readOriginal": "阅读原文"
+    }
   },
   "playingIsland": {
     "launching": "正在启动",
@@ -1520,7 +1532,6 @@
       "countHint": "共 {{count}} 项"
     },
     "heatmap": {
-      "title": "游玩热力图",
       "empty": "本期间内无游玩记录",
       "noPlay": "未游玩",
       "less": "少",

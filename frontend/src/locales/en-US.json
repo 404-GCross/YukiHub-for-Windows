@@ -849,7 +849,19 @@
       "evening": "Good evening"
     },
     "openAccount": "Open account panel",
-    "loginPrompt": "Sign in to your YukiHub account"
+    "loginPrompt": "Sign in to your YukiHub account",
+    "news": {
+      "title": "Galgame News",
+      "refresh": "Refresh news",
+      "loading": "Loading news…",
+      "loadSlow": "News is loading slowly, try again later",
+      "loadFailed": "Failed to load news — use the refresh button",
+      "openDetail": "View news detail",
+      "noSummary": "No summary available.",
+      "publishedAt": "Published {{date}}",
+      "viaNextMoe": "via NextMoe",
+      "readOriginal": "Read original"
+    }
   },
   "playingIsland": {
     "launching": "Launching",
@@ -1520,7 +1532,6 @@
       "countHint": "{{count}} entries"
     },
     "heatmap": {
-      "title": "Play Heatmap",
       "empty": "No play activity in this period",
       "noPlay": "No play",
       "less": "Less",

@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"net/http"
+	"sync"
 	"time"
 	"yukihub/internal/appconf"
 	"yukihub/internal/applog"
@@ -19,6 +21,15 @@ type HomeService struct {
 	ctx    context.Context
 	db     *sql.DB
 	config *appconf.AppConfig
+
+	// ===== Galgame 资讯（见 home_news_service.go）=====
+	// newsMu 保护以下全部字段：并发请求（首页初始化 + 手动刷新）要串行化，
+	// 避免同时打两次匿名配额。
+	newsMu          sync.Mutex
+	newsClient      *http.Client
+	newsItems       []vo.HomeNewsItem
+	newsFetchedAt   time.Time
+	newsCacheLoaded bool
 }
 
 func NewHomeService() *HomeService {
