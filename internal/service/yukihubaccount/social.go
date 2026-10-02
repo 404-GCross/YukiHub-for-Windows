@@ -85,6 +85,12 @@ type ChatGroup struct {
 	Name        string `json:"name"`
 	Description string `json:"description,omitempty"`
 	Avatar      string `json:"avatar,omitempty"`
+	// Icon 是群的 emoji 图标（手机版 GroupInfo.icon，默认 🏛）。
+	Icon string `json:"icon,omitempty"`
+	// Type 是群类型：chat=聊天室、notice=公告版（全体禁言，仅管理员可发言）。
+	Type string `json:"type,omitempty"`
+	// MemberRole 是当前用户在该群的角色：admin / member。
+	MemberRole  string `json:"memberRole,omitempty"`
 	MemberCount int    `json:"memberCount"`
 	OnlineCount int    `json:"onlineCount"`
 	UnreadCount int    `json:"unreadCount"`
@@ -485,6 +491,10 @@ func parseGroup(raw map[string]any) ChatGroup {
 		Name:        pickString(raw, "name", "title"),
 		Description: pickString(raw, "description", "intro"),
 		Avatar:      pickString(raw, "avatarUrl", "avatar_url", "avatar"),
+		Icon:        pickString(raw, "icon"),
+		// 手机版 GroupInfo 的字段名：type（chat/notice）、memberRole（admin/member）
+		Type:        pickString(raw, "type"),
+		MemberRole:  pickString(raw, "memberRole", "member_role"),
 		MemberCount: int(pickInt64(raw, "memberCount", "member_count")),
 		OnlineCount: int(pickInt64(raw, "onlineCount", "online_count")),
 		UnreadCount: int(pickInt64(raw, "unreadCount", "unread")),

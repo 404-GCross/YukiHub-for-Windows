@@ -1756,7 +1756,6 @@
     "sendRequest": "申請",
     "toastRequestSent": "フレンド申請を送信しました",
     "groups": "グループ",
-    "groupOnline": "{{online}} 人がオンライン · 全 {{total}} 人",
     "noFriends": "まだフレンドがいません\n上の「フレンド追加」からユーザーを検索できます",
     "loading": "読み込み中…",
     "loadOlder": "以前のメッセージを見る",
@@ -1780,6 +1779,12 @@
       "away": "退席中",
       "busy": "取り込み中",
       "offline": "オフライン"
-    }
+    },
+    "me": "自分",
+    "groupNoticeBadge": "お知らせ",
+    "groupNoticeDesc": "管理者のみ発言可",
+    "groupChatDesc": "公開チャット",
+    "groupNoticeMuted": "お知らせ欄は管理者のみ発言できます",
+    "onlineCount": "🟢{{count}} オンライン"
   }
 }

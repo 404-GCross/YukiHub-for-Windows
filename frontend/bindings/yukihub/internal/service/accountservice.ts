@@ -72,6 +72,16 @@ export function GetGroupHistory(groupID: string, offset: number, limit: number):
 }
 
 /**
+ * GetGroupOnlineCount 群聊当前在线人数。
+ * 
+ * 服务端把它挂在群历史接口的响应里（与手机版 getGroupMessages 的 onlineCount
+ * 同一来源），所以这里拉 1 条消息顺带取人数——标题栏「🟢N在线」用。
+ */
+export function GetGroupOnlineCount(groupID: string): $CancellablePromise<number> {
+    return $Call.ByID(1592541707, groupID);
+}
+
+/**
  * ListChatEmojis 本站表情列表。
  */
 export function ListChatEmojis(): $CancellablePromise<yukihubaccount$0.ChatEmoji[]> {

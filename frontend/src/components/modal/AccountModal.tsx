@@ -18,6 +18,7 @@ import {
 import hikarinagiLoginIconUrl from "../../assets/providers/hikarinagi-login.jpg";
 import nextmoeLogoUrl from "../../assets/providers/nextmoe-logo.webp";
 import { onWailsEvent } from "../../bindings/runtime";
+import { SnowflakeMark } from "../branding/SnowflakeMark";
 import { BetterButton } from "../ui/better/BetterButton";
 import { BetterInput } from "../ui/better/BetterInput";
 import { BetterSwitch } from "../ui/better/BetterSwitch";
@@ -313,7 +314,8 @@ export function AccountModal({
           {/* 标题栏 */}
           <div className="mb-4 flex items-center justify-between gap-3">
             <h2 className="flex items-center gap-2 text-base font-bold text-brand-900 dark:text-white">
-              <span className="i-mdi-account-circle-outline text-xl text-primary-500" />
+              {/* 用自家应用图标（雪花标），而不是通用的人像图标 */}
+              <SnowflakeMark className="h-5 w-5 shrink-0 text-primary-500" />
               {t("settings.account.name")}
             </h2>
             <button

@@ -41,6 +41,21 @@ export class ChatGroup {
     "name": string;
     "description"?: string;
     "avatar"?: string;
+
+    /**
+     * Icon 是群的 emoji 图标（手机版 GroupInfo.icon，默认 🏛）。
+     */
+    "icon"?: string;
+
+    /**
+     * Type 是群类型：chat=聊天室、notice=公告版（全体禁言，仅管理员可发言）。
+     */
+    "type"?: string;
+
+    /**
+     * MemberRole 是当前用户在该群的角色：admin / member。
+     */
+    "memberRole"?: string;
     "memberCount": number;
     "onlineCount": number;
     "unreadCount": number;

@@ -1756,7 +1756,6 @@
     "sendRequest": "加好友",
     "toastRequestSent": "好友申请已发送",
     "groups": "群组",
-    "groupOnline": "{{online}} 人在线 · 共 {{total}} 人",
     "noFriends": "还没有好友\n点击上方「添加好友」搜索其他用户",
     "loading": "正在加载…",
     "loadOlder": "查看更早的消息",
@@ -1780,6 +1779,12 @@
       "away": "离开",
       "busy": "忙碌",
       "offline": "离线"
-    }
+    },
+    "me": "我",
+    "groupNoticeBadge": "公告",
+    "groupNoticeDesc": "仅管理员可发言",
+    "groupChatDesc": "公开聊天室",
+    "groupNoticeMuted": "公告版仅管理员可发言",
+    "onlineCount": "🟢{{count}} 在线"
   }
 }

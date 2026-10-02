@@ -1756,7 +1756,6 @@
     "sendRequest": "Add",
     "toastRequestSent": "Friend request sent",
     "groups": "Groups",
-    "groupOnline": "{{online}} online · {{total}} members",
     "noFriends": "No friends yet\nUse \"Add friend\" above to search for users",
     "loading": "Loading…",
     "loadOlder": "Load earlier messages",
@@ -1780,6 +1779,12 @@
       "away": "Away",
       "busy": "Busy",
       "offline": "Offline"
-    }
+    },
+    "me": "Me",
+    "groupNoticeBadge": "Notice",
+    "groupNoticeDesc": "Admins only",
+    "groupChatDesc": "Public chat",
+    "groupNoticeMuted": "Only admins can post in the notice channel",
+    "onlineCount": "🟢{{count}} online"
   }
 }

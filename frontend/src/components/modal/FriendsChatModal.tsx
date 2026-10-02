@@ -13,6 +13,7 @@ import {
   AcceptFriendRequest,
   GetChatHistory,
   GetGroupHistory,
+  GetGroupOnlineCount,
   ListChatEmojis,
   ListChatGroups,
   ListChatStickerPacks,
@@ -28,6 +29,7 @@ import {
   SendGroupMessage,
   UploadChatImage,
 } from "../../../bindings/yukihub/internal/service/accountservice";
+import { useAccountStatus } from "../../hooks/useAccountStatus";
 import { proxiedImageSrc } from "../../utils/imageProxy";
 import { BetterButton } from "../ui/better/BetterButton";
 import { BetterInput } from "../ui/better/BetterInput";
@@ -57,6 +59,30 @@ interface ChatDraft {
 /** 表情/贴纸选择面板：0=本站表情 1=未萌贴纸包列表 2=包内表情（与手机版一致） */
 type EmojiTab = 0 | 1 | 2;
 
+/**
+ * 消息排序比较器。
+ *
+ * **绝不能用 id 的字符串序**：服务端下发的 id 是纯数字字符串，字典序会退化成
+ * 「按字符比」，例如 "9" > "1000"、"114514" < "9999"，整个列表顺序随机错乱
+ * （用户看到的现象是「发完消息跳到上面/历史跑到下面」）。
+ *
+ * 优先级：createdAt（ISO 风格字符串，字典序即时间序）→ 数值 id → 保持原序。
+ * 返回 0 时 Array.prototype.sort 是稳定排序，不会打乱同键消息的相对顺序。
+ */
+function compareMessages(a: ChatMessage, b: ChatMessage): number {
+  const timeA = a.createdAt ?? "";
+  const timeB = b.createdAt ?? "";
+  if (timeA && timeB && timeA !== timeB) {
+    return timeA < timeB ? -1 : 1;
+  }
+  const idA = Number(a.id);
+  const idB = Number(b.id);
+  if (Number.isFinite(idA) && Number.isFinite(idB) && idA !== idB) {
+    return idA - idB;
+  }
+  return 0;
+}
+
 interface StickerPackView {
   id: string;
   title: string;
@@ -79,10 +105,13 @@ export function FriendsChatModal({
   onClose,
 }: FriendsChatModalProps) {
   const { t } = useTranslation();
+  // 自己的头像/昵称（群聊里自己的消息也要带头像，与手机版 QQ 式右侧布局一致）
+  const accountStatus = useAccountStatus();
 
   const [view, setView] = useState<MainView>("list");
   const [friendList, setFriendList] = useState<FriendList | null>(null);
   const [groups, setGroups] = useState<ChatGroup[]>([]);
+  const [groupOnlineCount, setGroupOnlineCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [target, setTarget] = useState<ChatTarget | null>(null);
@@ -188,6 +217,35 @@ export function FriendsChatModal({
     });
   };
 
+  /**
+   * 消息变化后校正滚动位置。
+   *
+   * 首次进入会话时 `scrollToBottom` 只跑一帧，此刻图片/内容还没撑开高度，
+   * 滚到的其实是「假的底部」，用户随后会看到列表停在半中间。这里以「最后一条
+   * 消息 id 变化」为触发点重滚，并在 180ms 后再校正一次。
+   * 往上翻历史（前插）不会改变最后一条，因此不会打断阅读。
+   */
+  const lastMessageIdRef = useRef("");
+  useEffect(() => {
+    const last = messages[messages.length - 1];
+    if (!last || view !== "chat") {
+      return;
+    }
+    if (last.id === lastMessageIdRef.current) {
+      return;
+    }
+    lastMessageIdRef.current = last.id;
+    const el = listRef.current;
+    const nearBottom
+      = !el || el.scrollHeight - el.scrollTop - el.clientHeight < 160;
+    if (!nearBottom && !last.isMine) {
+      return;
+    }
+    scrollToBottom(false);
+    const timer = window.setTimeout(() => scrollToBottom(false), 180);
+    return () => window.clearTimeout(timer);
+  }, [messages, view]);
+
   const mergeMessages = (incoming: ChatMessage[]) => {
     if (incoming.length === 0) {
       return;
@@ -201,7 +259,9 @@ export function FriendsChatModal({
           seen.add(item.id);
         }
       }
-      merged.sort((a, b) => String(a.id).localeCompare(String(b.id)));
+      // 必须用 compareMessages：不能按 id 做字符串比较（消息 id 是纯数字字符串，
+      // "9" > "1000" 会让顺序整体错乱，表现为「发完消息列表跳到上面去」）。
+      merged.sort(compareMessages);
       return merged;
     });
   };
@@ -337,12 +397,23 @@ export function FriendsChatModal({
       const history = isFriend
         ? await GetChatHistory(id, 0, HISTORY_PAGE_SIZE)
         : await GetGroupHistory(id, 0, HISTORY_PAGE_SIZE);
-      setMessages(history);
-      oldestIdRef.current = history[0]?.id ?? "";
-      afterIdRef.current = history[history.length - 1]?.id ?? "";
+      const ordered = [...history].sort(compareMessages);
+      setMessages(ordered);
+      oldestIdRef.current = ordered[0]?.id ?? "";
+      afterIdRef.current = ordered[ordered.length - 1]?.id ?? "";
       setHasMoreHistory(history.length >= HISTORY_PAGE_SIZE);
       scrollToBottom(false);
 
+      // 群聊标题栏的「🟢N在线」（对齐手机版 updateOnlineCount：进群拉一次 + 轮询刷新）
+      if (!isFriend) {
+        void GetGroupOnlineCount(id)
+          .then(count => setGroupOnlineCount(count))
+          .catch(() => {
+            // 静默：人数拿不到不该挡聊天
+          });
+      }
+
+      let pollTick = 0;
       // 10 秒轮询新消息（与手机版一致）
       pollTimerRef.current = window.setInterval(() => {
         void (async () => {
@@ -350,6 +421,7 @@ export function FriendsChatModal({
           if (!current) {
             return;
           }
+          pollTick += 1;
           try {
             if (current.kind === "friend") {
               const fresh = await PollChatMessages(
@@ -374,6 +446,11 @@ export function FriendsChatModal({
                 afterIdRef.current
                   = fresh[fresh.length - 1].id || afterIdRef.current;
                 scrollToBottom();
+              }
+              // 在线人数每 3 个周期（30 秒）刷一次，避免无谓请求
+              if (pollTick % 3 === 0) {
+                const count = await GetGroupOnlineCount(current.group.id);
+                setGroupOnlineCount(count);
               }
             }
           }
@@ -413,9 +490,7 @@ export function FriendsChatModal({
         setMessages((currentMessages) => {
           const seen = new Set(currentMessages.map(item => item.id));
           const older = history.filter(item => !seen.has(item.id));
-          return [...older, ...currentMessages].sort((a, b) =>
-            String(a.id).localeCompare(String(b.id)),
-          );
+          return [...older, ...currentMessages].sort(compareMessages);
         });
         oldestIdRef.current = history[0]?.id ?? oldestIdRef.current;
         requestAnimationFrame(() => {
@@ -511,6 +586,22 @@ export function FriendsChatModal({
     return null;
   }
 
+  /**
+   * 当前用户在该群能否发言。
+   *
+   * 对齐手机版 GroupInfo.canSpeak()：公告版（type=notice）是全体禁言频道，
+   * 只有管理员能在里面发消息；私聊与普通聊天室不受限。
+   */
+  const canSpeak = (() => {
+    if (!target || target.kind !== "group") {
+      return true;
+    }
+    if (target.group.type !== "notice") {
+      return true;
+    }
+    return target.group.memberRole === "admin";
+  })();
+
   const renderAvatar = (name: string, avatar?: string, size = "h-10 w-10") => {
     if (avatar) {
       return (
@@ -552,6 +643,7 @@ export function FriendsChatModal({
           <img
             src={proxiedImageSrc(emojiDisplayURL(message.content))}
             alt=""
+            loading="lazy"
             className="h-24 w-24 object-contain"
             onError={(e) => {
               // 列表映射也没命中时退回裸 URL 直连（代理偶发失败不至于丢图）
@@ -584,20 +676,28 @@ export function FriendsChatModal({
       return message.content;
     })();
     const isMedia = message.msgType === "emoji" || message.msgType === "image";
+    // 群聊对齐手机版 buildGroupMessageBubble：双方都带头像，自己的在右侧（QQ 式）。
+    // 自己的头像优先取消息里的（服务端可能回填），回退到本地账号状态。
+    const myNickname = accountStatus?.nickname || t("friendsChat.me");
+    const avatarName = isMine ? senderName || myNickname : senderName;
+    const avatarUrl = isMine
+      ? message.senderAvatar || accountStatus?.avatar
+      : message.senderAvatar;
     return (
       <div
         key={message.id}
         className={`flex gap-2 ${isMine ? "flex-row-reverse" : "flex-row"}`}
       >
         <div className="w-8 shrink-0 pt-1">
-          {!isMine && renderAvatar(senderName, message.senderAvatar, "h-8 w-8")}
+          {(isGroup || !isMine)
+            && renderAvatar(avatarName, avatarUrl, "h-8 w-8")}
         </div>
         <div
           className={`flex max-w-[72%] flex-col gap-0.5 ${isMine ? "items-end" : "items-start"}`}
         >
-          {isGroup && !isMine && (
+          {isGroup && (
             <span className="px-1 text-[11px] text-brand-500 dark:text-brand-400">
-              {senderName}
+              {isMine ? myNickname : senderName}
             </span>
           )}
           {message.replyPreview && (
@@ -671,14 +771,34 @@ export function FriendsChatModal({
             )}
             <h2 className="flex min-w-0 flex-1 items-center gap-2 truncate text-sm font-bold text-brand-900 dark:text-white">
               {view === "chat" && target ? (
-                <>
-                  <span className="i-mdi-chat-outline text-primary-500" />
-                  <span className="truncate">
-                    {target.kind === "friend"
-                      ? target.friend.note || target.friend.nickname
-                      : target.group.name}
-                  </span>
-                </>
+                target.kind === "friend" ? (
+                  <>
+                    <span className="i-mdi-chat-outline text-primary-500" />
+                    <span className="truncate">
+                      {target.friend.note || target.friend.nickname}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    {target.group.icon ? (
+                      <span className="shrink-0 text-base">
+                        {target.group.icon}
+                      </span>
+                    ) : (
+                      <span className="i-mdi-chat-processing-outline shrink-0 text-primary-500" />
+                    )}
+                    <span className="truncate">{target.group.name}</span>
+                    {/* 在线人数只在聊天室标题栏显示（对齐手机版 updateOnlineCount）；
+                        公告版不挂人数 */}
+                    {target.group.type !== "notice" && (
+                      <span className="shrink-0 text-[11px] font-normal text-brand-500 dark:text-brand-400">
+                        {t("friendsChat.onlineCount", {
+                          count: groupOnlineCount,
+                        })}
+                      </span>
+                    )}
+                  </>
+                )
               ) : (
                 t("friendsChat.title")
               )}
@@ -759,35 +879,54 @@ export function FriendsChatModal({
                             {groups.length}
                           </p>
                           <div className="mb-3 flex flex-col gap-1">
-                            {groups.map(group => (
-                              <button
-                                key={group.id}
-                                type="button"
-                                onClick={() =>
-                                  void openChat({ kind: "group", group })}
-                                className="flex items-center gap-3 rounded-xl p-2 text-left transition-colors hover:bg-brand-100 dark:hover:bg-brand-700/60"
-                              >
-                                {renderAvatar(group.name, group.avatar)}
-                                <div className="min-w-0 flex-1">
-                                  <div className="truncate text-sm font-medium text-brand-800 dark:text-brand-100">
-                                    {group.name}
+                            {groups.map((group) => {
+                              // 与手机版 buildGroupRow 一致：副行是群描述，
+                              // 没有描述时按类型给默认文案（公告版=仅管理员可发言）；
+                              // 公告版额外挂一个「公告」小标签。**不显示人数**。
+                              const isNotice = group.type === "notice";
+                              const desc
+                                = group.description
+                                  || (isNotice
+                                    ? t("friendsChat.groupNoticeDesc")
+                                    : t("friendsChat.groupChatDesc"));
+                              return (
+                                <button
+                                  key={group.id}
+                                  type="button"
+                                  onClick={() =>
+                                    void openChat({ kind: "group", group })}
+                                  className="flex items-center gap-3 rounded-xl p-2 text-left transition-colors hover:bg-brand-100 dark:hover:bg-brand-700/60"
+                                >
+                                  {group.icon ? (
+                                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-brand-200/70 bg-brand-100/80 text-lg dark:border-brand-700/70 dark:bg-brand-700/50">
+                                      {group.icon}
+                                    </div>
+                                  ) : (
+                                    renderAvatar(group.name, group.avatar)
+                                  )}
+                                  <div className="min-w-0 flex-1">
+                                    <div className="truncate text-sm font-medium text-brand-800 dark:text-brand-100">
+                                      {group.name}
+                                    </div>
+                                    <div className="truncate text-[11px] text-brand-500 dark:text-brand-400">
+                                      {desc}
+                                    </div>
                                   </div>
-                                  <div className="truncate text-[11px] text-brand-500 dark:text-brand-400">
-                                    {t("friendsChat.groupOnline", {
-                                      online: group.onlineCount,
-                                      total: group.memberCount,
-                                    })}
-                                  </div>
-                                </div>
-                                {group.unreadCount > 0 && (
-                                  <span className="min-w-[18px] rounded-full bg-error-500 px-1.5 py-0.5 text-center text-[10px] font-bold text-white">
-                                    {group.unreadCount > 99
-                                      ? "99+"
-                                      : group.unreadCount}
-                                  </span>
-                                )}
-                              </button>
-                            ))}
+                                  {isNotice && (
+                                    <span className="shrink-0 rounded-md border border-warning-500/40 bg-warning-500/10 px-1.5 py-0.5 text-[10px] font-medium text-warning-600 dark:text-warning-400">
+                                      {t("friendsChat.groupNoticeBadge")}
+                                    </span>
+                                  )}
+                                  {group.unreadCount > 0 && (
+                                    <span className="min-w-[18px] rounded-full bg-error-500 px-1.5 py-0.5 text-center text-[10px] font-bold text-white">
+                                      {group.unreadCount > 99
+                                        ? "99+"
+                                        : group.unreadCount}
+                                    </span>
+                                  )}
+                                </button>
+                              );
+                            })}
                           </div>
                         </>
                       )}
@@ -1035,6 +1174,13 @@ export function FriendsChatModal({
               <div
                 ref={listRef}
                 className="min-h-0 flex-1 space-y-3 overflow-y-auto scrollbar-thin p-4"
+                onScroll={(e) => {
+                  // 手机版行为：滚动到顶部自动翻更早的历史
+                  const el = e.currentTarget;
+                  if (el.scrollTop <= 32 && hasMoreHistory && !historyLoading) {
+                    void loadOlderHistory();
+                  }
+                }}
               >
                 {hasMoreHistory && (
                   <div className="flex justify-center">
@@ -1171,7 +1317,17 @@ export function FriendsChatModal({
                               emoji.url || emojiDisplayURL(emoji.name),
                             )}
                             alt={emoji.name}
+                            loading="lazy"
                             className="h-9 w-9 object-contain"
+                            onError={(e) => {
+                              const img = e.currentTarget;
+                              const raw
+                                = emoji.url || emojiDisplayURL(emoji.name);
+                              if (!img.dataset.fallbackRaw && img.src !== raw) {
+                                img.dataset.fallbackRaw = "1";
+                                img.src = raw;
+                              }
+                            }}
                           />
                         </button>
                       ))}
@@ -1214,7 +1370,17 @@ export function FriendsChatModal({
                           <img
                             src={proxiedImageSrc(url)}
                             alt=""
+                            loading="lazy"
                             className="h-9 w-9 object-contain"
+                            onError={(e) => {
+                              // 一次性把整包塞进代理会打满并发图片请求（本地代理逐个回源），
+                              // 失败的那几张退回直连再拿一次。
+                              const img = e.currentTarget;
+                              if (!img.dataset.fallbackRaw && img.src !== url) {
+                                img.dataset.fallbackRaw = "1";
+                                img.src = url;
+                              }
+                            }}
                           />
                         </button>
                       ))}
@@ -1223,55 +1389,64 @@ export function FriendsChatModal({
                 </div>
               )}
 
-              {/* 输入区 */}
-              <div className="flex items-center gap-2 border-t border-brand-200/80 p-3 dark:border-brand-700/80">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEmojiPanelOpen(open => !open);
-                    void loadEmojiPanelData();
-                  }}
-                  aria-label={t("friendsChat.emojiPicker")}
-                  className={`shrink-0 rounded-lg p-2 transition-colors ${
-                    emojiPanelOpen
-                      ? "bg-primary-500/15 text-primary-600 dark:text-primary-300"
-                      : "text-brand-500 hover:bg-brand-100 hover:text-brand-700 dark:text-brand-400 dark:hover:bg-brand-700"
-                  }`}
-                >
-                  <span className="inline-block i-mdi-emoticon-outline text-lg" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void pickAndSendImage()}
-                  disabled={isUploadingImage}
-                  aria-label={t("friendsChat.sendImage")}
-                  className="shrink-0 rounded-lg p-2 text-brand-500 transition-colors hover:bg-brand-100 hover:text-brand-700 disabled:opacity-50 dark:text-brand-400 dark:hover:bg-brand-700"
-                >
-                  <span
-                    className={`inline-block ${isUploadingImage ? "i-mdi-loading animate-spin" : "i-mdi-image-outline"} text-lg`}
+              {/* 输入区（公告版：仅管理员可发言，对齐手机版 canSpeak） */}
+              {!canSpeak ? (
+                <div className="flex items-center justify-center gap-2 border-t border-brand-200/80 p-3 dark:border-brand-700/80">
+                  <span className="i-mdi-bullhorn-outline text-base text-warning-500" />
+                  <span className="text-xs text-brand-500 dark:text-brand-400">
+                    {t("friendsChat.groupNoticeMuted")}
+                  </span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 border-t border-brand-200/80 p-3 dark:border-brand-700/80">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEmojiPanelOpen(open => !open);
+                      void loadEmojiPanelData();
+                    }}
+                    aria-label={t("friendsChat.emojiPicker")}
+                    className={`shrink-0 rounded-lg p-2 transition-colors ${
+                      emojiPanelOpen
+                        ? "bg-primary-500/15 text-primary-600 dark:text-primary-300"
+                        : "text-brand-500 hover:bg-brand-100 hover:text-brand-700 dark:text-brand-400 dark:hover:bg-brand-700"
+                    }`}
+                  >
+                    <span className="inline-block i-mdi-emoticon-outline text-lg" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void pickAndSendImage()}
+                    disabled={isUploadingImage}
+                    aria-label={t("friendsChat.sendImage")}
+                    className="shrink-0 rounded-lg p-2 text-brand-500 transition-colors hover:bg-brand-100 hover:text-brand-700 disabled:opacity-50 dark:text-brand-400 dark:hover:bg-brand-700"
+                  >
+                    <span
+                      className={`inline-block ${isUploadingImage ? "i-mdi-loading animate-spin" : "i-mdi-image-outline"} text-lg`}
+                    />
+                  </button>
+                  <BetterInput
+                    value={draft.text}
+                    onChange={e => setDraft({ text: e.target.value })}
+                    placeholder={t("friendsChat.inputPlaceholder")}
+                    fullWidth
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        void handleSend();
+                      }
+                    }}
                   />
-                </button>
-                <BetterInput
-                  value={draft.text}
-                  onChange={e => setDraft({ text: e.target.value })}
-                  placeholder={t("friendsChat.inputPlaceholder")}
-                  fullWidth
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      void handleSend();
-                    }
-                  }}
-                />
-                <BetterButton
-                  variant="primary"
-                  className="shrink-0"
-                  icon="i-mdi-send"
-                  isLoading={isSending}
-                  disabled={!draft.text.trim()}
-                  onClick={() => void handleSend()}
-                />
-              </div>
+                  <BetterButton
+                    variant="primary"
+                    className="shrink-0"
+                    icon="i-mdi-send"
+                    isLoading={isSending}
+                    disabled={!draft.text.trim()}
+                    onClick={() => void handleSend()}
+                  />
+                </div>
+              )}
             </div>
           )}
         </div>

@@ -13,6 +13,15 @@ export default defineConfig({
       collections: {
         mdi: () => mdiIcons,
       },
+      // **必须给图标类补 display:inline-block。**
+      // UnoCSS 图标用 mask + width/height:1em 实现，放在 <span>（inline 元素）上时
+      // width/height 完全无效 → 元素尺寸为 0，整个图标不可见（不报错、不告警）。
+      // 只有 flex 容器的直接子元素会被 blockify 才侥幸正常，所以「同一个类
+      // 有的地方显示、有的地方空白」正是这个原因。全局补上后所有写法都安全。
+      extraProperties: {
+        "display": "inline-block",
+        "vertical-align": "middle",
+      },
     }),
   ],
 

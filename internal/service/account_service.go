@@ -814,6 +814,17 @@ func (s *AccountService) GetGroupHistory(groupID string, offset, limit int) ([]y
 	})
 }
 
+// GetGroupOnlineCount 群聊当前在线人数。
+//
+// 服务端把它挂在群历史接口的响应里（与手机版 getGroupMessages 的 onlineCount
+// 同一来源），所以这里拉 1 条消息顺带取人数——标题栏「🟢N在线」用。
+func (s *AccountService) GetGroupOnlineCount(groupID string) (int, error) {
+	return accountFetch(s, func(token string) (int, error) {
+		_, count, err := s.client.GroupHistory(s.resolveContext(nil), token, groupID, 0, 1)
+		return count, err
+	})
+}
+
 // SendGroupMessage 发群消息。
 func (s *AccountService) SendGroupMessage(groupID, content, msgType, replyToID string) (yukihubaccount.ChatMessage, error) {
 	return accountFetch(s, func(token string) (yukihubaccount.ChatMessage, error) {
