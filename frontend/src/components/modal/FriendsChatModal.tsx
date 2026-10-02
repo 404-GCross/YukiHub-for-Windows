@@ -1,4 +1,3 @@
-import type { CSSProperties } from "react";
 import type {
   ChatEmoji,
   ChatGroup,
@@ -33,10 +32,12 @@ import {
   UploadChatImage,
 } from "../../../bindings/yukihub/internal/service/accountservice";
 import { useAccountStatus } from "../../hooks/useAccountStatus";
+import { resolveChatMediaURL } from "../../utils/chatMedia";
 import { proxiedImageSrc } from "../../utils/imageProxy";
 import { ChatAvatar } from "../chat/ChatAvatar";
 import { ChatMessageMenu } from "../chat/ChatMessageMenu";
 import { ImageViewerModal } from "../chat/ImageViewerModal";
+import { levelBadgeStyle } from "../chat/levelBadge";
 import { UserProfileModal } from "../chat/UserProfileModal";
 import { BetterButton } from "../ui/better/BetterButton";
 import { BetterInput } from "../ui/better/BetterInput";
@@ -65,33 +66,6 @@ interface ChatDraft {
 
 /** 表情/贴纸选择面板：0=本站表情 1=未萌贴纸包列表 2=包内表情（与手机版一致） */
 type EmojiTab = 0 | 1 | 2;
-
-/**
- * 等级徽章配色（分档与手机版 levelColor / levelBadgeBg 一致）。
- *
- * 手机版返回的是 drawable 背景 + 文字色，桌面端用同色系的半透明底 + 描边还原。
- */
-function levelBadgeStyle(level: number): CSSProperties {
-  const color
-    = level >= 30
-      ? "#FFD27A"
-      : level >= 25
-        ? "#FF9090"
-        : level >= 20
-          ? "#FFB37A"
-          : level >= 15
-            ? "#C9A0FF"
-            : level >= 10
-              ? "#7DB8FF"
-              : level >= 5
-                ? "#7EE2A0"
-                : "#B9BCC7";
-  return {
-    color,
-    backgroundColor: `${color}22`,
-    border: `1px solid ${color}66`,
-  };
-}
 
 /**
  * 消息排序比较器。
@@ -189,25 +163,8 @@ export function FriendsChatModal({
 
   targetRef.current = target;
 
-  /**
-   * 聊天图片地址补全。
-   *
-   * 服务端 `/chat/upload_image` 返回的是**相对路径**（如 `/uploads/chat/xxx.jpg`），
-   * 消息 content 里存的也是这份相对路径（与手机版完全一致，双端可互认）。
-   * 直接塞进 `<img src>` 会被 WebView 解析成 `wails.localhost/uploads/...` → 404，
-   * 表现就是「自己发的图看不见、对方和手机端能看到」。手机版用
-   * absoluteChatImageUrl 补成站点绝对地址，这里照做。
-   */
-  const resolveChatImageURL = (url: string): string => {
-    const value = (url ?? "").trim();
-    if (!value) {
-      return "";
-    }
-    if (/^https?:\/\//i.test(value)) {
-      return value;
-    }
-    return `https://yukihub.zh.kg${value.startsWith("/") ? value : `/${value}`}`;
-  };
+  // 聊天图片 / 头像框素材的地址补全走公共工具（服务端下发的是相对路径）
+  const resolveChatImageURL = resolveChatMediaURL;
 
   /** 表情名 → 可显示 URL：http(s) 原样；本站表情先查列表映射，查不到再按手机版规则兜底 */
   const emojiDisplayURL = (content: string): string => {
@@ -845,13 +802,15 @@ export function FriendsChatModal({
               avatar={avatarUrl}
               size={32}
               frame={message.senderFrame}
-              className={
-                !isMine && message.senderUid ? "cursor-pointer" : undefined
-              }
+              className="cursor-pointer"
               onClick={() => {
-                // 手机版：点他人头像看资料（自己的头像不弹）
-                if (!isMine && message.senderUid) {
-                  setProfileUid(Number(message.senderUid));
+                // 点头像看资料：他人用消息里的 senderUid；自己的消息服务端不带
+                // senderUid，回退到账号 UID，这样点自己头像也能看资料。
+                const uid = isMine
+                  ? Number(accountStatus?.uid ?? 0)
+                  : Number(message.senderUid ?? 0);
+                if (uid > 0) {
+                  setProfileUid(uid);
                 }
               }}
               onContextMenu={() => {

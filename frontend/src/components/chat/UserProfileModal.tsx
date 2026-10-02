@@ -1,28 +1,21 @@
 import type { UserProfile } from "../../../bindings/yukihub/internal/service/yukihubaccount/models";
 
 import { useEffect, useState } from "react";
+import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
-import { GetUserProfile } from "../../../bindings/yukihub/internal/service/accountservice";
+import {
+  GetUserProfile,
+  SendFriendRequest,
+} from "../../../bindings/yukihub/internal/service/accountservice";
+import { useAccountStatus } from "../../hooks/useAccountStatus";
 import { ModalPortal } from "../ui/ModalPortal";
 import { ChatAvatar } from "./ChatAvatar";
+import { formatPlayTime, levelBadgeStyle } from "./levelBadge";
 
 interface UserProfileModalProps {
   isOpen: boolean;
   uid: number;
   onClose: () => void;
-}
-
-/** 秒 → 「12 小时 34 分钟」，与手机版资料页的时长展示口径一致。 */
-function formatPlayTime(seconds: number): string {
-  if (!seconds || seconds <= 0) {
-    return "-";
-  }
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  if (hours <= 0) {
-    return `${minutes} 分钟`;
-  }
-  return minutes > 0 ? `${hours} 小时 ${minutes} 分钟` : `${hours} 小时`;
 }
 
 /**
@@ -36,7 +29,9 @@ export function UserProfileModal({
   onClose,
 }: UserProfileModalProps) {
   const { t } = useTranslation();
+  const accountStatus = useAccountStatus();
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [isAddingFriend, setIsAddingFriend] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -72,6 +67,28 @@ export function UserProfileModal({
   if (!isOpen) {
     return null;
   }
+
+  const isSelf = Number(accountStatus?.uid ?? 0) === uid;
+
+  /** 加好友（资料页底部按钮，对齐手机版 renderUserProfile 的 actionBar） */
+  const handleAddFriend = async () => {
+    setIsAddingFriend(true);
+    try {
+      await SendFriendRequest(String(uid));
+      toast.success(t("friendsChat.toastRequestSent"));
+      setProfile(previous =>
+        previous
+          ? { ...previous, friendStatus: "pending", friendDirection: "sent" }
+          : previous,
+      );
+    }
+    catch (error) {
+      toast.error(error instanceof Error ? error.message : String(error));
+    }
+    finally {
+      setIsAddingFriend(false);
+    }
+  };
 
   const statusLabel = (() => {
     switch (profile?.status) {
@@ -134,10 +151,20 @@ export function UserProfileModal({
                     frame={profile.frame}
                   />
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <span className="truncate text-base font-bold text-brand-900 dark:text-white">
                         {profile.nickname || `UID ${profile.uid}`}
                       </span>
+                      {/* 社区等级徽章（手机版资料页在昵称右侧挂 Lv.N） */}
+                      {Number(profile.level) > 0 && (
+                        <span
+                          className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold leading-none"
+                          style={levelBadgeStyle(Number(profile.level))}
+                        >
+                          Lv.
+                          {profile.level}
+                        </span>
+                      )}
                       {profile.status === "online" && (
                         <span className="shrink-0 rounded-full bg-success-500/15 px-2 py-0.5 text-[10px] font-semibold text-success-600 dark:text-success-400">
                           {statusLabel}
@@ -181,6 +208,68 @@ export function UserProfileModal({
                     </div>
                   </div>
                 </div>
+
+                {profile.friendSince && (
+                  <p className="text-xs text-brand-500 dark:text-brand-400">
+                    {t("friendsChat.friendSince", {
+                      time: profile.friendSince,
+                    })}
+                  </p>
+                )}
+
+                {/* 最近游玩（对齐手机版 renderUserProfile 的 recentGames 区块） */}
+                {(profile.recentGames?.length ?? 0) > 0 && (
+                  <div className="flex flex-col gap-2">
+                    <div className="text-[11px] font-semibold text-brand-500 dark:text-brand-400">
+                      {t("friendsChat.recentGames")}
+                    </div>
+                    <div className="flex flex-col divide-y divide-brand-200/70 rounded-lg border border-brand-200/80 dark:divide-brand-700/70 dark:border-brand-700/80">
+                      {profile.recentGames?.map(game => (
+                        <div
+                          key={game.title}
+                          className="flex items-center justify-between gap-3 px-3 py-2"
+                        >
+                          <span className="min-w-0 flex-1 truncate text-xs text-brand-800 dark:text-brand-100">
+                            {game.title}
+                          </span>
+                          <span className="shrink-0 text-[11px] text-brand-500 dark:text-brand-400">
+                            {formatPlayTime(game.playTime)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* 好友操作（看自己时不显示，对齐手机版 actionBar） */}
+                {!isSelf && (
+                  <div className="pt-1">
+                    {profile.friendStatus === "accepted" ? (
+                      <div className="flex items-center justify-center gap-1.5 rounded-lg bg-success-500/12 py-2 text-sm font-medium text-success-600 dark:text-success-400">
+                        <span className="i-mdi-check text-base" />
+                        {t("friendsChat.alreadyFriend")}
+                      </div>
+                    ) : profile.friendStatus === "pending" ? (
+                      <div className="rounded-lg bg-brand-100/80 py-2 text-center text-xs text-brand-500 dark:bg-brand-700/50 dark:text-brand-400">
+                        {profile.friendDirection === "received"
+                          ? t("friendsChat.friendRequestReceived")
+                          : t("friendsChat.friendRequestSent")}
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => void handleAddFriend()}
+                        disabled={isAddingFriend}
+                        className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-primary-500 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-600 disabled:opacity-60"
+                      >
+                        <span
+                          className={`text-base ${isAddingFriend ? "i-mdi-loading animate-spin" : "i-mdi-account-plus-outline"}`}
+                        />
+                        {t("friendsChat.addFriend")}
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </div>

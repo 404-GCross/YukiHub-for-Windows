@@ -47,6 +47,17 @@ const METADATA_SOURCE_COMPACT_ICONS: Readonly<
   [modelEnums.SourceType.Hikarinagi]: hikarinagiIconUrl,
 };
 
+/**
+ * 该来源的图标是否需要「单色化」（brightness-0 + 暗色模式反白）。
+ *
+ * vndb / bangumi / ymgal / hikarinagi 提供的是透明底单色 logo，统一打黑
+ * （暗色模式反白）才能和界面风格一致；**未萌用的是彩色官方头像**，
+ * 套上 brightness-0 会整块变成黑方块（看起来像「图片没加载」），必须原样显示。
+ */
+export function isMonochromeSourceIcon(source: enums.SourceType): boolean {
+  return source !== modelEnums.SourceType.NextMoe;
+}
+
 export function getMetadataSourceIcon(
   source: enums.SourceType,
   variant: "logo" | "compact" = "logo",

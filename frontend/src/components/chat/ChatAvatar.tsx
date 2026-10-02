@@ -1,5 +1,6 @@
 import type { AvatarFrame } from "../../../bindings/yukihub/internal/service/yukihubaccount/models";
 
+import { resolveChatMediaURL } from "../../utils/chatMedia";
 import { proxiedImageSrc } from "../../utils/imageProxy";
 
 /**
@@ -133,7 +134,8 @@ export function ChatAvatar({
       )}
       {hasFrame && (
         <img
-          src={proxiedImageSrc(frame?.imageUrl)}
+          // 框素材与聊天图片同源，服务端下发的是相对路径，必须先补全站点地址
+          src={proxiedImageSrc(resolveChatMediaURL(frame?.imageUrl))}
           alt=""
           loading="lazy"
           className="pointer-events-none absolute"
@@ -142,6 +144,14 @@ export function ChatAvatar({
             height: boxSize,
             left: offsetX,
             top: offsetY,
+          }}
+          onError={(e) => {
+            // 代理失败时退回直连原地址；再失败就自然显示为空（不影响头像本身）
+            const img = e.currentTarget;
+            const direct = resolveChatMediaURL(frame?.imageUrl);
+            if (direct && img.src !== direct) {
+              img.src = direct;
+            }
           }}
         />
       )}

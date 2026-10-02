@@ -9,5 +9,6 @@ export {
     Friend,
     FriendList,
     FriendRequest,
-    UserProfile
+    UserProfile,
+    UserRecentGame
 } from "./models.js";

@@ -19,6 +19,7 @@ import { enums } from "../../../src/bindings/models";
 import { onWailsEvent } from "../../../src/bindings/runtime";
 import {
   getMetadataSourceIcon,
+  isMonochromeSourceIcon,
   normalizeEnabledMetadataSources,
 } from "../../utils/metadataSources";
 import { ConfirmModal } from "../modal/ConfirmModal";
@@ -446,7 +447,11 @@ export function MetadataSettingsPanel({
                     <img
                       src={item.icon}
                       alt={item.label}
-                      className="h-[22px] w-auto object-contain brightness-0 opacity-80 transition-all dark:invert dark:opacity-90"
+                      className={`h-[22px] w-auto object-contain transition-all ${
+                        isMonochromeSourceIcon(item.value)
+                          ? "brightness-0 opacity-80 dark:invert dark:opacity-90"
+                          : "opacity-90"
+                      }`}
                     />
                   )}
                   <label

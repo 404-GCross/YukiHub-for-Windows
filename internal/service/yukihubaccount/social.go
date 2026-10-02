@@ -322,15 +322,31 @@ func (c *Client) UploadChatImage(ctx context.Context, token, contentType string,
 // 字段名与手机版 renderUserProfile 的读取保持一致（avatarUrl / totalGames /
 // totalPlayTime / activity）。
 type UserProfile struct {
-	UID           int64        `json:"uid"`
-	Nickname      string       `json:"nickname"`
-	Signature     string       `json:"signature,omitempty"`
-	Avatar        string       `json:"avatar,omitempty"`
-	Status        string       `json:"status,omitempty"`
-	Activity      string       `json:"activity,omitempty"`
-	TotalGames    int          `json:"totalGames"`
-	TotalPlayTime int64        `json:"totalPlayTime"`
-	Frame         *AvatarFrame `json:"frame,omitempty"`
+	UID           int64  `json:"uid"`
+	Nickname      string `json:"nickname"`
+	Signature     string `json:"signature,omitempty"`
+	Avatar        string `json:"avatar,omitempty"`
+	Status        string `json:"status,omitempty"`
+	Activity      string `json:"activity,omitempty"`
+	TotalGames    int    `json:"totalGames"`
+	TotalPlayTime int64  `json:"totalPlayTime"`
+	// Level 是社区等级（手机版资料页在昵称旁挂 Lv.N 徽章）。
+	Level int `json:"level"`
+	// FriendSince 是「成为好友」的时间文案（服务端可能直接下发格式化结果）。
+	FriendSince string `json:"friendSince,omitempty"`
+	// FriendStatus：accepted（已是好友）/ pending（申请中）/ none。
+	// FriendDirection 仅在 pending 时有意义：received（对方申请我）/ sent。
+	FriendStatus    string           `json:"friendStatus,omitempty"`
+	FriendDirection string           `json:"friendDirection,omitempty"`
+	RecentGames     []UserRecentGame `json:"recentGames,omitempty"`
+	Frame           *AvatarFrame     `json:"frame,omitempty"`
+}
+
+// UserRecentGame 是资料页「最近游玩」里的一条。
+type UserRecentGame struct {
+	Title        string `json:"title"`
+	PlayTime     int64  `json:"playTime"`
+	LastPlayedAt int64  `json:"lastPlayedAt"`
 }
 
 // UserProfile 拉取指定 UID 的用户资料（点头像进资料页用）。
@@ -349,6 +365,24 @@ func (c *Client) UserProfile(ctx context.Context, token string, uid int64) (User
 		Activity:      pickString(body, "activity"),
 		TotalGames:    int(pickInt64(body, "totalGames", "total_games")),
 		TotalPlayTime: pickInt64(body, "totalPlayTime", "total_play_time"),
+		Level:         int(pickInt64(body, "level")),
+		FriendSince:   pickString(body, "friendSince", "friend_since"),
+		FriendStatus:  pickString(body, "friendStatus", "friend_status"),
+		FriendDirection: pickString(
+			body, "friendDirection", "friend_direction",
+		),
+	}
+	// 最近游玩：手机版读 title / playTime / lastPlayedAt
+	for _, item := range toMapSlice(body["recentGames"]) {
+		title := pickString(item, "title", "name")
+		if strings.TrimSpace(title) == "" {
+			continue
+		}
+		profile.RecentGames = append(profile.RecentGames, UserRecentGame{
+			Title:        title,
+			PlayTime:     pickInt64(item, "playTime", "play_time"),
+			LastPlayedAt: pickInt64(item, "lastPlayedAt", "last_played_at"),
+		})
 	}
 	if profile.UID == 0 {
 		profile.UID = uid

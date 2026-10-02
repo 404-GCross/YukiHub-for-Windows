@@ -324,6 +324,24 @@ export class UserProfile {
     "activity"?: string;
     "totalGames": number;
     "totalPlayTime": number;
+
+    /**
+     * Level 是社区等级（手机版资料页在昵称旁挂 Lv.N 徽章）。
+     */
+    "level": number;
+
+    /**
+     * FriendSince 是「成为好友」的时间文案（服务端可能直接下发格式化结果）。
+     */
+    "friendSince"?: string;
+
+    /**
+     * FriendStatus：accepted（已是好友）/ pending（申请中）/ none。
+     * FriendDirection 仅在 pending 时有意义：received（对方申请我）/ sent。
+     */
+    "friendStatus"?: string;
+    "friendDirection"?: string;
+    "recentGames"?: UserRecentGame[];
     "frame"?: AvatarFrame | null;
 
     /** Creates a new UserProfile instance. */
@@ -340,6 +358,9 @@ export class UserProfile {
         if (!("totalPlayTime" in $$source)) {
             this["totalPlayTime"] = 0;
         }
+        if (!("level" in $$source)) {
+            this["level"] = 0;
+        }
 
         Object.assign(this, $$source);
     }
@@ -348,12 +369,48 @@ export class UserProfile {
      * Creates a new UserProfile instance from a string or object.
      */
     static createFrom($$source: any = {}): UserProfile {
-        const $$createField8_0 = $$createType1;
+        const $$createField12_0 = $$createType7;
+        const $$createField13_0 = $$createType1;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("recentGames" in $$parsedSource) {
+            $$parsedSource["recentGames"] = $$createField12_0($$parsedSource["recentGames"]);
+        }
         if ("frame" in $$parsedSource) {
-            $$parsedSource["frame"] = $$createField8_0($$parsedSource["frame"]);
+            $$parsedSource["frame"] = $$createField13_0($$parsedSource["frame"]);
         }
         return new UserProfile($$parsedSource as Partial<UserProfile>);
+    }
+}
+
+/**
+ * UserRecentGame 是资料页「最近游玩」里的一条。
+ */
+export class UserRecentGame {
+    "title": string;
+    "playTime": number;
+    "lastPlayedAt": number;
+
+    /** Creates a new UserRecentGame instance. */
+    constructor($$source: Partial<UserRecentGame> = {}) {
+        if (!("title" in $$source)) {
+            this["title"] = "";
+        }
+        if (!("playTime" in $$source)) {
+            this["playTime"] = 0;
+        }
+        if (!("lastPlayedAt" in $$source)) {
+            this["lastPlayedAt"] = 0;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new UserRecentGame instance from a string or object.
+     */
+    static createFrom($$source: any = {}): UserRecentGame {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new UserRecentGame($$parsedSource as Partial<UserRecentGame>);
     }
 }
 
@@ -364,3 +421,5 @@ const $$createType2 = Friend.createFrom;
 const $$createType3 = $Create.Array($$createType2);
 const $$createType4 = FriendRequest.createFrom;
 const $$createType5 = $Create.Array($$createType4);
+const $$createType6 = UserRecentGame.createFrom;
+const $$createType7 = $Create.Array($$createType6);

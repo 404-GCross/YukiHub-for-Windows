@@ -1809,6 +1809,11 @@
     "reportReasonSpam": "垃圾广告",
     "reportReasonAbuse": "人身攻击",
     "reportReasonPorn": "色情低俗",
-    "reportTitle": "举报理由"
+    "reportTitle": "举报理由",
+    "recentGames": "最近游玩",
+    "alreadyFriend": "已是好友",
+    "friendRequestReceived": "对方已向你发送好友申请，可在「好友请求」里接受",
+    "friendRequestSent": "好友申请已发送，等待对方通过",
+    "friendSince": "成为好友 · {{time}}"
   }
 }

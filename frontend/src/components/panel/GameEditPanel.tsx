@@ -18,6 +18,7 @@ import {
   ALL_METADATA_SOURCES,
   getMetadataSourceIcon,
   getMetadataSourceURL,
+  isMonochromeSourceIcon,
 } from "../../utils/metadataSources";
 import { formatDateInputValue, formatDateToYYYYMMDD } from "../../utils/time";
 import { BetterActionInput } from "../ui/better/BetterActionInput";
@@ -512,9 +513,12 @@ export function GameEditPanel({
   const defaultMetadataSourceIcon = defaultMetadataSourceType
     ? getMetadataSourceIcon(defaultMetadataSourceType, "compact")
     : undefined;
+  // 方形彩色图标（Bangumi / Hikarinagi / 未萌）用 object-cover 满铺，
+  // 单色 logo（vndb / ymgal）才走「打黑 + 暗色反白」那条路。
   const defaultMetadataSourceUsesSquareIcon
     = defaultMetadataSourceType === enums.SourceType.Bangumi
-      || defaultMetadataSourceType === enums.SourceType.Hikarinagi;
+      || defaultMetadataSourceType === enums.SourceType.Hikarinagi
+      || defaultMetadataSourceType === enums.SourceType.NextMoe;
   useEffect(() => {
     if (isAddingAlias)
       aliasInputRef.current?.focus();
@@ -1209,7 +1213,11 @@ export function GameEditPanel({
                               src={sourceIcon}
                               alt=""
                               aria-hidden="true"
-                              className="h-[22px] w-auto max-w-24 shrink-0 object-contain brightness-0 opacity-80 transition-all dark:invert dark:opacity-90"
+                              className={`h-[22px] w-auto max-w-24 shrink-0 object-contain transition-all ${
+                                isMonochromeSourceIcon(source.source_type)
+                                  ? "brightness-0 opacity-80 dark:invert dark:opacity-90"
+                                  : "opacity-90"
+                              }`}
                             />
                           ) : null}
                           <span className="truncate text-sm font-semibold text-brand-800 dark:text-brand-100">

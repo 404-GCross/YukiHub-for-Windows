@@ -1809,6 +1809,11 @@
     "reportReasonSpam": "スパム",
     "reportReasonAbuse": "誹謗中傷",
     "reportReasonPorn": "わいせつ",
-    "reportTitle": "通報理由"
+    "reportTitle": "通報理由",
+    "recentGames": "最近プレイ",
+    "alreadyFriend": "すでにフレンド",
+    "friendRequestReceived": "相手からフレンド申請が届いています（リクエストから承認）",
+    "friendRequestSent": "フレンド申請を送信しました",
+    "friendSince": "フレンド歴 · {{time}}"
   }
 }

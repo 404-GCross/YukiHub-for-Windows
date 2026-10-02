@@ -1809,6 +1809,11 @@
     "reportReasonSpam": "Spam",
     "reportReasonAbuse": "Harassment",
     "reportReasonPorn": "Adult content",
-    "reportTitle": "Report reason"
+    "reportTitle": "Report reason",
+    "recentGames": "Recent",
+    "alreadyFriend": "Already friends",
+    "friendRequestReceived": "They sent you a friend request — accept it in Requests",
+    "friendRequestSent": "Friend request sent",
+    "friendSince": "Friends since {{time}}"
   }
 }
