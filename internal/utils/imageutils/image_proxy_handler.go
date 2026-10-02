@@ -14,7 +14,14 @@ import (
 const (
 	remoteImageProxyMaxBytes     int64 = 30 * 1024 * 1024
 	remoteImageProxyCacheControl       = "public, max-age=31536000, immutable"
+	// 同时回源的上限。聊天贴纸包一次要渲染几十张图，全都同时打上游会被限流/
+	// 超时（前端表现就是「前面的加载出来了、后面的裂图」）。限制并发后请求
+	// 排队执行，整体成功率明显更高，单张图也只是稍微晚一点到。
+	remoteImageProxyConcurrency = 4
 )
+
+// remoteImageProxySlots 是上面并发上限的信号量（容量 = remoteImageProxyConcurrency）。
+var remoteImageProxySlots = make(chan struct{}, remoteImageProxyConcurrency)
 
 type remoteImageProxyClientFactory func(time.Duration, proxyutils.ProxyConfigProvider) (*http.Client, string, error)
 
@@ -54,6 +61,14 @@ func (h *RemoteImageProxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 	imageURL = resolvePreferredCoverURL(h.coverSource, imageURL)
 	if err := downloadutils.ValidateDownloadURL(imageURL); err != nil {
 		http.Error(w, "invalid image url", http.StatusBadRequest)
+		return
+	}
+
+	// 取一个回源槽位（校验通过后再排队，无效请求不占位）。
+	select {
+	case remoteImageProxySlots <- struct{}{}:
+		defer func() { <-remoteImageProxySlots }()
+	case <-r.Context().Done():
 		return
 	}
 
