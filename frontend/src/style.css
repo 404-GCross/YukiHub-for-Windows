@@ -31,6 +31,21 @@ img {
   user-drag: none;
 }
 
+/*
+ * UnoCSS 图标（mask 方案）统一补 display。
+ *
+ * 图标类只声明了 width/height: 1em + mask，**没有 display**。放在 <span> 这类
+ * inline 元素上时 width/height 完全不生效 → 尺寸为 0 直接不可见（不报错、不告警）；
+ * 只有恰好是 flex 容器直接子元素时会被 blockify 才显示。结果就是「同一个图标类
+ * 有的地方正常、有的地方空白」（关窗按钮、返回按钮、表情按钮都栽在这）。
+ * 全局补 inline-block 后两种写法都安全，flex 容器内行为不变。
+ */
+[class^="i-mdi-"],
+[class*=" i-mdi-"] {
+  display: inline-block;
+  vertical-align: middle;
+}
+
 input,
 textarea,
 [contenteditable="true"] {

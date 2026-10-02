@@ -9,18 +9,13 @@ export default defineConfig({
     // pnpm 严格 node_modules 布局下，preset-icons 的 node loader 无法从
     // @iconify/utils 的位置解析到 @iconify-json/mdi，图标会全部空白。
     // 显式注册 mdi：值必须是函数，loader 会对函数求值后按集合查找。
+    //
+    // 注意：**不要**用 presetIcons 的 extraProperties 去补 display —— 那个选项
+    // 是把属性写进生成的 SVG 标签（`<svg display="inline-block">`），对 mask
+    // 模式毫无作用。图标要的 display 由 src/style.css 的全局规则补。
     presetIcons({
       collections: {
         mdi: () => mdiIcons,
-      },
-      // **必须给图标类补 display:inline-block。**
-      // UnoCSS 图标用 mask + width/height:1em 实现，放在 <span>（inline 元素）上时
-      // width/height 完全无效 → 元素尺寸为 0，整个图标不可见（不报错、不告警）。
-      // 只有 flex 容器的直接子元素会被 blockify 才侥幸正常，所以「同一个类
-      // 有的地方显示、有的地方空白」正是这个原因。全局补上后所有写法都安全。
-      extraProperties: {
-        "display": "inline-block",
-        "vertical-align": "middle",
       },
     }),
   ],
