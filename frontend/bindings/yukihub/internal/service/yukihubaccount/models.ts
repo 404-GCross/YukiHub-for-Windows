@@ -6,6 +6,35 @@
 import { Create as $Create } from "@wailsio/runtime";
 
 /**
+ * AvatarFrame 是头像框（服务端下发的是图片地址 + 相对头像边长的位置参数）。
+ * 
+ * 换算公式与手机版 AvatarFrame 一致：框边长 = 头像边长 × scale，
+ * 横/纵向位移 = 头像边长 × offset / 100。
+ */
+export class AvatarFrame {
+    "key"?: string;
+    "name"?: string;
+    "imageUrl"?: string;
+    "scale"?: number;
+    "offsetX"?: number;
+    "offsetY"?: number;
+
+    /** Creates a new AvatarFrame instance. */
+    constructor($$source: Partial<AvatarFrame> = {}) {
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new AvatarFrame instance from a string or object.
+     */
+    static createFrom($$source: any = {}): AvatarFrame {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new AvatarFrame($$parsedSource as Partial<AvatarFrame>);
+    }
+}
+
+/**
  * ChatEmoji 是一个本站表情。
  */
 export class ChatEmoji {
@@ -112,6 +141,16 @@ export class ChatMessage {
      */
     "replyPreview"?: string;
 
+    /**
+     * ===== 群聊专属字段（对齐手机版 GroupMessage）=====
+     * SenderIsAdmin / SenderLevel / SenderNameColor / SenderFrame 只由群聊历史与
+     * 轮询接口下发；私聊拿不到（手机版私聊也不画这些装饰）。
+     */
+    "senderIsAdmin"?: boolean;
+    "senderLevel"?: number;
+    "senderNameColor"?: string;
+    "senderFrame"?: AvatarFrame | null;
+
     /** Creates a new ChatMessage instance. */
     constructor($$source: Partial<ChatMessage> = {}) {
         if (!("id" in $$source)) {
@@ -137,7 +176,11 @@ export class ChatMessage {
      * Creates a new ChatMessage instance from a string or object.
      */
     static createFrom($$source: any = {}): ChatMessage {
+        const $$createField16_0 = $$createType1;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("senderFrame" in $$parsedSource) {
+            $$parsedSource["senderFrame"] = $$createField16_0($$parsedSource["senderFrame"]);
+        }
         return new ChatMessage($$parsedSource as Partial<ChatMessage>);
     }
 }
@@ -218,8 +261,8 @@ export class FriendList {
      * Creates a new FriendList instance from a string or object.
      */
     static createFrom($$source: any = {}): FriendList {
-        const $$createField0_0 = $$createType1;
-        const $$createField1_0 = $$createType3;
+        const $$createField0_0 = $$createType3;
+        const $$createField1_0 = $$createType5;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("friends" in $$parsedSource) {
             $$parsedSource["friends"] = $$createField0_0($$parsedSource["friends"]);
@@ -266,8 +309,58 @@ export class FriendRequest {
     }
 }
 
+/**
+ * UserProfile 是用户资料页的数据（GET /user/profile）。
+ * 
+ * 字段名与手机版 renderUserProfile 的读取保持一致（avatarUrl / totalGames /
+ * totalPlayTime / activity）。
+ */
+export class UserProfile {
+    "uid": number;
+    "nickname": string;
+    "signature"?: string;
+    "avatar"?: string;
+    "status"?: string;
+    "activity"?: string;
+    "totalGames": number;
+    "totalPlayTime": number;
+    "frame"?: AvatarFrame | null;
+
+    /** Creates a new UserProfile instance. */
+    constructor($$source: Partial<UserProfile> = {}) {
+        if (!("uid" in $$source)) {
+            this["uid"] = 0;
+        }
+        if (!("nickname" in $$source)) {
+            this["nickname"] = "";
+        }
+        if (!("totalGames" in $$source)) {
+            this["totalGames"] = 0;
+        }
+        if (!("totalPlayTime" in $$source)) {
+            this["totalPlayTime"] = 0;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new UserProfile instance from a string or object.
+     */
+    static createFrom($$source: any = {}): UserProfile {
+        const $$createField8_0 = $$createType1;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("frame" in $$parsedSource) {
+            $$parsedSource["frame"] = $$createField8_0($$parsedSource["frame"]);
+        }
+        return new UserProfile($$parsedSource as Partial<UserProfile>);
+    }
+}
+
 // Private type creation functions
-const $$createType0 = Friend.createFrom;
-const $$createType1 = $Create.Array($$createType0);
-const $$createType2 = FriendRequest.createFrom;
+const $$createType0 = AvatarFrame.createFrom;
+const $$createType1 = $Create.Nullable($$createType0);
+const $$createType2 = Friend.createFrom;
 const $$createType3 = $Create.Array($$createType2);
+const $$createType4 = FriendRequest.createFrom;
+const $$createType5 = $Create.Array($$createType4);

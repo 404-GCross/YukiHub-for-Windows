@@ -451,7 +451,9 @@
       "loadFavFailed": "コレクションの読み込みに失敗しました",
       "favUpdated": "コレクションを更新しました",
       "updateFavFailed": "コレクションの更新に失敗しました",
-      "selectFileFailed": "ファイルの選択に失敗しました"
+      "selectFileFailed": "ファイルの選択に失敗しました",
+      "nsfwMarked": "NSFW に設定しました",
+      "nsfwUnmarked": "NSFW 設定を解除しました"
     }
   },
   "gameReview": {
@@ -729,7 +731,6 @@
     "metadataLock": "メタデータをロック",
     "metadataLockHint": "有効にすると、全量メタデータ更新でこのゲームをスキップし、リモート更新によるタイトル・概要・カバー・開発元・評価・発売日・自動タグの上書きを防ぎます。",
     "isNsfw": "NSFW ゲーム",
-    "isNsfwHint": "このゲームをマークし、グローバル設定に従ってカバーをぼかします。",
     "updateFromRemote": "リモートから情報を更新",
     "openSourcePage": "データソースのページを開く",
     "chooseSourcePage": "開くデータソースのページを選択",
@@ -755,7 +756,9 @@
     "metadataSearchSourceApplySuccess": "メタデータソースの関連を更新しました",
     "metadataSearchFailed": "メタデータの検索に失敗しました：{{error}}",
     "metadataSearchApplyFailed": "メタデータソースとゲーム情報の更新に失敗しました：{{error}}",
-    "metadataSearchSourceApplyFailed": "メタデータソースの関連更新に失敗しました：{{error}}"
+    "metadataSearchSourceApplyFailed": "メタデータソースの関連更新に失敗しました：{{error}}",
+    "markNsfw": "NSFW に設定",
+    "unmarkNsfw": "NSFW 設定を解除"
   },
   "metadataUpdateFields": {
     "selectAll": "すべての項目を更新",
@@ -1785,6 +1788,27 @@
     "groupNoticeDesc": "管理者のみ発言可",
     "groupChatDesc": "公開チャット",
     "groupNoticeMuted": "お知らせ欄は管理者のみ発言できます",
-    "onlineCount": "🟢{{count}} オンライン"
+    "onlineCount": "🟢{{count}} オンライン",
+    "adminBadge": "管理",
+    "menuCopy": "コピー",
+    "menuReply": "返信",
+    "menuReport": "通報",
+    "menuRecall": "撤回（管理者）",
+    "menuDelete": "削除（管理者）",
+    "menuProfile": "プロフィール",
+    "profileTitle": "プロフィール",
+    "profileGames": "ゲーム数",
+    "profilePlayTime": "総プレイ時間",
+    "openOriginal": "元画像を開く",
+    "toastCopied": "コピーしました",
+    "toastCopyFailed": "コピーに失敗しました",
+    "toastReported": "通報を送信しました",
+    "toastRecalled": "撤回しました",
+    "toastDeleted": "削除しました",
+    "reportReasonOther": "その他",
+    "reportReasonSpam": "スパム",
+    "reportReasonAbuse": "誹謗中傷",
+    "reportReasonPorn": "わいせつ",
+    "reportTitle": "通報理由"
   }
 }

@@ -77,6 +77,27 @@ type ChatMessage struct {
 	ReplyToID    string `json:"replyToId,omitempty"`
 	// 群聊里服务端可能会带上被回复的消息摘要
 	ReplyPreview string `json:"replyPreview,omitempty"`
+
+	// ===== 群聊专属字段（对齐手机版 GroupMessage）=====
+	// SenderIsAdmin / SenderLevel / SenderNameColor / SenderFrame 只由群聊历史与
+	// 轮询接口下发；私聊拿不到（手机版私聊也不画这些装饰）。
+	SenderIsAdmin   bool         `json:"senderIsAdmin,omitempty"`
+	SenderLevel     int          `json:"senderLevel,omitempty"`
+	SenderNameColor string       `json:"senderNameColor,omitempty"`
+	SenderFrame     *AvatarFrame `json:"senderFrame,omitempty"`
+}
+
+// AvatarFrame 是头像框（服务端下发的是图片地址 + 相对头像边长的位置参数）。
+//
+// 换算公式与手机版 AvatarFrame 一致：框边长 = 头像边长 × scale，
+// 横/纵向位移 = 头像边长 × offset / 100。
+type AvatarFrame struct {
+	Key      string  `json:"key,omitempty"`
+	Name     string  `json:"name,omitempty"`
+	ImageURL string  `json:"imageUrl,omitempty"`
+	Scale    float64 `json:"scale,omitempty"`
+	OffsetX  float64 `json:"offsetX,omitempty"`
+	OffsetY  float64 `json:"offsetY,omitempty"`
 }
 
 // ChatGroup 是一个群聊。
@@ -296,6 +317,78 @@ func (c *Client) UploadChatImage(ctx context.Context, token, contentType string,
 	return imageURL, nil
 }
 
+// UserProfile 是用户资料页的数据（GET /user/profile）。
+//
+// 字段名与手机版 renderUserProfile 的读取保持一致（avatarUrl / totalGames /
+// totalPlayTime / activity）。
+type UserProfile struct {
+	UID           int64        `json:"uid"`
+	Nickname      string       `json:"nickname"`
+	Signature     string       `json:"signature,omitempty"`
+	Avatar        string       `json:"avatar,omitempty"`
+	Status        string       `json:"status,omitempty"`
+	Activity      string       `json:"activity,omitempty"`
+	TotalGames    int          `json:"totalGames"`
+	TotalPlayTime int64        `json:"totalPlayTime"`
+	Frame         *AvatarFrame `json:"frame,omitempty"`
+}
+
+// UserProfile 拉取指定 UID 的用户资料（点头像进资料页用）。
+func (c *Client) UserProfile(ctx context.Context, token string, uid int64) (UserProfile, error) {
+	query := url.Values{"uid": {strconv.FormatInt(uid, 10)}}
+	body, err := c.doJSON(ctx, http.MethodGet, c.baseURL+"/user/profile?"+query.Encode(), token, nil)
+	if err != nil {
+		return UserProfile{}, err
+	}
+	profile := UserProfile{
+		UID:           pickInt64(body, "uid"),
+		Nickname:      pickString(body, "nickname"),
+		Signature:     pickString(body, "signature"),
+		Avatar:        pickString(body, "avatarUrl", "avatar_url", "avatar"),
+		Status:        pickString(body, "status"),
+		Activity:      pickString(body, "activity"),
+		TotalGames:    int(pickInt64(body, "totalGames", "total_games")),
+		TotalPlayTime: pickInt64(body, "totalPlayTime", "total_play_time"),
+	}
+	if profile.UID == 0 {
+		profile.UID = uid
+	}
+	// 资料页的头像框字段名以 senderFrame 同款结构下发；两种键名都容忍。
+	for _, key := range []string{"senderFrame", "frame"} {
+		if frameRaw, ok := body[key].(map[string]any); ok {
+			imageURL := pickString(frameRaw, "imageUrl", "image_url", "image")
+			if strings.TrimSpace(imageURL) == "" {
+				continue
+			}
+			profile.Frame = &AvatarFrame{
+				Key:      pickString(frameRaw, "key"),
+				Name:     pickString(frameRaw, "name"),
+				ImageURL: imageURL,
+				Scale:    pickFloat64(frameRaw, "scale"),
+				OffsetX:  pickFloat64(frameRaw, "offsetX", "offset_x"),
+				OffsetY:  pickFloat64(frameRaw, "offsetY", "offset_y"),
+			}
+			break
+		}
+	}
+	return profile, nil
+}
+
+// ReportChatMessage 举报一条聊天消息（POST /community/report）。
+//
+// scene 取 "chat"（私聊）或 "group"（群聊）；scene=group 时 groupID 必填。
+func (c *Client) ReportChatMessage(ctx context.Context, token, scene, messageID, groupID, reason string) error {
+	payload := map[string]string{
+		"scene":     strings.TrimSpace(scene),
+		"messageId": strings.TrimSpace(messageID),
+		"reason":    strings.TrimSpace(reason),
+	}
+	if strings.TrimSpace(groupID) != "" {
+		payload["groupId"] = strings.TrimSpace(groupID)
+	}
+	return c.doEmpty(ctx, http.MethodPost, c.baseURL+"/community/report", token, payload)
+}
+
 // ==================== 未萌贴纸（服务端代理，密钥在服务端） ====================
 
 // ListStickerPacks 拉未萌贴纸包列表。
@@ -465,10 +558,17 @@ func parseFriend(raw map[string]any) Friend {
 
 func parseChatMessage(raw map[string]any) ChatMessage {
 	message := ChatMessage{
-		ID:           pickString(raw, "id", "messageId"),
-		SenderID:     pickString(raw, "senderId", "sender_id"),
-		SenderUID:    pickInt64(raw, "senderUid", "sender_uid", "uid"),
-		SenderName:   pickString(raw, "senderName", "sender_name", "nickname"),
+		ID:        pickString(raw, "id", "messageId"),
+		SenderID:  pickString(raw, "senderId", "sender_id"),
+		SenderUID: pickInt64(raw, "senderUid", "sender_uid", "uid"),
+		// 群聊接口下发的字段名是 senderNickname（手机版 GroupMessage 同名字段）；
+		// 漏掉它会让群聊里所有昵称退化成「UID xxx」。
+		SenderName: pickString(
+			raw,
+			"senderNickname", "sender_nickname",
+			"senderName", "sender_name",
+			"nickname",
+		),
 		SenderAvatar: pickString(raw, "senderAvatar", "sender_avatar", "avatarUrl", "avatar"),
 		ReceiverID:   pickString(raw, "receiverId", "receiver_id"),
 		GroupID:      pickString(raw, "groupId", "group_id"),
@@ -478,6 +578,26 @@ func parseChatMessage(raw map[string]any) ChatMessage {
 		IsMine:       pickBool(raw, "isMine", "is_mine"),
 		ReplyToID:    pickString(raw, "replyToId", "reply_to_id"),
 		ReplyPreview: pickString(raw, "replyPreview", "reply_preview", "replyContent"),
+
+		SenderIsAdmin:   pickBool(raw, "senderIsAdmin", "sender_is_admin"),
+		SenderLevel:     int(pickInt64(raw, "senderLevel", "sender_level")),
+		SenderNameColor: pickString(raw, "senderNameColor", "sender_name_color"),
+	}
+	// senderFrame：JSON null / 缺失都表示「没戴框」（桌面端每次都实时拉取，
+	// 不做手机版那种「确认摘下」的覆盖语义，所以不需要哨兵值）。
+	if frameRaw, ok := raw["senderFrame"].(map[string]any); ok {
+		frame := &AvatarFrame{
+			Key:      pickString(frameRaw, "key"),
+			Name:     pickString(frameRaw, "name"),
+			ImageURL: pickString(frameRaw, "imageUrl", "image_url", "image"),
+			Scale:    pickFloat64(frameRaw, "scale"),
+			OffsetX:  pickFloat64(frameRaw, "offsetX", "offset_x"),
+			OffsetY:  pickFloat64(frameRaw, "offsetY", "offset_y"),
+		}
+		// 只有真的带图才算框（手机版 isValid 同规则）
+		if strings.TrimSpace(frame.ImageURL) != "" {
+			message.SenderFrame = frame
+		}
 	}
 	if message.MsgType == "" {
 		message.MsgType = MsgTypeText

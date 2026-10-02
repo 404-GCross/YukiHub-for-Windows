@@ -684,6 +684,35 @@ func pickInt64(source map[string]any, keys ...string) int64 {
 	return 0
 }
 
+// pickFloat64 取浮点字段（头像框的 scale / offset 是小数）。
+func pickFloat64(source map[string]any, keys ...string) float64 {
+	for _, key := range keys {
+		value, ok := source[key]
+		if !ok || value == nil {
+			continue
+		}
+		switch typed := value.(type) {
+		case float64:
+			return typed
+		case int:
+			return float64(typed)
+		case int64:
+			return float64(typed)
+		case json.Number:
+			parsed, err := typed.Float64()
+			if err == nil {
+				return parsed
+			}
+		case string:
+			parsed, err := strconv.ParseFloat(strings.TrimSpace(typed), 64)
+			if err == nil {
+				return parsed
+			}
+		}
+	}
+	return 0
+}
+
 func toInt64(value any) int64 {
 	switch typed := value.(type) {
 	case float64:

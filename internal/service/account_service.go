@@ -828,6 +828,41 @@ func (s *AccountService) GetGroupHistory(groupID string, offset, limit int) ([]y
 	})
 }
 
+// ManageGroupMessage 撤回或删除群消息（仅管理员，服务端会校验权限）。
+//
+// action 取 "recall"（撤回）或 "delete"（删除），与手机版 doManageGroupMessage 一致。
+func (s *AccountService) ManageGroupMessage(messageID, action string) error {
+	normalized := yukihubaccount.GroupMessageAction(strings.TrimSpace(action))
+	if normalized != yukihubaccount.GroupActionRecall && normalized != yukihubaccount.GroupActionDelete {
+		return fmt.Errorf("不支持的群消息操作: %s", action)
+	}
+	return s.withToken(func(token string) error {
+		return s.client.ManageGroupMessage(s.resolveContext(nil), token, messageID, normalized)
+	})
+}
+
+// ReportChatMessage 举报一条聊天消息。
+//
+// scene = "chat"（私聊）/ "group"（群聊），群聊时 groupID 必填。
+func (s *AccountService) ReportChatMessage(scene, messageID, groupID, reason string) error {
+	if strings.TrimSpace(messageID) == "" {
+		return errors.New("消息 ID 为空")
+	}
+	return s.withToken(func(token string) error {
+		return s.client.ReportChatMessage(s.resolveContext(nil), token, scene, messageID, groupID, reason)
+	})
+}
+
+// GetUserProfile 拉取某个 UID 的用户资料（友链列表、群聊点头像进资料页）。
+func (s *AccountService) GetUserProfile(uid int64) (yukihubaccount.UserProfile, error) {
+	if uid <= 0 {
+		return yukihubaccount.UserProfile{}, errors.New("UID 无效")
+	}
+	return accountFetch(s, func(token string) (yukihubaccount.UserProfile, error) {
+		return s.client.UserProfile(s.resolveContext(nil), token, uid)
+	})
+}
+
 // GetGroupOnlineCount 群聊当前在线人数。
 //
 // 服务端把它挂在群历史接口的响应里（与手机版 getGroupMessages 的 onlineCount

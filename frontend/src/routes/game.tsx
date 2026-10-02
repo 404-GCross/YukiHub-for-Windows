@@ -480,6 +480,35 @@ function GameDetailPage() {
     }
   };
 
+  /**
+   * 切换 NSFW 标记。
+   *
+   * 入口在详情页顶部操作区（与删除按钮同排），原来是编辑页里的一张开关卡片，
+   * 位置太深；编辑页不再重复放，避免两处状态不一致。
+   */
+  const handleToggleNSFW = async () => {
+    if (!game) {
+      return;
+    }
+    const nextValue = !game.is_nsfw;
+    const updatedGame = { ...game, is_nsfw: nextValue } as models.Game;
+    updateGameState(updatedGame);
+    try {
+      await UpdateGame(updatedGame);
+      originalGameData.current = updatedGame;
+      toast.success(
+        nextValue ? t("game.toast.nsfwMarked") : t("game.toast.nsfwUnmarked"),
+      );
+    }
+    catch (error) {
+      // 失败回滚本地状态，避免界面与库里不一致
+      updateGameState(game);
+      toast.error(
+        error instanceof Error ? error.message : t("game.toast.saveFailed"),
+      );
+    }
+  };
+
   const handleDeleteGame = async () => {
     if (!game)
       return;
@@ -1567,6 +1596,32 @@ function GameDetailPage() {
                       >
                         <span
                           className="i-mdi-folder-plus-outline text-base"
+                          aria-hidden="true"
+                        />
+                      </button>
+                    </BetterTooltip>
+
+                    {/* NSFW 标记（原来在编辑页的开关卡片里，移到顶部操作区） */}
+                    <BetterTooltip
+                      content={
+                        game.is_nsfw
+                          ? t("gameEdit.unmarkNsfw")
+                          : t("gameEdit.markNsfw")
+                      }
+                    >
+                      <button
+                        type="button"
+                        onClick={() => void handleToggleNSFW()}
+                        aria-pressed={Boolean(game.is_nsfw)}
+                        aria-label={t("gameEdit.isNsfw")}
+                        className={`flex h-8 w-8 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-error-400/70 ${
+                          game.is_nsfw
+                            ? "bg-error-500 text-white hover:bg-error-600"
+                            : "bg-brand-150 text-brand-500 hover:bg-brand-200 hover:text-brand-900 dark:bg-brand-700 dark:text-brand-400 dark:hover:bg-brand-600 dark:hover:text-brand-100"
+                        }`}
+                      >
+                        <span
+                          className="i-mdi-eye-off-outline text-base"
                           aria-hidden="true"
                         />
                       </button>

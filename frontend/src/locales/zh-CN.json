@@ -451,7 +451,9 @@
       "loadFavFailed": "加载收藏夹失败",
       "favUpdated": "收藏已更新",
       "updateFavFailed": "更新收藏失败",
-      "selectFileFailed": "选择文件失败"
+      "selectFileFailed": "选择文件失败",
+      "nsfwMarked": "已标记为 NSFW",
+      "nsfwUnmarked": "已取消 NSFW 标记"
     }
   },
   "gameReview": {
@@ -729,7 +731,6 @@
     "metadataLock": "锁定元数据",
     "metadataLockHint": "开启后，全量元数据更新会跳过此游戏，并阻止从远端覆盖名称、简介、封面、厂商、评分、发售日和自动标签。",
     "isNsfw": "NSFW 游戏",
-    "isNsfwHint": "标记后，可根据全局游戏设置自动模糊此游戏的封面。",
     "updateFromRemote": "从远端更新信息",
     "openSourcePage": "打开数据源网页",
     "chooseSourcePage": "选择要打开的数据源网页",
@@ -755,7 +756,9 @@
     "metadataSearchSourceApplySuccess": "元数据来源关联已更新",
     "metadataSearchFailed": "搜索元数据失败：{{error}}",
     "metadataSearchApplyFailed": "更新元数据来源和游戏信息失败：{{error}}",
-    "metadataSearchSourceApplyFailed": "更新元数据来源关联失败：{{error}}"
+    "metadataSearchSourceApplyFailed": "更新元数据来源关联失败：{{error}}",
+    "markNsfw": "标记为 NSFW",
+    "unmarkNsfw": "取消 NSFW 标记"
   },
   "metadataUpdateFields": {
     "selectAll": "更新全部字段",
@@ -1785,6 +1788,27 @@
     "groupNoticeDesc": "仅管理员可发言",
     "groupChatDesc": "公开聊天室",
     "groupNoticeMuted": "公告版仅管理员可发言",
-    "onlineCount": "🟢{{count}} 在线"
+    "onlineCount": "🟢{{count}} 在线",
+    "adminBadge": "管理",
+    "menuCopy": "复制",
+    "menuReply": "回复",
+    "menuReport": "举报",
+    "menuRecall": "撤回消息（管理）",
+    "menuDelete": "删除消息（管理）",
+    "menuProfile": "查看资料",
+    "profileTitle": "用户资料",
+    "profileGames": "游戏数",
+    "profilePlayTime": "总时长",
+    "openOriginal": "打开原图",
+    "toastCopied": "已复制",
+    "toastCopyFailed": "复制失败",
+    "toastReported": "举报已提交",
+    "toastRecalled": "已撤回",
+    "toastDeleted": "已删除",
+    "reportReasonOther": "其他",
+    "reportReasonSpam": "垃圾广告",
+    "reportReasonAbuse": "人身攻击",
+    "reportReasonPorn": "色情低俗",
+    "reportTitle": "举报理由"
   }
 }

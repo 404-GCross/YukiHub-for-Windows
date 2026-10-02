@@ -82,11 +82,20 @@ export function GetGroupOnlineCount(groupID: string): $CancellablePromise<number
 }
 
 /**
+ * GetUserProfile 拉取某个 UID 的用户资料（友链列表、群聊点头像进资料页）。
+ */
+export function GetUserProfile(uid: number): $CancellablePromise<yukihubaccount$0.UserProfile> {
+    return $Call.ByID(1868535084, uid).then(($result: any) => {
+        return $$createType4($result);
+    });
+}
+
+/**
  * ListChatEmojis 本站表情列表。
  */
 export function ListChatEmojis(): $CancellablePromise<yukihubaccount$0.ChatEmoji[]> {
     return $Call.ByID(4088162309).then(($result: any) => {
-        return $$createType5($result);
+        return $$createType6($result);
     });
 }
 
@@ -95,7 +104,7 @@ export function ListChatEmojis(): $CancellablePromise<yukihubaccount$0.ChatEmoji
  */
 export function ListChatGroups(): $CancellablePromise<yukihubaccount$0.ChatGroup[]> {
     return $Call.ByID(2834922682).then(($result: any) => {
-        return $$createType7($result);
+        return $$createType8($result);
     });
 }
 
@@ -105,7 +114,7 @@ export function ListChatGroups(): $CancellablePromise<yukihubaccount$0.ChatGroup
  */
 export function ListChatStickerPacks(): $CancellablePromise<vo$0.ChatStickerList> {
     return $Call.ByID(3198305305).then(($result: any) => {
-        return $$createType8($result);
+        return $$createType9($result);
     });
 }
 
@@ -114,7 +123,7 @@ export function ListChatStickerPacks(): $CancellablePromise<vo$0.ChatStickerList
  */
 export function ListChatStickerURLs(packID: string): $CancellablePromise<string[]> {
     return $Call.ByID(3022118279, packID).then(($result: any) => {
-        return $$createType9($result);
+        return $$createType10($result);
     });
 }
 
@@ -123,7 +132,7 @@ export function ListChatStickerURLs(packID: string): $CancellablePromise<string[
  */
 export function ListFriends(): $CancellablePromise<yukihubaccount$0.FriendList> {
     return $Call.ByID(138003445).then(($result: any) => {
-        return $$createType10($result);
+        return $$createType11($result);
     });
 }
 
@@ -141,6 +150,15 @@ export function LoginAccount(email: string, password: string): $CancellablePromi
  */
 export function LogoutAccount(): $CancellablePromise<void> {
     return $Call.ByID(1118106453);
+}
+
+/**
+ * ManageGroupMessage 撤回或删除群消息（仅管理员，服务端会校验权限）。
+ * 
+ * action 取 "recall"（撤回）或 "delete"（删除），与手机版 doManageGroupMessage 一致。
+ */
+export function ManageGroupMessage(messageID: string, action: string): $CancellablePromise<void> {
+    return $Call.ByID(1170371849, messageID, action);
 }
 
 /**
@@ -185,6 +203,15 @@ export function RemoveFriend(friendID: string): $CancellablePromise<void> {
 }
 
 /**
+ * ReportChatMessage 举报一条聊天消息。
+ * 
+ * scene = "chat"（私聊）/ "group"（群聊），群聊时 groupID 必填。
+ */
+export function ReportChatMessage(scene: string, messageID: string, groupID: string, reason: string): $CancellablePromise<void> {
+    return $Call.ByID(2560409231, scene, messageID, groupID, reason);
+}
+
+/**
  * ResetAccountPassword 用邮箱验证码重置密码。
  */
 export function ResetAccountPassword(email: string, code: string, password: string): $CancellablePromise<void> {
@@ -196,7 +223,7 @@ export function ResetAccountPassword(email: string, code: string, password: stri
  */
 export function SearchUsers(keyword: string): $CancellablePromise<yukihubaccount$0.Friend[]> {
     return $Call.ByID(865387128, keyword).then(($result: any) => {
-        return $$createType12($result);
+        return $$createType13($result);
     });
 }
 
@@ -209,7 +236,7 @@ export function SearchUsers(keyword: string): $CancellablePromise<yukihubaccount
  */
 export function SelectChatImage(): $CancellablePromise<vo$0.ChatImagePick> {
     return $Call.ByID(917861247).then(($result: any) => {
-        return $$createType13($result);
+        return $$createType14($result);
     });
 }
 
@@ -286,7 +313,7 @@ export function StartQuickLogin(provider: string): $CancellablePromise<vo$0.Acco
  */
 export function SyncAccountNow(): $CancellablePromise<vo$0.AccountSyncResult> {
     return $Call.ByID(2194510418).then(($result: any) => {
-        return $$createType14($result);
+        return $$createType15($result);
     });
 }
 
@@ -316,14 +343,15 @@ const $$createType0 = vo$0.AccountLevel.createFrom;
 const $$createType1 = vo$0.AccountStatus.createFrom;
 const $$createType2 = yukihubaccount$0.ChatMessage.createFrom;
 const $$createType3 = $Create.Array($$createType2);
-const $$createType4 = yukihubaccount$0.ChatEmoji.createFrom;
-const $$createType5 = $Create.Array($$createType4);
-const $$createType6 = yukihubaccount$0.ChatGroup.createFrom;
-const $$createType7 = $Create.Array($$createType6);
-const $$createType8 = vo$0.ChatStickerList.createFrom;
-const $$createType9 = $Create.Array($Create.Any);
-const $$createType10 = yukihubaccount$0.FriendList.createFrom;
-const $$createType11 = yukihubaccount$0.Friend.createFrom;
-const $$createType12 = $Create.Array($$createType11);
-const $$createType13 = vo$0.ChatImagePick.createFrom;
-const $$createType14 = vo$0.AccountSyncResult.createFrom;
+const $$createType4 = yukihubaccount$0.UserProfile.createFrom;
+const $$createType5 = yukihubaccount$0.ChatEmoji.createFrom;
+const $$createType6 = $Create.Array($$createType5);
+const $$createType7 = yukihubaccount$0.ChatGroup.createFrom;
+const $$createType8 = $Create.Array($$createType7);
+const $$createType9 = vo$0.ChatStickerList.createFrom;
+const $$createType10 = $Create.Array($Create.Any);
+const $$createType11 = yukihubaccount$0.FriendList.createFrom;
+const $$createType12 = yukihubaccount$0.Friend.createFrom;
+const $$createType13 = $Create.Array($$createType12);
+const $$createType14 = vo$0.ChatImagePick.createFrom;
+const $$createType15 = vo$0.AccountSyncResult.createFrom;

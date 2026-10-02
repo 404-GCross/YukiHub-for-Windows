@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import type {
   ChatEmoji,
   ChatGroup,
@@ -19,9 +20,11 @@ import {
   ListChatStickerPacks,
   ListChatStickerURLs,
   ListFriends,
+  ManageGroupMessage,
   PollChatMessages,
   PollGroupMessages,
   RejectFriendRequest,
+  ReportChatMessage,
   SearchUsers,
   SelectChatImage,
   SendChatMessage,
@@ -31,6 +34,10 @@ import {
 } from "../../../bindings/yukihub/internal/service/accountservice";
 import { useAccountStatus } from "../../hooks/useAccountStatus";
 import { proxiedImageSrc } from "../../utils/imageProxy";
+import { ChatAvatar } from "../chat/ChatAvatar";
+import { ChatMessageMenu } from "../chat/ChatMessageMenu";
+import { ImageViewerModal } from "../chat/ImageViewerModal";
+import { UserProfileModal } from "../chat/UserProfileModal";
 import { BetterButton } from "../ui/better/BetterButton";
 import { BetterInput } from "../ui/better/BetterInput";
 import { ModalPortal } from "../ui/ModalPortal";
@@ -58,6 +65,33 @@ interface ChatDraft {
 
 /** 表情/贴纸选择面板：0=本站表情 1=未萌贴纸包列表 2=包内表情（与手机版一致） */
 type EmojiTab = 0 | 1 | 2;
+
+/**
+ * 等级徽章配色（分档与手机版 levelColor / levelBadgeBg 一致）。
+ *
+ * 手机版返回的是 drawable 背景 + 文字色，桌面端用同色系的半透明底 + 描边还原。
+ */
+function levelBadgeStyle(level: number): CSSProperties {
+  const color
+    = level >= 30
+      ? "#FFD27A"
+      : level >= 25
+        ? "#FF9090"
+        : level >= 20
+          ? "#FFB37A"
+          : level >= 15
+            ? "#C9A0FF"
+            : level >= 10
+              ? "#7DB8FF"
+              : level >= 5
+                ? "#7EE2A0"
+                : "#B9BCC7";
+  return {
+    color,
+    backgroundColor: `${color}22`,
+    border: `1px solid ${color}66`,
+  };
+}
 
 /**
  * 消息排序比较器。
@@ -137,11 +171,21 @@ export function FriendsChatModal({
   const [stickerLoading, setStickerLoading] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
 
+  // 消息操作菜单（右键气泡 / 长按）
+  const [menuMessage, setMenuMessage] = useState<ChatMessage | null>(null);
+  const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
+  // 用户资料弹窗
+  const [profileUid, setProfileUid] = useState(0);
+  // 图片全屏查看
+  const [viewerImageURL, setViewerImageURL] = useState("");
+
   const listRef = useRef<HTMLDivElement | null>(null);
   const oldestIdRef = useRef<string>("");
   const targetRef = useRef<ChatTarget | null>(null);
   const afterIdRef = useRef<string>("");
   const pollTimerRef = useRef<number | null>(null);
+  // 输入区容器：插入 @提及 后把焦点还给里面的 input
+  const inputWrapRef = useRef<HTMLDivElement | null>(null);
 
   targetRef.current = target;
 
@@ -653,6 +697,79 @@ export function FriendsChatModal({
     );
   };
 
+  /** 打开消息操作菜单（右键气泡 / 长按） */
+  const openMessageMenu = (message: ChatMessage, x: number, y: number) => {
+    setMenuMessage(message);
+    // 菜单贴边时向上/向左收一点，避免超出窗口
+    setMenuPosition({
+      x: Math.min(x, window.innerWidth - 170),
+      y: Math.min(y, window.innerHeight - 240),
+    });
+  };
+
+  /** 在输入框插入 @提及（对齐手机版 mentionInGroup） */
+  const insertMention = (nickname: string) => {
+    const name = nickname.trim();
+    if (!name) {
+      return;
+    }
+    setDraft((previous) => {
+      const separator
+        = previous.text && !previous.text.endsWith(" ") ? " " : "";
+      return { text: `${previous.text}${separator}@${name} ` };
+    });
+    // 把焦点还给输入框，方便继续打字
+    requestAnimationFrame(() => {
+      inputWrapRef.current?.querySelector("input")?.focus();
+    });
+  };
+
+  /** 复制消息文本 */
+  const copyMessageText = async (message: ChatMessage) => {
+    try {
+      await navigator.clipboard.writeText(message.content);
+      toast.success(t("friendsChat.toastCopied"));
+    }
+    catch {
+      toast.error(t("friendsChat.toastCopyFailed"));
+    }
+  };
+
+  /** 举报消息（scene：私聊 chat / 群聊 group） */
+  const submitReport = async (message: ChatMessage, reason: string) => {
+    try {
+      const scene = target?.kind === "group" ? "group" : "chat";
+      const groupId = target?.kind === "group" ? target.group.id : "";
+      await ReportChatMessage(scene, message.id, groupId, reason);
+      toast.success(t("friendsChat.toastReported"));
+    }
+    catch (error) {
+      toast.error(error instanceof Error ? error.message : String(error));
+    }
+  };
+
+  /** 管理员撤回 / 删除群消息 */
+  const manageGroupMessage = async (
+    message: ChatMessage,
+    action: "recall" | "delete",
+  ) => {
+    try {
+      await ManageGroupMessage(message.id, action);
+      // 服务端处理成功后本地立即摘掉这条（撤回/删除对当前用户都等同于不可见）
+      setMessages(current =>
+        current.filter(item => item.id !== message.id),
+      );
+      toast.success(
+        action === "recall"
+          ? t("friendsChat.toastRecalled")
+          : t("friendsChat.toastDeleted"),
+      );
+    }
+    catch (error) {
+      toast.error(error instanceof Error ? error.message : String(error));
+    }
+  };
+
   const renderMessageBubble = (message: ChatMessage, isGroup: boolean) => {
     const isMine = Boolean(message.isMine);
     const senderName = message.senderName || `UID ${message.senderUid}`;
@@ -721,17 +838,66 @@ export function FriendsChatModal({
         key={message.id}
         className={`flex gap-2 ${isMine ? "flex-row-reverse" : "flex-row"}`}
       >
-        <div className="w-8 shrink-0 pt-1">
-          {(isGroup || !isMine)
-            && renderAvatar(avatarName, avatarUrl, "h-8 w-8")}
+        <div className="shrink-0 pt-1">
+          {(isGroup || !isMine) && (
+            <ChatAvatar
+              name={avatarName}
+              avatar={avatarUrl}
+              size={32}
+              frame={message.senderFrame}
+              className={
+                !isMine && message.senderUid ? "cursor-pointer" : undefined
+              }
+              onClick={() => {
+                // 手机版：点他人头像看资料（自己的头像不弹）
+                if (!isMine && message.senderUid) {
+                  setProfileUid(Number(message.senderUid));
+                }
+              }}
+              onContextMenu={() => {
+                // 手机版：长按他人头像 → @ 对方（群聊才插 @）
+                if (!isMine && isGroup && senderName) {
+                  insertMention(senderName);
+                }
+              }}
+            />
+          )}
         </div>
         <div
           className={`flex max-w-[72%] flex-col gap-0.5 ${isMine ? "items-end" : "items-start"}`}
         >
           {isGroup && (
-            <span className="px-1 text-[11px] text-brand-500 dark:text-brand-400">
-              {isMine ? myNickname : senderName}
-            </span>
+            <div
+              className={`flex items-center gap-1 px-1 ${isMine ? "flex-row-reverse" : "flex-row"}`}
+            >
+              {/* 昵称颜色：服务端下发 #rrggbb，未下发时用默认色（手机版 nickColorOf） */}
+              <span
+                className="text-[11px] font-medium text-brand-500 dark:text-brand-400"
+                style={
+                  message.senderNameColor
+                    ? { color: message.senderNameColor }
+                    : undefined
+                }
+              >
+                {isMine ? myNickname : senderName}
+              </span>
+              {/* 等级徽章（Lv.N，分档配色与手机版 levelColor 一致） */}
+              {!isMine && Number(message.senderLevel) > 0 && (
+                <span
+                  className="rounded px-1 py-[1px] text-[9px] font-bold leading-none"
+                  style={levelBadgeStyle(Number(message.senderLevel))}
+                >
+                  Lv.
+                  {message.senderLevel}
+                </span>
+              )}
+              {/* 管理员标识 */}
+              {message.senderIsAdmin && (
+                <span className="rounded border border-warning-500/40 bg-warning-500/10 px-1 py-[1px] text-[9px] font-bold leading-none text-warning-600 dark:text-warning-400">
+                  {t("friendsChat.adminBadge")}
+                </span>
+              )}
+            </div>
           )}
           {message.replyPreview && (
             <div className="max-w-full truncate rounded-md border-l-2 border-primary-400/60 bg-brand-100/70 px-2 py-0.5 text-[11px] text-brand-600 dark:bg-brand-900/50 dark:text-brand-300">
@@ -742,7 +908,19 @@ export function FriendsChatModal({
             <div
               className="cursor-pointer"
               title={t("friendsChat.reply")}
-              onClick={() => setReplyTo(message)}
+              onClick={() => {
+                // 图片消息点击 = 全屏查看（手机版 showImageViewer）；
+                // 表情点一下仍然是「回复」
+                if (message.msgType === "image") {
+                  setViewerImageURL(resolveChatImageURL(message.content));
+                  return;
+                }
+                setReplyTo(message);
+              }}
+              onContextMenu={(event) => {
+                event.preventDefault();
+                openMessageMenu(message, event.clientX, event.clientY);
+              }}
             >
               {bubbleContent}
             </div>
@@ -755,6 +933,10 @@ export function FriendsChatModal({
               }`}
               title={t("friendsChat.reply")}
               onClick={() => setReplyTo(message)}
+              onContextMenu={(event) => {
+                event.preventDefault();
+                openMessageMenu(message, event.clientX, event.clientY);
+              }}
             >
               {bubbleContent}
             </div>
@@ -1431,7 +1613,10 @@ export function FriendsChatModal({
                   </span>
                 </div>
               ) : (
-                <div className="flex items-center gap-2 border-t border-brand-200/80 p-3 dark:border-brand-700/80">
+                <div
+                  ref={inputWrapRef}
+                  className="flex items-center gap-2 border-t border-brand-200/80 p-3 dark:border-brand-700/80"
+                >
                   <button
                     type="button"
                     onClick={() => {
@@ -1484,6 +1669,61 @@ export function FriendsChatModal({
           )}
         </div>
       </div>
+      {/* 消息操作菜单（复制 / 回复 / 举报 / 资料 / 管理撤回删除） */}
+      <ChatMessageMenu
+        isOpen={Boolean(menuMessage)}
+        message={menuMessage}
+        position={menuPosition}
+        isGroup={target?.kind === "group"}
+        isGroupAdmin={
+          target?.kind === "group" && target.group.memberRole === "admin"
+        }
+        onClose={() => setMenuMessage(null)}
+        onCopy={() => {
+          if (menuMessage) {
+            void copyMessageText(menuMessage);
+          }
+        }}
+        onReply={() => {
+          if (menuMessage) {
+            setReplyTo(menuMessage);
+          }
+        }}
+        onReport={(reason) => {
+          if (menuMessage) {
+            void submitReport(menuMessage, reason);
+          }
+        }}
+        onRecall={() => {
+          if (menuMessage) {
+            void manageGroupMessage(menuMessage, "recall");
+          }
+        }}
+        onDelete={() => {
+          if (menuMessage) {
+            void manageGroupMessage(menuMessage, "delete");
+          }
+        }}
+        onViewProfile={() => {
+          if (menuMessage?.senderUid) {
+            setProfileUid(Number(menuMessage.senderUid));
+          }
+        }}
+      />
+
+      {/* 用户资料页（点他人头像 / 菜单里「查看资料」） */}
+      <UserProfileModal
+        isOpen={profileUid > 0}
+        uid={profileUid}
+        onClose={() => setProfileUid(0)}
+      />
+
+      {/* 图片全屏查看 */}
+      <ImageViewerModal
+        isOpen={Boolean(viewerImageURL)}
+        url={viewerImageURL}
+        onClose={() => setViewerImageURL("")}
+      />
     </ModalPortal>
   );
 }

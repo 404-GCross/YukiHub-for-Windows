@@ -451,7 +451,9 @@
       "loadFavFailed": "Failed to load collections",
       "favUpdated": "Collection updated",
       "updateFavFailed": "Failed to update collection",
-      "selectFileFailed": "Failed to select file"
+      "selectFileFailed": "Failed to select file",
+      "nsfwMarked": "Marked as NSFW",
+      "nsfwUnmarked": "NSFW mark removed"
     }
   },
   "gameReview": {
@@ -729,7 +731,6 @@
     "metadataLock": "Lock metadata",
     "metadataLockHint": "When enabled, full metadata refresh skips this game and remote updates cannot overwrite the title, summary, cover, developer, rating, release date, or automatic tags.",
     "isNsfw": "NSFW game",
-    "isNsfwHint": "Marks this game so its cover can be blurred according to the global game setting.",
     "updateFromRemote": "Update info from remote",
     "openSourcePage": "Open data source page",
     "chooseSourcePage": "Choose a data source page to open",
@@ -755,7 +756,9 @@
     "metadataSearchSourceApplySuccess": "Metadata source links updated",
     "metadataSearchFailed": "Failed to search metadata: {{error}}",
     "metadataSearchApplyFailed": "Failed to update metadata source and game details: {{error}}",
-    "metadataSearchSourceApplyFailed": "Failed to update metadata source links: {{error}}"
+    "metadataSearchSourceApplyFailed": "Failed to update metadata source links: {{error}}",
+    "markNsfw": "Mark as NSFW",
+    "unmarkNsfw": "Remove NSFW mark"
   },
   "metadataUpdateFields": {
     "selectAll": "Update all fields",
@@ -1785,6 +1788,27 @@
     "groupNoticeDesc": "Admins only",
     "groupChatDesc": "Public chat",
     "groupNoticeMuted": "Only admins can post in the notice channel",
-    "onlineCount": "🟢{{count}} online"
+    "onlineCount": "🟢{{count}} online",
+    "adminBadge": "Admin",
+    "menuCopy": "Copy",
+    "menuReply": "Reply",
+    "menuReport": "Report",
+    "menuRecall": "Recall (admin)",
+    "menuDelete": "Delete (admin)",
+    "menuProfile": "View profile",
+    "profileTitle": "Profile",
+    "profileGames": "Games",
+    "profilePlayTime": "Play time",
+    "openOriginal": "Open original",
+    "toastCopied": "Copied",
+    "toastCopyFailed": "Copy failed",
+    "toastReported": "Report submitted",
+    "toastRecalled": "Recalled",
+    "toastDeleted": "Deleted",
+    "reportReasonOther": "Other",
+    "reportReasonSpam": "Spam",
+    "reportReasonAbuse": "Harassment",
+    "reportReasonPorn": "Adult content",
+    "reportTitle": "Report reason"
   }
 }
