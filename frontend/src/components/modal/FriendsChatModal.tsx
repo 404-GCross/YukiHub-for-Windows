@@ -116,12 +116,18 @@ export function FriendsChatModal({
 
   targetRef.current = target;
 
-  /** 表情名 → 可显示 URL：http(s) 原样；本站表情按手机版规则兜底 */
+  /** 表情名 → 可显示 URL：http(s) 原样；本站表情先查列表映射，查不到再按手机版规则兜底 */
   const emojiDisplayURL = (content: string): string => {
     if (/^https?:\/\//i.test(content)) {
       return content;
     }
-    return `https://yukihub.zh.kg/uploads/emojis/${content}.webp`;
+    // 对齐手机版 emojiUrlMap：优先用 /chat/emojis 下发的真实 URL
+    // （兜底拼 uploads/emojis/<名>.webp 对改名/子目录表情会 404 → 丢图）
+    const mapped = emojis?.find(emoji => emoji.name === content);
+    if (mapped?.url) {
+      return mapped.url;
+    }
+    return `https://yukihub.zh.kg/uploads/emojis/${encodeURIComponent(content)}.webp`;
   };
 
   /** 懒加载表情与贴纸数据（首次打开面板时） */
@@ -547,6 +553,15 @@ export function FriendsChatModal({
             src={proxiedImageSrc(emojiDisplayURL(message.content))}
             alt=""
             className="h-24 w-24 object-contain"
+            onError={(e) => {
+              // 列表映射也没命中时退回裸 URL 直连（代理偶发失败不至于丢图）
+              const img = e.currentTarget;
+              const raw = emojiDisplayURL(message.content);
+              if (!img.dataset.fallbackRaw && img.src !== raw) {
+                img.dataset.fallbackRaw = "1";
+                img.src = raw;
+              }
+            }}
           />
         );
       }
@@ -556,6 +571,13 @@ export function FriendsChatModal({
             src={proxiedImageSrc(message.content)}
             alt=""
             className="max-h-48 rounded-xl object-contain"
+            onError={(e) => {
+              const img = e.currentTarget;
+              if (!img.dataset.fallbackRaw && img.src !== message.content) {
+                img.dataset.fallbackRaw = "1";
+                img.src = message.content;
+              }
+            }}
           />
         );
       }
@@ -706,7 +728,7 @@ export function FriendsChatModal({
                   </BetterButton>
                 </div>
 
-                <div className="mt-3 min-h-0 flex-1 overflow-y-auto px-4 pb-4">
+                <div className="mt-3 min-h-0 flex-1 overflow-y-auto scrollbar-thin px-4 pb-4">
                   {isLoading && !friendList && (
                     <p className="py-8 text-center text-sm text-brand-500">
                       {t("friendsChat.loading")}
@@ -853,7 +875,7 @@ export function FriendsChatModal({
           )}
 
           {isLoggedIn && view === "requests" && (
-            <div className="min-h-0 flex-1 overflow-y-auto p-4">
+            <div className="min-h-0 flex-1 overflow-y-auto scrollbar-thin p-4">
               <p className="mb-3 text-sm font-semibold text-brand-800 dark:text-brand-100">
                 {t("friendsChat.requestsTitle")}
               </p>
@@ -931,7 +953,7 @@ export function FriendsChatModal({
           )}
 
           {isLoggedIn && view === "add" && (
-            <div className="min-h-0 flex-1 overflow-y-auto p-4">
+            <div className="min-h-0 flex-1 overflow-y-auto scrollbar-thin p-4">
               <p className="mb-3 text-sm font-semibold text-brand-800 dark:text-brand-100">
                 {t("friendsChat.addFriendTitle")}
               </p>
@@ -1012,7 +1034,7 @@ export function FriendsChatModal({
             <div className="flex min-h-0 flex-1 flex-col">
               <div
                 ref={listRef}
-                className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4"
+                className="min-h-0 flex-1 space-y-3 overflow-y-auto scrollbar-thin p-4"
               >
                 {hasMoreHistory && (
                   <div className="flex justify-center">
@@ -1216,7 +1238,7 @@ export function FriendsChatModal({
                       : "text-brand-500 hover:bg-brand-100 hover:text-brand-700 dark:text-brand-400 dark:hover:bg-brand-700"
                   }`}
                 >
-                  <span className="i-mdi-emoticon-outline text-lg" />
+                  <span className="inline-block i-mdi-emoticon-outline text-lg" />
                 </button>
                 <button
                   type="button"
@@ -1226,7 +1248,7 @@ export function FriendsChatModal({
                   className="shrink-0 rounded-lg p-2 text-brand-500 transition-colors hover:bg-brand-100 hover:text-brand-700 disabled:opacity-50 dark:text-brand-400 dark:hover:bg-brand-700"
                 >
                   <span
-                    className={`${isUploadingImage ? "i-mdi-loading animate-spin" : "i-mdi-image-outline"} text-lg`}
+                    className={`inline-block ${isUploadingImage ? "i-mdi-loading animate-spin" : "i-mdi-image-outline"} text-lg`}
                   />
                 </button>
                 <BetterInput

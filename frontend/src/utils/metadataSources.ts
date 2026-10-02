@@ -5,13 +5,9 @@ import bangumiIconUrl from "../assets/providers/bangumi-icon.png";
 import bangumiLogoUrl from "../assets/providers/bangumi-logo.png";
 import hikarinagiIconUrl from "../assets/providers/hikarinagi-icon.webp";
 import hikarinagiLogoUrl from "../assets/providers/hikarinagi-logo.svg";
+import nextmoeLogoUrl from "../assets/providers/nextmoe-logo.webp";
 import vndbLogoUrl from "../assets/providers/vndb-logo.svg";
 import ymgalLogoUrl from "../assets/providers/ymgal-logo.png";
-
-// 未萌暂无独立图标资源，用内联 SVG 生成一个「N」字标，避免新增二进制资源。
-const NEXTMOE_ICON_URL = `data:image/svg+xml,${encodeURIComponent(
-  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7C5CFF"/><stop offset="1" stop-color="#3B82F6"/></linearGradient></defs><rect width="64" height="64" rx="14" fill="url(#g)"/><path d="M21 45V19l22 26V19" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
-)}`;
 
 // 与手机版保持一致的可选来源集合。
 export const ALL_METADATA_SOURCES: readonly enums.SourceType[] = [
@@ -40,7 +36,7 @@ const METADATA_SOURCE_ICONS: Readonly<
   [modelEnums.SourceType.VNDB]: vndbLogoUrl,
   [modelEnums.SourceType.Ymgal]: ymgalLogoUrl,
   [modelEnums.SourceType.Hikarinagi]: hikarinagiLogoUrl,
-  [modelEnums.SourceType.NextMoe]: NEXTMOE_ICON_URL,
+  [modelEnums.SourceType.NextMoe]: nextmoeLogoUrl,
 };
 
 const METADATA_SOURCE_COMPACT_ICONS: Readonly<

@@ -1231,15 +1231,6 @@
       "syncStatusSyncing": "Syncing",
       "syncStatusSuccess": "Last sync succeeded",
       "syncStatusFailed": "Last sync failed",
-      "syncNotConfigured": "Finish cloud storage setup first",
-      "syncDetailPreparing": "Reading local data",
-      "syncDetailReadingRemote": "Reading cloud manifest",
-      "syncDetailDownloadingChunks": "Downloading data chunks ({{current}}/{{total}})",
-      "syncDetailUploadingCovers": "Uploading covers ({{current}}/{{total}})",
-      "syncDetailUploadingFiles": "Uploading sync files ({{current}}/{{total}})",
-      "syncDetailFinalizing": "Committing sync manifest",
-      "syncLastTimeLabel": "Last sync time:",
-      "syncNever": "Never synced",
       "syncingNow": "Syncing...",
       "toast": {
         "syncSuccess": "Cloud sync completed",
@@ -1412,7 +1403,7 @@
       "toastSyncFailed": "Sync failed: {{error}}",
       "toastFailed": "Failed: {{error}}",
       "quickLoginLabel": "Third-party quick sign-in",
-      "quickLoginKungal": "Kungal sign-in",
+      "quickLoginKungal": "NextMoe sign-in",
       "quickLoginHikarinagi": "Hikarinagi sign-in"
     }
   },
@@ -1595,7 +1586,6 @@
     "library": "Library",
     "stats": "Statistics",
     "categories": "Collections",
-    "cloudSync": "Cloud Sync",
     "chat": "Friends / Chat"
   },
   "processSelectModal": {
@@ -1779,6 +1769,17 @@
     "noEmojis": "No emojis available",
     "stickerPackEmpty": "This pack has no stickers",
     "emojiPicker": "Emoji",
-    "sendImage": "Send image"
+    "sendImage": "Send image",
+    "section": {
+      "playing": "Playing",
+      "online": "Online",
+      "offline": "Offline"
+    },
+    "status": {
+      "online": "Online",
+      "away": "Away",
+      "busy": "Busy",
+      "offline": "Offline"
+    }
   }
 }

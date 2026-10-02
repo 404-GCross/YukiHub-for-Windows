@@ -20,6 +20,8 @@ export default defineConfig({
       "common.releaseDate",
       "gameProgress.spoilerBoundaryOpts.*",
       "gameLaunch.steamLaunchOptionsPresets.*",
+      "friendsChat.section.*",
+      "friendsChat.status.*",
       "gameStats.periodStatsLabel.*",
       "settings.portableSetup.toast.*",
       "metadataUpdateFields.*",

@@ -1231,15 +1231,6 @@
       "syncStatusSyncing": "同步中",
       "syncStatusSuccess": "最近一次成功",
       "syncStatusFailed": "最近一次失败",
-      "syncNotConfigured": "需要先完成云存储配置",
-      "syncDetailPreparing": "正在读取本地资料",
-      "syncDetailReadingRemote": "正在读取云端清单",
-      "syncDetailDownloadingChunks": "下载分块数据({{current}}/{{total}})",
-      "syncDetailUploadingCovers": "上传封面({{current}}/{{total}})",
-      "syncDetailUploadingFiles": "上传同步文件({{current}}/{{total}})",
-      "syncDetailFinalizing": "正在提交同步清单",
-      "syncLastTimeLabel": "最后同步时间:",
-      "syncNever": "尚未同步",
       "syncingNow": "同步中...",
       "toast": {
         "syncSuccess": "云同步完成",
@@ -1412,7 +1403,7 @@
       "toastSyncFailed": "同步失败：{{error}}",
       "toastFailed": "操作失败：{{error}}",
       "quickLoginLabel": "第三方快捷登录",
-      "quickLoginKungal": "鲲站登录",
+      "quickLoginKungal": "未萌登录",
       "quickLoginHikarinagi": "Hikarinagi 登录"
     }
   },
@@ -1595,7 +1586,6 @@
     "library": "游戏库",
     "stats": "统计",
     "categories": "收藏",
-    "cloudSync": "云同步",
     "chat": "好友 / 聊天"
   },
   "processSelectModal": {
@@ -1779,6 +1769,17 @@
     "noEmojis": "暂无可用表情",
     "stickerPackEmpty": "该包暂无可发表情",
     "emojiPicker": "表情",
-    "sendImage": "发送图片"
+    "sendImage": "发送图片",
+    "section": {
+      "playing": "正在游戏",
+      "online": "在线",
+      "offline": "离线"
+    },
+    "status": {
+      "online": "在线",
+      "away": "离开",
+      "busy": "忙碌",
+      "offline": "离线"
+    }
   }
 }

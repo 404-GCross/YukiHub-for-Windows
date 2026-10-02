@@ -4,13 +4,7 @@ import { useTranslation } from "react-i18next";
 import { GetChatUnreadCount } from "../../../bindings/yukihub/internal/service/accountservice";
 import { onWailsEvent } from "../../../src/bindings/runtime";
 import { useAccountStatus } from "../../hooks/useAccountStatus";
-import { useCloudSync } from "../../hooks/useCloudSync";
 import { useAppStore } from "../../store";
-import {
-  formatCloudSyncTime,
-  getCloudSyncStatusClass,
-  getCloudSyncStatusLabel,
-} from "../../utils/cloudSync";
 import { SnowflakeMark } from "../branding/SnowflakeMark";
 import { FriendsChatModal } from "../modal/FriendsChatModal";
 
@@ -21,7 +15,6 @@ interface SideBarProps {
 
 export function SideBar({ bgEnabled = false, bgOpacity = 0.85 }: SideBarProps) {
   const { t } = useTranslation();
-  const config = useAppStore(state => state.config);
   const isSidebarOpen = useAppStore(state => state.isSidebarOpen);
   const toggleSidebar = useAppStore(state => state.toggleSidebar);
   const [activeDownloads, setActiveDownloads] = useState(0);
@@ -49,15 +42,6 @@ export function SideBar({ bgEnabled = false, bgOpacity = 0.85 }: SideBarProps) {
       return () => clearTimeout(timer);
     }
   }, [isFading, isSidebarOpen]);
-
-  const {
-    canSyncNow,
-    effectiveSyncStatus,
-    handleSyncNow,
-    refreshSyncStatus,
-    syncBusy,
-    syncConfigured,
-  } = useCloudSync({ config });
 
   // 监听下载进度事件，统计进行中的任务数
   useEffect(() => {
@@ -137,82 +121,6 @@ export function SideBar({ bgEnabled = false, bgOpacity = 0.85 }: SideBarProps) {
     = "flex items-center rounded-lg border-l-2 border-transparent p-2 text-brand-600 no-underline transition-colors hover:bg-brand-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/70 dark:text-brand-300 dark:hover:bg-brand-700/70 [&.active]:border-primary-500 [&.active]:bg-primary-500/12 [&.active]:font-medium [&.active]:text-primary-700 dark:[&.active]:border-primary-300 dark:[&.active]:bg-primary-300/15 dark:[&.active]:text-primary-200 data-glass:hover:bg-white/10 data-glass:hover:dark:bg-black/10 data-glass:[&.active]:bg-white/20 data-glass:[&.active]:dark:bg-black/20";
   const footerActionClass
     = "relative flex items-center justify-center rounded-lg border-l-2 border-transparent p-2.5 text-brand-600 transition-colors hover:bg-brand-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/70 dark:text-brand-300 dark:hover:bg-brand-700/70 [&.active]:border-primary-500 [&.active]:bg-primary-500/12 [&.active]:text-primary-700 dark:[&.active]:border-primary-300 dark:[&.active]:bg-primary-300/15 dark:[&.active]:text-primary-200 data-glass:hover:bg-white/10 data-glass:hover:dark:bg-black/10";
-  const cloudServiceEnabled = Boolean(config?.cloud_backup_enabled);
-  const cloudSyncEnabled = Boolean(
-    cloudServiceEnabled && config?.cloud_sync_enabled,
-  );
-  const cloudSyncStatusLabel = getCloudSyncStatusLabel(
-    effectiveSyncStatus.last_sync_status,
-    t,
-  );
-  const cloudSyncStatusClass = getCloudSyncStatusClass(
-    effectiveSyncStatus.last_sync_status,
-  );
-  const cloudSyncLastTime = formatCloudSyncTime(
-    effectiveSyncStatus.last_sync_time,
-    config?.time_zone,
-    t("settings.cloudBackup.syncNever"),
-  );
-  const cloudSyncStage = effectiveSyncStatus.sync_stage || "preparing";
-  const cloudSyncDetail = (() => {
-    const current = effectiveSyncStatus.sync_current || 0;
-    const total = effectiveSyncStatus.sync_total || 0;
-    switch (cloudSyncStage) {
-      case "reading_remote":
-        if (total > 0) {
-          return t("settings.cloudBackup.syncDetailDownloadingChunks", {
-            current,
-            total,
-          });
-        }
-        return t("settings.cloudBackup.syncDetailReadingRemote");
-      case "uploading_covers":
-        return t("settings.cloudBackup.syncDetailUploadingCovers", {
-          current,
-          total,
-        });
-      case "uploading_files":
-        return t("settings.cloudBackup.syncDetailUploadingFiles", {
-          current,
-          total,
-        });
-      case "finalizing":
-        return t("settings.cloudBackup.syncDetailFinalizing");
-      default:
-        return t("settings.cloudBackup.syncDetailPreparing");
-    }
-  })();
-  const cloudSyncIconClass = (() => {
-    if (!cloudServiceEnabled) {
-      return "i-mdi-cloud-off-outline text-brand-400 dark:text-brand-500";
-    }
-
-    if (!cloudSyncEnabled) {
-      return "i-mdi-cloud-outline text-brand-400 dark:text-brand-500";
-    }
-
-    if (syncBusy) {
-      return "i-mdi-loading animate-spin";
-    }
-
-    switch (effectiveSyncStatus.last_sync_status) {
-      case "success":
-        return "i-mdi-cloud-check-outline text-success-500";
-      case "failed":
-        return "i-mdi-cloud-alert-outline text-error-500";
-      default:
-        return "i-mdi-cloud-sync-outline";
-    }
-  })();
-
-  const handleCloudSyncClick = () => {
-    if (!canSyncNow) {
-      return;
-    }
-
-    void handleSyncNow();
-  };
-
   return (
     <aside
       className={`relative z-30 flex shrink-0 flex-col ${sidebarBgClass}`}
@@ -281,85 +189,7 @@ export function SideBar({ bgEnabled = false, bgOpacity = 0.85 }: SideBarProps) {
         <div
           className={`flex items-center transition-opacity duration-150 ${delayedOpen ? "justify-end gap-1" : "flex-col gap-2"} ${isFading ? "opacity-0" : "opacity-100"}`}
         >
-          <div
-            className="group relative"
-            onMouseEnter={() => {
-              if (cloudSyncEnabled) {
-                void refreshSyncStatus();
-              }
-            }}
-            onFocusCapture={() => {
-              if (cloudSyncEnabled) {
-                void refreshSyncStatus();
-              }
-            }}
-          >
-            <button
-              type="button"
-              onClick={handleCloudSyncClick}
-              disabled={!cloudSyncEnabled}
-              aria-disabled={!canSyncNow || !cloudSyncEnabled}
-              aria-label={t("sideBar.cloudSync")}
-              className={`${footerActionClass} ${canSyncNow && cloudSyncEnabled ? "" : "opacity-75"} ${syncBusy ? "cursor-wait" : ""}`}
-            >
-              <div className="relative shrink-0">
-                <div
-                  className={`${cloudSyncIconClass} text-xl pointer-events-none`}
-                  aria-hidden="true"
-                />
-              </div>
-            </button>
-
-            {cloudSyncEnabled && (
-              <div
-                role="tooltip"
-                aria-live="polite"
-                className={`pointer-events-none absolute z-50 w-44 opacity-0 transition-all duration-200 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 ${
-                  isSidebarOpen
-                    ? "bottom-full left-1/2 mb-3 -translate-x-1/2 translate-y-2 group-hover:-translate-x-1/2 group-hover:translate-y-0 group-focus-within:-translate-x-1/2 group-focus-within:translate-y-0"
-                    : "bottom-0 left-full ml-3 translate-y-0 translate-x-2 group-hover:translate-x-0 group-hover:translate-y-0 group-focus-within:translate-x-0 group-focus-within:translate-y-0"
-                }`}
-              >
-                <div className="glass-panel flex flex-col gap-2 rounded-lg border border-brand-200/80 bg-white/92 p-2.5 shadow-lg backdrop-blur-xl dark:border-brand-700/80 dark:bg-brand-900/88 data-glass:bg-white/78 data-glass:dark:bg-black/42">
-                  <div className="flex flex-col items-start gap-1.5">
-                    <span className="text-[10px] font-medium text-brand-500 dark:text-brand-400 whitespace-nowrap">
-                      {t("sideBar.cloudSync")}
-                    </span>
-                    <div className="flex items-center gap-1.5">
-                      {!syncConfigured && (
-                        <span className="text-[9px] font-medium text-warning-600 dark:text-warning-400 whitespace-normal break-words">
-                          {t("settings.cloudBackup.syncNotConfigured")}
-                        </span>
-                      )}
-                      <span
-                        className={`rounded-full px-1.5 py-0.5 text-[9px] font-semibold text-center whitespace-normal break-words ${cloudSyncStatusClass}`}
-                      >
-                        {cloudSyncStatusLabel}
-                      </span>
-                    </div>
-                  </div>
-                  {syncBusy && (
-                    <p className="m-0 text-[10px] font-medium leading-4 text-brand-600 dark:text-brand-300">
-                      {cloudSyncDetail}
-                    </p>
-                  )}
-                  <div className="flex flex-col items-start gap-1">
-                    <span className="text-brand-400 dark:text-brand-500 text-[10px] whitespace-nowrap">
-                      {t("settings.cloudBackup.syncLastTimeLabel")}
-                    </span>
-                    <span className="text-[10px] font-medium text-brand-700 dark:text-brand-100 whitespace-nowrap">
-                      {cloudSyncLastTime}
-                    </span>
-                  </div>
-                  {effectiveSyncStatus.last_sync_error && (
-                    <p className="mt-0.5 max-w-[12rem] whitespace-normal break-words text-[9px] leading-3 text-error-600 dark:text-error-400">
-                      {effectiveSyncStatus.last_sync_error}
-                    </p>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
+          {/* 云同步状态已并入首页用户区（AccountModal），侧栏不再放第二入口 */}
 
           <button
             type="button"
@@ -369,7 +199,7 @@ export function SideBar({ bgEnabled = false, bgOpacity = 0.85 }: SideBarProps) {
           >
             <div className="relative shrink-0">
               <div
-                className="i-mdi-chat-multiple-outline text-xl pointer-events-none"
+                className="i-mdi-chat-processing-outline text-xl pointer-events-none"
                 aria-hidden="true"
               />
               {chatUnread > 0 && (

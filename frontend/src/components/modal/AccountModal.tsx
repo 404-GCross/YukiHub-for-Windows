@@ -15,6 +15,8 @@ import {
   SyncAccountNow,
   UpdateAccountNickname,
 } from "../../../bindings/yukihub/internal/service/accountservice";
+import hikarinagiLoginIconUrl from "../../assets/providers/hikarinagi-login.jpg";
+import nextmoeLogoUrl from "../../assets/providers/nextmoe-logo.webp";
 import { onWailsEvent } from "../../bindings/runtime";
 import { BetterButton } from "../ui/better/BetterButton";
 import { BetterInput } from "../ui/better/BetterInput";
@@ -561,24 +563,45 @@ export function AccountModal({
                   {t("settings.account.quickLoginLabel")}
                 </span>
                 <div className="grid grid-cols-2 gap-2">
-                  <BetterButton
-                    variant="secondary"
-                    icon="i-mdi-launch"
-                    isLoading={quickLoginProvider === "kungal"}
+                  {/* 对齐手机版：按钮左侧放对应网站的 logo（28dp），文案用平台名 */}
+                  <button
+                    type="button"
+                    className={`flex items-center justify-center gap-2 rounded-lg border border-brand-200/80 px-3 py-2 text-sm font-medium text-brand-700 transition-colors hover:bg-brand-100 disabled:opacity-60 dark:border-brand-700/80 dark:text-brand-200 dark:hover:bg-brand-700/70 ${
+                      quickLoginProvider === "kungal" ? "opacity-60" : ""
+                    }`}
                     disabled={quickLoginProvider !== null}
                     onClick={() => void handleQuickLogin("kungal")}
                   >
+                    {quickLoginProvider === "kungal" ? (
+                      <span className="i-mdi-loading h-5 w-5 animate-spin" />
+                    ) : (
+                      <img
+                        src={nextmoeLogoUrl}
+                        alt=""
+                        className="h-7 w-7 rounded-full object-cover"
+                      />
+                    )}
                     {t("settings.account.quickLoginKungal")}
-                  </BetterButton>
-                  <BetterButton
-                    variant="secondary"
-                    icon="i-mdi-launch"
-                    isLoading={quickLoginProvider === "hikarinagi"}
+                  </button>
+                  <button
+                    type="button"
+                    className={`flex items-center justify-center gap-2 rounded-lg border border-brand-200/80 px-3 py-2 text-sm font-medium text-brand-700 transition-colors hover:bg-brand-100 disabled:opacity-60 dark:border-brand-700/80 dark:text-brand-200 dark:hover:bg-brand-700/70 ${
+                      quickLoginProvider === "hikarinagi" ? "opacity-60" : ""
+                    }`}
                     disabled={quickLoginProvider !== null}
                     onClick={() => void handleQuickLogin("hikarinagi")}
                   >
+                    {quickLoginProvider === "hikarinagi" ? (
+                      <span className="i-mdi-loading h-5 w-5 animate-spin" />
+                    ) : (
+                      <img
+                        src={hikarinagiLoginIconUrl}
+                        alt=""
+                        className="h-7 w-7 rounded-full object-cover"
+                      />
+                    )}
                     {t("settings.account.quickLoginHikarinagi")}
-                  </BetterButton>
+                  </button>
                 </div>
               </div>
 

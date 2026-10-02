@@ -49,6 +49,14 @@ export default defineConfig({
         "-ms-overflow-style": "none",
       },
     ],
+    // 弹窗内列表用的细滚动条（全局 9px 在小弹窗里太粗）
+    [
+      "scrollbar-thin",
+      {
+        "scrollbar-width": "thin",
+        "scrollbar-color": "var(--scrollbar-thumb) var(--scrollbar-track)",
+      },
+    ],
     [
       "scrollbar-stable",
       {

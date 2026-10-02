@@ -1231,15 +1231,6 @@
       "syncStatusSyncing": "同期中",
       "syncStatusSuccess": "前回の同期は成功",
       "syncStatusFailed": "前回の同期は失敗",
-      "syncNotConfigured": "先にクラウドストレージ設定を完了してください",
-      "syncDetailPreparing": "ローカルデータを読み込み中",
-      "syncDetailReadingRemote": "クラウドマニフェストを読み込み中",
-      "syncDetailDownloadingChunks": "分割データをダウンロード中 ({{current}}/{{total}})",
-      "syncDetailUploadingCovers": "カバーをアップロード中 ({{current}}/{{total}})",
-      "syncDetailUploadingFiles": "同期ファイルをアップロード中 ({{current}}/{{total}})",
-      "syncDetailFinalizing": "同期マニフェストを確定中",
-      "syncLastTimeLabel": "最終同期時刻:",
-      "syncNever": "まだ同期していません",
       "syncingNow": "同期中...",
       "toast": {
         "syncSuccess": "クラウド同期が完了しました",
@@ -1412,7 +1403,7 @@
       "toastSyncFailed": "同期に失敗しました：{{error}}",
       "toastFailed": "失敗しました：{{error}}",
       "quickLoginLabel": "サードパーティークイックログイン",
-      "quickLoginKungal": "Kungal ログイン",
+      "quickLoginKungal": "未萌ログイン",
       "quickLoginHikarinagi": "Hikarinagi ログイン"
     }
   },
@@ -1595,7 +1586,6 @@
     "library": "ゲームライブラリ",
     "stats": "統計",
     "categories": "コレクション",
-    "cloudSync": "クラウド同期",
     "chat": "フレンド / チャット"
   },
   "processSelectModal": {
@@ -1779,6 +1769,17 @@
     "noEmojis": "利用可能なスタンプがありません",
     "stickerPackEmpty": "このパックにスタンプがありません",
     "emojiPicker": "スタンプ",
-    "sendImage": "画像を送信"
+    "sendImage": "画像を送信",
+    "section": {
+      "playing": "プレイ中",
+      "online": "オンライン",
+      "offline": "オフライン"
+    },
+    "status": {
+      "online": "オンライン",
+      "away": "退席中",
+      "busy": "取り込み中",
+      "offline": "オフライン"
+    }
   }
 }
