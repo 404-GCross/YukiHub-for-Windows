@@ -54,7 +54,8 @@
     "unknownError": "未知错误",
     "close": "关闭",
     "details": "查看详情",
-    "loadMore": "加载更多"
+    "loadMore": "加载更多",
+    "retry": "重试"
   },
   "library": {
     "title": "游戏库",
@@ -836,7 +837,16 @@
     "viewAll": "查看全部",
     "toast": {
       "launchFailed": "启动游戏失败"
-    }
+    },
+    "greeting": {
+      "night": "夜深了",
+      "morning": "早上好",
+      "noon": "中午好",
+      "afternoon": "下午好",
+      "evening": "晚上好"
+    },
+    "openAccount": "打开账号面板",
+    "loginPrompt": "点击登录 YukiHub 账号"
   },
   "playingIsland": {
     "launching": "正在启动",
@@ -1362,8 +1372,6 @@
     "account": {
       "name": "YukiHub 账号",
       "notLoggedIn": "未登录",
-      "collapsedHint": "点击登录或注册",
-      "collapsedLoggedIn": "点击管理账号与云同步",
       "loginTitle": "登录 YukiHub 账号",
       "registerTitle": "注册 YukiHub 账号",
       "resetTitle": "重置密码",
@@ -1402,7 +1410,10 @@
       "toastSyncDownloaded": "已从云端导入 {{games}} 个游戏、{{sessions}} 条游玩记录",
       "toastSyncMerged": "已与云端合并（共 {{games}} 个游戏、{{sessions}} 条游玩记录）",
       "toastSyncFailed": "同步失败：{{error}}",
-      "toastFailed": "操作失败：{{error}}"
+      "toastFailed": "操作失败：{{error}}",
+      "quickLoginLabel": "第三方快捷登录",
+      "quickLoginKungal": "鲲站登录",
+      "quickLoginHikarinagi": "Hikarinagi 登录"
     }
   },
   "downloads": {
@@ -1584,7 +1595,8 @@
     "library": "游戏库",
     "stats": "统计",
     "categories": "收藏",
-    "cloudSync": "云同步"
+    "cloudSync": "云同步",
+    "chat": "好友 / 聊天"
   },
   "processSelectModal": {
     "title": "选择游戏进程",
@@ -1735,5 +1747,31 @@
     "bigscreen": "进入大屏模式",
     "cheatsheet": "打开快捷键速查",
     "openCheatsheet": "查看速查表"
+  },
+  "friendsChat": {
+    "title": "好友 / 聊天",
+    "loginRequired": "请先登录 YukiHub 账号再使用好友与聊天功能",
+    "addFriend": "添加好友",
+    "requests": "好友请求 ({{count}})",
+    "requestsZero": "好友请求",
+    "requestsTitle": "待处理的好友请求",
+    "noRequests": "暂无好友请求",
+    "accept": "接受",
+    "reject": "拒绝",
+    "toastAccepted": "已接受好友请求",
+    "addFriendTitle": "添加好友",
+    "searchPlaceholder": "输入对方的 UID（数字）或昵称",
+    "search": "搜索",
+    "noSearchResults": "没有找到匹配的用户",
+    "sendRequest": "加好友",
+    "toastRequestSent": "好友申请已发送",
+    "groups": "群组",
+    "groupOnline": "{{online}} 人在线 · 共 {{total}} 人",
+    "noFriends": "还没有好友\n点击上方「添加好友」搜索其他用户",
+    "loading": "正在加载…",
+    "loadOlder": "查看更早的消息",
+    "startChat": "开始聊天吧",
+    "reply": "点击回复这条消息",
+    "inputPlaceholder": "输入消息，Enter 发送"
   }
 }

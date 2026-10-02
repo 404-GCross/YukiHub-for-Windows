@@ -1,7 +1,9 @@
 import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { GetChatUnreadCount } from "../../../bindings/yukihub/internal/service/accountservice";
 import { onWailsEvent } from "../../../src/bindings/runtime";
+import { useAccountStatus } from "../../hooks/useAccountStatus";
 import { useCloudSync } from "../../hooks/useCloudSync";
 import { useAppStore } from "../../store";
 import {
@@ -10,6 +12,7 @@ import {
   getCloudSyncStatusLabel,
 } from "../../utils/cloudSync";
 import { SnowflakeMark } from "../branding/SnowflakeMark";
+import { FriendsChatModal } from "../modal/FriendsChatModal";
 
 interface SideBarProps {
   bgEnabled?: boolean;
@@ -22,6 +25,10 @@ export function SideBar({ bgEnabled = false, bgOpacity = 0.85 }: SideBarProps) {
   const isSidebarOpen = useAppStore(state => state.isSidebarOpen);
   const toggleSidebar = useAppStore(state => state.toggleSidebar);
   const [activeDownloads, setActiveDownloads] = useState(0);
+  const accountStatus = useAccountStatus();
+  const isLoggedIn = Boolean(accountStatus?.logged_in);
+  const [chatUnread, setChatUnread] = useState(0);
+  const [chatOpen, setChatOpen] = useState(false);
 
   const [prevSidebarOpen, setPrevSidebarOpen] = useState(isSidebarOpen);
   const [delayedOpen, setDelayedOpen] = useState(isSidebarOpen);
@@ -67,6 +74,33 @@ export function SideBar({ bgEnabled = false, bgOpacity = 0.85 }: SideBarProps) {
     );
     return unsubscribe;
   }, []);
+
+  // 聊天未读数：登录后每 45 秒拉一次（对齐手机版侧栏徽标；
+  // 打开聊天弹窗时不拉，避免覆盖弹窗内的会话已读状态）
+  useEffect(() => {
+    if (!isLoggedIn || chatOpen) {
+      setChatUnread(0);
+      return;
+    }
+    let cancelled = false;
+    const refresh = () => {
+      GetChatUnreadCount()
+        .then((count) => {
+          if (!cancelled) {
+            setChatUnread(count);
+          }
+        })
+        .catch(() => {
+          // 静默：网络抖动不该让侧栏报错
+        });
+    };
+    refresh();
+    const timer = window.setInterval(refresh, 45_000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [isLoggedIn, chatOpen]);
 
   const navItems = [
     { to: "/", label: t("sideBar.home"), icon: "i-mdi-home" },
@@ -327,6 +361,30 @@ export function SideBar({ bgEnabled = false, bgOpacity = 0.85 }: SideBarProps) {
             )}
           </div>
 
+          <button
+            type="button"
+            onClick={() => setChatOpen(true)}
+            aria-label={t("sideBar.chat")}
+            className={`${footerActionClass} select-none`}
+          >
+            <div className="relative shrink-0">
+              <div
+                className="i-mdi-chat-multiple-outline text-xl pointer-events-none"
+                aria-hidden="true"
+              />
+              {chatUnread > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 flex items-center justify-center bg-error-500 text-white text-[10px] font-bold rounded-full leading-none pointer-events-none">
+                  {chatUnread > 99 ? "99+" : chatUnread}
+                </span>
+              )}
+            </div>
+            {isSidebarOpen && delayedOpen && (
+              <span className="ml-2 overflow-hidden whitespace-nowrap text-sm">
+                {t("sideBar.chat")}
+              </span>
+            )}
+          </button>
+
           <Link
             to="/downloads"
             className={`${footerActionClass} no-underline select-none data-glass:[&.active]:bg-white/20 data-glass:[&.active]:dark:bg-black/20`}
@@ -356,6 +414,12 @@ export function SideBar({ bgEnabled = false, bgOpacity = 0.85 }: SideBarProps) {
           </Link>
         </div>
       </div>
+
+      <FriendsChatModal
+        isOpen={chatOpen}
+        isLoggedIn={isLoggedIn}
+        onClose={() => setChatOpen(false)}
+      />
     </aside>
   );
 }

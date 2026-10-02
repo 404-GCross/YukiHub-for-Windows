@@ -54,7 +54,8 @@
     "unknownError": "未知錯誤",
     "close": "關閉",
     "details": "查看詳情",
-    "loadMore": "載入更多"
+    "loadMore": "載入更多",
+    "retry": "重試"
   },
   "library": {
     "title": "遊戲庫",
@@ -836,7 +837,16 @@
     "viewAll": "查看全部",
     "toast": {
       "launchFailed": "啟動遊戲失敗"
-    }
+    },
+    "greeting": {
+      "night": "夜深了",
+      "morning": "早安",
+      "noon": "午安",
+      "afternoon": "午安",
+      "evening": "晚安"
+    },
+    "openAccount": "開啟帳號面板",
+    "loginPrompt": "點擊登入 YukiHub 帳號"
   },
   "playingIsland": {
     "launching": "正在啟動",
@@ -1362,8 +1372,6 @@
     "account": {
       "name": "YukiHub 帳號",
       "notLoggedIn": "未登入",
-      "collapsedHint": "點擊登入或註冊",
-      "collapsedLoggedIn": "點擊管理帳號與雲端同步",
       "loginTitle": "登入 YukiHub 帳號",
       "registerTitle": "註冊 YukiHub 帳號",
       "resetTitle": "重設密碼",
@@ -1402,7 +1410,10 @@
       "toastSyncDownloaded": "已從雲端匯入 {{games}} 個遊戲、{{sessions}} 筆遊玩記錄",
       "toastSyncMerged": "已與雲端合併（共 {{games}} 個遊戲、{{sessions}} 筆遊玩記錄）",
       "toastSyncFailed": "同步失敗：{{error}}",
-      "toastFailed": "操作失敗：{{error}}"
+      "toastFailed": "操作失敗：{{error}}",
+      "quickLoginLabel": "第三方快捷登入",
+      "quickLoginKungal": "鯤站登入",
+      "quickLoginHikarinagi": "Hikarinagi 登入"
     }
   },
   "downloads": {
@@ -1584,7 +1595,8 @@
     "library": "遊戲庫",
     "stats": "統計",
     "categories": "收藏",
-    "cloudSync": "雲同步"
+    "cloudSync": "雲同步",
+    "chat": "好友 / 聊天"
   },
   "processSelectModal": {
     "title": "選擇遊戲程序",
@@ -1735,5 +1747,31 @@
     "bigscreen": "進入大螢幕模式",
     "cheatsheet": "開啟快捷鍵速查",
     "openCheatsheet": "檢視速查表"
+  },
+  "friendsChat": {
+    "title": "好友 / 聊天",
+    "loginRequired": "請先登入 YukiHub 帳號再使用好友與聊天功能",
+    "addFriend": "新增好友",
+    "requests": "好友請求 ({{count}})",
+    "requestsZero": "好友請求",
+    "requestsTitle": "待處理的好友請求",
+    "noRequests": "暫無好友請求",
+    "accept": "接受",
+    "reject": "拒絕",
+    "toastAccepted": "已接受好友請求",
+    "addFriendTitle": "新增好友",
+    "searchPlaceholder": "輸入對方的 UID（數字）或暱稱",
+    "search": "搜尋",
+    "noSearchResults": "沒有找到符合的使用者",
+    "sendRequest": "加好友",
+    "toastRequestSent": "好友申請已傳送",
+    "groups": "群組",
+    "groupOnline": "{{online}} 人線上 · 共 {{total}} 人",
+    "noFriends": "還沒有好友\n點擊上方「新增好友」搜尋其他使用者",
+    "loading": "正在載入…",
+    "loadOlder": "查看更早的訊息",
+    "startChat": "開始聊天吧",
+    "reply": "點擊回覆這條訊息",
+    "inputPlaceholder": "輸入訊息，Enter 傳送"
   }
 }

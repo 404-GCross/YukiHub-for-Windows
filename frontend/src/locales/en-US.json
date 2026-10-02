@@ -54,7 +54,8 @@
     "unknownError": "Unknown error",
     "close": "Close",
     "details": "View details",
-    "loadMore": "Load more"
+    "loadMore": "Load more",
+    "retry": "Retry"
   },
   "library": {
     "title": "Game Library",
@@ -836,7 +837,16 @@
     "viewAll": "View all",
     "toast": {
       "launchFailed": "Failed to launch game"
-    }
+    },
+    "greeting": {
+      "night": "Late night",
+      "morning": "Good morning",
+      "noon": "Good afternoon",
+      "afternoon": "Good afternoon",
+      "evening": "Good evening"
+    },
+    "openAccount": "Open account panel",
+    "loginPrompt": "Sign in to your YukiHub account"
   },
   "playingIsland": {
     "launching": "Launching",
@@ -1362,8 +1372,6 @@
     "account": {
       "name": "YukiHub account",
       "notLoggedIn": "Not signed in",
-      "collapsedHint": "Click to sign in or register",
-      "collapsedLoggedIn": "Click to manage your account and cloud sync",
       "loginTitle": "Sign in to YukiHub",
       "registerTitle": "Create a YukiHub account",
       "resetTitle": "Reset password",
@@ -1402,7 +1410,10 @@
       "toastSyncDownloaded": "Imported {{games}} games and {{sessions}} play sessions from the cloud",
       "toastSyncMerged": "Merged with the cloud ({{games}} games, {{sessions}} play sessions)",
       "toastSyncFailed": "Sync failed: {{error}}",
-      "toastFailed": "Failed: {{error}}"
+      "toastFailed": "Failed: {{error}}",
+      "quickLoginLabel": "Third-party quick sign-in",
+      "quickLoginKungal": "Kungal sign-in",
+      "quickLoginHikarinagi": "Hikarinagi sign-in"
     }
   },
   "downloads": {
@@ -1584,7 +1595,8 @@
     "library": "Library",
     "stats": "Statistics",
     "categories": "Collections",
-    "cloudSync": "Cloud Sync"
+    "cloudSync": "Cloud Sync",
+    "chat": "Friends / Chat"
   },
   "processSelectModal": {
     "title": "Select Game Process",
@@ -1735,5 +1747,31 @@
     "bigscreen": "Enter Big Screen",
     "cheatsheet": "Open shortcut cheat sheet",
     "openCheatsheet": "Open cheat sheet"
+  },
+  "friendsChat": {
+    "title": "Friends / Chat",
+    "loginRequired": "Sign in to your YukiHub account to use friends and chat",
+    "addFriend": "Add friend",
+    "requests": "Requests ({{count}})",
+    "requestsZero": "Requests",
+    "requestsTitle": "Pending friend requests",
+    "noRequests": "No pending requests",
+    "accept": "Accept",
+    "reject": "Reject",
+    "toastAccepted": "Friend request accepted",
+    "addFriendTitle": "Add friend",
+    "searchPlaceholder": "Enter UID (number) or nickname",
+    "search": "Search",
+    "noSearchResults": "No matching users found",
+    "sendRequest": "Add",
+    "toastRequestSent": "Friend request sent",
+    "groups": "Groups",
+    "groupOnline": "{{online}} online · {{total}} members",
+    "noFriends": "No friends yet\nUse \"Add friend\" above to search for users",
+    "loading": "Loading…",
+    "loadOlder": "Load earlier messages",
+    "startChat": "Say hello",
+    "reply": "Click to reply",
+    "inputPlaceholder": "Type a message, Enter to send"
   }
 }

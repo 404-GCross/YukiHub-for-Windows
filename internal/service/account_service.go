@@ -45,6 +45,7 @@ type AccountService struct {
 	runtime   wailsruntime.Runtime
 	emitEvent func(string, ...interface{})
 	imports   *ImportService
+	openURL   func(string) error
 
 	client *yukihubaccount.Client
 
@@ -83,7 +84,7 @@ func (s *AccountService) Init(ctx context.Context, db *sql.DB, config *appconf.A
 	}
 }
 
-// SetRuntime 注入 Wails 运行时（用于向前端推事件）。
+// SetRuntime 注入 Wails 运行时（用于向前端推事件与打开系统浏览器）。
 //
 //wails:ignore
 func (s *AccountService) SetRuntime(runtime wailsruntime.Runtime) {
@@ -91,6 +92,7 @@ func (s *AccountService) SetRuntime(runtime wailsruntime.Runtime) {
 		return
 	}
 	s.runtime = runtime
+	s.openURL = runtime.OpenURL
 	s.emitEvent = func(name string, data ...interface{}) {
 		runtime.Emit(name, data...)
 	}

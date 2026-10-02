@@ -14,14 +14,13 @@ import { BetterSelect } from "../ui/better/BetterSelect";
 import { BetterSwitch } from "../ui/better/BetterSwitch";
 import { BangumiAccountSettings } from "./BangumiAccountSettings";
 import { NextMoeAccountSettings } from "./NextMoeAccountSettings";
-import { YukiHubAccountSettings } from "./YukiHubAccountSettings";
 
 interface BetterSelectOption {
   value: string;
   label: string;
 }
 
-type AccountProvider = "yukihub" | "bangumi" | "nextmoe";
+type AccountProvider = "bangumi" | "nextmoe";
 
 const ACCOUNT_CONTENT_FADE_MS = 100;
 const ACCOUNT_CARD_RESIZE_MS = 180;
@@ -86,21 +85,14 @@ export function BasicSettingsPanel({
   /**
    * 展开某张账户卡片时的列宽。
    *
-   * **必须始终是 3 列**：这里原本写成 2 列（例如 `7fr_3fr`），三张卡片塞不进去，
-   * 第三张只能被挤到第二行，整个区域就散了——用户点开 Bangumi 后看到的是
-   * 「Bangumi 撑满、Hikarinagi 贴在右边、未萌掉到下一行」。
-   *
-   * 现在按「展开的那张占 60%、另一张占 40%」排在同一行：
-   * 位置由卡片在 DOM 里的顺序决定，所以两套模板正好对应两张卡片的展开态。
+   * **必须始终是 2 列**：YukiHub 账号是「我们自己的登录」，入口在首页左上角
+   * 用户区（对齐手机版），不再出现在这里的授权卡片里；本区只剩 Bangumi /
+   * NextMoe 两个第三方授权。按「展开的那张占 60%、另一张占 40%」排在同一行。
    */
   const accountGridColumns
-    = expandedAccount === "yukihub"
-      ? "sm:grid-cols-[minmax(0,3fr)_minmax(0,1fr)_minmax(0,1fr)]"
-      : expandedAccount === "bangumi"
-        ? "sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)_minmax(0,1fr)]"
-        : expandedAccount === "nextmoe"
-          ? "sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,3fr)]"
-          : "sm:grid-cols-3";
+    = expandedAccount === "bangumi"
+      ? "sm:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]"
+      : "sm:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]";
 
   useEffect(() => {
     return () => {
@@ -276,13 +268,6 @@ export function BasicSettingsPanel({
           aria-label={t("settings.basic.accountAuthorizationSectionLabel")}
           onTransitionEnd={handleAccountGridTransitionEnd}
         >
-          <YukiHubAccountSettings
-            isContentVisible={isAccountContentVisible}
-            isExpanded={expandedAccount === "yukihub"}
-            onConfigRefresh={onConfigRefresh}
-            onExpand={() => handleAccountExpand("yukihub")}
-          />
-
           <BangumiAccountSettings
             formData={formData}
             isContentVisible={isAccountContentVisible}

@@ -189,6 +189,85 @@ func (c *Client) ResetPassword(ctx context.Context, email, code, password string
 	return c.doEmpty(ctx, http.MethodPost, c.baseURL+"/auth/reset_password", "", payload)
 }
 
+// ==================== 第三方快捷登录 ====================
+
+// QuickLoginProvider 标识一个第三方快捷登录渠道（鲲站 / Hikarinagi）。
+//
+// 与手机版 AuthActivity / KungalOAuthCallbackActivity / HikarinagiOAuthCallbackActivity
+// 完全同一套应用：服务端按 code 交换端点区分平台（客户端把 code + PKCE verifier
+// 交给 /auth/*/android_callback，由后端向第三方换令牌并直接下发 YukiHub 会话）。
+type QuickLoginProvider string
+
+// 快捷登录渠道（OAuth 授权码 + PKCE）。
+const (
+	// QuickLoginKungal 是「鲲 Galgame」（授权端点已迁到 account.nextmoe.com）。
+	QuickLoginKungal QuickLoginProvider = "kungal"
+	// QuickLoginHikarinagi 是 Hikarinagi ID 的快捷登录。
+	QuickLoginHikarinagi QuickLoginProvider = "hikarinagi"
+)
+
+// AuthorizeURL 返回授权页面地址；空串表示该渠道未配置。
+func (p QuickLoginProvider) AuthorizeURL() string {
+	switch p {
+	case QuickLoginKungal:
+		return "https://account.nextmoe.com/api/v1/oauth/authorize"
+	case QuickLoginHikarinagi:
+		return "https://id.hikarinagi.org/oidc/auth"
+	}
+	return ""
+}
+
+// ClientID 返回该渠道的 OAuth 客户端 ID（public client，与手机版同源）。
+func (p QuickLoginProvider) ClientID() string {
+	switch p {
+	case QuickLoginKungal:
+		return "16cc006913d6b666c6b1a1a115f644de"
+	case QuickLoginHikarinagi:
+		return "hkn_qtmXMJfBoxcNLA-a"
+	}
+	return ""
+}
+
+// Scope 返回该渠道被授权的 scope 集合。**不要凭感觉加项**，
+// scope 是服务端按 client 授权的，多要一个整条就被拒（invalid_scope）。
+func (p QuickLoginProvider) Scope() string {
+	switch p {
+	case QuickLoginKungal:
+		return "openid profile email"
+	case QuickLoginHikarinagi:
+		return "openid user:read"
+	}
+	return ""
+}
+
+// ExchangePath 返回自建后端的 code 交换端点路径。
+func (p QuickLoginProvider) ExchangePath() string {
+	switch p {
+	case QuickLoginKungal:
+		return "/auth/kungal/android_callback"
+	case QuickLoginHikarinagi:
+		return "/auth/hikarinagi/android_callback"
+	}
+	return ""
+}
+
+// ExchangeQuickLoginCode 把授权码换成 YukiHub 账号会话。
+//
+// 手机版就是这么做的：授权码 + verifier 发给自建后端的 /android_callback，
+// 由后端向第三方换 token 并直接下发 YukiHub 会话——客户端永远接触不到第三方令牌。
+func (c *Client) ExchangeQuickLoginCode(ctx context.Context, provider QuickLoginProvider, code, codeVerifier, redirectURI string) (Session, error) {
+	payload := map[string]string{
+		"code":         code,
+		"codeVerifier": codeVerifier,
+		"redirectUri":  redirectURI,
+	}
+	body, err := c.doJSON(ctx, http.MethodPost, c.baseURL+provider.ExchangePath(), "", payload)
+	if err != nil {
+		return Session{}, err
+	}
+	return parseSession(body)
+}
+
 // Health 探测服务是否可用。
 func (c *Client) Health(ctx context.Context) error {
 	return c.doEmpty(ctx, http.MethodGet, c.baseURL+"/health", "", nil)

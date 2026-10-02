@@ -225,6 +225,18 @@ export function SetFriendNote(friendID: string, note: string): $CancellablePromi
 }
 
 /**
+ * StartQuickLogin 用第三方快捷登录（provider: kungal / hikarinagi）登录 YukiHub 账号。
+ * 
+ * 打开浏览器 → 等本地回调 → code 交给自建后端换 YukiHub 会话。
+ * 与手机版行为一致：成功后即进入登录态（含心跳），云同步开关保持原样。
+ */
+export function StartQuickLogin(provider: string): $CancellablePromise<vo$0.AccountStatus> {
+    return $Call.ByID(1991868436, provider).then(($result: any) => {
+        return $$createType1($result);
+    });
+}
+
+/**
  * SyncAccountNow 立刻与云端同步一次游戏库。
  * 
  * 上传方向复用 YukiHubExporter（产出的就是 Android 侧 schema 5 快照，

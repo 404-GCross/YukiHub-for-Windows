@@ -54,7 +54,8 @@
     "unknownError": "不明なエラー",
     "close": "閉じる",
     "details": "詳細を表示",
-    "loadMore": "さらに読み込む"
+    "loadMore": "さらに読み込む",
+    "retry": "再試行"
   },
   "library": {
     "title": "ゲームライブラリ",
@@ -836,7 +837,16 @@
     "viewAll": "すべて表示",
     "toast": {
       "launchFailed": "ゲームの起動に失敗しました"
-    }
+    },
+    "greeting": {
+      "night": "夜更かしですね",
+      "morning": "おはようございます",
+      "noon": "こんにちは",
+      "afternoon": "こんにちは",
+      "evening": "こんばんは"
+    },
+    "openAccount": "アカウントパネルを開く",
+    "loginPrompt": "クリックして YukiHub アカウントにログイン"
   },
   "playingIsland": {
     "launching": "起動中",
@@ -1362,8 +1372,6 @@
     "account": {
       "name": "YukiHub アカウント",
       "notLoggedIn": "未ログイン",
-      "collapsedHint": "クリックしてログイン / 登録",
-      "collapsedLoggedIn": "クリックしてアカウントと同期を管理",
       "loginTitle": "YukiHub にログイン",
       "registerTitle": "YukiHub アカウントを作成",
       "resetTitle": "パスワードをリセット",
@@ -1402,7 +1410,10 @@
       "toastSyncDownloaded": "{{games}} 件のゲームと {{sessions}} 件のプレイ履歴を取り込みました",
       "toastSyncMerged": "クラウドと統合しました（{{games}} 件のゲーム、{{sessions}} 件のプレイ履歴）",
       "toastSyncFailed": "同期に失敗しました：{{error}}",
-      "toastFailed": "失敗しました：{{error}}"
+      "toastFailed": "失敗しました：{{error}}",
+      "quickLoginLabel": "サードパーティークイックログイン",
+      "quickLoginKungal": "Kungal ログイン",
+      "quickLoginHikarinagi": "Hikarinagi ログイン"
     }
   },
   "downloads": {
@@ -1584,7 +1595,8 @@
     "library": "ゲームライブラリ",
     "stats": "統計",
     "categories": "コレクション",
-    "cloudSync": "クラウド同期"
+    "cloudSync": "クラウド同期",
+    "chat": "フレンド / チャット"
   },
   "processSelectModal": {
     "title": "ゲームプロセスを選択",
@@ -1735,5 +1747,31 @@
     "bigscreen": "大画面モードに入る",
     "cheatsheet": "ショートカット一覧を開く",
     "openCheatsheet": "一覧を開く"
+  },
+  "friendsChat": {
+    "title": "フレンド / チャット",
+    "loginRequired": "フレンドとチャット機能を使うには、まず YukiHub アカウントにログインしてください",
+    "addFriend": "フレンド追加",
+    "requests": "リクエスト ({{count}})",
+    "requestsZero": "リクエスト",
+    "requestsTitle": "保留中のフレンドリクエスト",
+    "noRequests": "リクエストはありません",
+    "accept": "承認",
+    "reject": "拒否",
+    "toastAccepted": "フレンドリクエストを承認しました",
+    "addFriendTitle": "フレンド追加",
+    "searchPlaceholder": "相手の UID（数字）またはニックネームを入力",
+    "search": "検索",
+    "noSearchResults": "該当するユーザーが見つかりません",
+    "sendRequest": "申請",
+    "toastRequestSent": "フレンド申請を送信しました",
+    "groups": "グループ",
+    "groupOnline": "{{online}} 人がオンライン · 全 {{total}} 人",
+    "noFriends": "まだフレンドがいません\n上の「フレンド追加」からユーザーを検索できます",
+    "loading": "読み込み中…",
+    "loadOlder": "以前のメッセージを見る",
+    "startChat": "チャットを始めましょう",
+    "reply": "クリックして返信",
+    "inputPlaceholder": "メッセージを入力、Enter で送信"
   }
 }

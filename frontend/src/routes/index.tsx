@@ -13,6 +13,7 @@ import { HomeHeatmapCard } from "../components/home/HomeHeatmapCard";
 import { HomeHeroCard } from "../components/home/HomeHeroCard";
 import { HomeQuickLaunchRail } from "../components/home/HomeQuickLaunchRail";
 import { HomeTodayStatsCard } from "../components/home/HomeTodayStatsCard";
+import { HomeUserProfile } from "../components/home/HomeUserProfile";
 import { ProxyImage } from "../components/ui/ProxyImage";
 import { useCrossfadeBackground } from "../hooks/useCrossfadeBackground";
 import { useSnapshotVisibilityTransition } from "../hooks/useSnapshotVisibilityTransition";
@@ -447,15 +448,8 @@ function HomePage() {
 
       <div className="relative flex min-h-full flex-col gap-4 p-5">
         <header className="flex items-center gap-3">
-          <SnowflakeMark className="h-6 w-6 shrink-0 text-primary-600 dark:text-primary-300" />
-          <div className="min-w-0 flex-1">
-            <h1 className="truncate text-base font-bold leading-tight text-brand-900 dark:text-white">
-              YukiHub
-            </h1>
-            <p className="truncate text-xs text-brand-600 dark:text-white/80">
-              {t("home.welcomeBack")}
-            </p>
-          </div>
+          <HomeUserProfile />
+          <div className="min-w-0 flex-1" />
           <button
             type="button"
             onClick={handleRefresh}
