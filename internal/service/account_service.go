@@ -1,0 +1,845 @@
+package service
+
+import (
+	"context"
+	"crypto/sha256"
+	"database/sql"
+	"encoding/hex"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"os"
+	"strings"
+	"sync"
+	"time"
+
+	"yukihub/internal/appconf"
+	"yukihub/internal/applog"
+	"yukihub/internal/common/vo"
+	"yukihub/internal/service/exporter"
+	"yukihub/internal/service/importer"
+	"yukihub/internal/service/yukihubaccount"
+	"yukihub/internal/wailsruntime"
+)
+
+// YukiHub 账号服务相关常量。
+const (
+	yukihubAccountStatusEvent = "yukihub-account:status-changed"
+	yukihubAccountSyncEvent   = "yukihub-account:sync-progress"
+
+	// 心跳间隔与 Android 版一致（服务端 90s 内视为在线、90~300s 视为 away）。
+	accountPresenceInterval = 45 * time.Second
+	// 手动同步的冷却，同样是 Android 版的 60 秒。
+	accountSyncCooldown = 60 * time.Second
+)
+
+// AccountService 是 YukiHub 自建账号（yukihub.zh.kg）在桌面端的入口：
+// 登录 / 注册 / 资料、云同步游戏库、在线状态，以及好友与聊天。
+//
+// 登录与云同步之所以放在同一个服务里：它们共用一份访问令牌，
+// 而令牌的刷新要集中处理（多处各自刷新会互相顶掉）。
+type AccountService struct {
+	ctx       context.Context
+	db        *sql.DB
+	config    *appconf.AppConfig
+	runtime   wailsruntime.Runtime
+	emitEvent func(string, ...interface{})
+	imports   *ImportService
+
+	client *yukihubaccount.Client
+
+	mu     sync.Mutex
+	syncMu sync.Mutex
+
+	presenceCancel context.CancelFunc
+	presenceActive bool
+	lastSyncAt     time.Time
+
+	now func() time.Time
+}
+
+// NewAccountService 创建账号服务。
+func NewAccountService() *AccountService {
+	return &AccountService{
+		client: yukihubaccount.NewClient(yukihubaccount.DefaultBaseURL),
+		now:    time.Now,
+	}
+}
+
+// Init 注入运行时依赖。imports 用于把云端快照落回本地库（复用现成的导入器）。
+//
+//wails:ignore
+func (s *AccountService) Init(ctx context.Context, db *sql.DB, config *appconf.AppConfig, imports *ImportService) {
+	s.ctx = ctx
+	s.db = db
+	s.config = config
+	s.imports = imports
+	if s.now == nil {
+		s.now = time.Now
+	}
+	if s.config != nil && s.config.YukiHubAccountAccessToken != "" {
+		// 上次是登录状态：应用启动后恢复心跳。
+		s.startPresence()
+	}
+}
+
+// SetRuntime 注入 Wails 运行时（用于向前端推事件）。
+//
+//wails:ignore
+func (s *AccountService) SetRuntime(runtime wailsruntime.Runtime) {
+	if runtime == nil {
+		return
+	}
+	s.runtime = runtime
+	s.emitEvent = func(name string, data ...interface{}) {
+		runtime.Emit(name, data...)
+	}
+}
+
+// ==================== 状态 ====================
+
+// GetAccountStatus 返回当前账号状态（不含令牌）。
+func (s *AccountService) GetAccountStatus() vo.AccountStatus {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.statusLocked()
+}
+
+func (s *AccountService) statusLocked() vo.AccountStatus {
+	status := vo.AccountStatus{
+		ServiceURL:     yukihubaccount.DefaultBaseURL,
+		PresenceActive: s.presenceActive,
+	}
+	if s.config == nil {
+		return status
+	}
+	status.LoggedIn = strings.TrimSpace(s.config.YukiHubAccountAccessToken) != ""
+	status.UserID = s.config.YukiHubAccountUserID
+	status.UID = s.config.YukiHubAccountUID
+	status.Nickname = s.config.YukiHubAccountNickname
+	status.Email = s.config.YukiHubAccountEmail
+	status.Avatar = s.config.YukiHubAccountAvatar
+	status.KungalBound = s.config.YukiHubAccountKungalBound
+	status.HikarinagiBound = s.config.YukiHubAccountHikarinagiBound
+	status.CloudSyncEnabled = s.config.YukiHubAccountCloudSyncEnabled
+	status.SharePlaying = s.config.YukiHubAccountSharePlaying
+	status.LastSyncAt = s.config.LastYukiHubAccountSyncAt
+	status.LastSyncHash = s.config.LastYukiHubAccountSyncHash
+	return status
+}
+
+func (s *AccountService) emitStatus() {
+	if s.emitEvent == nil {
+		return
+	}
+	s.mu.Lock()
+	status := s.statusLocked()
+	s.mu.Unlock()
+	s.emitEvent(yukihubAccountStatusEvent, status)
+}
+
+// TestAccountConnection 探测账号服务是否可达（邮箱界面上的「测试连接」）。
+func (s *AccountService) TestAccountConnection() error {
+	return s.client.Health(s.resolveContext(nil))
+}
+
+// ==================== 登录 / 注册 ====================
+
+// SendAccountCode 发送邮箱验证码。purpose 传 "register"（默认）或 "reset"。
+func (s *AccountService) SendAccountCode(email string, purpose string) error {
+	if strings.TrimSpace(email) == "" {
+		return errors.New("请先填写邮箱")
+	}
+	if strings.TrimSpace(purpose) == "" {
+		purpose = yukihubaccount.CodePurposeRegister
+	}
+	return s.client.SendCode(s.resolveContext(nil), email, purpose)
+}
+
+// RegisterAccount 用邮箱 + 验证码注册并直接进入登录状态。
+func (s *AccountService) RegisterAccount(email, password, nickname, code string) (vo.AccountStatus, error) {
+	if strings.TrimSpace(password) == "" {
+		return vo.AccountStatus{}, errors.New("请填写密码")
+	}
+	session, err := s.client.Register(s.resolveContext(nil), email, password, nickname, code)
+	if err != nil {
+		return vo.AccountStatus{}, err
+	}
+	if err := s.applySession(session); err != nil {
+		return vo.AccountStatus{}, err
+	}
+	return s.GetAccountStatus(), nil
+}
+
+// LoginAccount 用邮箱 + 密码登录。
+func (s *AccountService) LoginAccount(email, password string) (vo.AccountStatus, error) {
+	if strings.TrimSpace(email) == "" || strings.TrimSpace(password) == "" {
+		return vo.AccountStatus{}, errors.New("请填写邮箱与密码")
+	}
+	session, err := s.client.Login(s.resolveContext(nil), email, password)
+	if err != nil {
+		return vo.AccountStatus{}, err
+	}
+	if err := s.applySession(session); err != nil {
+		return vo.AccountStatus{}, err
+	}
+	return s.GetAccountStatus(), nil
+}
+
+// ResetAccountPassword 用邮箱验证码重置密码。
+func (s *AccountService) ResetAccountPassword(email, code, password string) error {
+	if strings.TrimSpace(password) == "" {
+		return errors.New("请填写新密码")
+	}
+	return s.client.ResetPassword(s.resolveContext(nil), email, code, password)
+}
+
+// LogoutAccount 退出登录：清本地会话、停心跳、尽力通知服务端下线。
+func (s *AccountService) LogoutAccount() error {
+	s.mu.Lock()
+	token := ""
+	if s.config != nil {
+		token = s.config.YukiHubAccountAccessToken
+	}
+	s.mu.Unlock()
+
+	if token != "" {
+		// 下线请求是「尽力而为」：失败也照样清本地，否则用户会卡在退不出去的状态。
+		if err := s.client.MarkOffline(s.resolveContext(nil), token); err != nil {
+			applog.LogWarningf(s.ctx, "YukiHub 账号：下线通知失败（忽略）：%v", err)
+		}
+	}
+	s.stopPresence()
+
+	s.mu.Lock()
+	if s.config != nil {
+		s.config.YukiHubAccountAccessToken = ""
+		s.config.YukiHubAccountRefreshToken = ""
+		s.config.YukiHubAccountUserID = ""
+		s.config.YukiHubAccountUID = 0
+		s.config.YukiHubAccountNickname = ""
+		s.config.YukiHubAccountAvatar = ""
+		s.config.YukiHubAccountKungalBound = false
+		s.config.YukiHubAccountHikarinagiBound = false
+		s.config.LastYukiHubAccountSyncHash = ""
+		s.config.LastYukiHubAccountSyncAt = ""
+		s.persistConfigLocked()
+	}
+	s.mu.Unlock()
+
+	s.emitStatus()
+	return nil
+}
+
+// applySession 把登录结果写进配置并落盘，同时启动心跳。
+func (s *AccountService) applySession(session yukihubaccount.Session) error {
+	s.mu.Lock()
+	if s.config == nil {
+		s.mu.Unlock()
+		return errors.New("配置尚未就绪")
+	}
+	s.config.YukiHubAccountAccessToken = session.AccessToken
+	if session.RefreshToken != "" {
+		s.config.YukiHubAccountRefreshToken = session.RefreshToken
+	}
+	if session.User.ID != "" {
+		s.config.YukiHubAccountUserID = session.User.ID
+	}
+	if session.User.UID != 0 {
+		s.config.YukiHubAccountUID = session.User.UID
+	}
+	if session.User.Nickname != "" {
+		s.config.YukiHubAccountNickname = session.User.Nickname
+	}
+	if session.User.Email != "" {
+		s.config.YukiHubAccountEmail = session.User.Email
+	}
+	if session.User.Avatar != "" {
+		s.config.YukiHubAccountAvatar = session.User.Avatar
+	}
+	s.config.YukiHubAccountKungalBound = session.User.KungalBound
+	s.config.YukiHubAccountHikarinagiBound = session.User.HikarinagiBound
+	s.persistConfigLocked()
+	s.mu.Unlock()
+
+	s.startPresence()
+	s.emitStatus()
+	return nil
+}
+
+// ==================== 资料 ====================
+
+// UpdateAccountNickname 修改云端昵称。
+func (s *AccountService) UpdateAccountNickname(nickname string) error {
+	trimmed := strings.TrimSpace(nickname)
+	if trimmed == "" {
+		return errors.New("昵称不能为空")
+	}
+	err := s.withToken(func(token string) error {
+		return s.client.UpdateNickname(s.resolveContext(nil), token, trimmed)
+	})
+	if err != nil {
+		return err
+	}
+
+	s.mu.Lock()
+	if s.config != nil {
+		s.config.YukiHubAccountNickname = trimmed
+		s.persistConfigLocked()
+	}
+	s.mu.Unlock()
+	s.emitStatus()
+	return nil
+}
+
+// GetAccountLevel 查询等级 / 经验 / 签到状态。
+func (s *AccountService) GetAccountLevel() (vo.AccountLevel, error) {
+	info, err := accountFetch(s, func(token string) (yukihubaccount.LevelInfo, error) {
+		return s.client.GetLevel(s.resolveContext(nil), token)
+	})
+	if err != nil {
+		return vo.AccountLevel{}, err
+	}
+	return vo.AccountLevel{
+		Level:             info.Level,
+		Exp:               info.Exp,
+		NextLevelTotalExp: info.NextLevelTotalExp,
+		IsMaxLevel:        info.IsMaxLevel,
+		TodayCheckedIn:    info.TodayCheckedIn,
+	}, nil
+}
+
+// SetAccountCloudSyncEnabled 开关「登录后自动同步」。
+func (s *AccountService) SetAccountCloudSyncEnabled(enabled bool) error {
+	s.mu.Lock()
+	if s.config != nil {
+		s.config.YukiHubAccountCloudSyncEnabled = enabled
+		s.persistConfigLocked()
+	}
+	s.mu.Unlock()
+	s.emitStatus()
+	return nil
+}
+
+// SetAccountSharePlaying 开关「向好友展示正在玩的游戏」。
+func (s *AccountService) SetAccountSharePlaying(enabled bool) error {
+	s.mu.Lock()
+	if s.config != nil {
+		s.config.YukiHubAccountSharePlaying = enabled
+		s.persistConfigLocked()
+	}
+	s.mu.Unlock()
+	// 立即按新设置发一次心跳，好友那边不用等到下一个周期。
+	go func() {
+		if err := s.sendHeartbeat(); err != nil {
+			applog.LogWarningf(s.ctx, "YukiHub 账号：心跳上报失败（忽略）：%v", err)
+		}
+	}()
+	s.emitStatus()
+	return nil
+}
+
+// ==================== 云同步 ====================
+
+// SyncAccountNow 立刻与云端同步一次游戏库。
+//
+// 上传方向复用 YukiHubExporter（产出的就是 Android 侧 schema 5 快照，
+// 与手机版 `/sync/upload` 收的格式完全相同）；下载方向复用 YukiHubImporter。
+func (s *AccountService) SyncAccountNow() (vo.AccountSyncResult, error) {
+	s.syncMu.Lock()
+	defer s.syncMu.Unlock()
+
+	result := vo.AccountSyncResult{}
+	if !s.isLoggedIn() {
+		return result, yukihubaccount.ErrNotLoggedIn
+	}
+	// 冷却：与 Android 版一致，1 分钟内只允许一次手动同步。
+	if !s.lastSyncAt.IsZero() && s.now().Sub(s.lastSyncAt) < accountSyncCooldown {
+		return result, fmt.Errorf("同步冷却中，请稍后再试（%d 秒内仅限一次）",
+			int(accountSyncCooldown.Seconds()))
+	}
+
+	localSnapshot, err := s.buildLocalSnapshot()
+	if err != nil {
+		return result, err
+	}
+	localHash := hashSnapshot(localSnapshot)
+
+	remoteRaw, err := accountFetch(s, func(token string) ([]byte, error) {
+		return s.client.DownloadSnapshot(s.resolveContext(nil), token)
+	})
+	remoteExists := true
+	if errors.Is(err, yukihubaccount.ErrCloudSnapshotMissing) {
+		remoteExists = false
+		err = nil
+	}
+	if err != nil {
+		return result, err
+	}
+
+	lastHash := s.lastSyncHash()
+	localChanged := lastHash == "" || localHash != lastHash
+	remoteChanged := !remoteExists || lastHash == "" || hashSnapshot(remoteRaw) != lastHash
+
+	switch {
+	case !remoteExists:
+		// 云端还没有数据 → 首次上传
+		if err := s.uploadSnapshot(localSnapshot); err != nil {
+			return result, err
+		}
+		result = s.finishSync("uploaded", localSnapshot, vo.AccountSyncResult{})
+	case localChanged && !remoteChanged:
+		if err := s.uploadSnapshot(localSnapshot); err != nil {
+			return result, err
+		}
+		result = s.finishSync("uploaded", localSnapshot, result)
+	case !localChanged && remoteChanged:
+		imported, importErr := s.importSnapshot(remoteRaw)
+		if importErr != nil {
+			return result, importErr
+		}
+		result = s.finishSync("downloaded", remoteRaw, vo.AccountSyncResult{Imported: imported})
+	case localHash == hashSnapshot(remoteRaw):
+		// 两边一致，只更新基准哈希
+		result = s.finishSync("noop", localSnapshot, result)
+		result.Message = "已是最新"
+	default:
+		// 两边都变了：按 Android 的策略做「云端优先」的合并——
+		// 先导入云端，再把合并后的结果上传，避免任何一边被丢掉。
+		imported, importErr := s.importSnapshot(remoteRaw)
+		if importErr != nil {
+			return result, importErr
+		}
+		merged, buildErr := s.buildLocalSnapshot()
+		if buildErr != nil {
+			return result, buildErr
+		}
+		if uploadErr := s.uploadSnapshot(merged); uploadErr != nil {
+			return result, uploadErr
+		}
+		result = s.finishSync("merged", merged, vo.AccountSyncResult{Imported: imported})
+	}
+
+	result.SyncedAt = s.now().Format(time.RFC3339)
+	s.lastSyncAt = s.now()
+	// 同步后游戏库可能变了，通知界面刷新。
+	if s.emitEvent != nil {
+		s.emitEvent(yukihubAccountSyncEvent, result)
+	}
+	return result, nil
+}
+
+func (s *AccountService) finishSync(action string, snapshot []byte, result vo.AccountSyncResult) vo.AccountSyncResult {
+	games, sessions := countSnapshotEntries(snapshot)
+	result.Action = action
+	result.Games = games
+	result.Sessions = sessions
+
+	hash := hashSnapshot(snapshot)
+	s.mu.Lock()
+	if s.config != nil {
+		s.config.LastYukiHubAccountSyncHash = hash
+		s.config.LastYukiHubAccountSyncAt = s.now().Format(time.RFC3339)
+		s.persistConfigLocked()
+	}
+	s.mu.Unlock()
+	s.emitStatus()
+	return result
+}
+
+// buildLocalSnapshot 生成 Android 侧 schema 5 快照的 JSON 字节。
+func (s *AccountService) buildLocalSnapshot() ([]byte, error) {
+	if s.db == nil {
+		return nil, errors.New("数据库尚未就绪")
+	}
+	backup, err := exporter.NewYukiHubExporter(s.resolveContext(nil), s.db).Build()
+	if err != nil {
+		return nil, fmt.Errorf("生成同步快照失败: %w", err)
+	}
+	encoded, err := json.Marshal(backup)
+	if err != nil {
+		return nil, fmt.Errorf("序列化同步快照失败: %w", err)
+	}
+	return encoded, nil
+}
+
+func (s *AccountService) uploadSnapshot(snapshot []byte) error {
+	gzipped, err := yukihubaccount.GzipBytes(snapshot)
+	if err != nil {
+		return err
+	}
+	return s.withToken(func(token string) error {
+		return s.client.UploadSnapshot(s.resolveContext(nil), token, gzipped)
+	})
+}
+
+// importSnapshot 把云端快照写进本地库，返回成功导入的条目数。
+//
+// 落盘成临时文件是因为导入器是按路径读取的；导入策略选「同名同路径合并会话」，
+// 这样两边都有的游戏不会重复创建，也不会把本地游玩记录冲掉。
+func (s *AccountService) importSnapshot(snapshot []byte) (int, error) {
+	if s.imports == nil {
+		return 0, errors.New("导入服务尚未就绪")
+	}
+	tempFile, err := os.CreateTemp("", "yukihub-account-sync-*.json")
+	if err != nil {
+		return 0, fmt.Errorf("创建临时文件失败: %w", err)
+	}
+	tempPath := tempFile.Name()
+	defer func() { _ = os.Remove(tempPath) }()
+
+	if _, err := tempFile.Write(snapshot); err != nil {
+		_ = tempFile.Close()
+		return 0, fmt.Errorf("写入临时快照失败: %w", err)
+	}
+	if err := tempFile.Close(); err != nil {
+		return 0, fmt.Errorf("写入临时快照失败: %w", err)
+	}
+
+	deps := s.imports.importerDependencies()
+	result, err := importer.NewYukiHubImporter(deps).Import(tempPath, false, importer.SamePathActionMergeSessions)
+	if err != nil {
+		return 0, fmt.Errorf("导入云端快照失败: %w", err)
+	}
+	applog.LogInfof(s.ctx, "YukiHub 账号：云端快照导入完成 success=%d skipped=%d failed=%d sessions=%d",
+		result.Success, result.Skipped, result.Failed, result.SessionsImported)
+	return result.Success, nil
+}
+
+// ==================== 在线状态 ====================
+
+func (s *AccountService) startPresence() {
+	s.mu.Lock()
+	if s.presenceCancel != nil {
+		s.mu.Unlock()
+		return
+	}
+	ctx, cancel := context.WithCancel(s.resolveContext(nil))
+	s.presenceCancel = cancel
+	s.presenceActive = true
+	s.mu.Unlock()
+
+	go func() {
+		// 先立刻发一次，别让好友等到第一个周期才看到你上线。
+		if err := s.sendHeartbeat(); err != nil {
+			applog.LogWarningf(s.ctx, "YukiHub 账号：心跳上报失败（忽略）：%v", err)
+		}
+		ticker := time.NewTicker(accountPresenceInterval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				if err := s.sendHeartbeat(); err != nil {
+					applog.LogWarningf(s.ctx, "YukiHub 账号：心跳上报失败（忽略）：%v", err)
+				}
+			}
+		}
+	}()
+}
+
+func (s *AccountService) stopPresence() {
+	s.mu.Lock()
+	cancel := s.presenceCancel
+	s.presenceCancel = nil
+	s.presenceActive = false
+	s.mu.Unlock()
+	if cancel != nil {
+		cancel()
+	}
+}
+
+func (s *AccountService) sendHeartbeat() error {
+	if !s.isLoggedIn() {
+		return nil
+	}
+	activity := ""
+	s.mu.Lock()
+	sharePlaying := s.config != nil && s.config.YukiHubAccountSharePlaying
+	s.mu.Unlock()
+	if sharePlaying {
+		activity = s.resolvePlayingActivity()
+	}
+	return s.withToken(func(token string) error {
+		return s.client.Heartbeat(s.resolveContext(nil), token, yukihubaccount.PresenceOnline, activity)
+	})
+}
+
+// resolvePlayingActivity 返回「正在玩：xxx」；没有正在进行的游玩时返回空串。
+func (s *AccountService) resolvePlayingActivity() string {
+	if s.db == nil {
+		return ""
+	}
+	var title string
+	// 未结束的游玩记录（end_time 为空）就是当前在玩的游戏。
+	err := s.db.QueryRowContext(s.resolveContext(nil), `
+		SELECT g.name FROM play_sessions ps
+		JOIN games g ON g.id = ps.game_id
+		WHERE ps.end_time IS NULL
+		ORDER BY ps.start_time DESC LIMIT 1`).Scan(&title)
+	if err != nil || strings.TrimSpace(title) == "" {
+		return ""
+	}
+	return "正在玩：" + title
+}
+
+// ==================== 社交（好友 / 私聊 / 群聊） ====================
+
+// ListFriends 好友列表与待处理申请。
+func (s *AccountService) ListFriends() (yukihubaccount.FriendList, error) {
+	return accountFetch(s, func(token string) (yukihubaccount.FriendList, error) {
+		return s.client.ListFriends(s.resolveContext(nil), token)
+	})
+}
+
+// SearchUsers 搜用户。
+func (s *AccountService) SearchUsers(keyword string) ([]yukihubaccount.Friend, error) {
+	if strings.TrimSpace(keyword) == "" {
+		return nil, errors.New("请输入要搜索的昵称或 UID")
+	}
+	return accountFetch(s, func(token string) ([]yukihubaccount.Friend, error) {
+		return s.client.SearchUsers(s.resolveContext(nil), token, keyword)
+	})
+}
+
+// SendFriendRequest 发好友申请。
+func (s *AccountService) SendFriendRequest(target string) error {
+	return s.withToken(func(token string) error {
+		return s.client.SendFriendRequest(s.resolveContext(nil), token, target)
+	})
+}
+
+// AcceptFriendRequest 接受好友申请。
+func (s *AccountService) AcceptFriendRequest(friendshipID string, uid int64) error {
+	return s.withToken(func(token string) error {
+		return s.client.AcceptFriendRequest(s.resolveContext(nil), token, friendshipID, uid)
+	})
+}
+
+// RejectFriendRequest 拒绝好友申请。
+func (s *AccountService) RejectFriendRequest(friendshipID string) error {
+	return s.withToken(func(token string) error {
+		return s.client.RejectFriendRequest(s.resolveContext(nil), token, friendshipID)
+	})
+}
+
+// RemoveFriend 删除好友。
+func (s *AccountService) RemoveFriend(friendID string) error {
+	return s.withToken(func(token string) error {
+		return s.client.RemoveFriend(s.resolveContext(nil), token, friendID)
+	})
+}
+
+// SetFriendNote 设置好友备注。
+func (s *AccountService) SetFriendNote(friendID, note string) error {
+	return s.withToken(func(token string) error {
+		return s.client.SetFriendNote(s.resolveContext(nil), token, friendID, note)
+	})
+}
+
+// SendChatMessage 发私聊消息。
+func (s *AccountService) SendChatMessage(receiverID, content, msgType, replyToID string) (yukihubaccount.ChatMessage, error) {
+	return accountFetch(s, func(token string) (yukihubaccount.ChatMessage, error) {
+		return s.client.SendChatMessage(s.resolveContext(nil), token, receiverID, content, msgType, replyToID)
+	})
+}
+
+// GetChatHistory 拉与某人的历史消息。
+func (s *AccountService) GetChatHistory(friendID string, offset, limit int) ([]yukihubaccount.ChatMessage, error) {
+	return accountFetch(s, func(token string) ([]yukihubaccount.ChatMessage, error) {
+		return s.client.ChatHistory(s.resolveContext(nil), token, friendID, offset, limit)
+	})
+}
+
+// PollChatMessages 拉新消息（前端每 10 秒调一次，与手机版一致）。
+func (s *AccountService) PollChatMessages(afterID, friendID string, peek bool) ([]yukihubaccount.ChatMessage, error) {
+	return accountFetch(s, func(token string) ([]yukihubaccount.ChatMessage, error) {
+		return s.client.ChatPoll(s.resolveContext(nil), token, afterID, friendID, peek)
+	})
+}
+
+// GetChatUnreadCount 未读消息总数。
+func (s *AccountService) GetChatUnreadCount() (int, error) {
+	return accountFetch(s, func(token string) (int, error) {
+		return s.client.UnreadTotal(s.resolveContext(nil), token)
+	})
+}
+
+// ListChatEmojis 本站表情列表。
+func (s *AccountService) ListChatEmojis() ([]yukihubaccount.ChatEmoji, error) {
+	return accountFetch(s, func(token string) ([]yukihubaccount.ChatEmoji, error) {
+		return s.client.ListEmojis(s.resolveContext(nil), token)
+	})
+}
+
+// ListChatGroups 群列表。
+func (s *AccountService) ListChatGroups() ([]yukihubaccount.ChatGroup, error) {
+	return accountFetch(s, func(token string) ([]yukihubaccount.ChatGroup, error) {
+		return s.client.ListGroups(s.resolveContext(nil), token)
+	})
+}
+
+// GetGroupHistory 群历史消息。
+func (s *AccountService) GetGroupHistory(groupID string, offset, limit int) ([]yukihubaccount.ChatMessage, error) {
+	return accountFetch(s, func(token string) ([]yukihubaccount.ChatMessage, error) {
+		history, _, historyErr := s.client.GroupHistory(s.resolveContext(nil), token, groupID, offset, limit)
+		return history, historyErr
+	})
+}
+
+// SendGroupMessage 发群消息。
+func (s *AccountService) SendGroupMessage(groupID, content, msgType, replyToID string) (yukihubaccount.ChatMessage, error) {
+	return accountFetch(s, func(token string) (yukihubaccount.ChatMessage, error) {
+		return s.client.SendGroupMessage(s.resolveContext(nil), token, groupID, content, msgType, replyToID)
+	})
+}
+
+// PollGroupMessages 拉群新消息。
+func (s *AccountService) PollGroupMessages(groupID, afterID string) ([]yukihubaccount.ChatMessage, error) {
+	return accountFetch(s, func(token string) ([]yukihubaccount.ChatMessage, error) {
+		items, _, pollErr := s.client.PollGroup(s.resolveContext(nil), token, groupID, afterID)
+		return items, pollErr
+	})
+}
+
+// ==================== 令牌与工具 ====================
+
+func (s *AccountService) isLoggedIn() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.config != nil && strings.TrimSpace(s.config.YukiHubAccountAccessToken) != ""
+}
+
+// withToken 带令牌执行；遇到 401 就刷新一次再重试。
+func (s *AccountService) withToken(fn func(token string) error) error {
+	token, err := s.requireToken()
+	if err != nil {
+		return err
+	}
+	err = fn(token)
+	if err == nil || !errors.Is(err, yukihubaccount.ErrUnauthorized) {
+		return err
+	}
+	if refreshErr := s.refreshSession(); refreshErr != nil {
+		s.markSessionExpired()
+		return err
+	}
+	token, err = s.requireToken()
+	if err != nil {
+		return err
+	}
+	return fn(token)
+}
+
+// accountFetch 与 withToken 相同，但需要返回值。
+//
+// Go 的方法不能自带类型参数，所以这是个包级泛型函数，第一个参数显式传服务实例。
+func accountFetch[T any](s *AccountService, fn func(token string) (T, error)) (T, error) {
+	var zero T
+	token, err := s.requireToken()
+	if err != nil {
+		return zero, err
+	}
+	result, err := fn(token)
+	if err == nil || !errors.Is(err, yukihubaccount.ErrUnauthorized) {
+		return result, err
+	}
+	if refreshErr := s.refreshSession(); refreshErr != nil {
+		s.markSessionExpired()
+		return zero, err
+	}
+	token, err = s.requireToken()
+	if err != nil {
+		return zero, err
+	}
+	return fn(token)
+}
+
+func (s *AccountService) requireToken() (string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.config == nil || strings.TrimSpace(s.config.YukiHubAccountAccessToken) == "" {
+		return "", yukihubaccount.ErrNotLoggedIn
+	}
+	return s.config.YukiHubAccountAccessToken, nil
+}
+
+// refreshSession 用 refresh token 换新令牌。没有 refresh token 就直接失败。
+func (s *AccountService) refreshSession() error {
+	s.mu.Lock()
+	refreshToken := ""
+	if s.config != nil {
+		refreshToken = strings.TrimSpace(s.config.YukiHubAccountRefreshToken)
+	}
+	s.mu.Unlock()
+
+	if refreshToken == "" {
+		return errors.New("没有可用的刷新令牌，请重新登录")
+	}
+	session, err := s.client.Refresh(s.resolveContext(nil), refreshToken)
+	if err != nil {
+		return err
+	}
+	return s.applySession(session)
+}
+
+// markSessionExpired 刷新也失败时清掉会话，界面据此提示重新登录。
+func (s *AccountService) markSessionExpired() {
+	s.stopPresence()
+	s.mu.Lock()
+	if s.config != nil {
+		s.config.YukiHubAccountAccessToken = ""
+		s.config.YukiHubAccountRefreshToken = ""
+		s.persistConfigLocked()
+	}
+	s.mu.Unlock()
+	s.emitStatus()
+}
+
+// persistConfigLocked 落盘配置（调用方需持有 s.mu）。
+func (s *AccountService) persistConfigLocked() {
+	if s.config == nil {
+		return
+	}
+	if err := appconf.SaveConfig(s.config); err != nil {
+		applog.LogErrorf(s.ctx, "YukiHub 账号：保存配置失败: %v", err)
+	}
+}
+
+func (s *AccountService) lastSyncHash() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.config == nil {
+		return ""
+	}
+	return strings.TrimSpace(s.config.LastYukiHubAccountSyncHash)
+}
+
+func (s *AccountService) resolveContext(ctx context.Context) context.Context {
+	if ctx != nil {
+		return ctx
+	}
+	if s.ctx != nil {
+		return s.ctx
+	}
+	return context.Background()
+}
+
+// hashSnapshot 计算快照哈希（与 Android 版一样对未压缩 JSON 求 SHA-256）。
+func hashSnapshot(data []byte) string {
+	sum := sha256.Sum256(data)
+	return hex.EncodeToString(sum[:])
+}
+
+// countSnapshotEntries 从快照 JSON 里数出游戏数与游玩记录数（仅用于界面提示）。
+func countSnapshotEntries(data []byte) (int, int) {
+	var parsed struct {
+		Games        []json.RawMessage `json:"games"`
+		PlaySessions []json.RawMessage `json:"play_sessions"`
+	}
+	if err := json.Unmarshal(data, &parsed); err != nil {
+		return 0, 0
+	}
+	return len(parsed.Games), len(parsed.PlaySessions)
+}

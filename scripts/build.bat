@@ -373,6 +373,10 @@ if defined DUCKDB_DLL copy /Y "!DUCKDB_DLL!" "!PORTABLE_DIR!\duckdb.dll" >nul
 mkdir "!PORTABLE_DIR!\7z"
 copy /Y "!SEVENZIP_SOURCE_DIR!\7z.exe" "!PORTABLE_DIR!\7z\7z.exe" >nul
 copy /Y "!SEVENZIP_SOURCE_DIR!\7z.dll" "!PORTABLE_DIR!\7z\7z.dll" >nul
+REM 内置的转区 / 超分工具（第三方程序，随包分发，见 compat-tools\SOURCE.txt）
+if exist "build\compat-tools" (
+    xcopy /E /I /Y "build\compat-tools" "!PORTABLE_DIR!\compat-tools" >nul
+)
 
 >"!PORTABLE_DIR!\README.txt" echo YukiHub Portable v%VERSION%
 >>"!PORTABLE_DIR!\README.txt" echo.
@@ -401,6 +405,12 @@ if exist "!SEVENZIP_BUILD_DIR!" rmdir /s /q "!SEVENZIP_BUILD_DIR!"
 mkdir "!SEVENZIP_BUILD_DIR!"
 copy /Y "!SEVENZIP_SOURCE_DIR!\7z.exe" "!SEVENZIP_BUILD_DIR!\7z.exe" >nul
 copy /Y "!SEVENZIP_SOURCE_DIR!\7z.dll" "!SEVENZIP_BUILD_DIR!\7z.dll" >nul
+
+REM 内置的转区 / 超分工具（第三方程序，随包分发，见 compat-tools\SOURCE.txt）
+if exist "%CD%\build\compat-tools" (
+    if exist "%WINDOWS_PAYLOAD_DIR%\compat-tools" rmdir /s /q "%WINDOWS_PAYLOAD_DIR%\compat-tools"
+    xcopy /E /I /Y "%CD%\build\compat-tools" "%WINDOWS_PAYLOAD_DIR%\compat-tools" >nul
+)
 
 set "WEBVIEW2_GEN_DIR=%CD%\build\windows\webview2bootstrapper"
 wails3 generate webview2bootstrapper -dir "!WEBVIEW2_GEN_DIR!"

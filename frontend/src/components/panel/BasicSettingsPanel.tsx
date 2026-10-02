@@ -14,13 +14,14 @@ import { BetterSelect } from "../ui/better/BetterSelect";
 import { BetterSwitch } from "../ui/better/BetterSwitch";
 import { BangumiAccountSettings } from "./BangumiAccountSettings";
 import { NextMoeAccountSettings } from "./NextMoeAccountSettings";
+import { YukiHubAccountSettings } from "./YukiHubAccountSettings";
 
 interface BetterSelectOption {
   value: string;
   label: string;
 }
 
-type AccountProvider = "bangumi" | "nextmoe";
+type AccountProvider = "yukihub" | "bangumi" | "nextmoe";
 
 const ACCOUNT_CONTENT_FADE_MS = 100;
 const ACCOUNT_CARD_RESIZE_MS = 180;
@@ -93,11 +94,13 @@ export function BasicSettingsPanel({
    * 位置由卡片在 DOM 里的顺序决定，所以两套模板正好对应两张卡片的展开态。
    */
   const accountGridColumns
-    = expandedAccount === "bangumi"
-      ? "sm:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]"
-      : expandedAccount === "nextmoe"
-        ? "sm:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]"
-        : "sm:grid-cols-2";
+    = expandedAccount === "yukihub"
+      ? "sm:grid-cols-[minmax(0,3fr)_minmax(0,1fr)_minmax(0,1fr)]"
+      : expandedAccount === "bangumi"
+        ? "sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)_minmax(0,1fr)]"
+        : expandedAccount === "nextmoe"
+          ? "sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,3fr)]"
+          : "sm:grid-cols-3";
 
   useEffect(() => {
     return () => {
@@ -273,6 +276,13 @@ export function BasicSettingsPanel({
           aria-label={t("settings.basic.accountAuthorizationSectionLabel")}
           onTransitionEnd={handleAccountGridTransitionEnd}
         >
+          <YukiHubAccountSettings
+            isContentVisible={isAccountContentVisible}
+            isExpanded={expandedAccount === "yukihub"}
+            onConfigRefresh={onConfigRefresh}
+            onExpand={() => handleAccountExpand("yukihub")}
+          />
+
           <BangumiAccountSettings
             formData={formData}
             isContentVisible={isAccountContentVisible}

@@ -122,6 +122,28 @@ type AppConfig struct {
 	CloudBackupRetention int    `json:"cloud_backup_retention,omitempty"` // 云端每个游戏保留的存档备份数量
 
 	CloudDBBackupRetention int `json:"cloud_db_backup_retention,omitempty"` // 云端保留的数据库备份数量
+
+	// YukiHub 账号（自建账号服务 yukihub.zh.kg）
+	//
+	// 令牌与第三方授权一样明文存在 appconf.json（与 Bangumi 个人令牌同一处理方式），
+	// 桌面端没有更可靠的本地密钥存储可用。
+	YukiHubAccountAccessToken     string `json:"yukihub_account_access_token,omitempty"`
+	YukiHubAccountRefreshToken    string `json:"yukihub_account_refresh_token,omitempty"`
+	YukiHubAccountUserID          string `json:"yukihub_account_user_id,omitempty"`
+	YukiHubAccountUID             int64  `json:"yukihub_account_uid,omitempty"`
+	YukiHubAccountNickname        string `json:"yukihub_account_nickname,omitempty"`
+	YukiHubAccountEmail           string `json:"yukihub_account_email,omitempty"`
+	YukiHubAccountAvatar          string `json:"yukihub_account_avatar,omitempty"`
+	YukiHubAccountKungalBound     bool   `json:"yukihub_account_kungal_bound,omitempty"`
+	YukiHubAccountHikarinagiBound bool   `json:"yukihub_account_hikarinagi_bound,omitempty"`
+	// YukiHubAccountCloudSyncEnabled 控制「登录后自动同步游戏库」。
+	YukiHubAccountCloudSyncEnabled bool `json:"yukihub_account_cloud_sync_enabled"`
+	// YukiHubAccountSharePlaying 为 false 时仍然上报心跳，但不带上「正在玩」。
+	YukiHubAccountSharePlaying bool `json:"yukihub_account_share_playing"`
+	// LastYukiHubAccountSyncHash 是上次同步的快照哈希，用于判断两边有没有改动。
+	LastYukiHubAccountSyncHash string `json:"last_yukihub_account_sync_hash,omitempty"`
+	LastYukiHubAccountSyncAt   string `json:"last_yukihub_account_sync_at,omitempty"`
+
 	// OneDrive OAuth 配置
 	OneDriveClientID     string `json:"onedrive_client_id,omitempty"`     // OneDrive Client ID
 	OneDriveRefreshToken string `json:"onedrive_refresh_token,omitempty"` // OneDrive Refresh Token（OAuth 授权后获得）

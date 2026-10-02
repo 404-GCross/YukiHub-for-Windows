@@ -491,6 +491,7 @@ func runGUI(
 	categoryService := service.NewCategoryService()
 	configService := service.NewConfigService()
 	importService := service.NewImportService()
+	accountService := service.NewAccountService()
 	versionService := service.NewVersionService()
 	templateService := service.NewTemplateService()
 	updateService := service.NewUpdateService(func() {
@@ -561,6 +562,7 @@ func runGUI(
 		integrationService.Init(ctx, db, config)
 		categoryService.Init(ctx, db, config)
 		importService.Init(ctx, db, config)
+		accountService.Init(ctx, db, config, importService)
 		versionService.Init(ctx)
 		templateService.Init(ctx, db, config)
 		updateService.Init(ctx)
@@ -639,6 +641,7 @@ func runGUI(
 		application.NewService(categoryService),
 		application.NewService(configService),
 		application.NewService(importService),
+		application.NewService(accountService),
 		application.NewService(versionService),
 		application.NewService(templateService),
 		application.NewService(updateService),
@@ -932,6 +935,7 @@ func runGUI(
 		downloadService.SetRuntime(guiRuntime)
 		gameService.SetRuntime(guiRuntime)
 		importService.SetRuntime(guiRuntime)
+		accountService.SetRuntime(guiRuntime)
 		startService.SetRuntime(guiRuntime)
 		statsService.SetRuntime(guiRuntime)
 		templateService.SetRuntime(guiRuntime)

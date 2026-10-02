@@ -4,6 +4,9 @@
 export {
     AISummaryRequest,
     AISummaryResponse,
+    AccountLevel,
+    AccountStatus,
+    AccountSyncResult,
     BangumiAuthStatus,
     BangumiProfile,
     BatchImportCandidate,

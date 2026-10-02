@@ -80,6 +80,170 @@ export class AISummaryResponse {
     }
 }
 
+/**
+ * AccountLevel 是等级 / 经验 / 签到状态。
+ */
+export class AccountLevel {
+    "level": number;
+    "exp": number;
+    "next_level_total_exp": number;
+    "is_max_level": boolean;
+    "today_checked_in": boolean;
+
+    /** Creates a new AccountLevel instance. */
+    constructor($$source: Partial<AccountLevel> = {}) {
+        if (!("level" in $$source)) {
+            this["level"] = 0;
+        }
+        if (!("exp" in $$source)) {
+            this["exp"] = 0;
+        }
+        if (!("next_level_total_exp" in $$source)) {
+            this["next_level_total_exp"] = 0;
+        }
+        if (!("is_max_level" in $$source)) {
+            this["is_max_level"] = false;
+        }
+        if (!("today_checked_in" in $$source)) {
+            this["today_checked_in"] = false;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new AccountLevel instance from a string or object.
+     */
+    static createFrom($$source: any = {}): AccountLevel {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new AccountLevel($$parsedSource as Partial<AccountLevel>);
+    }
+}
+
+/**
+ * AccountStatus 是 YukiHub 账号（自建账号服务）的当前状态，供界面渲染。
+ * 
+ * 令牌本身不回传前端：界面只需要知道「登录了没有、是谁」，
+ * 具体调用一律由后端完成。
+ */
+export class AccountStatus {
+    "logged_in": boolean;
+    "user_id"?: string;
+    "uid"?: number;
+    "nickname"?: string;
+    "email"?: string;
+    "avatar"?: string;
+    "kungal_bound": boolean;
+    "hikarinagi_bound": boolean;
+
+    /**
+     * CloudSyncEnabled：登录后是否自动同步游戏库
+     */
+    "cloud_sync_enabled": boolean;
+
+    /**
+     * SharePlaying：关闭时仍上报心跳，但不带「正在玩什么」
+     */
+    "share_playing": boolean;
+    "last_sync_at"?: string;
+    "last_sync_hash"?: string;
+
+    /**
+     * PresenceActive 表示心跳任务正在跑（登录 + 应用在前台）
+     */
+    "presence_active": boolean;
+    "service_url": string;
+
+    /** Creates a new AccountStatus instance. */
+    constructor($$source: Partial<AccountStatus> = {}) {
+        if (!("logged_in" in $$source)) {
+            this["logged_in"] = false;
+        }
+        if (!("kungal_bound" in $$source)) {
+            this["kungal_bound"] = false;
+        }
+        if (!("hikarinagi_bound" in $$source)) {
+            this["hikarinagi_bound"] = false;
+        }
+        if (!("cloud_sync_enabled" in $$source)) {
+            this["cloud_sync_enabled"] = false;
+        }
+        if (!("share_playing" in $$source)) {
+            this["share_playing"] = false;
+        }
+        if (!("presence_active" in $$source)) {
+            this["presence_active"] = false;
+        }
+        if (!("service_url" in $$source)) {
+            this["service_url"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new AccountStatus instance from a string or object.
+     */
+    static createFrom($$source: any = {}): AccountStatus {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new AccountStatus($$parsedSource as Partial<AccountStatus>);
+    }
+}
+
+/**
+ * AccountSyncResult 是一次云同步的结果。
+ */
+export class AccountSyncResult {
+    /**
+     * Action: uploaded / downloaded / merged / noop
+     */
+    "action": string;
+    "games": number;
+    "sessions": number;
+
+    /**
+     * 下载方向才有：实际导入 / 跳过 / 失败的条目数
+     */
+    "imported": number;
+    "skipped": number;
+    "failed": number;
+    "synced_at"?: string;
+    "message"?: string;
+    "rate_limit"?: boolean;
+
+    /** Creates a new AccountSyncResult instance. */
+    constructor($$source: Partial<AccountSyncResult> = {}) {
+        if (!("action" in $$source)) {
+            this["action"] = "";
+        }
+        if (!("games" in $$source)) {
+            this["games"] = 0;
+        }
+        if (!("sessions" in $$source)) {
+            this["sessions"] = 0;
+        }
+        if (!("imported" in $$source)) {
+            this["imported"] = 0;
+        }
+        if (!("skipped" in $$source)) {
+            this["skipped"] = 0;
+        }
+        if (!("failed" in $$source)) {
+            this["failed"] = 0;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new AccountSyncResult instance from a string or object.
+     */
+    static createFrom($$source: any = {}): AccountSyncResult {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new AccountSyncResult($$parsedSource as Partial<AccountSyncResult>);
+    }
+}
+
 export class BangumiAuthStatus {
     "authorized": boolean;
     "needs_reauthorization": boolean;

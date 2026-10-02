@@ -147,3 +147,57 @@ func SanitizeHikarinagiOAuthConfig(config *AppConfig) bool {
 
 	return changed
 }
+
+// 账号令牌为空时（登出）一并清掉的字段。
+func SanitizeYukiHubAccountConfig(config *AppConfig) bool {
+	if config == nil {
+		return false
+	}
+
+	changed := false
+	trim := func(target *string) {
+		trimmed := strings.TrimSpace(*target)
+		if *target != trimmed {
+			*target = trimmed
+			changed = true
+		}
+	}
+
+	trim(&config.YukiHubAccountAccessToken)
+	trim(&config.YukiHubAccountRefreshToken)
+	trim(&config.YukiHubAccountUserID)
+	trim(&config.YukiHubAccountNickname)
+	trim(&config.YukiHubAccountEmail)
+	trim(&config.YukiHubAccountAvatar)
+	trim(&config.LastYukiHubAccountSyncHash)
+	trim(&config.LastYukiHubAccountSyncAt)
+
+	// 没有访问令牌就不是「已登录」状态，身份字段一并清掉，
+	// 否则界面会出现「未登录但显示昵称/头像」的中间态。
+	if config.YukiHubAccountAccessToken == "" {
+		if config.YukiHubAccountRefreshToken != "" {
+			config.YukiHubAccountRefreshToken = ""
+			changed = true
+		}
+		if config.YukiHubAccountUserID != "" {
+			config.YukiHubAccountUserID = ""
+			changed = true
+		}
+		if config.YukiHubAccountUID != 0 {
+			config.YukiHubAccountUID = 0
+			changed = true
+		}
+		if config.YukiHubAccountNickname != "" {
+			config.YukiHubAccountNickname = ""
+			changed = true
+		}
+		if config.YukiHubAccountAvatar != "" {
+			config.YukiHubAccountAvatar = ""
+			changed = true
+		}
+		config.YukiHubAccountKungalBound = false
+		config.YukiHubAccountHikarinagiBound = false
+	}
+
+	return changed
+}

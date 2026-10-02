@@ -15,9 +15,9 @@ import * as vo$0 from "../common/vo/models.js";
 /**
  * CompatToolsDetection 是自动检测到的转区 / 超分工具路径。
  * 
- * 为什么需要它：这两样都是第三方程序，不能随我们的安装包分发（各自的许可证 +
- * Magpie 还依赖 .NET 桌面运行时）。所以做成「零配置」——用户装过就自动认出来，
- * 或者把整个工具目录丢到程序目录下的 compat-tools\ 里也能被认出来。
+ * YukiHub 自带一份 Locale Emulator 与 Magpie（放在程序目录的 compat-tools\ 下，
+ * 见该目录的 SOURCE.txt），所以正常情况下用户什么都不用配；
+ * 检测同时覆盖「系统里已经装过」「用户自己换了新版本」两种情况。
  */
 export class CompatToolsDetection {
     "localeEmulatorPath": string;

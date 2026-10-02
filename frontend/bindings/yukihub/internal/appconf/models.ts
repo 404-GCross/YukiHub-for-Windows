@@ -226,6 +226,38 @@ export class AppConfig {
     "cloud_db_backup_retention"?: number;
 
     /**
+     * YukiHub 账号（自建账号服务 yukihub.zh.kg）
+     * 
+     * 令牌与第三方授权一样明文存在 appconf.json（与 Bangumi 个人令牌同一处理方式），
+     * 桌面端没有更可靠的本地密钥存储可用。
+     */
+    "yukihub_account_access_token"?: string;
+    "yukihub_account_refresh_token"?: string;
+    "yukihub_account_user_id"?: string;
+    "yukihub_account_uid"?: number;
+    "yukihub_account_nickname"?: string;
+    "yukihub_account_email"?: string;
+    "yukihub_account_avatar"?: string;
+    "yukihub_account_kungal_bound"?: boolean;
+    "yukihub_account_hikarinagi_bound"?: boolean;
+
+    /**
+     * YukiHubAccountCloudSyncEnabled 控制「登录后自动同步游戏库」。
+     */
+    "yukihub_account_cloud_sync_enabled": boolean;
+
+    /**
+     * YukiHubAccountSharePlaying 为 false 时仍然上报心跳，但不带上「正在玩」。
+     */
+    "yukihub_account_share_playing": boolean;
+
+    /**
+     * LastYukiHubAccountSyncHash 是上次同步的快照哈希，用于判断两边有没有改动。
+     */
+    "last_yukihub_account_sync_hash"?: string;
+    "last_yukihub_account_sync_at"?: string;
+
+    /**
      * OneDrive OAuth 配置
      * OneDrive Client ID
      */
@@ -598,6 +630,12 @@ export class AppConfig {
         }
         if (!("cloud_sync_interval_sec" in $$source)) {
             this["cloud_sync_interval_sec"] = 0;
+        }
+        if (!("yukihub_account_cloud_sync_enabled" in $$source)) {
+            this["yukihub_account_cloud_sync_enabled"] = false;
+        }
+        if (!("yukihub_account_share_playing" in $$source)) {
+            this["yukihub_account_share_playing"] = false;
         }
         if (!("auto_backup_db" in $$source)) {
             this["auto_backup_db"] = false;

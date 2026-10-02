@@ -81,6 +81,11 @@ func compatExecutableCandidates(executableName string, hints []string) []string 
 		add(filepath.Join(root, executableName))
 		add(filepath.Join(root, PortedCompatToolsDirName, executableName))
 		add(filepath.Join(root, "tools", executableName))
+		// compat-tools 下的一层子目录（一个工具一个目录）：
+		// 内置的 Locale Emulator / Magpie 就这么放，用户自己换版本时也照这个结构。
+		for _, match := range globSubDirs(filepath.Join(root, PortedCompatToolsDirName)) {
+			add(filepath.Join(match, executableName))
+		}
 		// 工具自带一层同名目录（Magpie-0.11.0\Magpie.exe）时也能命中
 		for _, match := range globCompatDirs(root, hints) {
 			add(filepath.Join(match, executableName))
@@ -122,6 +127,21 @@ func executableRoots() []string {
 		roots = append(roots, filepath.Dir(exe))
 	}
 	return roots
+}
+
+// globSubDirs 返回 base 下的一层子目录（base 不存在时返回空）。
+func globSubDirs(base string) []string {
+	entries, err := os.ReadDir(base)
+	if err != nil {
+		return nil
+	}
+	dirs := make([]string, 0, len(entries))
+	for _, entry := range entries {
+		if entry.IsDir() {
+			dirs = append(dirs, filepath.Join(base, entry.Name()))
+		}
+	}
+	return dirs
 }
 
 // globCompatDirs 在 base 下按 hints 找一层深度的目录（支持 * 通配），

@@ -459,6 +459,42 @@ INSERT / UPDATE 语句都不含这些列，落库时被**静默丢弃**——这
       - 验证：`gofmt` 无输出、`go vet ./...` 干净、`go test ./... -count=1` 全绿；
         `wails3 generate bindings`（枚举与两个 vo 模型更新）；前端
         `pnpm typecheck` / `build` / `i18n:check` 通过，改动文件 eslint 0 error
+- [x] 内置转区/超分工具 + YukiHub 账号系统（登录 / 云同步 / 社交）（2026-10-02 第二轮）
+      - 用户诉求：① 转区（Locale Emulator）与超分（Magpie）要**直接内置**、用户也能自行换新版本；
+        ② 把 YukiHub 的账号登录系统接上（范围选定「全套」：登录 + 云同步 + 在线状态 + 好友聊天）
+      - **内置工具**（`build/compat-tools/`，随包分发）：
+        · Locale Emulator 2.5.0.1（151 KB 压缩 / 0.7 MB 解压，LGPL-3.0）
+        · Magpie 0.12.1 x64（10.3 MB 压缩 / 28.8 MB 解压，GPL-3.0；**自带 WinUI 3 组件，
+          不需要另装 .NET 桌面运行时**，系统要求只有 Win10 1903+ / DX11）
+        · 合规：两者均为**聚合分发**（独立程序，未修改），随包附 `SOURCE.txt`
+          （版本、作者、仓库、许可证、源码获取方式）与 `gpl-3.0.txt` / `lgpl-3.0.txt` 全文
+        · 打包链路：`scripts/build.bat` 的便携版与 installer-payload 两处 xcopy；
+          NSIS 安装 `File /r`（卸载随 `$INSTDIR` 一并清除）
+        · **用户可自行替换**：`apputils` 的检测新增「扫 compat-tools 下一层子目录」，
+          一个工具一个目录；`ApplyDetectedCompatTools` 从「仅在路径为空时写入」
+          改为「路径为空**或已失效**（换过安装目录/删了旧工具）时重新检测」
+      - **账号系统**（后端 `https://yukihub.zh.kg/api`，接口契约与 Android 版一致）：
+        · 新增 `internal/service/yukihubaccount`：完整 API 客户端（登录/注册/发码/重置密码/
+          刷新令牌/资料/等级/头像上传 + 云同步 + 在线状态 + 好友/私聊/群聊 40 余个端点）
+          - 登录注册走 GET + query（后端既有设计）；认证 `Authorization: Bearer`
+          - 必带正常 UA 与 `Referer`（Cloudflare 按 UA 指纹拦）
+          - 云同步收发 gzip 原始字节，`/sync/download` 的 404 = 云端无数据（不是错误）
+          - 响应字段走「别名列表」解析（后端历史上换过 accessToken/access_token/token 等名字）
+        · 新增 `internal/service/account_service.go`：会话与令牌集中在 appconf；
+          **401 自动刷新一次**再重试（刷新失败才清会话）；45 秒心跳（与手机版一致），
+          「正在玩」取自未结束的游玩记录；退出登录时尽力通知服务端下线
+        · **云同步完全复用现成能力**：上传用 `YukiHubExporter.Build()`（产出的就是
+          Android 侧 schema 5 快照），下载用 `YukiHubImporter` 导入；
+          冲突按手机版策略做「云端优先合并」，同步后有 60 秒冷却
+        · 前端：设置 → 账户授权区新增 **YukiHub 账号卡片**（3 张卡片布局），
+          未登录是登录/注册/找回密码三种表单（含 60 秒发码倒计时），
+          已登录显示头像昵称 UID、云同步开关、分享正在玩开关、立即同步、改昵称、退出
+        · i18n 新增 43 键 × 4 语言；`SetRuntime`/`Init` 标 `//wails:ignore` 避免误暴露
+      - **尚未完成**：好友/私聊/群聊的**界面**（后端 30 个方法与前端绑定都已就绪，
+        只差 UI）；下一步单独做
+      - 验证：gofmt 无输出、`go vet ./...` 干净、`go test ./... -count=1` 全绿；
+        typecheck 通过、i18n:check 干净、改动文件 eslint 0 error
+
 - [x] LunaBox 导入改读 **ZIP 备份**（上一轮读 .db 是错的）+ 换 LunaBox 图标（2026-10-02）
       - 用户指出两处：① 导入菜单的图标不对，要用 LunaBox 的 logo；
         ② 「lunabox 备份的是这种」—— 给出的实际路径是

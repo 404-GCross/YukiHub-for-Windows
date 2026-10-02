@@ -401,6 +401,16 @@ Section
         SetOutPath $INSTDIR
     !endif
 
+    # 内置的转区（Locale Emulator）/ 超分（Magpie）工具。
+    # 它们是第三方程序（LGPL-3.0 / GPL-3.0），随包分发属聚合，
+    # 各自的许可证与来源说明在 compat-tools\SOURCE.txt。
+    # 卸载时整目录删除（见下方 uninstall 段），因为都是原样分发、不含用户数据。
+    !if /FileExists "..\..\bin\compat-tools\SOURCE.txt"
+        SetOutPath "$INSTDIR\compat-tools"
+        File /r "..\..\bin\compat-tools\*.*"
+        SetOutPath $INSTDIR
+    !endif
+
     # 命令行工具已下线：$INSTALL_CLI_TO_PATH 恒为 0，这一段只作为
     # 「旧版本装过 CLI 时清 PATH」的兼容代码保留。
     ${If} $INSTALL_CLI_TO_PATH == "1"
