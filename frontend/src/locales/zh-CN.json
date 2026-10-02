@@ -1600,7 +1600,8 @@
     "library": "游戏库",
     "stats": "统计",
     "categories": "收藏",
-    "chat": "好友 / 聊天"
+    "chat": "好友 / 聊天",
+    "community": "社区"
   },
   "processSelectModal": {
     "title": "选择游戏进程",

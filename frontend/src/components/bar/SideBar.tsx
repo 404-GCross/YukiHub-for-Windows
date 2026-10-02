@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { Browser } from "@wailsio/runtime";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { GetChatUnreadCount } from "../../../bindings/yukihub/internal/service/accountservice";
@@ -7,6 +8,9 @@ import { useAccountStatus } from "../../hooks/useAccountStatus";
 import { useAppStore } from "../../store";
 import { SnowflakeMark } from "../branding/SnowflakeMark";
 import { FriendsChatModal } from "../modal/FriendsChatModal";
+
+/** 官网社区页（手机版 HomeActivity 的「社区」入口指向同一地址）。 */
+const COMMUNITY_URL = "https://yukihub.zh.kg/community";
 
 interface SideBarProps {
   bgEnabled?: boolean;
@@ -232,6 +236,24 @@ export function SideBar({ bgEnabled = false, bgOpacity = 0.85 }: SideBarProps) {
               )}
             </div>
           </Link>
+          {/* 社区入口：手机版首页有「社区」按钮（浏览器打开官网社区页），
+              桌面端补上对应入口，保持两端功能一致。 */}
+          <button
+            type="button"
+            onClick={() => {
+              void Browser.OpenURL(COMMUNITY_URL).catch((error) => {
+                console.error("Failed to open community page:", error);
+              });
+            }}
+            aria-label={t("sideBar.community")}
+            title={t("sideBar.community")}
+            className={`${footerActionClass} select-none`}
+          >
+            <div
+              className="i-mdi-account-group-outline text-xl pointer-events-none"
+              aria-hidden="true"
+            />
+          </button>
           <Link
             to="/settings"
             className={`${footerActionClass} no-underline select-none data-glass:[&.active]:bg-white/20 data-glass:[&.active]:dark:bg-black/20`}

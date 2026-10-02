@@ -1600,7 +1600,8 @@
     "library": "遊戲庫",
     "stats": "統計",
     "categories": "收藏",
-    "chat": "好友 / 聊天"
+    "chat": "好友 / 聊天",
+    "community": "社群"
   },
   "processSelectModal": {
     "title": "選擇遊戲程序",

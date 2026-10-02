@@ -1600,7 +1600,8 @@
     "library": "ゲームライブラリ",
     "stats": "統計",
     "categories": "コレクション",
-    "chat": "フレンド / チャット"
+    "chat": "フレンド / チャット",
+    "community": "コミュニティ"
   },
   "processSelectModal": {
     "title": "ゲームプロセスを選択",

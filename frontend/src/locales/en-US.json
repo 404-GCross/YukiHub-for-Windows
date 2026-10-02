@@ -1600,7 +1600,8 @@
     "library": "Library",
     "stats": "Statistics",
     "categories": "Collections",
-    "chat": "Friends / Chat"
+    "chat": "Friends / Chat",
+    "community": "Community"
   },
   "processSelectModal": {
     "title": "Select Game Process",
