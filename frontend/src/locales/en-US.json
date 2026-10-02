@@ -1601,7 +1601,10 @@
     "stats": "Statistics",
     "categories": "Collections",
     "chat": "Friends / Chat",
-    "community": "Community"
+    "community": "Community",
+    "downloads": "Downloads",
+    "settings": "Settings",
+    "galToolbox": "Gal Toolbox"
   },
   "processSelectModal": {
     "title": "Select Game Process",

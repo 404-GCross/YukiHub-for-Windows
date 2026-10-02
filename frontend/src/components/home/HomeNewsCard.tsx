@@ -1,3 +1,7 @@
+import type {
+  MouseEvent as ReactMouseEvent,
+  PointerEvent as ReactPointerEvent,
+} from "react";
 import type { vo } from "../../bindings/models";
 import { Browser } from "@wailsio/runtime";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -12,13 +16,27 @@ import { ModalPortal } from "../ui/ModalPortal";
  * - 数据来自 NextMoe `/v2/news`（后端代理 + 2 小时磁盘缓存，见
  *   `internal/service/home_news_service.go`）；冷启动命中新鲜缓存不会发请求。
  * - 6 条自动轮播，间隔 5 秒（手机版 NEWS_CAROUSEL_INTERVAL_MS）。
- * - 圆点可点选，点选后暂停一会儿自动播放（与首页游戏轮播同一手感：
- *   「点一次就再也不动」是 bug，不是特性）。
- * - 点击整块打开详情：标题 + 摘要 + 日期/署名 + 阅读原文。
+ * - 圆点可点选、卡片可左右拖动切换（与上方游戏轮播同一套手势）。
+ * - 点击打开详情：标题 + 摘要 + 日期/署名 + 阅读原文。
  *   NextMoe 要求引用资讯必须标注来源，所以署名一定要显示。
+ *
+ * 题图**每条各自渲染成一个元素、层叠后只切透明度**。
+ * 上一版是同一个 `<img>` 复用、靠改 src 切图，而「加载失败回退直连」的标记
+ * 挂在 DOM 上永不重置 —— 第一张回退成功后，切到第二张时不再回退，切回第一张
+ * 时代理又失败而标记还在，表现就是「刚刚加载出来的图又没了」。
+ * 每条独立元素后，每张图持有自己的加载/失败状态互不影响，切回时命中浏览器
+ * 缓存可瞬时显示（手机版同样是每张图各自持有 bitmap）。
  */
 const NEWS_CAROUSEL_INTERVAL_MS = 5000;
 const NEWS_MANUAL_RESUME_DELAY_MS = 15000;
+
+/**
+ * 横向拖动多少像素算一次「滑动切换」（与 HomeHeroCard 一致）。
+ *
+ * 用位移阈值而不是「按下/抬起」判定：卡片里有标题、圆点，直接按 pointerup
+ * 当翻页会把普通点击也吃掉。
+ */
+const SWIPE_THRESHOLD_PX = 48;
 
 interface HomeNewsCardProps {
   /**
@@ -27,6 +45,42 @@ interface HomeNewsCardProps {
    * 首次挂载传 0（不触发，避免与初始加载重复请求）。
    */
   refreshToken?: number;
+}
+
+/**
+ * 单条资讯的题图。
+ *
+ * 代理失败时回退直连，且**只退一次**（靠「当前 src 是否已是原图」判断，
+ * 而不是在 DOM 上打一个永不重置的标记）。两种都失败就保持透明、露出卡片
+ * 底色 —— 比渲染浏览器的碎图图标体面。
+ */
+function NewsBannerImage({ url }: { url: string }) {
+  const [src, setSrc] = useState(() => (url ? proxiedImageSrc(url) : ""));
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  // 题图变化时靠父级的 key（id + url）重新挂载本组件，state 自然重置，
+  // 不需要在 effect 里再 set 一次。
+
+  if (!url) {
+    return null;
+  }
+
+  return (
+    <img
+      src={src}
+      alt=""
+      draggable={false}
+      className={`h-full w-full object-cover transition-opacity duration-500 ${
+        isLoaded ? "opacity-100" : "opacity-0"
+      }`}
+      onLoad={() => setIsLoaded(true)}
+      onError={() => {
+        if (src !== url) {
+          setSrc(url);
+        }
+      }}
+    />
+  );
 }
 
 export function HomeNewsCard({ refreshToken = 0 }: HomeNewsCardProps) {
@@ -41,6 +95,11 @@ export function HomeNewsCard({ refreshToken = 0 }: HomeNewsCardProps) {
   const [detailItem, setDetailItem] = useState<vo.HomeNewsItem | null>(null);
   const resumeTimerRef = useRef<number | null>(null);
 
+  // 拖动切换手势（与 HomeHeroCard 同一套实现）
+  const dragStartXRef = useRef<number | null>(null);
+  const dragTriggeredRef = useRef(false);
+  const suppressClickRef = useRef(false);
+
   const loadNews = useCallback(async (force: boolean) => {
     if (force) {
       setIsRefreshing(true);
@@ -51,13 +110,9 @@ export function HomeNewsCard({ refreshToken = 0 }: HomeNewsCardProps) {
     try {
       const result = await GetGalgameNews(force);
       const nextItems = result?.items ?? [];
-      // 后端在有旧缓存时会回退旧数据，这里只在前端拿不到任何内容时才清空。
       if (nextItems.length > 0) {
         setItems(nextItems);
         setActiveIndex(0);
-      }
-      else if (items.length === 0) {
-        setItems([]);
       }
       setIsTimedOut(Boolean(result?.timed_out));
     }
@@ -69,8 +124,6 @@ export function HomeNewsCard({ refreshToken = 0 }: HomeNewsCardProps) {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-    // items.length 只用于「是否清空」的判定，不作为触发条件
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -85,7 +138,46 @@ export function HomeNewsCard({ refreshToken = 0 }: HomeNewsCardProps) {
     void loadNews(true);
   }, [refreshToken, loadNews]);
 
-  // 自动轮播：悬停暂停、详情打开时暂停、手动点选后延时恢复。
+  useEffect(
+    () => () => {
+      if (resumeTimerRef.current !== null) {
+        window.clearTimeout(resumeTimerRef.current);
+      }
+    },
+    [],
+  );
+
+  /** 手动操作后暂停一会儿自动播放，避免「刚滑走又被自动切回去」。 */
+  const pauseCarouselBriefly = useCallback(() => {
+    setIsManuallyPaused(true);
+    if (resumeTimerRef.current !== null) {
+      window.clearTimeout(resumeTimerRef.current);
+    }
+    resumeTimerRef.current = window.setTimeout(() => {
+      setIsManuallyPaused(false);
+    }, NEWS_MANUAL_RESUME_DELAY_MS);
+  }, []);
+
+  /** 切到相对位置的条目（±1）。 */
+  const shiftIndex = useCallback(
+    (step: number) => {
+      if (items.length <= 1) {
+        return;
+      }
+      setActiveIndex(
+        current => (current + step + items.length) % items.length,
+      );
+      pauseCarouselBriefly();
+    },
+    [items.length, pauseCarouselBriefly],
+  );
+
+  const handleSelectIndex = (index: number) => {
+    setActiveIndex(index);
+    pauseCarouselBriefly();
+  };
+
+  // 自动轮播：悬停暂停、详情打开时暂停、手动操作后延时恢复。
   useEffect(() => {
     if (items.length <= 1 || isHovered || isManuallyPaused || detailItem) {
       return;
@@ -96,24 +188,46 @@ export function HomeNewsCard({ refreshToken = 0 }: HomeNewsCardProps) {
     return () => window.clearInterval(timer);
   }, [items.length, isHovered, isManuallyPaused, detailItem]);
 
-  useEffect(
-    () => () => {
-      if (resumeTimerRef.current !== null) {
-        window.clearTimeout(resumeTimerRef.current);
-      }
-    },
-    [],
-  );
-
-  const handleSelectIndex = (index: number) => {
-    setActiveIndex(index);
-    setIsManuallyPaused(true);
-    if (resumeTimerRef.current !== null) {
-      window.clearTimeout(resumeTimerRef.current);
+  const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    // 只认左键/单指，别把右键菜单、多指手势算成滑动
+    if (event.button !== 0) {
+      return;
     }
-    resumeTimerRef.current = window.setTimeout(() => {
-      setIsManuallyPaused(false);
-    }, NEWS_MANUAL_RESUME_DELAY_MS);
+    dragStartXRef.current = event.clientX;
+    dragTriggeredRef.current = false;
+    suppressClickRef.current = false;
+  };
+
+  const handlePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const startX = dragStartXRef.current;
+    if (startX === null || dragTriggeredRef.current) {
+      return;
+    }
+    const delta = event.clientX - startX;
+    if (Math.abs(delta) < SWIPE_THRESHOLD_PX) {
+      return;
+    }
+    // 一次手势只切一次：越过阈值立刻切走，之后继续拖不再重复触发
+    dragTriggeredRef.current = true;
+    shiftIndex(delta < 0 ? 1 : -1);
+  };
+
+  const handlePointerEnd = () => {
+    if (dragTriggeredRef.current) {
+      // 本次是滑动：吞掉紧随其后的 click，否则松开鼠标会顺手打开详情
+      suppressClickRef.current = true;
+    }
+    dragStartXRef.current = null;
+    dragTriggeredRef.current = false;
+  };
+
+  const handleClickCapture = (event: ReactMouseEvent<HTMLDivElement>) => {
+    if (!suppressClickRef.current) {
+      return;
+    }
+    suppressClickRef.current = false;
+    event.preventDefault();
+    event.stopPropagation();
   };
 
   const handleOpenOriginal = (url: string) => {
@@ -147,48 +261,60 @@ export function HomeNewsCard({ refreshToken = 0 }: HomeNewsCardProps) {
       </div>
 
       <div
-        className="relative min-h-32 flex-1 overflow-hidden rounded-xl bg-brand-900/85"
+        role="button"
+        tabIndex={0}
+        aria-label={t("home.news.openDetail")}
+        className="relative min-h-32 flex-1 cursor-pointer select-none overflow-hidden rounded-xl bg-brand-900/85"
+        style={{ touchAction: "pan-y" }}
+        onClick={() => {
+          if (activeItem) {
+            setDetailItem(activeItem);
+          }
+        }}
+        onClickCapture={handleClickCapture}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" && activeItem) {
+            setDetailItem(activeItem);
+          }
+        }}
         onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
+        onMouseLeave={() => {
+          setIsHovered(false);
+          // 指针没经过 pointerup 就离开（拖到卡片外）时，也要结束本次手势
+          handlePointerEnd();
+        }}
+        onPointerCancel={handlePointerEnd}
+        onPointerDown={handlePointerDown}
+        onPointerLeave={handlePointerEnd}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerEnd}
       >
-        {activeItem ? (
-          <button
-            type="button"
-            onClick={() => setDetailItem(activeItem)}
-            aria-label={t("home.news.openDetail")}
-            className="absolute inset-0 block h-full w-full cursor-pointer text-left"
+        {/* 题图：每条一个元素，层叠后只切透明度（避免复用一个 img 互相污染） */}
+        {items.map((item, index) => (
+          <div
+            key={`${item.id || item.title}-${item.banner_url}`}
+            className={`absolute inset-0 transition-opacity duration-500 ease-out ${
+              index === activeIndex ? "opacity-100" : "opacity-0"
+            }`}
           >
-            {activeItem.banner_url ? (
-              <img
-                src={proxiedImageSrc(activeItem.banner_url)}
-                alt=""
-                className="h-full w-full object-cover"
-                onError={(event) => {
-                  // 代理拿不到就直连原图（与聊天图片同一兜底策略）
-                  const img = event.currentTarget;
-                  if (
-                    !img.dataset.fallbackRaw
-                    && img.src !== activeItem.banner_url
-                  ) {
-                    img.dataset.fallbackRaw = "1";
-                    img.src = activeItem.banner_url;
-                  }
-                }}
-              />
-            ) : null}
+            <NewsBannerImage url={item.banner_url} />
+          </div>
+        ))}
 
+        {activeItem ? (
+          <>
             {/* 遮罩：手机版是同款「从下到上的深色渐变」，保证标题在任何题图上可读 */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent" />
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent" />
 
-            <div className="absolute inset-x-0 bottom-0 flex flex-col gap-1.5 px-3 pb-2.5">
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 flex flex-col gap-1.5 px-3 pb-2.5">
               <p className="line-clamp-2 text-sm font-bold leading-snug text-white drop-shadow-sm">
                 {activeItem.title}
               </p>
               {items.length > 1 ? (
-                <div className="flex items-center gap-1">
+                <div className="pointer-events-auto flex items-center gap-1">
                   {items.map((item, index) => (
                     <span
-                      key={item.id || item.title}
+                      key={item.id || `dot-${index}`}
                       role="button"
                       tabIndex={-1}
                       aria-hidden="true"
@@ -206,7 +332,7 @@ export function HomeNewsCard({ refreshToken = 0 }: HomeNewsCardProps) {
                 </div>
               ) : null}
             </div>
-          </button>
+          </>
         ) : (
           <div className="flex h-full w-full items-center justify-center px-4 text-center text-xs text-white/85">
             {isLoading ? (

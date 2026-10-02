@@ -1601,7 +1601,10 @@
     "stats": "統計",
     "categories": "收藏",
     "chat": "好友 / 聊天",
-    "community": "社群"
+    "community": "社群",
+    "downloads": "下載",
+    "settings": "設定",
+    "galToolbox": "Gal 工具箱"
   },
   "processSelectModal": {
     "title": "選擇遊戲程序",

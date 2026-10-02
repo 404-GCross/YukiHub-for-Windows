@@ -1601,7 +1601,10 @@
     "stats": "統計",
     "categories": "コレクション",
     "chat": "フレンド / チャット",
-    "community": "コミュニティ"
+    "community": "コミュニティ",
+    "downloads": "ダウンロード",
+    "settings": "設定",
+    "galToolbox": "Gal ツールボックス"
   },
   "processSelectModal": {
     "title": "ゲームプロセスを選択",

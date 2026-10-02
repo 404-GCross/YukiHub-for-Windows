@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { GetChatUnreadCount } from "../../../bindings/yukihub/internal/service/accountservice";
 import { onWailsEvent } from "../../../src/bindings/runtime";
+import galToolboxIconUrl from "../../assets/links/gal-toolbox.png";
 import { useAccountStatus } from "../../hooks/useAccountStatus";
 import { useAppStore } from "../../store";
 import { SnowflakeMark } from "../branding/SnowflakeMark";
@@ -11,6 +12,9 @@ import { FriendsChatModal } from "../modal/FriendsChatModal";
 
 /** 官网社区页（手机版 HomeActivity 的「社区」入口指向同一地址）。 */
 const COMMUNITY_URL = "https://yukihub.zh.kg/community";
+
+/** Gal 工具箱（第三方网页工具站，浏览器打开）。 */
+const GAL_TOOLBOX_URL = "https://xm486.github.io";
 
 interface SideBarProps {
   bgEnabled?: boolean;
@@ -28,7 +32,6 @@ export function SideBar({ bgEnabled = false, bgOpacity = 0.85 }: SideBarProps) {
   const [chatOpen, setChatOpen] = useState(false);
 
   const [prevSidebarOpen, setPrevSidebarOpen] = useState(isSidebarOpen);
-  const [delayedOpen, setDelayedOpen] = useState(isSidebarOpen);
   const [isFading, setIsFading] = useState(false);
 
   // 在渲染阶段直接更新派生状态，React 官方推荐做法，可避免 Effect 带来的多余重绘并解决 ESLint 警告
@@ -40,12 +43,11 @@ export function SideBar({ bgEnabled = false, bgOpacity = 0.85 }: SideBarProps) {
   useEffect(() => {
     if (isFading) {
       const timer = setTimeout(() => {
-        setDelayedOpen(isSidebarOpen);
         setIsFading(false);
       }, 150); // 与 300ms 过渡的一半时间相对应
       return () => clearTimeout(timer);
     }
-  }, [isFading, isSidebarOpen]);
+  }, [isFading]);
 
   // 监听下载进度事件，统计进行中的任务数
   useEffect(() => {
@@ -123,8 +125,16 @@ export function SideBar({ bgEnabled = false, bgOpacity = 0.85 }: SideBarProps) {
   // 而不是上游那种"整块实心灰底"。
   const navItemClass
     = "flex items-center rounded-lg border-l-2 border-transparent p-2 text-brand-600 no-underline transition-colors hover:bg-brand-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/70 dark:text-brand-300 dark:hover:bg-brand-700/70 [&.active]:border-primary-500 [&.active]:bg-primary-500/12 [&.active]:font-medium [&.active]:text-primary-700 dark:[&.active]:border-primary-300 dark:[&.active]:bg-primary-300/15 dark:[&.active]:text-primary-200 data-glass:hover:bg-white/10 data-glass:hover:dark:bg-black/10 data-glass:[&.active]:bg-white/20 data-glass:[&.active]:dark:bg-black/20";
-  const footerActionClass
-    = "relative flex items-center justify-center rounded-lg border-l-2 border-transparent p-2.5 text-brand-600 transition-colors hover:bg-brand-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/70 dark:text-brand-300 dark:hover:bg-brand-700/70 [&.active]:border-primary-500 [&.active]:bg-primary-500/12 [&.active]:text-primary-700 dark:[&.active]:border-primary-300 dark:[&.active]:bg-primary-300/15 dark:[&.active]:text-primary-200 data-glass:hover:bg-white/10 data-glass:hover:dark:bg-black/10";
+  /** 展开时显示的文字标签（收起时宽度归零，不会撑开侧栏）。 */
+  const renderNavLabel = (label: string) => (
+    <div
+      className={`overflow-hidden transition-all duration-300 flex items-center ${isSidebarOpen ? "w-[120px] ml-2 opacity-100" : "w-0 ml-0 opacity-0"}`}
+    >
+      <span className="pointer-events-none whitespace-nowrap shrink-0 break-keep">
+        {label}
+      </span>
+    </div>
+  );
   return (
     <aside
       className={`relative z-30 flex shrink-0 flex-col ${sidebarBgClass}`}
@@ -174,70 +184,91 @@ export function SideBar({ bgEnabled = false, bgOpacity = 0.85 }: SideBarProps) {
                     aria-hidden="true"
                   />
                 </div>
-                <div
-                  className={`overflow-hidden transition-all duration-300 flex items-center ${isSidebarOpen ? "w-[120px] ml-2 opacity-100" : "w-0 ml-0 opacity-0"}`}
-                >
-                  <span className="pointer-events-none whitespace-nowrap shrink-0 break-keep">
-                    {item.label}
-                  </span>
-                </div>
+                {renderNavLabel(item.label)}
               </Link>
             </li>
           ))}
+
+          {/* 好友 / 聊天：独立的大功能，和首页、游戏库同级放在主导航区
+              （手机版底部导航同样把聊天当一级入口）。 */}
+          <li>
+            <button
+              type="button"
+              onClick={() => setChatOpen(true)}
+              aria-label={t("sideBar.chat")}
+              className={`${navItemClass} w-full select-none`}
+            >
+              <div className="relative shrink-0 flex items-center justify-center w-8 h-8">
+                <div
+                  className="i-mdi-chat-processing-outline text-xl pointer-events-none"
+                  aria-hidden="true"
+                />
+                {chatUnread > 0 && (
+                  <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 flex items-center justify-center bg-error-500 text-white text-[10px] font-bold rounded-full leading-none pointer-events-none">
+                    {chatUnread > 99 ? "99+" : chatUnread}
+                  </span>
+                )}
+              </div>
+              {renderNavLabel(t("sideBar.chat"))}
+            </button>
+          </li>
         </ul>
       </nav>
 
+      {/* 底部工具栏：**始终竖排**。
+          之前这里在展开态切成横排（justify-end gap-1），塞进 4 个入口后直接
+          横向溢出把侧栏撑变形 —— 收起态图标横排放不下、展开态更是必然溢出。 */}
       <div
-        className={`p-4 ${bgEnabled ? "border-white/20 dark:border-white/10" : "border-brand-200 dark:border-brand-700"}`}
+        className={`border-t p-2 ${bgEnabled ? "border-white/20 dark:border-white/10" : "border-brand-200 dark:border-brand-700"}`}
       >
         <div
-          className={`flex items-center transition-opacity duration-150 ${delayedOpen ? "justify-end gap-1" : "flex-col gap-2"} ${isFading ? "opacity-0" : "opacity-100"}`}
+          className={`flex flex-col gap-2 transition-opacity duration-150 ${isFading ? "opacity-0" : "opacity-100"}`}
         >
           {/* 云同步状态已并入首页用户区（AccountModal），侧栏不再放第二入口 */}
 
-          <button
-            type="button"
-            onClick={() => setChatOpen(true)}
-            aria-label={t("sideBar.chat")}
-            className={`${footerActionClass} select-none`}
-          >
-            <div className="relative shrink-0">
-              <div
-                className="i-mdi-chat-processing-outline text-xl pointer-events-none"
-                aria-hidden="true"
-              />
-              {chatUnread > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 flex items-center justify-center bg-error-500 text-white text-[10px] font-bold rounded-full leading-none pointer-events-none">
-                  {chatUnread > 99 ? "99+" : chatUnread}
-                </span>
-              )}
-            </div>
-            {isSidebarOpen && delayedOpen && (
-              <span className="ml-2 overflow-hidden whitespace-nowrap text-sm">
-                {t("sideBar.chat")}
-              </span>
-            )}
-          </button>
-
           <Link
             to="/downloads"
-            className={`${footerActionClass} no-underline select-none data-glass:[&.active]:bg-white/20 data-glass:[&.active]:dark:bg-black/20`}
+            className={`${navItemClass} no-underline select-none data-glass:[&.active]:bg-white/20 data-glass:[&.active]:dark:bg-black/20`}
             onDragStart={e => e.preventDefault()}
           >
-            <div className="relative shrink-0">
+            <div className="relative shrink-0 flex items-center justify-center w-8 h-8">
               <div
                 className="i-mdi-download text-xl pointer-events-none"
                 aria-hidden="true"
               />
               {activeDownloads > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 flex items-center justify-center bg-blue-500 text-white text-[10px] font-bold rounded-full leading-none pointer-events-none">
+                <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 flex items-center justify-center bg-blue-500 text-white text-[10px] font-bold rounded-full leading-none pointer-events-none">
                   {activeDownloads > 99 ? "99+" : activeDownloads}
                 </span>
               )}
             </div>
+            {renderNavLabel(t("sideBar.downloads"))}
           </Link>
-          {/* 社区入口：手机版首页有「社区」按钮（浏览器打开官网社区页），
-              桌面端补上对应入口，保持两端功能一致。 */}
+
+          {/* Gal 工具箱：第三方网页工具站，用自家 logo 图标 */}
+          <button
+            type="button"
+            onClick={() => {
+              void Browser.OpenURL(GAL_TOOLBOX_URL).catch((error) => {
+                console.error("Failed to open gal toolbox:", error);
+              });
+            }}
+            aria-label={t("sideBar.galToolbox")}
+            title={t("sideBar.galToolbox")}
+            className={`${navItemClass} select-none`}
+          >
+            <div className="relative shrink-0 flex items-center justify-center w-8 h-8">
+              <img
+                src={galToolboxIconUrl}
+                alt=""
+                draggable={false}
+                className="h-5 w-5 rounded object-contain"
+              />
+            </div>
+            {renderNavLabel(t("sideBar.galToolbox"))}
+          </button>
+
+          {/* 社区：手机版首页有「社区」按钮（浏览器打开官网社区页） */}
           <button
             type="button"
             onClick={() => {
@@ -247,22 +278,29 @@ export function SideBar({ bgEnabled = false, bgOpacity = 0.85 }: SideBarProps) {
             }}
             aria-label={t("sideBar.community")}
             title={t("sideBar.community")}
-            className={`${footerActionClass} select-none`}
+            className={`${navItemClass} select-none`}
           >
-            <div
-              className="i-mdi-account-group-outline text-xl pointer-events-none"
-              aria-hidden="true"
-            />
+            <div className="relative shrink-0 flex items-center justify-center w-8 h-8">
+              <div
+                className="i-mdi-account-group-outline text-xl pointer-events-none"
+                aria-hidden="true"
+              />
+            </div>
+            {renderNavLabel(t("sideBar.community"))}
           </button>
+
           <Link
             to="/settings"
-            className={`${footerActionClass} no-underline select-none data-glass:[&.active]:bg-white/20 data-glass:[&.active]:dark:bg-black/20`}
+            className={`${navItemClass} no-underline select-none data-glass:[&.active]:bg-white/20 data-glass:[&.active]:dark:bg-black/20`}
             onDragStart={e => e.preventDefault()}
           >
-            <div
-              className="i-mdi-cog text-xl pointer-events-none"
-              aria-hidden="true"
-            />
+            <div className="relative shrink-0 flex items-center justify-center w-8 h-8">
+              <div
+                className="i-mdi-cog text-xl pointer-events-none"
+                aria-hidden="true"
+              />
+            </div>
+            {renderNavLabel(t("sideBar.settings"))}
           </Link>
         </div>
       </div>
