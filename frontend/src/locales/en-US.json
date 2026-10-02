@@ -1772,6 +1772,13 @@
     "loadOlder": "Load earlier messages",
     "startChat": "Say hello",
     "reply": "Click to reply",
-    "inputPlaceholder": "Type a message, Enter to send"
+    "inputPlaceholder": "Type a message, Enter to send",
+    "emojiTabLocal": "Emojis",
+    "emojiTabStickers": "NextMoe stickers",
+    "backToPacks": "‹ Back to packs",
+    "noEmojis": "No emojis available",
+    "stickerPackEmpty": "This pack has no stickers",
+    "emojiPicker": "Emoji",
+    "sendImage": "Send image"
   }
 }

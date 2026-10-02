@@ -1772,6 +1772,13 @@
     "loadOlder": "查看更早的訊息",
     "startChat": "開始聊天吧",
     "reply": "點擊回覆這條訊息",
-    "inputPlaceholder": "輸入訊息，Enter 傳送"
+    "inputPlaceholder": "輸入訊息，Enter 傳送",
+    "emojiTabLocal": "表情包",
+    "emojiTabStickers": "未萌貼紙",
+    "backToPacks": "‹ 返回貼紙包",
+    "noEmojis": "暫無可用表情",
+    "stickerPackEmpty": "該包暫無可發表情",
+    "emojiPicker": "表情",
+    "sendImage": "傳送圖片"
   }
 }

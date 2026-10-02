@@ -1772,6 +1772,13 @@
     "loadOlder": "以前のメッセージを見る",
     "startChat": "チャットを始めましょう",
     "reply": "クリックして返信",
-    "inputPlaceholder": "メッセージを入力、Enter で送信"
+    "inputPlaceholder": "メッセージを入力、Enter で送信",
+    "emojiTabLocal": "スタンプ",
+    "emojiTabStickers": "未萌ステッカー",
+    "backToPacks": "‹ パックに戻る",
+    "noEmojis": "利用可能なスタンプがありません",
+    "stickerPackEmpty": "このパックにスタンプがありません",
+    "emojiPicker": "スタンプ",
+    "sendImage": "画像を送信"
   }
 }

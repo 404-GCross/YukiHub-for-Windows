@@ -1,9 +1,11 @@
 import type {
+  ChatEmoji,
   ChatGroup,
   ChatMessage,
   Friend,
   FriendList,
 } from "../../../bindings/yukihub/internal/service/yukihubaccount/models";
+import type { vo } from "../../../src/bindings/models";
 import { useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
@@ -11,16 +13,22 @@ import {
   AcceptFriendRequest,
   GetChatHistory,
   GetGroupHistory,
+  ListChatEmojis,
   ListChatGroups,
+  ListChatStickerPacks,
+  ListChatStickerURLs,
   ListFriends,
   PollChatMessages,
   PollGroupMessages,
   RejectFriendRequest,
   SearchUsers,
+  SelectChatImage,
   SendChatMessage,
   SendFriendRequest,
   SendGroupMessage,
+  UploadChatImage,
 } from "../../../bindings/yukihub/internal/service/accountservice";
+import { proxiedImageSrc } from "../../utils/imageProxy";
 import { BetterButton } from "../ui/better/BetterButton";
 import { BetterInput } from "../ui/better/BetterInput";
 import { ModalPortal } from "../ui/ModalPortal";
@@ -44,6 +52,16 @@ type MainView = "list" | "requests" | "add" | "chat";
 
 interface ChatDraft {
   text: string;
+}
+
+/** 表情/贴纸选择面板：0=本站表情 1=未萌贴纸包列表 2=包内表情（与手机版一致） */
+type EmojiTab = 0 | 1 | 2;
+
+interface StickerPackView {
+  id: string;
+  title: string;
+  cover: string;
+  stickerCount: number;
 }
 
 /**
@@ -78,6 +96,18 @@ export function FriendsChatModal({
   const [searchResults, setSearchResults] = useState<Friend[] | null>(null);
   const [isSearching, setIsSearching] = useState(false);
 
+  // 表情 / 贴纸面板状态
+  const [emojiPanelOpen, setEmojiPanelOpen] = useState(false);
+  const [emojiTab, setEmojiTab] = useState<EmojiTab>(0);
+  const [emojis, setEmojis] = useState<ChatEmoji[] | null>(null);
+  const [stickerEnabled, setStickerEnabled] = useState(false);
+  const [stickerPacks, setStickerPacks] = useState<StickerPackView[]>([]);
+  const [activeStickerPack, setActiveStickerPack]
+    = useState<StickerPackView | null>(null);
+  const [stickerURLs, setStickerURLs] = useState<string[]>([]);
+  const [stickerLoading, setStickerLoading] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+
   const listRef = useRef<HTMLDivElement | null>(null);
   const oldestIdRef = useRef<string>("");
   const targetRef = useRef<ChatTarget | null>(null);
@@ -85,6 +115,59 @@ export function FriendsChatModal({
   const pollTimerRef = useRef<number | null>(null);
 
   targetRef.current = target;
+
+  /** 表情名 → 可显示 URL：http(s) 原样；本站表情按手机版规则兜底 */
+  const emojiDisplayURL = (content: string): string => {
+    if (/^https?:\/\//i.test(content)) {
+      return content;
+    }
+    return `https://yukihub.zh.kg/uploads/emojis/${content}.webp`;
+  };
+
+  /** 懒加载表情与贴纸数据（首次打开面板时） */
+  const loadEmojiPanelData = async () => {
+    if (emojis === null) {
+      ListChatEmojis()
+        .then(list => setEmojis(list))
+        .catch(() => setEmojis([]));
+    }
+    if (!stickerEnabled && stickerPacks.length === 0) {
+      ListChatStickerPacks()
+        .then((list) => {
+          setStickerEnabled(list.enabled);
+          setStickerPacks(
+            list.packs.map(pack => ({
+              id: pack.id ?? "",
+              title: pack.title ?? "",
+              cover: pack.cover ?? "",
+              stickerCount: pack.sticker_count ?? 0,
+            })),
+          );
+        })
+        .catch(() => setStickerEnabled(false));
+    }
+  };
+
+  /** 进入某个贴纸包 */
+  const openStickerPack = async (pack: StickerPackView) => {
+    setStickerLoading(true);
+    try {
+      const urls = await ListChatStickerURLs(pack.id);
+      if (urls.length === 0) {
+        toast.error(t("friendsChat.stickerPackEmpty"));
+        return;
+      }
+      setActiveStickerPack(pack);
+      setStickerURLs(urls);
+      setEmojiTab(2);
+    }
+    catch (error) {
+      toast.error(error instanceof Error ? error.message : String(error));
+    }
+    finally {
+      setStickerLoading(false);
+    }
+  };
 
   /** 滚到消息底部 */
   const scrollToBottom = (smooth = true) => {
@@ -97,6 +180,85 @@ export function FriendsChatModal({
         });
       }
     });
+  };
+
+  const mergeMessages = (incoming: ChatMessage[]) => {
+    if (incoming.length === 0) {
+      return;
+    }
+    setMessages((current) => {
+      const seen = new Set(current.map(item => item.id));
+      const merged = [...current];
+      for (const item of incoming) {
+        if (!seen.has(item.id)) {
+          merged.push(item);
+          seen.add(item.id);
+        }
+      }
+      merged.sort((a, b) => String(a.id).localeCompare(String(b.id)));
+      return merged;
+    });
+  };
+
+  /** 发送表情消息（本站表情传名字，贴纸传 URL，与手机版一致） */
+  const sendEmoji = async (content: string) => {
+    const current = target;
+    if (!current || isSending) {
+      return;
+    }
+    setIsSending(true);
+    try {
+      const isFriend = current.kind === "friend";
+      const sent = isFriend
+        ? await SendChatMessage(current.friend.id, content, "emoji", "")
+        : await SendGroupMessage(current.group.id, content, "emoji", "");
+      if (sent.id) {
+        mergeMessages([sent]);
+        afterIdRef.current = sent.id || afterIdRef.current;
+      }
+      setEmojiPanelOpen(false);
+      scrollToBottom();
+    }
+    catch (error) {
+      toast.error(error instanceof Error ? error.message : String(error));
+    }
+    finally {
+      setIsSending(false);
+    }
+  };
+
+  /** 选图 → 上传 → 发图片消息（选图/上传在后端，前端只串流程） */
+  const pickAndSendImage = async () => {
+    if (isUploadingImage) {
+      return;
+    }
+    setIsUploadingImage(true);
+    try {
+      const picked: vo.ChatImagePick = await SelectChatImage();
+      if (!picked.path) {
+        return; // 用户取消
+      }
+      const url = await UploadChatImage(picked.data, picked.mime_type);
+      const current = target;
+      if (!current) {
+        return;
+      }
+      const isFriend = current.kind === "friend";
+      const sent = isFriend
+        ? await SendChatMessage(current.friend.id, url, "image", "")
+        : await SendGroupMessage(current.group.id, url, "image", "");
+      if (sent.id) {
+        mergeMessages([sent]);
+        afterIdRef.current = sent.id || afterIdRef.current;
+      }
+      scrollToBottom();
+    }
+    catch (error) {
+      toast.error(error instanceof Error ? error.message : String(error));
+    }
+    finally {
+      setIsUploadingImage(false);
+    }
   };
 
   /** 拉好友 + 群列表 */
@@ -149,24 +311,6 @@ export function FriendsChatModal({
     },
     [],
   );
-
-  const mergeMessages = (incoming: ChatMessage[]) => {
-    if (incoming.length === 0) {
-      return;
-    }
-    setMessages((current) => {
-      const seen = new Set(current.map(item => item.id));
-      const merged = [...current];
-      for (const item of incoming) {
-        if (!seen.has(item.id)) {
-          merged.push(item);
-          seen.add(item.id);
-        }
-      }
-      merged.sort((a, b) => String(a.id).localeCompare(String(b.id)));
-      return merged;
-    });
-  };
 
   /** 打开会话：拉历史并启动轮询 */
   const openChat = async (nextTarget: ChatTarget) => {
@@ -395,6 +539,29 @@ export function FriendsChatModal({
   const renderMessageBubble = (message: ChatMessage, isGroup: boolean) => {
     const isMine = Boolean(message.isMine);
     const senderName = message.senderName || `UID ${message.senderUid}`;
+    // 表情 / 图片 / 文本三种气泡（与手机版 buildMessageBubble 的分支一致）
+    const bubbleContent = (() => {
+      if (message.msgType === "emoji") {
+        return (
+          <img
+            src={proxiedImageSrc(emojiDisplayURL(message.content))}
+            alt=""
+            className="h-24 w-24 object-contain"
+          />
+        );
+      }
+      if (message.msgType === "image") {
+        return (
+          <img
+            src={proxiedImageSrc(message.content)}
+            alt=""
+            className="max-h-48 rounded-xl object-contain"
+          />
+        );
+      }
+      return message.content;
+    })();
+    const isMedia = message.msgType === "emoji" || message.msgType === "image";
     return (
       <div
         key={message.id}
@@ -416,26 +583,27 @@ export function FriendsChatModal({
               {message.replyPreview}
             </div>
           )}
-          <div
-            className={`cursor-pointer rounded-2xl px-3 py-2 text-sm leading-relaxed ${
-              isMine
-                ? "rounded-br-md bg-primary-500 text-white"
-                : "rounded-bl-md bg-brand-100 text-brand-900 dark:bg-brand-700/70 dark:text-brand-50"
-            }`}
-            title={t("friendsChat.reply")}
-            onClick={() => setReplyTo(message)}
-          >
-            {message.msgType === "image"
-              && message.content.startsWith("http") ? (
-                  <img
-                    src={message.content}
-                    alt=""
-                    className="max-h-48 rounded-lg"
-                  />
-                ) : (
-                  message.content
-                )}
-          </div>
+          {isMedia ? (
+            <div
+              className="cursor-pointer"
+              title={t("friendsChat.reply")}
+              onClick={() => setReplyTo(message)}
+            >
+              {bubbleContent}
+            </div>
+          ) : (
+            <div
+              className={`cursor-pointer rounded-2xl px-3 py-2 text-sm leading-relaxed ${
+                isMine
+                  ? "rounded-br-md bg-primary-500 text-white"
+                  : "rounded-bl-md bg-brand-100 text-brand-900 dark:bg-brand-700/70 dark:text-brand-50"
+              }`}
+              title={t("friendsChat.reply")}
+              onClick={() => setReplyTo(message)}
+            >
+              {bubbleContent}
+            </div>
+          )}
           {message.createdAt && (
             <span className="px-1 text-[10px] text-brand-400 dark:text-brand-500">
               {message.createdAt}
@@ -893,8 +1061,174 @@ export function FriendsChatModal({
                 </div>
               )}
 
+              {/* 表情 / 贴纸选择面板（与手机版双 tab 一致） */}
+              {emojiPanelOpen && (
+                <div className="border-t border-brand-200/80 bg-brand-50/80 p-3 dark:border-brand-700/80 dark:bg-brand-900/40">
+                  <div className="mb-2 flex items-center gap-2">
+                    {emojiTab === 2 ? (
+                      <button
+                        type="button"
+                        onClick={() => setEmojiTab(1)}
+                        className="text-xs text-primary-600 hover:underline dark:text-primary-300"
+                      >
+                        {t("friendsChat.backToPacks")}
+                      </button>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEmojiTab(0);
+                            void loadEmojiPanelData();
+                          }}
+                          className={`rounded-lg px-3 py-1 text-xs font-medium transition-colors ${
+                            emojiTab === 0
+                              ? "bg-primary-500 text-white"
+                              : "text-brand-600 hover:bg-brand-100 dark:text-brand-300 dark:hover:bg-brand-700/60"
+                          }`}
+                        >
+                          {t("friendsChat.emojiTabLocal")}
+                        </button>
+                        {stickerEnabled && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEmojiTab(1);
+                              void loadEmojiPanelData();
+                            }}
+                            className={`rounded-lg px-3 py-1 text-xs font-medium transition-colors ${
+                              emojiTab === 1
+                                ? "bg-primary-500 text-white"
+                                : "text-brand-600 hover:bg-brand-100 dark:text-brand-300 dark:hover:bg-brand-700/60"
+                            }`}
+                          >
+                            {t("friendsChat.emojiTabStickers")}
+                          </button>
+                        )}
+                      </>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setEmojiPanelOpen(false)}
+                      aria-label={t("common.close")}
+                      className="ml-auto rounded-lg p-1.5 text-brand-400 transition-colors hover:bg-brand-100 hover:text-brand-600 dark:hover:bg-brand-700"
+                    >
+                      <span className="i-mdi-close text-sm" />
+                    </button>
+                  </div>
+
+                  {stickerLoading && (
+                    <p className="py-6 text-center text-xs text-brand-500">
+                      {t("friendsChat.loading")}
+                    </p>
+                  )}
+
+                  {/* tab 0：本站表情网格 */}
+                  {emojiTab === 0 && (
+                    <div className="grid max-h-48 grid-cols-6 gap-1 overflow-y-auto sm:grid-cols-8">
+                      {emojis === null && (
+                        <p className="col-span-full py-4 text-center text-xs text-brand-500">
+                          {t("friendsChat.loading")}
+                        </p>
+                      )}
+                      {emojis?.length === 0 && (
+                        <p className="col-span-full py-4 text-center text-xs text-brand-500 dark:text-brand-400">
+                          {t("friendsChat.noEmojis")}
+                        </p>
+                      )}
+                      {emojis?.map(emoji => (
+                        <button
+                          key={emoji.name}
+                          type="button"
+                          title={emoji.name}
+                          onClick={() => void sendEmoji(emoji.name)}
+                          className="flex items-center justify-center rounded-lg p-1 transition-colors hover:bg-brand-100 dark:hover:bg-brand-700/60"
+                        >
+                          <img
+                            src={proxiedImageSrc(
+                              emoji.url || emojiDisplayURL(emoji.name),
+                            )}
+                            alt={emoji.name}
+                            className="h-9 w-9 object-contain"
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* tab 1：未萌贴纸包列表 */}
+                  {emojiTab === 1 && (
+                    <div className="grid max-h-48 grid-cols-3 gap-2 overflow-y-auto sm:grid-cols-4">
+                      {stickerPacks.map(pack => (
+                        <button
+                          key={pack.id}
+                          type="button"
+                          onClick={() => void openStickerPack(pack)}
+                          className="flex items-center gap-2 rounded-xl border border-brand-200/70 p-1.5 text-left transition-colors hover:bg-brand-100 dark:border-brand-700/70 dark:hover:bg-brand-700/60"
+                        >
+                          <img
+                            src={proxiedImageSrc(pack.cover)}
+                            alt=""
+                            className="h-10 w-10 shrink-0 rounded-lg object-cover"
+                          />
+                          <span className="min-w-0 flex-1 truncate text-[11px] font-medium text-brand-700 dark:text-brand-200">
+                            {pack.title}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* tab 2：包内表情网格（点击直接发 URL） */}
+                  {emojiTab === 2 && activeStickerPack && (
+                    <div className="grid max-h-48 grid-cols-6 gap-1 overflow-y-auto sm:grid-cols-8">
+                      {stickerURLs.map(url => (
+                        <button
+                          key={url}
+                          type="button"
+                          onClick={() => void sendEmoji(url)}
+                          className="flex items-center justify-center rounded-lg p-1 transition-colors hover:bg-brand-100 dark:hover:bg-brand-700/60"
+                        >
+                          <img
+                            src={proxiedImageSrc(url)}
+                            alt=""
+                            className="h-9 w-9 object-contain"
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* 输入区 */}
               <div className="flex items-center gap-2 border-t border-brand-200/80 p-3 dark:border-brand-700/80">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEmojiPanelOpen(open => !open);
+                    void loadEmojiPanelData();
+                  }}
+                  aria-label={t("friendsChat.emojiPicker")}
+                  className={`shrink-0 rounded-lg p-2 transition-colors ${
+                    emojiPanelOpen
+                      ? "bg-primary-500/15 text-primary-600 dark:text-primary-300"
+                      : "text-brand-500 hover:bg-brand-100 hover:text-brand-700 dark:text-brand-400 dark:hover:bg-brand-700"
+                  }`}
+                >
+                  <span className="i-mdi-emoticon-outline text-lg" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void pickAndSendImage()}
+                  disabled={isUploadingImage}
+                  aria-label={t("friendsChat.sendImage")}
+                  className="shrink-0 rounded-lg p-2 text-brand-500 transition-colors hover:bg-brand-100 hover:text-brand-700 disabled:opacity-50 dark:text-brand-400 dark:hover:bg-brand-700"
+                >
+                  <span
+                    className={`${isUploadingImage ? "i-mdi-loading animate-spin" : "i-mdi-image-outline"} text-lg`}
+                  />
+                </button>
                 <BetterInput
                   value={draft.text}
                   onChange={e => setDraft({ text: e.target.value })}

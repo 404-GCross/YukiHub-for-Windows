@@ -33,11 +33,18 @@ import (
 // 是 YukiHub 会话（applySession）。
 
 // 快捷登录渠道的桌面回调端口与路径（与其它 OAuth 服务一样走固定端口 loopback，
-// RFC 8252 的 native app 标准做法；端口必须在对应平台后台登记过）。
+// RFC 8252 的 native app 标准做法）。
+//
+// **端口必须复用已登记过的回调**，不能再挑新的：
+//   - 鲲站快捷登录与 NextMoe 刮削授权是**同一个 OAuth 应用**（client `16cc...`），
+//     该应用在平台后台登记的 PC 回调是 `127.0.0.1:14792`（见 nextmoe_service.go，
+//     也是 ADR-0003 说的「已登记、注册一次长期有效」），这里直接复用 14792；
+//   - Hikarinagi 登录与 HikarinagiService 的授权共用 client `hkn_qtm...`，
+//     已登记 `127.0.0.1:14791`，同样复用。
 const (
-	kungalCallbackPort          = 23679
+	kungalCallbackPort          = 14792 // 与 NextMoeService 同应用同回调，不是 Bangumi 的 23679
 	kungalCallbackPath          = "/callback"
-	kungalRedirectURI           = "http://127.0.0.1:23679/callback"
+	kungalRedirectURI           = "http://127.0.0.1:14792/callback"
 	kungalAuthTimeout           = 10 * time.Minute
 	hikarinagiLoginCallbackPort = 14791 // 与 HikarinagiService 的授权回调同端口同应用
 	hikarinagiLoginRedirectURI  = "http://127.0.0.1:14791/callback"

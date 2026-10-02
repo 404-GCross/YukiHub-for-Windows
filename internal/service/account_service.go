@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -21,6 +22,19 @@ import (
 	"yukihub/internal/service/yukihubaccount"
 	"yukihub/internal/wailsruntime"
 )
+
+// chatImageMIME 按扩展名给聊天图片的 MIME；不支持时返回空串。
+func chatImageMIME(path string) string {
+	switch strings.ToLower(strings.TrimSpace(filepath.Ext(path))) {
+	case ".jpg", ".jpeg":
+		return "image/jpeg"
+	case ".png":
+		return "image/png"
+	case ".webp":
+		return "image/webp"
+	}
+	return ""
+}
 
 // YukiHub 账号服务相关常量。
 const (
@@ -673,6 +687,116 @@ func (s *AccountService) ListChatEmojis() ([]yukihubaccount.ChatEmoji, error) {
 	return accountFetch(s, func(token string) ([]yukihubaccount.ChatEmoji, error) {
 		return s.client.ListEmojis(s.resolveContext(nil), token)
 	})
+}
+
+// SelectChatImage 打开图片选择对话框，选中后读取文件内容（供聊天图片消息用）。
+//
+// 返回 (路径, 内容字节, MIME 类型)；用户取消时路径为空串、其余为零值。
+// 压缩在浏览器侧做不了、后端再做一遍太绕：服务端上限 500KB，这里只校验大小
+// 并按扩展名给出 MIME，超限时直接报错提示用户换图（与手机版行为一致）。
+func (s *AccountService) SelectChatImage() (vo.ChatImagePick, error) {
+	result := vo.ChatImagePick{}
+	if s.runtime == nil {
+		return result, errors.New("窗口尚未就绪")
+	}
+	path, err := s.runtime.OpenFile(wailsruntime.OpenDialogOptions{
+		Title: "选择要发送的图片",
+		Filters: []wailsruntime.FileFilter{
+			{DisplayName: "图片 (jpg/png/webp)", Pattern: "*.jpg;*.jpeg;*.png;*.webp"},
+		},
+	})
+	if err != nil {
+		return result, fmt.Errorf("打开图片选择失败: %w", err)
+	}
+	path = strings.TrimSpace(path)
+	if path == "" {
+		// 用户取消，不算错误
+		return result, nil
+	}
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return result, fmt.Errorf("读取图片失败: %w", err)
+	}
+	// 服务端上限 500KB（与手机版 ChatImagePicker.MAX_BYTES 的口径一致，
+	// 留 20KB 余量），超出直接拒绝而不是静默压缩——压缩交给用户自己裁剪。
+	const maxImageBytes = 500 * 1024
+	if len(data) > maxImageBytes {
+		return result, fmt.Errorf("图片超过 500KB 上限，请先压缩或裁剪后再发送")
+	}
+
+	mimeType := chatImageMIME(path)
+	if mimeType == "" {
+		return result, errors.New("仅支持 jpg / png / webp 图片")
+	}
+	result.Path = path
+	result.Data = data
+	result.MimeType = mimeType
+	return result, nil
+}
+
+// UploadChatImage 上传聊天图片字节，返回可直接放进消息 content 的 URL。
+func (s *AccountService) UploadChatImage(data []byte, mimeType string) (string, error) {
+	if len(data) == 0 {
+		return "", errors.New("图片内容为空")
+	}
+	return accountFetch(s, func(token string) (string, error) {
+		return s.client.UploadChatImage(s.resolveContext(nil), token, mimeType, data)
+	})
+}
+
+// ListChatStickerPacks 拉未萌贴纸包列表（服务端代理）。
+// Enabled=false 表示服务端未启用，界面隐藏「未萌贴纸」入口。
+func (s *AccountService) ListChatStickerPacks() (vo.ChatStickerList, error) {
+	return accountFetch(s, func(token string) (vo.ChatStickerList, error) {
+		enabled, rawPacks, err := s.client.ListStickerPacks(s.resolveContext(nil), token)
+		if err != nil {
+			return vo.ChatStickerList{}, err
+		}
+		list := vo.ChatStickerList{Enabled: enabled, Packs: make([]vo.ChatStickerPack, 0, len(rawPacks))}
+		for _, raw := range rawPacks {
+			pack := vo.ChatStickerPack{
+				ID:           pickServiceString(raw, "id"),
+				Title:        pickServiceString(raw, "title"),
+				Cover:        pickServiceString(raw, "cover"),
+				StickerCount: int(pickServiceInt64(raw, "sticker_count", "stickerCount")),
+			}
+			if pack.ID != "" && pack.Cover != "" {
+				list.Packs = append(list.Packs, pack)
+			}
+		}
+		return list, nil
+	})
+}
+
+// ListChatStickerURLs 拉某个未萌贴纸包里的全部表情地址。
+func (s *AccountService) ListChatStickerURLs(packID string) ([]string, error) {
+	if strings.TrimSpace(packID) == "" {
+		return nil, errors.New("缺少贴纸包 id")
+	}
+	return accountFetch(s, func(token string) ([]string, error) {
+		return s.client.ListStickerURLs(s.resolveContext(nil), token, packID)
+	})
+}
+
+// pickServiceString / pickServiceInt64 是 account_service 里的小工具：
+// 服务端贴纸响应的字段名在 snake/camel 之间摇摆，逐个候选取值。
+func pickServiceString(source map[string]any, keys ...string) string {
+	for _, key := range keys {
+		if value, ok := source[key].(string); ok && strings.TrimSpace(value) != "" {
+			return strings.TrimSpace(value)
+		}
+	}
+	return ""
+}
+
+func pickServiceInt64(source map[string]any, keys ...string) int64 {
+	for _, key := range keys {
+		if value, ok := source[key].(float64); ok {
+			return int64(value)
+		}
+	}
+	return 0
 }
 
 // ListChatGroups 群列表。

@@ -90,11 +90,30 @@ export function ListChatGroups(): $CancellablePromise<yukihubaccount$0.ChatGroup
 }
 
 /**
+ * ListChatStickerPacks 拉未萌贴纸包列表（服务端代理）。
+ * Enabled=false 表示服务端未启用，界面隐藏「未萌贴纸」入口。
+ */
+export function ListChatStickerPacks(): $CancellablePromise<vo$0.ChatStickerList> {
+    return $Call.ByID(3198305305).then(($result: any) => {
+        return $$createType8($result);
+    });
+}
+
+/**
+ * ListChatStickerURLs 拉某个未萌贴纸包里的全部表情地址。
+ */
+export function ListChatStickerURLs(packID: string): $CancellablePromise<string[]> {
+    return $Call.ByID(3022118279, packID).then(($result: any) => {
+        return $$createType9($result);
+    });
+}
+
+/**
  * ListFriends 好友列表与待处理申请。
  */
 export function ListFriends(): $CancellablePromise<yukihubaccount$0.FriendList> {
     return $Call.ByID(138003445).then(($result: any) => {
-        return $$createType8($result);
+        return $$createType10($result);
     });
 }
 
@@ -167,7 +186,20 @@ export function ResetAccountPassword(email: string, code: string, password: stri
  */
 export function SearchUsers(keyword: string): $CancellablePromise<yukihubaccount$0.Friend[]> {
     return $Call.ByID(865387128, keyword).then(($result: any) => {
-        return $$createType10($result);
+        return $$createType12($result);
+    });
+}
+
+/**
+ * SelectChatImage 打开图片选择对话框，选中后读取文件内容（供聊天图片消息用）。
+ * 
+ * 返回 (路径, 内容字节, MIME 类型)；用户取消时路径为空串、其余为零值。
+ * 压缩在浏览器侧做不了、后端再做一遍太绕：服务端上限 500KB，这里只校验大小
+ * 并按扩展名给出 MIME，超限时直接报错提示用户换图（与手机版行为一致）。
+ */
+export function SelectChatImage(): $CancellablePromise<vo$0.ChatImagePick> {
+    return $Call.ByID(917861247).then(($result: any) => {
+        return $$createType13($result);
     });
 }
 
@@ -244,7 +276,7 @@ export function StartQuickLogin(provider: string): $CancellablePromise<vo$0.Acco
  */
 export function SyncAccountNow(): $CancellablePromise<vo$0.AccountSyncResult> {
     return $Call.ByID(2194510418).then(($result: any) => {
-        return $$createType11($result);
+        return $$createType14($result);
     });
 }
 
@@ -262,6 +294,13 @@ export function UpdateAccountNickname(nickname: string): $CancellablePromise<voi
     return $Call.ByID(2698353080, nickname);
 }
 
+/**
+ * UploadChatImage 上传聊天图片字节，返回可直接放进消息 content 的 URL。
+ */
+export function UploadChatImage(data: string, mimeType: string): $CancellablePromise<string> {
+    return $Call.ByID(5905520, data, mimeType);
+}
+
 // Private type creation functions
 const $$createType0 = vo$0.AccountLevel.createFrom;
 const $$createType1 = vo$0.AccountStatus.createFrom;
@@ -271,7 +310,10 @@ const $$createType4 = yukihubaccount$0.ChatEmoji.createFrom;
 const $$createType5 = $Create.Array($$createType4);
 const $$createType6 = yukihubaccount$0.ChatGroup.createFrom;
 const $$createType7 = $Create.Array($$createType6);
-const $$createType8 = yukihubaccount$0.FriendList.createFrom;
-const $$createType9 = yukihubaccount$0.Friend.createFrom;
-const $$createType10 = $Create.Array($$createType9);
-const $$createType11 = vo$0.AccountSyncResult.createFrom;
+const $$createType8 = vo$0.ChatStickerList.createFrom;
+const $$createType9 = $Create.Array($Create.Any);
+const $$createType10 = yukihubaccount$0.FriendList.createFrom;
+const $$createType11 = yukihubaccount$0.Friend.createFrom;
+const $$createType12 = $Create.Array($$createType11);
+const $$createType13 = vo$0.ChatImagePick.createFrom;
+const $$createType14 = vo$0.AccountSyncResult.createFrom;

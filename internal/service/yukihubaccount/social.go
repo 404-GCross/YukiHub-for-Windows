@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // errEmptyImageURL 表示图片上传接口没有返回可用地址。
@@ -287,6 +288,55 @@ func (c *Client) UploadChatImage(ctx context.Context, token, contentType string,
 		return "", errEmptyImageURL
 	}
 	return imageURL, nil
+}
+
+// ==================== 未萌贴纸（服务端代理，密钥在服务端） ====================
+
+// ListStickerPacks 拉未萌贴纸包列表。
+//
+// 服务端对 NextMoe 做缓存代理，enabled=false 表示服务未启用（界面隐藏入口）。
+// 首次访问（缓存冷）服务端要现查上游，放宽读超时到 40 秒（与手机版一致）。
+// 返回 nil packs = 服务未启用。
+func (c *Client) ListStickerPacks(ctx context.Context, token string) (bool, []map[string]any, error) {
+	query := url.Values{"action": {"packs"}, "page": {"1"}}
+	body, err := c.doRawWithTimeout(ctx, http.MethodGet, c.baseURL+"/chat/nextmoe_stickers.php?"+query.Encode(), token, "", nil, 40*time.Second)
+	if err != nil {
+		return false, nil, err
+	}
+	if !pickBool(body, "enabled") {
+		return false, nil, nil
+	}
+	return true, toMapSlice(body["packs"]), nil
+}
+
+// ListStickerURLs 拉某个贴纸包里的全部表情地址（320px webp，可直接作为消息 URL）。
+//
+// 服务端返回 [{id,url},...] 对象数组，容忍纯字符串数组（防御式，与手机版一致）。
+func (c *Client) ListStickerURLs(ctx context.Context, token, packID string) ([]string, error) {
+	query := url.Values{"action": {"pack"}, "pack_id": {strings.TrimSpace(packID)}}
+	body, err := c.doRawWithTimeout(ctx, http.MethodGet, c.baseURL+"/chat/nextmoe_stickers.php?"+query.Encode(), token, "", nil, 40*time.Second)
+	if err != nil {
+		return nil, err
+	}
+	if !pickBool(body, "enabled") {
+		return nil, nil
+	}
+	urls := make([]string, 0)
+	if typed, ok := body["stickers"].([]any); ok {
+		for _, item := range typed {
+			switch entry := item.(type) {
+			case map[string]any:
+				if value := pickString(entry, "url"); value != "" {
+					urls = append(urls, value)
+				}
+			case string:
+				if entry != "" {
+					urls = append(urls, entry)
+				}
+			}
+		}
+	}
+	return urls, nil
 }
 
 // ==================== 群聊 ====================

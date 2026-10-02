@@ -52,3 +52,27 @@ type AccountLevel struct {
 	IsMaxLevel        bool  `json:"is_max_level"`
 	TodayCheckedIn    bool  `json:"today_checked_in"`
 }
+
+// ChatImagePick 是一次聊天图片选择的结果。
+//
+// Path 为空 = 用户取消；Data 是图片原始字节（上限 500KB，与手机版一致），
+// MimeType 是按扩展名推断的 image/jpeg|png|webp。
+type ChatImagePick struct {
+	Path     string `json:"path"`
+	Data     []byte `json:"data"`
+	MimeType string `json:"mime_type"`
+}
+
+// ChatStickerPack 是一个未萌贴纸包（服务端代理 NextMoe，密钥在服务端）。
+type ChatStickerPack struct {
+	ID           string `json:"id"`
+	Title        string `json:"title"`
+	Cover        string `json:"cover,omitempty"`
+	StickerCount int    `json:"sticker_count"`
+}
+
+// ChatStickerList 是贴纸包列表；Enabled=false 表示服务端未启用（界面隐藏入口）。
+type ChatStickerList struct {
+	Enabled bool              `json:"enabled"`
+	Packs   []ChatStickerPack `json:"packs"`
+}
