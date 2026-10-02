@@ -1,10 +1,21 @@
 # YukiHub for Windows
 
-YukiHub 的 Windows 桌面版：Galgame / 视觉小说库管理、启动与游玩记录工具。
+Galgame / 视觉小说库管理、启动与游玩记录工具 —— YukiHub 的 Windows 桌面版。
 
-> **开发状态：早期开发中。** 当前仓库是以上游 LunaBox 为基线的硬分叉，
-> 正在进行去品牌化、工程加固与产品层重建。**尚无可发布的安装包**，
-> 界面与功能仍是上游形态。进度见 [docs/ROADMAP.md](docs/ROADMAP.md)。
+<p align="center">
+  <img src="https://img.shields.io/badge/Platform-Windows%2010%2F11-0078D6?logo=windows&logoColor=white" alt="Windows" />
+  <img src="https://img.shields.io/badge/Go-1.27.1-00ADD8?logo=go&logoColor=white" alt="Go" />
+  <img src="https://img.shields.io/badge/Wails-v3%20beta-orange" alt="Wails v3" />
+  <img src="https://img.shields.io/badge/License-AGPL--3.0-blue.svg" alt="AGPL-3.0" />
+</p>
+
+<p align="center">
+  <a href="./README.md">简体中文</a> | <a href="./README.en.md">English</a>
+</p>
+
+> **开发状态：可用但未发行。** 代码可构建、可日常使用，界面与行为仍在按 Android 手机版
+> 逐项对齐（见 [docs/ROADMAP.md](docs/ROADMAP.md)）。**尚未发布正式安装包**，
+> 也还没有代码签名。
 
 ## 这是什么
 
@@ -13,75 +24,151 @@ YukiHub 有两个端：
 | 端 | 仓库 | 许可证 |
 | --- | --- | --- |
 | Android 手机版 | https://github.com/xm486/YukiHub | GPL-3.0 |
-| Windows 桌面版（本仓库） | 见仓库地址 | AGPL-3.0 |
+| Windows 桌面版（本仓库） | https://github.com/xm486/YukiHub-for-Windows | AGPL-3.0 |
 
-桌面版的目标不是把手机版移植过来，而是与手机版共享同一套数据语义与使用习惯：
-游戏库、游玩记录、资料刮削、数据同步、备份恢复。两端之间的数据可以互相导入导出。
+桌面版的目标不是把手机版原样搬过来，而是与手机版共享**同一套数据语义和使用习惯**：
+游戏库、游玩记录、资料刮削、同步与备份。两端的数据可以互相导入导出，
+云同步走的是同一份快照格式（schema 5），详见
+[迁移设计](docs/mobile-yukihub-migration.md)。
 
-## 规划中的能力
+## 特性
 
-已从上游基线继承并可直接使用：
+### 游戏库
 
-- Windows 游戏进程识别与退出监听，自动统计游玩时长
-- Locale Emulator 启动（日文游戏转区）与 Magpie 缩放器联动
-- 多来源资料刮削（Bangumi、VNDB、月幕 Gal、Hikarinagi、Steam 等）
-- 批量目录扫描导入、拖入导入，以及从 Playnite / PotatoVN / Vnite / ReinaManager 迁移
-- 存档与数据库备份（本地 + 云）、多设备同步
-- 系统托盘、开机自启、URL 协议唤醒、代理、后台静音
-- 命令行长接口与 MCP 服务
-- NSIS 安装器与应用内增量更新
+- 手动添加、目录批量扫描、拖入导入
+- 从第三方迁移：Playnite、PotatoVN、Vnite、ReinaManager、LunaBox，以及 YukiHub 备份（`.ykbak`）
+- 分类、收藏、多维筛选、大屏（BigScreen）浏览模式
+- NSFW 标记、隐藏、封面源优先度
 
-计划从 Android 版迁入：
+### 启动与游玩
 
-- 与手机版一致的游玩记录与同步协议（见 [迁移设计](docs/mobile-yukihub-migration.md)）
-- AI 游玩报告
-- OCR + 多引擎翻译工作流
+- Windows 游戏进程识别与退出监听，自动统计时长
+- **内置** Locale Emulator（日文游戏转区）与 Magpie（窗口缩放），也允许替换成自己的版本
+- 存档备份（SaveData）、托盘常驻、开机自启、`yukihub://` 协议唤醒
 
-暂缓：
+### 资料刮削
 
-- 离线 3D 展厅（手机版已有实现，桌面版后续再评估）
+- 多来源：VNDB、Bangumi（含镜像）、月幕 Gal、Hikarinagi、未萌 NextMoe、Steam、TouchGAL、DLsite、ErogameScape
+- 刮削结果本地缓存，可离线查看；可在设置里指定首选来源与封面优先度
 
-明确不做：
+### 账号与社交（YukiHub 账号）
 
-- 内置 Galgame 引擎与模拟器启动（Windows 上直接运行原生程序即可）
+- 邮箱注册 / 登录 / 找回密码
+- 第三方快捷登录：未萌（NextMoe）、Hikarinagi —— OAuth 授权码 + PKCE，本地 loopback 回调，
+  客户端不接触第三方令牌
+- 云端同步与自动备份（与手机版同构的 schema 5 快照）
+- 好友列表（正在游戏 / 在线 / 离线）、私聊、群聊、表情包与图片消息、@提及、用户资料页
+
+### 首页
+
+- 游玩数据概览、快捷启动滑轨、游戏轮播
+- **Galgame 资讯**轮播（数据来自未萌 `/v2/news`，可手动滑动、点开看详情与原文）
+
+## 技术栈
+
+### 桌面端
+
+| 组件 | 说明 |
+| --- | --- |
+| [Go](https://go.dev) 1.27.1 | 后端语言 |
+| [Wails](https://v3alpha.wails.io) v3 beta（`v3.0.0-beta.24`） | Go + WebView 桌面应用框架，项目内统一走 `internal/wailsruntime` 这层隔离 |
+| [DuckDB](https://duckdb.org)（`duckdb-go/v2`） | 游戏库与统计的主存储（预编译库在 `lib/`） |
+| SQLite | 第三方数据导入时读取 |
+| WebView2 | Windows 端渲染运行时 |
+
+### 前端（`frontend/`）
+
+| 组件 | 说明 |
+| --- | --- |
+| [React](https://react.dev) 18 + TypeScript | UI |
+| [Vite](https://vite.dev) | 构建 |
+| [UnoCSS](https://unocss.dev)（含 Material Design Icons 图标集） | 原子化样式 |
+| [Zustand](https://zustand-demo.pmnd.rs) | 应用状态 |
+| [TanStack Router](https://tanstack.com/router) / [Query](https://tanstack.com/query) | 路由与异步数据 |
+| [i18next](https://i18next.com) | 多语言（简体中文 / 繁體中文 / English / 日本語） |
+| [Chart.js](https://www.chartjs.org) | 统计图表 |
+| `@wailsio/runtime` | 与 Go 后端的绑定调用 |
+
+> `frontend/bindings/` 由 `wails3 generate bindings` 生成，**不要手改**。
+
+### 打包与内置工具
+
+- NSIS 3.13 安装器（`build/windows/nsis`），前端产物通过 `go:embed frontend/dist` 打进 exe
+- 内置兼容工具（`build/compat-tools`，附许可证全文）：
+  - [Locale Emulator](https://github.com/xupefei/Locale-Emulator) 2.5.0.1（LGPL-3.0）
+  - [Magpie](https://github.com/Blinue/Magpie) 0.12.1（GPL-3.0）
+
+### 外部服务
+
+- 资料与元数据：VNDB、Bangumi、月幕 Gal、Hikarinagi、未萌 NextMoe、Steam、TouchGAL、DLsite、ErogameScape
+- 账号 / 好友 / 聊天 / 云同步：YukiHub 账号服务
+- 首页资讯：未萌 `api.nextmoe.dev/v2/news`（免密钥，经本地后端代理并落盘缓存）
+
+### 身份标识
+
+- Go 模块 `yukihub`、应用 ID `com.yukihub.desktop`、URL 协议 `yukihub://`
+- 数据目录 `%APPDATA%\YukiHub`（便携版放在 exe 同级的 `bin/`），库文件 `yukihub.db`
 
 ## 从源码构建
 
-> 本项目仅支持 Windows。macOS / iOS / Linux 的平台代码与构建资源已经移除，
-> 不要尝试在其它平台构建。
+> 本项目**仅支持 Windows**。macOS / Linux 的平台代码与构建资源已移除，不要在其它平台构建。
 
 环境要求：
 
-- Go（版本见 `go.mod`，当前 1.27.1）
-- Node.js 24 与 pnpm 9
-- Wails v3 CLI，版本需与 `go.mod` 中 `github.com/wailsapp/wails/v3` **完全一致**
+- Go（版本见 `go.mod`，当前 **1.27.1**）
+- **CGO 编译器**：DuckDB 依赖 CGO，Windows 上需要 MinGW-w64 的 gcc
+- Node.js **22 或更高** 与 **pnpm 12**（`frontend/package.json` 的 `packageManager` 已固定版本，
+  用 `corepack enable` 自动获取即可）
+- Wails v3 CLI，版本必须与 `go.mod` 中的 `github.com/wailsapp/wails/v3` **完全一致**
 
 ```bash
 # 1. 前端依赖
 cd frontend && pnpm install && cd ..
 
-# 2. 生成 Wails 绑定（后端 service 方法签名变更后必须重新执行）
+# 2. 生成 Wails 绑定（后端 vo / 枚举 / 方法签名变更后必须重跑）
 wails3 generate bindings -clean=true -ts
 
-# 3. 开发模式运行
+# 3. 开发模式
 wails3 dev -config ./build/config.yml -port 9245
 
 # 4. 构建
+pnpm --dir frontend build   # ⚠️ 必须：wails3 build 不会构建前端
 wails3 build
 ```
+
+> **坑：`wails3 build` 只编译 Go，不会重新构建前端。** 它只是把 `frontend/dist`
+> 用 `go:embed` 打进去。改了前端代码却只跑 `wails3 build`，结果会是「exe 是新的、
+> 界面还是旧的」。正确顺序永远是：**改前端 → `vite build` → `wails3 build`**。
+
+完整打包（便携版 + NSIS 安装器 + 兼容工具）见 `scripts/build.bat`。
 
 提交前自检：
 
 ```bash
-gofmt -l .          # 应无输出
+gofmt -l .                 # 应无输出
 go vet ./...
 go test ./... -count=1
+cd frontend && pnpm typecheck && pnpm lint && pnpm i18n:check
+```
+
+## 项目结构
+
+```
+internal/    后端：service（业务）、models（数据模型）、utils、migrations
+frontend/    前端：src（源码）、bindings（生成物，勿手改）
+build/       打包：windows/nsis、compat-tools（内置兼容工具）
+lib/         DuckDB 等预编译二进制
+docs/        设计文档与流程，技术决策放 docs/decisions/（ADR）
+scripts/     构建脚本
 ```
 
 ## 分叉说明与待配置项
 
-本仓库是 LunaBox v1.13.0 的硬分叉。代码层面的品牌替换已完成，但**仓库地址、第三方服务凭据、
-代码签名与更新服务**必须由 YukiHub 自行配置后才能发布。完整清单见
+本仓库是 [LunaBox](https://github.com/LunaBox-official/LunaBox) v1.13.0 的**硬分叉**：
+不回灌上游、不跟随上游 rebase，只面向 Windows。
+
+代码层面的品牌替换与功能重建已完成，但**仓库地址、代码签名与更新服务**
+必须由 YukiHub 自行配置后才能发布，完整清单见
 [docs/fork-setup.md](docs/fork-setup.md)。
 
 上游版权与修改记录见 [docs/upstream-lunabox.md](docs/upstream-lunabox.md)。
@@ -105,6 +192,7 @@ go test ./... -count=1
 
 - 提交前请确保 `gofmt`、`go vet`、`go test` 均通过。
 - 后端改动请遵循 [docs/backend.md](docs/backend.md) 的分层与依赖注入约束。
-- 涉及数据结构变更时，请同时更新 [迁移设计](docs/mobile-yukihub-migration.md)，
-  因为 Android 版需要与桌面版保持数据语义一致。
+- 前端改动请遵循 [docs/frontend.md](docs/frontend.md)。
+- 涉及数据结构变更时，**必须**同步更新 [迁移设计](docs/mobile-yukihub-migration.md) ——
+  Android 版需要与桌面版保持数据语义一致，否则双端同步会错乱。
 - 大型技术决策请先写 ADR，放在 `docs/decisions/` 下。
