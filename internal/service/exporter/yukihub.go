@@ -29,6 +29,14 @@ const (
 	// Android 侧 launch_type / device_id 的缺省值（见 GameRepository.importPlaySessionsJson）。
 	yukiHubLaunchType = "external"
 	yukiHubDeviceID   = "desktop"
+
+	// 手机版快照里写死的两段 note（SyncManager.buildLocalSnapshot /
+	// MainActivity.exportLocalBackup）。逐字对齐，便于对端识别快照来源。
+	yukiHubCloudNote = "Only text metadata is synced. No game files, save files, or binary cover images are embedded."
+	yukiHubLocalNote = "Local backup keeps the latest 30 play sessions. Uses gzip compression."
+
+	// 本地全量备份的 backup_type（手机版 MainActivity 写 "local_full"）。
+	yukiHubLocalBackupType = "local_full"
 )
 
 // YukiHubExporter 把桌面端库导出为 Android 版 YukiHub 的 schema 5 快照。
@@ -37,17 +45,96 @@ const (
 type YukiHubExporter struct {
 	ctx context.Context
 	db  *sql.DB
+	// profile 是账号资料段（昵称 / 头像 URL），由调用方注入；
+	// 为空时快照里不含 profile 段（手机端会保留自己那份）。
+	profile *yukihub.BackupProfile
+	// metadataSource 是桌面端的全局首选资料源，写进 settings.metadata_source。
+	// 手机端只认识 vndb/bangumi/bangumi_mirror/ymgal/hikarinagi/nextmoe 六个值，
+	// 其余值会被它忽略（不会覆盖手机端设置）。
+	metadataSource string
 }
 
 func NewYukiHubExporter(ctx context.Context, db *sql.DB) *YukiHubExporter {
 	return &YukiHubExporter{ctx: ctx, db: db}
 }
 
-// Build 生成 schema 5 快照。
+// SetProfile 注入账号资料（对齐手机版快照的 profile 段）。
+//
+// 只带 http(s) 头像：手机端会把非 http(s) 的 avatar_uri 直接丢掉。
+func (e *YukiHubExporter) SetProfile(name, avatarURI string) {
+	trimmedAvatar := strings.TrimSpace(avatarURI)
+	if !strings.HasPrefix(trimmedAvatar, "http://") && !strings.HasPrefix(trimmedAvatar, "https://") {
+		trimmedAvatar = ""
+	}
+	trimmedName := strings.TrimSpace(name)
+	if trimmedName == "" && trimmedAvatar == "" {
+		e.profile = nil
+		return
+	}
+	e.profile = &yukihub.BackupProfile{
+		Name:      trimmedName,
+		AvatarURI: trimmedAvatar,
+	}
+}
+
+// SetMetadataSource 注入全局首选资料源（写进快照的 settings.metadata_source）。
+func (e *YukiHubExporter) SetMetadataSource(source string) {
+	e.metadataSource = strings.TrimSpace(source)
+}
+
+// Build 生成**云同步**形态的 schema 5 快照。
 //
 // 刻意不导出：扫描目录配置、自定义背景图/视频、trailer/logo/bg 路径、音乐厅数据、
 // 游戏本体与存档、二进制封面图（契约明确排除）。
 func (e *YukiHubExporter) Build() (*yukihub.Backup, error) {
+	return e.build(snapshotCloud)
+}
+
+// BuildLocalBackup 生成**本地全量备份**形态的快照（导出 .ykbak 用）。
+//
+// 与云同步快照的差异完全照抄手机版：
+//   - created_at 写当前时间（云同步恒为 0）
+//   - 多一个 backup_type = "local_full"
+//   - note 换成本地备份文案
+func (e *YukiHubExporter) BuildLocalBackup() (*yukihub.Backup, error) {
+	return e.build(snapshotLocalBackup)
+}
+
+// newBackupEnvelope 生成快照骨架（顶层元信息），负载由调用方填充。
+//
+// 字段取值逐字对齐手机版：
+//   - 云同步（SyncManager.buildLocalSnapshot）：created_at 恒为 0、lightweight=true、
+//     固定 note，且**不带** backup_type；
+//   - 本地全量备份（MainActivity.exportLocalBackup）：created_at=当前毫秒、
+//     追加 backup_type=local_full、note 换成本地备份文案。
+//
+// 抽出来是为了能用单元测试钉住这几项——双端同步一旦这里跑偏，
+// 对端会把快照当成另一种形态处理。
+func newBackupEnvelope(kind snapshotKind) *yukihub.Backup {
+	envelope := &yukihub.Backup{
+		App:         yukiHubBackupApp,
+		Schema:      yukiHubBackupSchema,
+		Lightweight: true,
+		CreatedAt:   0,
+		Note:        yukiHubCloudNote,
+	}
+	if kind == snapshotLocalBackup {
+		envelope.CreatedAt = unixMilli(time.Now())
+		envelope.Note = yukiHubLocalNote
+		envelope.BackupType = yukiHubLocalBackupType
+	}
+	return envelope
+}
+
+// snapshotKind 区分两种快照形态（仅元信息不同，负载完全一致）。
+type snapshotKind int
+
+const (
+	snapshotCloud snapshotKind = iota
+	snapshotLocalBackup
+)
+
+func (e *YukiHubExporter) build(kind snapshotKind) (*yukihub.Backup, error) {
 	games, err := e.loadGames()
 	if err != nil {
 		return nil, err
@@ -69,17 +156,17 @@ func (e *YukiHubExporter) Build() (*yukihub.Backup, error) {
 		return nil, err
 	}
 
-	backup := &yukihub.Backup{
-		App:       yukiHubBackupApp,
-		Schema:    yukiHubBackupSchema,
-		CreatedAt: unixMilli(time.Now()),
-		Games:     make([]yukihub.Game, 0, len(games)),
-		// metadata_cache 取自 game_metadata_sources.cache_json，负载沿用 Android 的
-		// VnMetadata 结构，两个方向都能原样往返。
-		MetadataCache: metadataCache,
-		// settings.metadata_source 是 Android 侧的全局首选来源，桌面端没有对应概念
-		// （默认来源是逐游戏的），留空由对端按自身优先级挑选。
+	backup := newBackupEnvelope(kind)
+	backup.Profile = e.profile
+	backup.Settings = yukihub.BackupSettings{
+		// 只写这一项：手机版导入 settings 是「键存在就覆盖」，桌面端没有对应
+		// 概念的设置项一律省略，避免把手机端的设置冲掉。
+		MetadataSource: e.metadataSource,
 	}
+	backup.Games = make([]yukihub.Game, 0, len(games))
+	// metadata_cache 取自 game_metadata_sources.cache_json，负载沿用 Android 的
+	// VnMetadata 结构，两个方向都能原样往返。
+	backup.MetadataCache = metadataCache
 	for _, game := range games {
 		// 跳过无标题条目：Android 侧会把空标题落成「未命名游戏」，
 		// 这类条目在跨端同步时只会制造无法匹配的占位记录。
@@ -104,7 +191,7 @@ func (e *YukiHubExporter) Export(path string) error {
 // ExportWithSummary 与 Export 相同，另外回报写出的游戏数与游玩记录数，
 // 供界面提示用（只 Build 一次，不为了拿计数多跑一遍全库查询）。
 func (e *YukiHubExporter) ExportWithSummary(path string) (int, int, error) {
-	backup, err := e.Build()
+	backup, err := e.BuildLocalBackup()
 	if err != nil {
 		return 0, 0, err
 	}

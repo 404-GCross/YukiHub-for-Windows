@@ -1571,6 +1571,22 @@ function GameDetailPage() {
                         />
                       </button>
                     </BetterTooltip>
+
+                    {/* 删除入口放在详情页顶部的操作区（原来是编辑页最底部的按钮，
+                        位置太深）。红色实心，与右侧其它圆形操作图标同尺寸。 */}
+                    <BetterTooltip content={t("game.deleteGame")}>
+                      <button
+                        type="button"
+                        onClick={() => void handleDeleteGame()}
+                        aria-label={t("game.deleteGame")}
+                        className="flex h-8 w-8 items-center justify-center rounded-full bg-error-500 text-white transition-colors hover:bg-error-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-error-400/70"
+                      >
+                        <span
+                          className="i-mdi-trash-can-outline text-base"
+                          aria-hidden="true"
+                        />
+                      </button>
+                    </BetterTooltip>
                   </div>
                 </div>
               </div>
@@ -1663,7 +1679,6 @@ function GameDetailPage() {
         <GameEditPanel
           game={game}
           onGameChange={updateGameState}
-          onDelete={handleDeleteGame}
           onSelectExecutable={handleSelectExecutable}
           onSelectGameDirectory={handleSelectGameDirectory}
           onSelectSaveDirectory={handleSelectSaveDirectory}

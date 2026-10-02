@@ -244,7 +244,13 @@ func (s *ImportService) ExportToYukiHub(path string) (ImportResult, error) {
 		return result, fmt.Errorf("导出路径为空")
 	}
 
-	games, sessions, err := exporter.NewYukiHubExporter(s.ctx, s.db).ExportWithSummary(path)
+	exporterInstance := exporter.NewYukiHubExporter(s.ctx, s.db)
+	// 与手机版本地备份一致：带上 profile（昵称 / 头像）与全局资料源。
+	if s.config != nil {
+		exporterInstance.SetProfile(s.config.YukiHubAccountNickname, s.config.YukiHubAccountAvatar)
+		exporterInstance.SetMetadataSource(string(s.config.CurrentMetadataSource))
+	}
+	games, sessions, err := exporterInstance.ExportWithSummary(path)
 	if err != nil {
 		applog.LogErrorf(s.ctx, "ExportToYukiHub: failed: %v", err)
 		return result, err

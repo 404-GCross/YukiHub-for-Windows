@@ -8,6 +8,7 @@ import (
 	"time"
 	"yukihub/internal/common/enums"
 	"yukihub/internal/models"
+	"yukihub/internal/models/yukihub"
 )
 
 func TestMapGameStatusToYukiHubCoversAllStatuses(t *testing.T) {
@@ -303,5 +304,111 @@ func TestBuildSkipsUntitledGames(t *testing.T) {
 	}
 	if len(exported) != 1 || exported[0] != "有标题" {
 		t.Fatalf("导出条目 = %#v, want 只有 [有标题]", exported)
+	}
+}
+
+// TestSnapshotEnvelopeMatchesAndroid 钉住快照顶层元信息与手机版一致。
+//
+// 双端同步靠这几个字段区分「云同步快照」和「本地全量备份」，一旦跑偏，
+// 对端会把快照当成另一种形态处理（例如把云同步快照当成本地备份落盘）。
+func TestSnapshotEnvelopeMatchesAndroid(t *testing.T) {
+	t.Parallel()
+
+	cloud := newBackupEnvelope(snapshotCloud)
+	if cloud.App != "YukiHub" || cloud.Schema != 5 {
+		t.Errorf("app/schema = %q/%d, want YukiHub/5", cloud.App, cloud.Schema)
+	}
+	// 手机版 SyncManager.buildLocalSnapshot：created_at 恒为 0
+	if cloud.CreatedAt != 0 {
+		t.Errorf("云同步 created_at = %d, want 0（与手机版一致）", cloud.CreatedAt)
+	}
+	if !cloud.Lightweight {
+		t.Error("云同步 lightweight 应为 true")
+	}
+	if cloud.Note != yukiHubCloudNote {
+		t.Errorf("云同步 note = %q, want %q", cloud.Note, yukiHubCloudNote)
+	}
+	if cloud.BackupType != "" {
+		t.Errorf("云同步不应带 backup_type，got %q", cloud.BackupType)
+	}
+
+	local := newBackupEnvelope(snapshotLocalBackup)
+	if local.CreatedAt <= 0 {
+		t.Errorf("本地备份 created_at = %d, want 当前毫秒", local.CreatedAt)
+	}
+	if local.BackupType != "local_full" {
+		t.Errorf("本地备份 backup_type = %q, want local_full", local.BackupType)
+	}
+	if local.Note != yukiHubLocalNote {
+		t.Errorf("本地备份 note = %q, want %q", local.Note, yukiHubLocalNote)
+	}
+	if !local.Lightweight {
+		t.Error("本地备份 lightweight 也应为 true（手机版同样写死 true）")
+	}
+
+	// 云同步快照序列化后不应出现 backup_type 键（omitempty）
+	raw, err := json.Marshal(cloud)
+	if err != nil {
+		t.Fatalf("marshal cloud envelope: %v", err)
+	}
+	if strings.Contains(string(raw), "backup_type") {
+		t.Errorf("云同步快照不应包含 backup_type：%s", raw)
+	}
+}
+
+// TestSetProfileOnlyKeepsHTTPAvatar 头像必须是 http(s)：手机端会丢弃其它取值。
+func TestSetProfileOnlyKeepsHTTPAvatar(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name     string
+		avatar   string
+		wantURL  string
+		wantNull bool
+	}{
+		{name: "Yuki", avatar: "https://yukihub.zh.kg/a.png", wantURL: "https://yukihub.zh.kg/a.png"},
+		{name: "Yuki", avatar: "http://yukihub.zh.kg/a.png", wantURL: "http://yukihub.zh.kg/a.png"},
+		// 本地路径 / file:// 跨设备无效，手机端也会拒收
+		{name: "Yuki", avatar: "D://avatar.png", wantURL: ""},
+		{name: "Yuki", avatar: "file:///C:/avatar.png", wantURL: ""},
+		// 两者都空 → 不带 profile 段
+		{name: "  ", avatar: "", wantNull: true},
+	}
+	for _, tc := range cases {
+		exporter := &YukiHubExporter{}
+		exporter.SetProfile(tc.name, tc.avatar)
+		if tc.wantNull {
+			if exporter.profile != nil {
+				t.Errorf("SetProfile(%q,%q) 应不生成 profile，got %#v", tc.name, tc.avatar, exporter.profile)
+			}
+			continue
+		}
+		if exporter.profile == nil {
+			t.Fatalf("SetProfile(%q,%q) profile 为空", tc.name, tc.avatar)
+		}
+		if exporter.profile.AvatarURI != tc.wantURL {
+			t.Errorf("avatar_uri = %q, want %q", exporter.profile.AvatarURI, tc.wantURL)
+		}
+	}
+}
+
+// TestIdentityKeysAreOmitted 身份键必须省略而不是写空串。
+//
+// 手机版读取方式是 optString(key, 本地值)：键存在但为空串会被当成「确认清空」，
+// 直接把对端的 GameHub/gaishi 身份键抹掉，导致后续同步匹配不上。
+func TestIdentityKeysAreOmitted(t *testing.T) {
+	t.Parallel()
+
+	entry := yukihub.Game{Title: "游戏 A"}
+	session := yukihub.PlaySession{SessionUUID: "u1", GameTitle: "游戏 A"}
+
+	for label, value := range map[string]interface{}{"game": entry, "session": session} {
+		raw, err := json.Marshal(value)
+		if err != nil {
+			t.Fatalf("marshal %s: %v", label, err)
+		}
+		if strings.Contains(string(raw), "gamehub_local_game_id") || strings.Contains(string(raw), "gaishi_local_game_id") {
+			t.Errorf("%s 的空身份键应被省略：%s", label, raw)
+		}
 	}
 }

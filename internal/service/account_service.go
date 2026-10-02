@@ -275,6 +275,14 @@ func (s *AccountService) applySession(session yukihubaccount.Session) error {
 	}
 	s.config.YukiHubAccountKungalBound = session.User.KungalBound
 	s.config.YukiHubAccountHikarinagiBound = session.User.HikarinagiBound
+	// 登录即默认开启「向好友展示正在玩的游戏」。
+	//
+	// 与手机版一致：手机版读的是 SharedPreferences 的默认值 true
+	// （MainActivity：`prefs.getBoolean(KEY_SHARE_PLAYING, true)`），
+	// 也就是「没主动关过就是开」。桌面端配置项是普通 bool，没有「未设置」
+	// 语义，所以在登录成功这一刻显式置为 true（用户在账号面板里手动关掉后，
+	// 同一次登录会话内保持关闭）。
+	s.config.YukiHubAccountSharePlaying = true
 	s.persistConfigLocked()
 	s.mu.Unlock()
 
@@ -468,7 +476,13 @@ func (s *AccountService) buildLocalSnapshot() ([]byte, error) {
 	if s.db == nil {
 		return nil, errors.New("数据库尚未就绪")
 	}
-	backup, err := exporter.NewYukiHubExporter(s.resolveContext(nil), s.db).Build()
+	exporterInstance := exporter.NewYukiHubExporter(s.resolveContext(nil), s.db)
+	// 快照要带 profile 段（昵称 / 头像），与手机版一致：对端下载后会更新自己的资料。
+	if s.config != nil {
+		exporterInstance.SetProfile(s.config.YukiHubAccountNickname, s.config.YukiHubAccountAvatar)
+		exporterInstance.SetMetadataSource(string(s.config.CurrentMetadataSource))
+	}
+	backup, err := exporterInstance.Build()
 	if err != nil {
 		return nil, fmt.Errorf("生成同步快照失败: %w", err)
 	}

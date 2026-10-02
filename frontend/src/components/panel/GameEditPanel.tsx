@@ -31,7 +31,6 @@ import { BetterSwitch } from "../ui/better/BetterSwitch";
 interface GameEditFormProps {
   game: models.Game;
   onGameChange: (game: models.Game) => void;
-  onDelete: () => void;
   onSelectExecutable: () => void;
   onSelectGameDirectory: () => void;
   onSelectSaveDirectory: (rootPath: string) => void;
@@ -392,7 +391,6 @@ function getTrailerDisplayName(trailerPath?: string): string {
 export function GameEditPanel({
   game,
   onGameChange,
-  onDelete,
   onSelectExecutable,
   onSelectGameDirectory,
   onSelectSaveDirectory,
@@ -1470,13 +1468,6 @@ export function GameEditPanel({
                 {t("gameEdit.updateFromRemote")}
               </BetterButton>
             )}
-            <BetterButton
-              variant="danger"
-              onClick={onDelete}
-              icon="i-mdi-trash-can-outline"
-            >
-              {t("common.delete")}
-            </BetterButton>
           </div>
         </div>
       </div>

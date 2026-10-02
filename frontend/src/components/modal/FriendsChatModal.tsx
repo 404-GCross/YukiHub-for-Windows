@@ -145,6 +145,26 @@ export function FriendsChatModal({
 
   targetRef.current = target;
 
+  /**
+   * 聊天图片地址补全。
+   *
+   * 服务端 `/chat/upload_image` 返回的是**相对路径**（如 `/uploads/chat/xxx.jpg`），
+   * 消息 content 里存的也是这份相对路径（与手机版完全一致，双端可互认）。
+   * 直接塞进 `<img src>` 会被 WebView 解析成 `wails.localhost/uploads/...` → 404，
+   * 表现就是「自己发的图看不见、对方和手机端能看到」。手机版用
+   * absoluteChatImageUrl 补成站点绝对地址，这里照做。
+   */
+  const resolveChatImageURL = (url: string): string => {
+    const value = (url ?? "").trim();
+    if (!value) {
+      return "";
+    }
+    if (/^https?:\/\//i.test(value)) {
+      return value;
+    }
+    return `https://yukihub.zh.kg${value.startsWith("/") ? value : `/${value}`}`;
+  };
+
   /** 表情名 → 可显示 URL：http(s) 原样；本站表情先查列表映射，查不到再按手机版规则兜底 */
   const emojiDisplayURL = (content: string): string => {
     if (/^https?:\/\//i.test(content)) {
@@ -658,16 +678,18 @@ export function FriendsChatModal({
         );
       }
       if (message.msgType === "image") {
+        const fullImageURL = resolveChatImageURL(message.content);
         return (
           <img
-            src={proxiedImageSrc(message.content)}
+            src={proxiedImageSrc(fullImageURL)}
             alt=""
+            loading="lazy"
             className="max-h-48 rounded-xl object-contain"
             onError={(e) => {
               const img = e.currentTarget;
-              if (!img.dataset.fallbackRaw && img.src !== message.content) {
+              if (!img.dataset.fallbackRaw && img.src !== fullImageURL) {
                 img.dataset.fallbackRaw = "1";
-                img.src = message.content;
+                img.src = fullImageURL;
               }
             }}
           />
@@ -679,10 +701,21 @@ export function FriendsChatModal({
     // 群聊对齐手机版 buildGroupMessageBubble：双方都带头像，自己的在右侧（QQ 式）。
     // 自己的头像优先取消息里的（服务端可能回填），回退到本地账号状态。
     const myNickname = accountStatus?.nickname || t("friendsChat.me");
-    const avatarName = isMine ? senderName || myNickname : senderName;
+    // 私聊消息服务端**不下发** senderName/senderAvatar（与手机版一致，手机版私聊
+    // 干脆不画头像）。PC 端两侧都画头像，所以这里用当前会话好友的资料兜底，
+    // 否则对方的头像会退化成首字母。
+    const friendLabel
+      = target?.kind === "friend"
+        ? target.friend.note || target.friend.nickname
+        : "";
+    const friendAvatar
+      = target?.kind === "friend" ? target.friend.avatar : undefined;
+    const avatarName = isMine
+      ? senderName || myNickname
+      : senderName || friendLabel || t("friendsChat.title");
     const avatarUrl = isMine
       ? message.senderAvatar || accountStatus?.avatar
-      : message.senderAvatar;
+      : message.senderAvatar || friendAvatar;
     return (
       <div
         key={message.id}
