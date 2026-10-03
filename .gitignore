@@ -34,3 +34,6 @@ openspec
 
 # Wails 生成的 Windows 资源对象（构建期产物）
 *.syso
+
+# git filter-branch 的临时工作目录（历史改写脚本会产生）
+.git-rewrite/
