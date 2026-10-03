@@ -1435,7 +1435,9 @@
       "quickLoginHikarinagi": "Hikarinagi 登入",
       "toastSendCodeFailed": "驗證碼傳送失敗：{{error}}",
       "toastSubmitFailed": "操作失敗：{{error}}",
-      "toastQuickLoginFailed": "快捷登入失敗：{{error}}"
+      "toastQuickLoginFailed": "快捷登入失敗：{{error}}",
+      "friendPlayNotify": "好友開始玩遊戲時通知",
+      "friendPlayNotifyHint": "好友開始遊玩時彈出提示"
     }
   },
   "downloads": {
@@ -1847,6 +1849,7 @@
     "friendSince": "成為好友 · {{time}}",
     "playingNow": "正在玩",
     "playingFor": "已玩 {{duration}}",
-    "profileSendMessage": "傳送訊息"
+    "profileSendMessage": "傳送訊息",
+    "friendPlayNotice": "開始玩 《{{game}}》"
   }
 }

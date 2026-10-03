@@ -252,6 +252,12 @@ export class AppConfig {
     "yukihub_account_share_playing": boolean;
 
     /**
+     * YukiHubAccountFriendPlayNotify 控制「好友开始玩游戏时弹通知」。
+     * 与手机版 PresenceManager.KEY_FRIEND_PLAY_NOTIFY 同义，默认开。
+     */
+    "yukihub_account_friend_play_notify": boolean;
+
+    /**
      * LastYukiHubAccountSyncHash 是上次同步的快照哈希，用于判断两边有没有改动。
      */
     "last_yukihub_account_sync_hash"?: string;
@@ -636,6 +642,9 @@ export class AppConfig {
         }
         if (!("yukihub_account_share_playing" in $$source)) {
             this["yukihub_account_share_playing"] = false;
+        }
+        if (!("yukihub_account_friend_play_notify" in $$source)) {
+            this["yukihub_account_friend_play_notify"] = false;
         }
         if (!("auto_backup_db" in $$source)) {
             this["auto_backup_db"] = false;

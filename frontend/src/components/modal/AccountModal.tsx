@@ -10,6 +10,7 @@ import {
   ResetAccountPassword,
   SendAccountCode,
   SetAccountCloudSyncEnabled,
+  SetAccountFriendPlayNotify,
   SetAccountSharePlaying,
   StartQuickLogin,
   SyncAccountNow,
@@ -436,6 +437,27 @@ export function AccountModal({
                     onCheckedChange={checked =>
                       void (async () => {
                         await SetAccountSharePlaying(checked);
+                        await refreshStatus();
+                        await onConfigRefresh();
+                      })()}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="text-xs font-medium text-brand-700 dark:text-brand-200">
+                      {t("settings.account.friendPlayNotify")}
+                    </div>
+                    <div className="text-[11px] text-brand-500 dark:text-brand-400">
+                      {t("settings.account.friendPlayNotifyHint")}
+                    </div>
+                  </div>
+                  <BetterSwitch
+                    id="yukihub-account-friend-play-notify"
+                    checked={Boolean(status?.friend_play_notify)}
+                    onCheckedChange={checked =>
+                      void (async () => {
+                        await SetAccountFriendPlayNotify(checked);
                         await refreshStatus();
                         await onConfigRefresh();
                       })()}

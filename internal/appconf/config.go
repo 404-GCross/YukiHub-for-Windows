@@ -140,6 +140,9 @@ type AppConfig struct {
 	YukiHubAccountCloudSyncEnabled bool `json:"yukihub_account_cloud_sync_enabled"`
 	// YukiHubAccountSharePlaying 为 false 时仍然上报心跳，但不带上「正在玩」。
 	YukiHubAccountSharePlaying bool `json:"yukihub_account_share_playing"`
+	// YukiHubAccountFriendPlayNotify 控制「好友开始玩游戏时弹通知」。
+	// 与手机版 PresenceManager.KEY_FRIEND_PLAY_NOTIFY 同义，默认开。
+	YukiHubAccountFriendPlayNotify bool `json:"yukihub_account_friend_play_notify"`
 	// LastYukiHubAccountSyncHash 是上次同步的快照哈希，用于判断两边有没有改动。
 	LastYukiHubAccountSyncHash string `json:"last_yukihub_account_sync_hash,omitempty"`
 	LastYukiHubAccountSyncAt   string `json:"last_yukihub_account_sync_at,omitempty"`

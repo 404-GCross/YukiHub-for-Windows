@@ -145,6 +145,11 @@ export class AccountStatus {
      * SharePlaying：关闭时仍上报心跳，但不带「正在玩什么」
      */
     "share_playing": boolean;
+
+    /**
+     * FriendPlayNotify：好友开始玩游戏时是否弹通知（对齐手机版 friend_play_notify）
+     */
+    "friend_play_notify": boolean;
     "last_sync_at"?: string;
     "last_sync_hash"?: string;
 
@@ -170,6 +175,9 @@ export class AccountStatus {
         }
         if (!("share_playing" in $$source)) {
             this["share_playing"] = false;
+        }
+        if (!("friend_play_notify" in $$source)) {
+            this["friend_play_notify"] = false;
         }
         if (!("presence_active" in $$source)) {
             this["presence_active"] = false;

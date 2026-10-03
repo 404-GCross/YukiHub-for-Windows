@@ -280,6 +280,13 @@ export function SetAccountCloudSyncEnabled(enabled: boolean): $CancellablePromis
 }
 
 /**
+ * SetAccountFriendPlayNotify 开关「好友开始玩游戏时通知」。
+ */
+export function SetAccountFriendPlayNotify(enabled: boolean): $CancellablePromise<void> {
+    return $Call.ByID(3499901004, enabled);
+}
+
+/**
  * SetAccountSharePlaying 开关「向好友展示正在玩的游戏」。
  */
 export function SetAccountSharePlaying(enabled: boolean): $CancellablePromise<void> {

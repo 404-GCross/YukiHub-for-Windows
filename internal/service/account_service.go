@@ -76,7 +76,10 @@ type AccountService struct {
 
 	presenceCancel context.CancelFunc
 	presenceActive bool
-	lastSyncAt     time.Time
+	// 「好友开始玩游戏」轮询（对齐手机版 PresenceService 的 15 秒好友轮询）
+	friendPlayCancel context.CancelFunc
+	friendPlayActive bool
+	lastSyncAt       time.Time
 
 	now func() time.Time
 }
@@ -147,6 +150,7 @@ func (s *AccountService) statusLocked() vo.AccountStatus {
 	status.HikarinagiBound = s.config.YukiHubAccountHikarinagiBound
 	status.CloudSyncEnabled = s.config.YukiHubAccountCloudSyncEnabled
 	status.SharePlaying = s.config.YukiHubAccountSharePlaying
+	status.FriendPlayNotify = s.config.YukiHubAccountFriendPlayNotify
 	status.LastSyncAt = s.config.LastYukiHubAccountSyncAt
 	status.LastSyncHash = s.config.LastYukiHubAccountSyncHash
 	return status
@@ -234,6 +238,7 @@ func (s *AccountService) LogoutAccount() error {
 		}
 	}
 	s.stopPresence()
+	s.stopFriendPlayPolling()
 
 	s.mu.Lock()
 	if s.config != nil {
@@ -291,10 +296,14 @@ func (s *AccountService) applySession(session yukihubaccount.Session) error {
 	// 语义，所以在登录成功这一刻显式置为 true（用户在账号面板里手动关掉后，
 	// 同一次登录会话内保持关闭）。
 	s.config.YukiHubAccountSharePlaying = true
+	// 「好友开始玩游戏时通知」同理：手机版读的也是默认值 true
+	// （PresenceManager.isFriendPlayNotifyEnabled 的 getBoolean(..., true)）。
+	s.config.YukiHubAccountFriendPlayNotify = true
 	s.persistConfigLocked()
 	s.mu.Unlock()
 
 	s.startPresence()
+	s.startFriendPlayPolling()
 	s.emitStatus()
 	return nil
 }
@@ -619,7 +628,7 @@ func (s *AccountService) resolvePlayingActivity() string {
 	if err != nil || strings.TrimSpace(title) == "" {
 		return ""
 	}
-	return "正在玩：" + title
+	return playingActivityPrefix + title
 }
 
 // ==================== 社交（好友 / 私聊 / 群聊） ====================
@@ -1036,6 +1045,7 @@ func (s *AccountService) refreshSession() error {
 // markSessionExpired 刷新也失败时清掉会话，界面据此提示重新登录。
 func (s *AccountService) markSessionExpired() {
 	s.stopPresence()
+	s.stopFriendPlayPolling()
 	s.mu.Lock()
 	if s.config != nil {
 		s.config.YukiHubAccountAccessToken = ""

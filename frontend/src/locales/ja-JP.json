@@ -1435,7 +1435,9 @@
       "quickLoginHikarinagi": "Hikarinagi ログイン",
       "toastSendCodeFailed": "コード送信に失敗しました：{{error}}",
       "toastSubmitFailed": "操作に失敗しました：{{error}}",
-      "toastQuickLoginFailed": "クイックログインに失敗しました：{{error}}"
+      "toastQuickLoginFailed": "クイックログインに失敗しました：{{error}}",
+      "friendPlayNotify": "フレンドがゲームを始めたら通知",
+      "friendPlayNotifyHint": "フレンドがゲームを開始したときに通知します"
     }
   },
   "downloads": {
@@ -1847,6 +1849,7 @@
     "friendSince": "フレンド歴 · {{time}}",
     "playingNow": "プレイ中",
     "playingFor": "プレイ中 {{duration}}",
-    "profileSendMessage": "メッセージを送る"
+    "profileSendMessage": "メッセージを送る",
+    "friendPlayNotice": "《{{game}}》を始めました"
   }
 }

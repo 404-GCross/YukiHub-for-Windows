@@ -16,6 +16,7 @@ import { useAppZoom } from "./hooks/useAppZoom";
 import { useCoverImageDownloadNotifications } from "./hooks/useCoverImageDownloadNotifications";
 import { useDownloadNotifications } from "./hooks/useDownloadNotifications";
 import { useExitSyncToast } from "./hooks/useExitSyncToast";
+import { useFriendPlayNotifications } from "./hooks/useFriendPlayNotifications";
 import { useUpdateCheck } from "./hooks/useUpdateCheck";
 import { Route as rootRoute } from "./routes/__root";
 import { Route as bigscreenRoute } from "./routes/bigscreen";
@@ -109,6 +110,7 @@ function App() {
   });
   useExitSyncToast({ quitSyncRequest });
   useDownloadNotifications(i18n);
+  useFriendPlayNotifications();
   useCoverImageDownloadNotifications(i18n);
 
   return (

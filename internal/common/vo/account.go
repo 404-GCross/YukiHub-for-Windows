@@ -19,6 +19,8 @@ type AccountStatus struct {
 	CloudSyncEnabled bool `json:"cloud_sync_enabled"`
 	// SharePlaying：关闭时仍上报心跳，但不带「正在玩什么」
 	SharePlaying bool `json:"share_playing"`
+	// FriendPlayNotify：好友开始玩游戏时是否弹通知（对齐手机版 friend_play_notify）
+	FriendPlayNotify bool `json:"friend_play_notify"`
 
 	LastSyncAt   string `json:"last_sync_at,omitempty"`
 	LastSyncHash string `json:"last_sync_hash,omitempty"`

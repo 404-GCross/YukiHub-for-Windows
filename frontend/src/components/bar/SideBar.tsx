@@ -6,6 +6,7 @@ import { GetChatUnreadCount } from "../../../bindings/yukihub/internal/service/a
 import { onWailsEvent } from "../../../src/bindings/runtime";
 import galToolboxIconUrl from "../../assets/links/gal-toolbox.png";
 import { useAccountStatus } from "../../hooks/useAccountStatus";
+import { OPEN_FRIENDS_EVENT } from "../../hooks/useFriendPlayNotifications";
 import { useAppStore } from "../../store";
 import { SnowflakeMark } from "../branding/SnowflakeMark";
 import { FriendsChatModal } from "../modal/FriendsChatModal";
@@ -63,6 +64,15 @@ export function SideBar({ bgEnabled = false, bgOpacity = 0.85 }: SideBarProps) {
       },
     );
     return unsubscribe;
+  }, []);
+
+  // 好友「开始玩游戏」通知被点击时展开好友面板（Steam 同款行为）。
+  // 通知卡片不需要知道好友面板挂在哪个组件上，用窗口事件解耦。
+  useEffect(() => {
+    const handleOpenFriends = () => setChatOpen(true);
+    window.addEventListener(OPEN_FRIENDS_EVENT, handleOpenFriends);
+    return () =>
+      window.removeEventListener(OPEN_FRIENDS_EVENT, handleOpenFriends);
   }, []);
 
   // 聊天未读数：登录后每 45 秒拉一次（对齐手机版侧栏徽标；
