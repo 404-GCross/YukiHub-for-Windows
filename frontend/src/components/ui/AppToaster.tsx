@@ -23,6 +23,25 @@ const TOAST_OPTIONS = {
   loading: { duration: Infinity },
 };
 
+// 「标题：原因」里原因短于这个显示宽度时，不拆折叠区，直接并入标题整条显示。
+// 业务文案（「该邮箱尚未注册」「密码错误」「网络连接失败」）本来就该一眼看到，
+// 只有真正的技术细节（拨号错误、文件路径、调用栈）才值得收起来。
+const INLINE_DETAIL_MAX_WIDTH = 40;
+
+/** 估算显示宽度：CJK / 全角字符按 2 列计，其余按 1 列，让中英文阈值一致。 */
+function displayWidth(text: string) {
+  let width = 0;
+  for (const char of text) {
+    width
+      += /[\u1100-\u115F\u2E80-\uA4CF\uAC00-\uD7A3\uF900-\uFAFF\uFE30-\uFE6F\uFF00-\uFF60\uFFE0-\uFFE6]/.test(
+        char,
+      )
+        ? 2
+        : 1;
+  }
+  return width;
+}
+
 function splitToastMessage(message: string) {
   const normalized = message.trim();
   if (!normalized)
@@ -40,11 +59,17 @@ function splitToastMessage(message: string) {
     };
   }
 
+  // 「标题：原因」的自动拆分只是**启发式**，门槛必须足够保守。
+  //
+  // 原先是 `details.length > 4`：同一个界面上，「操作失败：密码错误」（原因 4 字）
+  // 整条显示，而「操作失败：该邮箱尚未注册」（原因 7 字）却被收进「展开详情」，
+  // 用户完全看不出规则是什么 —— 而全仓 62 条「XX失败：{{error}}」都受这条规则影响。
+  // 现在改按**显示宽度**判断：短原因并入标题直接可见，只有很长的技术细节才折叠。
   const separatorMatch = normalized.match(/^(.{4,90}?)[：:](.+)$/);
   if (separatorMatch) {
     const title = separatorMatch[1].trim();
     const details = separatorMatch[2].trim();
-    if (title && details.length > 4) {
+    if (title && displayWidth(details) >= INLINE_DETAIL_MAX_WIDTH) {
       return { title, details };
     }
   }
