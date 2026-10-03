@@ -426,6 +426,23 @@ func extractAutostartLaunchFlag(args []string) ([]string, bool) {
 	return cleanArgs, launchedByAutostart
 }
 
+// 游戏内好友栏（overlay）相关常量。
+const (
+	overlayWindowName = "overlay"
+	// 避开 Steam 占用的 Shift+Tab
+	overlayShortcut     = "alt+shift+tab"
+	overlayWindowWidth  = 380
+	overlayWindowHeight = 560
+	// 离屏幕右边留一点空隙
+	overlayMargin = 24
+)
+
+// overlayWindow 与它的锁：快捷键回调可能在任意时候触发。
+var (
+	overlayWindow *application.WebviewWindow
+	overlayMu     sync.Mutex
+)
+
 func main() {
 	applog.SetMode(applog.ModeCLI)
 	const applicationLogLevel = slog.LevelInfo
@@ -927,6 +944,70 @@ func runGUI(
 				Backdrop: application.MacBackdropTranslucent,
 			},
 		})
+		// ===== 游戏内好友栏（overlay）=====
+		//
+		// Steam 的 Shift+Tab 已经被 Steam 自己占用（注册会失败），这里用
+		// Alt+Shift+Tab。窗口惰性创建：不用这个功能的人不该白白多一个 webview。
+		//
+		// 必须诚实说明的限制：置顶窗口能盖在「窗口化 / 无边框全屏」游戏上，
+		// 但**盖不住独占全屏（exclusive fullscreen）的 DirectX 游戏** ——
+		// Steam 能做到是因为它往游戏进程里注入 hook，YukiHub 不做注入。
+		toggleOverlayWindow := func() {
+			overlayMu.Lock()
+			defer overlayMu.Unlock()
+
+			if overlayWindow == nil {
+				overlayWindow = wailsApp.Window.NewWithOptions(application.WebviewWindowOptions{
+					Name:             overlayWindowName,
+					Title:            "YukiHub",
+					URL:              "/overlay",
+					Width:            overlayWindowWidth,
+					Height:           overlayWindowHeight,
+					DisableResize:    true,
+					Frameless:        true,
+					AlwaysOnTop:      true,
+					Hidden:           true,
+					BackgroundType:   application.BackgroundTypeTranslucent,
+					BackgroundColour: application.NewRGBA(18, 20, 22, 0),
+					Windows: application.WindowsWindow{
+						BackdropType: application.Auto,
+						Theme:        application.SystemDefault,
+						// 别在任务栏多出一个条目：它是呼出式的浮层，不是独立应用
+						HiddenOnTaskbar: true,
+					},
+					Mac: application.MacWindow{
+						TitleBar: application.MacTitleBarHidden,
+						Backdrop: application.MacBackdropTranslucent,
+					},
+				})
+			}
+
+			if overlayWindow.IsVisible() {
+				overlayWindow.Hide()
+				return
+			}
+
+			// 贴主屏右侧竖直居中：不挡游戏主体的同时一眼能看到
+			if screen := wailsApp.Screen.GetPrimary(); screen != nil {
+				x := screen.Size.Width - overlayWindowWidth - overlayMargin
+				y := (screen.Size.Height - overlayWindowHeight) / 2
+				if x < 0 {
+					x = 0
+				}
+				if y < 0 {
+					y = 0
+				}
+				overlayWindow.SetPosition(x, y)
+			}
+			overlayWindow.Show()
+			overlayWindow.Focus()
+		}
+
+		if err := wailsApp.GlobalShortcut.Register(overlayShortcut, toggleOverlayWindow); err != nil {
+			// 被别的程序占用时不该让应用起不来，只是这个入口不可用
+			appLogger.Warning(fmt.Sprintf("注册好友栏快捷键 %s 失败（可能已被占用）：%v", overlayShortcut, err))
+		}
+
 		appState.SetRuntime(wailsApp, mainWindow)
 		guiRuntime = wailsruntime.New(wailsApp, mainWindow)
 		backupService.SetRuntime(guiRuntime)

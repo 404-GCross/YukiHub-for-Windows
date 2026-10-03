@@ -1851,5 +1851,9 @@
     "playingFor": "Playing for {{duration}}",
     "profileSendMessage": "Send message",
     "friendPlayNotice": "started playing {{game}}"
+  },
+  "friendsOverlay": {
+    "title": "Friends",
+    "hint": "Alt+Shift+Tab to hide"
   }
 }

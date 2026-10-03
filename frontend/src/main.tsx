@@ -9,12 +9,18 @@ const container = document.getElementById("root");
 
 const root = createRoot(container!);
 
-const isStartupWindow = window.location.pathname.startsWith("/startup");
+const pathname = window.location.pathname;
+const isStartupWindow = pathname.startsWith("/startup");
+// 游戏内好友栏是独立的置顶窗口（Go 侧 main.go 创建），走自己的轻量入口：
+// 它不需要整个应用外壳，只画一个好友列表。
+const isOverlayWindow = pathname.startsWith("/overlay");
 
 async function mountApplication() {
   const { default: ApplicationRoot } = isStartupWindow
     ? await import("./components/startup/StartupWindow")
-    : await import("./App");
+    : isOverlayWindow
+      ? await import("./components/overlay/FriendsOverlay")
+      : await import("./App");
 
   root.render(
     <React.StrictMode>

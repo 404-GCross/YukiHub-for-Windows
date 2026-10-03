@@ -1851,5 +1851,9 @@
     "playingFor": "プレイ中 {{duration}}",
     "profileSendMessage": "メッセージを送る",
     "friendPlayNotice": "《{{game}}》を始めました"
+  },
+  "friendsOverlay": {
+    "title": "フレンド",
+    "hint": "Alt+Shift+Tab で閉じる"
   }
 }

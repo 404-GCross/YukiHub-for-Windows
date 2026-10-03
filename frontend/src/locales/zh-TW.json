@@ -1851,5 +1851,9 @@
     "playingFor": "已玩 {{duration}}",
     "profileSendMessage": "傳送訊息",
     "friendPlayNotice": "開始玩 《{{game}}》"
+  },
+  "friendsOverlay": {
+    "title": "好友",
+    "hint": "Alt+Shift+Tab 收起"
   }
 }
