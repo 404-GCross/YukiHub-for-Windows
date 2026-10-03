@@ -4,8 +4,12 @@
 // MainActivity / SyncManager / SocialApiClient），桌面端只是多加了一个调用方。
 // 几个必须照做的细节：
 //
-//   - 登录 / 注册 / 发验证码走 **GET + query string**（后端既有设计，密码也在 URL 里）；
-//     重置密码、刷新令牌、改昵称等走 POST + JSON。
+//   - **所有带密码 / 验证码 / 令牌的接口一律 POST + JSON body**，绝不把敏感字段
+//     拼进 URL query（旧实现 GET + query 会让密码落到服务器访问日志、代理日志与
+//     Referer 里）。契约见 docs/yukihub-api-contract.md。
+//   - 业务错误是 400 / 401 / 403 / 429，**404 只表示接口地址不存在**；收到 429
+//     不自动重试，按服务端文案提示用户等待。
+//   - 响应体若以 `<` 开头（HTML），说明打到了非 API 地址或服务器异常，不要解析。
 //   - 认证统一是 `Authorization: Bearer <access_token>`。
 //   - 请求要带正常的 User-Agent 与 `Referer: https://yukihub.zh.kg/`：
 //     后端前置了 Cloudflare，UA 异常会被按浏览器指纹拦掉（Error 1010）。
@@ -53,7 +57,19 @@ var ErrNotLoggedIn = errors.New("未登录 YukiHub 账号")
 var ErrUnauthorized = errors.New("登录状态已失效")
 
 // ErrCloudSnapshotMissing 表示云端还没有同步数据（后端返回 404）。
+//
+// 这是契约里 404 的**唯一例外**（docs/yukihub-api-contract.md 第五节）。
 var ErrCloudSnapshotMissing = errors.New("云端还没有同步数据")
+
+// ErrAccountDisabled 表示账号被封禁 / 禁用（HTTP 403）。
+//
+// 调用方据此判断「必须重新登录」；而网络异常、超时、5xx 都不该清掉本地登录态
+// （否则用户会莫名其妙被登出）。
+var ErrAccountDisabled = errors.New("账号已被限制使用")
+
+// ErrServiceAbnormal 表示服务端返回了 HTML —— 请求打到了非 API 地址，或服务器异常。
+// 这种情况**不能**继续按 JSON 解析。
+var ErrServiceAbnormal = errors.New("服务异常，请稍后重试")
 
 // Session 是一次成功认证后的结果。
 type Session struct {
@@ -131,8 +147,8 @@ func (c *Client) SendCode(ctx context.Context, email string, purpose string) err
 	if purpose == CodePurposeReset {
 		path = "/auth/send_reset_code"
 	}
-	query := url.Values{"email": {strings.TrimSpace(email)}}
-	return c.doEmpty(ctx, http.MethodGet, c.baseURL+path+"?"+query.Encode(), "", nil)
+	payload := map[string]string{"email": strings.TrimSpace(email)}
+	return c.doEmpty(ctx, http.MethodPost, c.baseURL+path, "", payload)
 }
 
 // 验证码用途。
@@ -143,13 +159,14 @@ const (
 
 // Register 用邮箱 + 验证码注册新账号。
 func (c *Client) Register(ctx context.Context, email, password, nickname, code string) (Session, error) {
-	query := url.Values{
-		"email":    {strings.TrimSpace(email)},
-		"password": {password},
-		"nickname": {strings.TrimSpace(nickname)},
-		"code":     {strings.TrimSpace(code)},
+	payload := map[string]string{
+		"email":    strings.TrimSpace(email),
+		"password": password,
+		"nickname": strings.TrimSpace(nickname),
+		"code":     strings.TrimSpace(code),
 	}
-	body, err := c.doJSON(ctx, http.MethodGet, c.baseURL+"/auth/register?"+query.Encode(), "", nil)
+	// 契约：注册成功返回 201，doRaw 对 2xx 一律放行。
+	body, err := c.doJSON(ctx, http.MethodPost, c.baseURL+"/auth/register", "", payload)
 	if err != nil {
 		return Session{}, err
 	}
@@ -157,12 +174,15 @@ func (c *Client) Register(ctx context.Context, email, password, nickname, code s
 }
 
 // Login 用邮箱 + 密码登录。
+//
+// 注意：这里的 401 表示「密码错误」，不是「令牌失效」——本方法不走 accountFetch
+// 的自动刷新流程，两者不会混淆。
 func (c *Client) Login(ctx context.Context, email, password string) (Session, error) {
-	query := url.Values{
-		"email":    {strings.TrimSpace(email)},
-		"password": {password},
+	payload := map[string]string{
+		"email":    strings.TrimSpace(email),
+		"password": password,
 	}
-	body, err := c.doJSON(ctx, http.MethodGet, c.baseURL+"/auth/login?"+query.Encode(), "", nil)
+	body, err := c.doJSON(ctx, http.MethodPost, c.baseURL+"/auth/login", "", payload)
 	if err != nil {
 		return Session{}, err
 	}
@@ -170,6 +190,9 @@ func (c *Client) Login(ctx context.Context, email, password string) (Session, er
 }
 
 // Refresh 用 refresh token 换新的 access token。
+//
+// 契约：**refreshToken 也会轮换**，调用方必须保存返回里的新值（applySession 会存）。
+// 这里返回 401 表示 refreshToken 无效/已过期，调用方应清空本地会话。
 func (c *Client) Refresh(ctx context.Context, refreshToken string) (Session, error) {
 	payload := map[string]string{"refreshToken": strings.TrimSpace(refreshToken)}
 	body, err := c.doJSON(ctx, http.MethodPost, c.baseURL+"/auth/refresh", "", payload)
@@ -377,6 +400,10 @@ func (c *Client) DownloadSnapshot(ctx context.Context, token string) ([]byte, er
 	if response.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("下载云端快照失败（HTTP %d）：%s", response.StatusCode, summarizeBody(raw))
 	}
+	// 服务端异常时会返回 HTML 错误页，不能当成快照存进本地库。
+	if looksLikeHTML(raw) {
+		return nil, ErrServiceAbnormal
+	}
 	return gunzipIfNeeded(raw)
 }
 
@@ -472,6 +499,11 @@ func (c *Client) doRawWithTimeout(ctx context.Context, method, rawURL, token, co
 	if len(bytes.TrimSpace(raw)) == 0 {
 		return map[string]any{}, nil
 	}
+	// 契约要求：拿到 HTML 说明请求打到了非 API 地址或服务器异常，**不要尝试解析**。
+	// 直接往下走会把「响应缺少字段」这种误导性错误抛给用户。
+	if looksLikeHTML(raw) {
+		return nil, fmt.Errorf("%w（HTTP %d）", ErrServiceAbnormal, response.StatusCode)
+	}
 
 	var decoded map[string]any
 	if err := json.Unmarshal(raw, &decoded); err != nil {
@@ -508,13 +540,20 @@ func buildHTTPError(statusCode int, raw []byte) error {
 		if message == "" {
 			message = "账号被限制使用"
 		}
-		return fmt.Errorf("%s", message)
+		// 包哨兵错误：调用方据此清空本地会话（网络异常 / 5xx 不清）。
+		return fmt.Errorf("%w: %s", ErrAccountDisabled, message)
 	default:
 		if message == "" {
 			return fmt.Errorf("账号服务返回 HTTP %d", statusCode)
 		}
 		return fmt.Errorf("%s", message)
 	}
+}
+
+// looksLikeHTML 判断响应体是不是 HTML（服务器错误页 / 打到了非 API 地址）。
+func looksLikeHTML(raw []byte) bool {
+	trimmed := bytes.TrimSpace(raw)
+	return len(trimmed) > 0 && trimmed[0] == '<'
 }
 
 func summarizeBody(raw []byte) string {

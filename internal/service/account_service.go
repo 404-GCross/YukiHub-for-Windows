@@ -66,6 +66,14 @@ type AccountService struct {
 	mu     sync.Mutex
 	syncMu sync.Mutex
 
+	// refreshMu / refreshFlight 保证同一时刻只有一次 refresh 请求在飞。
+	// 契约要求（docs/yukihub-api-contract.md 第四节）：并发多个请求同时 401 时
+	// refresh 只发一次，其余请求等结果 —— 否则会触发刷新风暴并撞上服务端限速。
+	refreshMu     sync.Mutex
+	refreshFlight *refreshCall
+	// refreshSessionFn 只在测试里替换刷新实现；生产路径恒为 nil。
+	refreshSessionFn func() error
+
 	presenceCancel context.CancelFunc
 	presenceActive bool
 	lastSyncAt     time.Time
@@ -931,15 +939,66 @@ func accountFetch[T any](s *AccountService, fn func(token string) (T, error)) (T
 	if err == nil || !errors.Is(err, yukihubaccount.ErrUnauthorized) {
 		return result, err
 	}
-	if refreshErr := s.refreshSession(); refreshErr != nil {
-		s.markSessionExpired()
+	// 401 后只重试**一次**（契约第四节），不循环。
+	//
+	// 刷新失败时的处理要分清两种情况（契约第四节第 4 条）：
+	//   - 令牌确实失效（refresh 返回 401）或账号被禁用（403）→ 清空本地会话；
+	//   - 网络异常 / 超时 / 服务端 5xx → **保留登录态**，只把错误抛给界面。
+	// 之前一律 markSessionExpired，断网时会把用户直接登出。
+	if refreshErr := s.refreshSessionShared(); refreshErr != nil {
+		if isSessionInvalidError(refreshErr) {
+			s.markSessionExpired()
+		} else {
+			applog.LogWarningf(s.ctx, "YukiHub 账号：刷新令牌失败（保留登录态）：%v", refreshErr)
+		}
 		return zero, err
 	}
 	token, err = s.requireToken()
 	if err != nil {
 		return zero, err
 	}
+	// 重试仍失败时不再清会话：新令牌刚换出来就被拒多半是服务端抖动，
+	// 清掉反而会让用户莫名其妙掉线。
 	return fn(token)
+}
+
+// isSessionInvalidError 判断刷新失败是否意味着「这个会话已经彻底没救了」。
+func isSessionInvalidError(err error) bool {
+	return errors.Is(err, yukihubaccount.ErrUnauthorized) ||
+		errors.Is(err, yukihubaccount.ErrAccountDisabled)
+}
+
+// refreshCall 是一次进行中的令牌刷新。
+type refreshCall struct {
+	done chan struct{}
+	err  error
+}
+
+// refreshSessionShared 保证同一时刻只有一次 refresh 请求在飞。
+//
+// 并发请求同时 401 时，后来者等待第一次的结果复用，而不是各自去刷 —— 否则会
+// 打出刷新风暴，服务端开始限速（429），客户端反而被锁在登出状态。
+func (s *AccountService) refreshSessionShared() error {
+	s.refreshMu.Lock()
+	if call := s.refreshFlight; call != nil {
+		s.refreshMu.Unlock()
+		<-call.done
+		return call.err
+	}
+	call := &refreshCall{done: make(chan struct{})}
+	s.refreshFlight = call
+	s.refreshMu.Unlock()
+
+	// 无论成功、失败还是 panic 都要唤醒等待者，否则会永久阻塞。
+	defer func() {
+		s.refreshMu.Lock()
+		s.refreshFlight = nil
+		s.refreshMu.Unlock()
+		close(call.done)
+	}()
+
+	call.err = s.refreshSession()
+	return call.err
 }
 
 func (s *AccountService) requireToken() (string, error) {
@@ -953,6 +1012,10 @@ func (s *AccountService) requireToken() (string, error) {
 
 // refreshSession 用 refresh token 换新令牌。没有 refresh token 就直接失败。
 func (s *AccountService) refreshSession() error {
+	// 测试注入点：让并发刷新测试不必真的走网络与配置落盘。
+	if s.refreshSessionFn != nil {
+		return s.refreshSessionFn()
+	}
 	s.mu.Lock()
 	refreshToken := ""
 	if s.config != nil {
