@@ -454,6 +454,12 @@
       "selectFileFailed": "Failed to select file",
       "nsfwMarked": "Marked as NSFW",
       "nsfwUnmarked": "NSFW mark removed"
+    },
+    "manualTiming": {
+      "start": "Track time only",
+      "running": "Tracking",
+      "started": "Now tracking play time for {{name}}",
+      "startFailed": "Could not start tracking {{name}}"
     }
   },
   "gameReview": {

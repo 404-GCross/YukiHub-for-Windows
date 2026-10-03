@@ -99,6 +99,10 @@ type activePlaySession struct {
 	game      models.Game
 	done      chan struct{}
 	finalOnce sync.Once
+	// manual 标记这是一次「纯手动计时」会话：没有游戏进程可追踪，
+	// 因此即使开启了「仅记录活跃时长」也必须回退到墙钟 —— 否则 activeSeconds
+	// 恒为 0，整条会话会在结算时被当成 <60 秒的短会话直接删掉。
+	manual bool
 	// activeSeconds 由活跃窗口计时回调更新，供 15 秒心跳持久化读取。
 	activeSeconds   atomic.Int64
 	audioMu         sync.Mutex
@@ -346,7 +350,7 @@ func (s *StartService) startGame(gameID string, options launcherpkg.LaunchOption
 		return false, fmt.Errorf("failed to create play session: %w", err)
 	}
 
-	session := s.registerActiveSession(sessionID, gameID, startTime, game)
+	session := s.registerActiveSession(sessionID, gameID, startTime, game, false)
 	s.emitGameRuntimeChanged(GameRuntimeChangedEvent{
 		GameID:    gameID,
 		Game:      &game,
@@ -715,19 +719,20 @@ func (s *StartService) finalizePlaySessionOnce(session *activePlaySession, reaso
 		StartTime:     startTime,
 		State:         GameRuntimeStateEnding,
 		Reason:        reason,
-		TimingMode:    s.runtimeTimingMode(),
-		ActiveSeconds: s.runtimeActiveSeconds(activeSeconds),
+		TimingMode:    s.runtimeTimingMode(session),
+		ActiveSeconds: s.runtimeActiveSeconds(session, activeSeconds),
 	})
 
 	endTime := time.Now()
 
-	// 如果启用活跃时间追踪，使用累加的活跃时长
-	// 否则使用整个运行时长
+	// 如果启用活跃时间追踪，使用累加的活跃时长；否则使用整个运行时长。
+	// 纯手动计时的会话没有进程可追踪，即便开着「仅记录活跃时长」也只能用墙钟。
 	var duration int
-	if s.config.RecordActiveTimeOnly {
+	switch {
+	case !session.manual && s.config.RecordActiveTimeOnly:
 		duration = activeSeconds
 		applog.LogInfof(s.ctx, "Game %s active play time: %d seconds", gameID, duration)
-	} else {
+	default:
 		duration = int(endTime.Sub(startTime).Seconds())
 		applog.LogInfof(s.ctx, "Game %s total runtime: %d seconds", gameID, duration)
 	}
@@ -769,6 +774,70 @@ func (s *StartService) finalizePlaySessionOnce(session *activePlaySession, reaso
 	}
 }
 
+// StartManualPlaySession starts a manual play session: it only records time and
+// never launches anything.
+//
+// The existing tracking is a side effect of *launching* a game (the Android app
+// does the same via its Activity lifecycle). On Windows that misses every game
+// YukiHub did not start itself: third-party launchers, the Steam client, a plain
+// double-click, an automated script… none of those can be covered by watching a
+// process. This entry point lets the user start the clock by hand instead.
+//
+// Returns false when the game is already being tracked — that is not an error.
+// Ending the session reuses EndCurrentPlaySession, which stops tracking without
+// touching the game process (there is none here).
+func (s *StartService) StartManualPlaySession(gameID string) (bool, error) {
+	gameID = strings.TrimSpace(gameID)
+	if gameID == "" {
+		return false, fmt.Errorf("game id is required")
+	}
+	if s.gameService == nil {
+		return false, fmt.Errorf("game service is not initialized")
+	}
+	if s.sessionService == nil {
+		return false, fmt.Errorf("session service is not initialized")
+	}
+	// 已经在计时中：不重复建会话，否则同一游戏会出现两条并发记录，
+	// 且停止按钮只会结算其中一条。
+	if s.getActiveSession(gameID) != nil {
+		return false, nil
+	}
+
+	game, err := s.gameService.GetGameByID(gameID)
+	if err != nil {
+		applog.LogErrorf(s.ctx, "manual play session: failed to load game %s: %v", gameID, err)
+		return false, err
+	}
+
+	startTime := time.Now()
+	sessionID, err := s.sessionService.CreatePendingSession(gameID, startTime)
+	if err != nil {
+		applog.LogErrorf(s.ctx, "manual play session: failed to create session: %v", err)
+		return false, err
+	}
+
+	// registerActiveSession 内部会起心跳 goroutine：即使进程被强杀/崩溃，
+	// 已写入的时长也能靠 updated_at 快照兜回来。
+	session := s.registerActiveSession(sessionID, gameID, startTime, game, true)
+
+	// 手动计时没有「启动中」阶段，直接进 playing —— 顶部计时岛
+	// 与好友侧的「正在玩 XXX」都靠这个事件点亮。
+	s.emitGameRuntimeChanged(GameRuntimeChangedEvent{
+		GameID:        gameID,
+		Game:          &game,
+		SessionID:     sessionID,
+		StartTime:     startTime,
+		State:         GameRuntimeStatePlaying,
+		Reason:        "manual-started",
+		TimingMode:    s.runtimeTimingMode(session),
+		ActiveSeconds: s.runtimeActiveSeconds(session, 0),
+	})
+
+	s.requestHomeRefresh()
+	applog.LogInfof(s.ctx, "manual play session started: game=%s session=%s", gameID, sessionID)
+	return true, nil
+}
+
 // EndCurrentPlaySession manually ends YukiHub tracking for the active game.
 // It does not terminate the external game process; it finalizes the current
 // play session and stops monitoring so later process exit cannot write twice.
@@ -787,13 +856,14 @@ func (s *StartService) EndCurrentPlaySession(gameID string) error {
 	return nil
 }
 
-func (s *StartService) registerActiveSession(sessionID string, gameID string, startTime time.Time, game models.Game) *activePlaySession {
+func (s *StartService) registerActiveSession(sessionID string, gameID string, startTime time.Time, game models.Game, manual bool) *activePlaySession {
 	session := &activePlaySession{
 		sessionID: sessionID,
 		gameID:    gameID,
 		startTime: startTime,
 		game:      game,
 		done:      make(chan struct{}),
+		manual:    manual,
 	}
 
 	s.activeSessionsMu.Lock()
@@ -815,7 +885,7 @@ func (s *StartService) persistSessionHeartbeats(session *activePlaySession) {
 			return
 		case heartbeatAt := <-ticker.C:
 			duration := int(heartbeatAt.Sub(session.startTime).Seconds())
-			if s.config != nil && s.config.RecordActiveTimeOnly {
+			if !session.manual && s.config != nil && s.config.RecordActiveTimeOnly {
 				duration = int(session.activeSeconds.Load())
 			}
 			if duration < 0 {
@@ -881,8 +951,8 @@ func (s *StartService) emitGameRuntimePlaying(session *activePlaySession, reason
 		StartTime:     session.startTime,
 		State:         GameRuntimeStatePlaying,
 		Reason:        reason,
-		TimingMode:    s.runtimeTimingMode(),
-		ActiveSeconds: s.runtimeActiveSeconds(0),
+		TimingMode:    s.runtimeTimingMode(session),
+		ActiveSeconds: s.runtimeActiveSeconds(session, 0),
 	})
 }
 
@@ -1028,15 +1098,18 @@ func (s *StartService) logAudioErrorLocked(session *activePlaySession, processID
 	applog.LogWarningf(s.ctx, "Failed to update background mute for game %s (PID %d): %v", session.gameID, processID, err)
 }
 
-func (s *StartService) runtimeTimingMode() GameRuntimeTimingMode {
-	if s.config != nil && s.config.RecordActiveTimeOnly {
+// runtimeTimingMode 决定这次会话用墙钟还是活跃时长计时。
+// 纯手动计时的会话没有进程可追踪「活跃时长」，一律按墙钟走 —— 否则前端
+// 会一直显示 00:00:00，而落库时长也会是 0。
+func (s *StartService) runtimeTimingMode(session *activePlaySession) GameRuntimeTimingMode {
+	if !session.manual && s.config != nil && s.config.RecordActiveTimeOnly {
 		return GameRuntimeTimingModeActive
 	}
 	return GameRuntimeTimingModeWallClock
 }
 
-func (s *StartService) runtimeActiveSeconds(activeSeconds int) *int {
-	if s.config != nil && s.config.RecordActiveTimeOnly {
+func (s *StartService) runtimeActiveSeconds(session *activePlaySession, activeSeconds int) *int {
+	if !session.manual && s.config != nil && s.config.RecordActiveTimeOnly {
 		return intPtr(activeSeconds)
 	}
 	return nil

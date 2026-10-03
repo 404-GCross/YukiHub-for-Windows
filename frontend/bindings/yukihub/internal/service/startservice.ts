@@ -50,3 +50,21 @@ export function StartGameWithOptions(gameID: string, options: launcher$0.LaunchO
 export function StartGameWithTracking(gameID: string): $CancellablePromise<boolean> {
     return $Call.ByID(3839832302, gameID);
 }
+
+/**
+ * StartManualPlaySession starts a manual play session: it only records time and
+ * never launches anything.
+ * 
+ * The existing tracking is a side effect of *launching* a game (the Android app
+ * does the same via its Activity lifecycle). On Windows that misses every game
+ * YukiHub did not start itself: third-party launchers, the Steam client, a plain
+ * double-click, an automated script… none of those can be covered by watching a
+ * process. This entry point lets the user start the clock by hand instead.
+ * 
+ * Returns false when the game is already being tracked — that is not an error.
+ * Ending the session reuses EndCurrentPlaySession, which stops tracking without
+ * touching the game process (there is none here).
+ */
+export function StartManualPlaySession(gameID: string): $CancellablePromise<boolean> {
+    return $Call.ByID(2468799311, gameID);
+}

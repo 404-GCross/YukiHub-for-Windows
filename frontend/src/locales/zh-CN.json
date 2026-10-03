@@ -454,6 +454,12 @@
       "selectFileFailed": "选择文件失败",
       "nsfwMarked": "已标记为 NSFW",
       "nsfwUnmarked": "已取消 NSFW 标记"
+    },
+    "manualTiming": {
+      "start": "仅计时",
+      "running": "计时中",
+      "started": "已开始记录《{{name}}》的游玩时长",
+      "startFailed": "《{{name}}》没能开始计时"
     }
   },
   "gameReview": {

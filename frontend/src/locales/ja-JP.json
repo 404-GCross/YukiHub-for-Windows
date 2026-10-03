@@ -454,6 +454,12 @@
       "selectFileFailed": "ファイルの選択に失敗しました",
       "nsfwMarked": "NSFW に設定しました",
       "nsfwUnmarked": "NSFW 設定を解除しました"
+    },
+    "manualTiming": {
+      "start": "時間だけ記録",
+      "running": "記録中",
+      "started": "《{{name}}》のプレイ時間を記録しました",
+      "startFailed": "《{{name}}》の記録を開始できませんでした"
     }
   },
   "gameReview": {

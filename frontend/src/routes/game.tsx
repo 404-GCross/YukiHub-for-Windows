@@ -38,6 +38,7 @@ import {
   GetGameSteamStatus,
   ImportGameToSteam,
 } from "../../bindings/yukihub/internal/service/integrationservice";
+import { StartManualPlaySession } from "../../bindings/yukihub/internal/service/startservice";
 import { GetTagsByGame } from "../../bindings/yukihub/internal/service/tagservice";
 import { enums } from "../../src/bindings/models";
 import { onWailsEvent } from "../../src/bindings/runtime";
@@ -65,6 +66,7 @@ import { GameProgressPanel } from "../components/panel/GameProgressPanel";
 import { GameReviewPanel } from "../components/panel/GameReviewPanel";
 import { GameStatsPanel } from "../components/panel/GameStatsPanel";
 import { GameDetailSkeleton } from "../components/skeleton/GameDetailSkeleton";
+import { BetterButton } from "../components/ui/better/BetterButton";
 import { BetterDropdownMenu } from "../components/ui/better/BetterDropdownMenu";
 import { BetterImageViewer } from "../components/ui/better/BetterImageViewer";
 import { BetterSplitButton } from "../components/ui/better/BetterSplitButton";
@@ -186,6 +188,11 @@ function GameDetailPage() {
   const startGame = useAppStore(state => state.startGame);
   const fetchHomeData = useAppStore(state => state.fetchHomeData);
   const gameRuntime = useAppStore(state => state.gameRuntimes[gameId]);
+  // 「纯手动计时」没有 launching 阶段，靠 reason=manual-started 与
+  // 「启动游戏」的会话区分开，好让按钮切到「计时中」并禁用。
+  const isManualTimingActive
+    = Boolean(gameRuntime) && gameRuntime?.reason === "manual-started";
+  const [isStartingManualTiming, setIsStartingManualTiming] = useState(false);
   const { t } = useTranslation();
   const [game, setGame] = useState<models.Game | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -1010,6 +1017,28 @@ function GameDetailPage() {
     await performStartGame(game, mode);
   };
 
+  // 纯手动计时：只记账，不启动任何进程。
+  // 用于游戏不是由 YukiHub 拉起来的那些路径 —— 第三方启动器、Steam 客户端、
+  // 直接双击 exe、对启动器写脚本，这些都监控不到进程，只能让用户自己点开始。
+  const handleStartManualTiming = async () => {
+    if (!game?.id || gameRuntime)
+      return;
+    setIsStartingManualTiming(true);
+    try {
+      const started = await StartManualPlaySession(game.id);
+      // false = 已在计时中，不打扰用户
+      if (started)
+        toast.success(t("game.manualTiming.started", { name: game.name }));
+    }
+    catch (error) {
+      console.error("Failed to start manual play session:", error);
+      toast.error(t("game.manualTiming.startFailed", { name: game.name }));
+    }
+    finally {
+      setIsStartingManualTiming(false);
+    }
+  };
+
   const handleRetrySteamStatus = async () => {
     const action = pendingSteamAction.current;
     if (!action)
@@ -1458,6 +1487,22 @@ function GameDetailPage() {
                 disabled={isCurrentGameRunning}
                 isLoading={isCurrentGameEnding}
               />
+              <BetterButton
+                variant="secondary"
+                size="sm"
+                icon={
+                  isManualTimingActive
+                    ? "i-mdi-timer-sand"
+                    : "i-mdi-timer-play-outline"
+                }
+                disabled={isCurrentGameRunning}
+                isLoading={isStartingManualTiming}
+                onClick={handleStartManualTiming}
+              >
+                {isManualTimingActive
+                  ? t("game.manualTiming.running")
+                  : t("game.manualTiming.start")}
+              </BetterButton>
               <div className="h-6 w-px bg-brand-200 dark:bg-brand-700" />
               {" "}
               {/* 分隔线 */}

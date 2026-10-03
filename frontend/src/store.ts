@@ -37,6 +37,9 @@ export type GameRuntimeInfo = {
   game: models.Game | null;
   gameId: string;
   isFocused?: boolean;
+  // reason 来自后端事件的 reason 字段，用来区分会话是怎么来的：
+  // "launched"=由 YukiHub 启动游戏，"manual-started"=纯手动计时。
+  reason?: string;
   sessionId: string;
   startTime: unknown;
   state: GameRuntimeState;
@@ -328,6 +331,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         startTime: event.start_time ?? currentRuntime?.startTime ?? null,
         state,
         timingMode: event.timing_mode ?? currentRuntime?.timingMode,
+        reason: event.reason ?? currentRuntime?.reason,
       };
       const nextGameRuntimes = {
         ...currentState.gameRuntimes,
@@ -381,6 +385,7 @@ export const useAppStore = create<AppState>((set, get) => ({
               ? currentRuntime.state
               : "playing",
           timingMode: currentRuntime?.timingMode,
+          reason: currentRuntime?.reason,
         };
       }
 
