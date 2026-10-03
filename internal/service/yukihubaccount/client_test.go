@@ -292,10 +292,11 @@ func TestBusinessErrorMessagesArePreserved(t *testing.T) {
 			if !tc.wantMatch(err) {
 				t.Errorf("错误语义不符：%v", err)
 			}
-			// 文案要能让用户看懂（含剩余秒数），不能被改写或吞掉
+			// 文案必须**原样**透出：不能只包含、还多出客户端前缀
+			// （之前登录 401 会变成「登录状态已失效: 密码错误」）
 			message := extractServerMessage(tc.body)
-			if message != "" && !strings.Contains(err.Error(), message) {
-				t.Errorf("服务端文案 %q 未原样透出，实际 = %v", message, err)
+			if message != "" && err.Error() != message {
+				t.Errorf("服务端文案 %q 未原样透出，实际 = %q", message, err.Error())
 			}
 			// 429 绝不能自动重试
 			mu.Lock()

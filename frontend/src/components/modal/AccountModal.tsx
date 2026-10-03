@@ -132,7 +132,7 @@ export function AccountModal({
     }
     catch (error) {
       toast.error(
-        t("settings.account.toastFailed", {
+        t("settings.account.toastSendCodeFailed", {
           error: error instanceof Error ? error.message : String(error),
         }),
       );
@@ -170,7 +170,7 @@ export function AccountModal({
     }
     catch (error) {
       toast.error(
-        t("settings.account.toastFailed", {
+        t("settings.account.toastSubmitFailed", {
           error: error instanceof Error ? error.message : String(error),
         }),
       );
@@ -194,7 +194,7 @@ export function AccountModal({
     }
     catch (error) {
       toast.error(
-        t("settings.account.toastFailed", {
+        t("settings.account.toastQuickLoginFailed", {
           error: error instanceof Error ? error.message : String(error),
         }),
       );

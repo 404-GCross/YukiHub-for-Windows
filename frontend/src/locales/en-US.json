@@ -1419,7 +1419,10 @@
       "toastFailed": "Failed: {{error}}",
       "quickLoginLabel": "Third-party quick sign-in",
       "quickLoginKungal": "NextMoe sign-in",
-      "quickLoginHikarinagi": "Hikarinagi sign-in"
+      "quickLoginHikarinagi": "Hikarinagi sign-in",
+      "toastSendCodeFailed": "Failed to send code: {{error}}",
+      "toastSubmitFailed": "Failed: {{error}}",
+      "toastQuickLoginFailed": "Quick sign-in failed: {{error}}"
     }
   },
   "downloads": {

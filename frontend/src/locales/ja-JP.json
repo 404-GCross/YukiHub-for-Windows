@@ -1419,7 +1419,10 @@
       "toastFailed": "失敗しました：{{error}}",
       "quickLoginLabel": "サードパーティークイックログイン",
       "quickLoginKungal": "未萌ログイン",
-      "quickLoginHikarinagi": "Hikarinagi ログイン"
+      "quickLoginHikarinagi": "Hikarinagi ログイン",
+      "toastSendCodeFailed": "コード送信に失敗しました：{{error}}",
+      "toastSubmitFailed": "操作に失敗しました：{{error}}",
+      "toastQuickLoginFailed": "クイックログインに失敗しました：{{error}}"
     }
   },
   "downloads": {

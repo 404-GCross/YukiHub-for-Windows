@@ -71,6 +71,22 @@ var ErrAccountDisabled = errors.New("账号已被限制使用")
 // 这种情况**不能**继续按 JSON 解析。
 var ErrServiceAbnormal = errors.New("服务异常，请稍后重试")
 
+// sentinelError 把「哨兵身份」与「展示文案」解耦。
+//
+// 契约要求服务端返回的 error 文案**原样展示**给用户。之前用
+// fmt.Errorf("%w: %s", ErrUnauthorized, message) 会把客户端前缀一起
+// 拼进去 —— 登录接口的 401 语义是「密码错误」，用户看到的却是
+// 「登录状态已失效: 密码错误」，前缀既错误又误导。
+//
+// 这里让 Error() 只返回文案，Unwrap() 保留哨兵，errors.Is 照常可用。
+type sentinelError struct {
+	message string
+	cause   error
+}
+
+func (e *sentinelError) Error() string { return e.message }
+func (e *sentinelError) Unwrap() error { return e.cause }
+
 // Session 是一次成功认证后的结果。
 type Session struct {
 	AccessToken  string
@@ -534,14 +550,15 @@ func buildHTTPError(statusCode int, raw []byte) error {
 		if message == "" {
 			message = "登录状态已失效"
 		}
-		// 包一层哨兵错误，调用方据此刷新令牌后重试一次。
-		return fmt.Errorf("%w: %s", ErrUnauthorized, message)
+		// 带哨兵身份，但文案原样透出（登录 401 是「密码错误」，
+		// 不能被拼成「登录状态已失效: 密码错误」）。
+		return &sentinelError{message: message, cause: ErrUnauthorized}
 	case http.StatusForbidden:
 		if message == "" {
 			message = "账号被限制使用"
 		}
-		// 包哨兵错误：调用方据此清空本地会话（网络异常 / 5xx 不清）。
-		return fmt.Errorf("%w: %s", ErrAccountDisabled, message)
+		// 哨兵身份让调用方据此清空本地会话（网络异常 / 5xx 不清）。
+		return &sentinelError{message: message, cause: ErrAccountDisabled}
 	default:
 		if message == "" {
 			return fmt.Errorf("账号服务返回 HTTP %d", statusCode)

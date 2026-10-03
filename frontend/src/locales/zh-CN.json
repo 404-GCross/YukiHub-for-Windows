@@ -1419,7 +1419,10 @@
       "toastFailed": "操作失败：{{error}}",
       "quickLoginLabel": "第三方快捷登录",
       "quickLoginKungal": "未萌登录",
-      "quickLoginHikarinagi": "Hikarinagi 登录"
+      "quickLoginHikarinagi": "Hikarinagi 登录",
+      "toastSendCodeFailed": "验证码发送失败：{{error}}",
+      "toastSubmitFailed": "操作失败：{{error}}",
+      "toastQuickLoginFailed": "快捷登录失败：{{error}}"
     }
   },
   "downloads": {
