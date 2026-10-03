@@ -25,6 +25,7 @@ YukiHub 有两个端：
 | --- | --- | --- |
 | Android 手机版 | https://github.com/xm486/YukiHub | GPL-3.0 |
 | Windows 桌面版（本仓库） | https://github.com/xm486/YukiHub-for-Windows | AGPL-3.0 |
+| Windows 桌面版（国内镜像） | https://gitcode.com/xm486/YukiHub-for-Windows | AGPL-3.0 |
 
 桌面版的目标不是把手机版原样搬过来，而是与手机版共享**同一套数据语义和使用习惯**：
 游戏库、游玩记录、资料刮削、同步与备份。两端的数据可以互相导入导出，
