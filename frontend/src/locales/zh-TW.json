@@ -885,7 +885,8 @@
     "toast": {
       "endSuccess": "已結束本次遊玩記錄",
       "endFailed": "結束遊玩失敗"
-    }
+    },
+    "processUnknown": "未識別到程序，回本視窗即結束"
   },
   "categories": {
     "favorites": "最喜歡的遊戲",

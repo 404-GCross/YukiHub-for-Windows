@@ -197,3 +197,57 @@ func TestStartManualPlaySessionRejectsBadInput(t *testing.T) {
 		t.Error("依赖未注入时应当报错，而不是 panic 或静默成功")
 	}
 }
+
+// 进程识别失败**不能**丢掉这次游玩。
+//
+// 老行为是在这里直接 deleteShortOrCancelledSession（删会话），于是「启动器
+// 套娃 / 进程名对不上 / 游戏秒退」全变成白玩一场 —— 这正是原分支的老问题。
+// 现在改成降级：会话保留、继续计时，由「回到 YukiHub」兜底或用户手动结束。
+func TestProcessDetectionFailureKeepsSessionAlive(t *testing.T) {
+	startService, db := setupManualPlaySessionTest(t, &appconf.AppConfig{})
+
+	// 模拟 startGame 已经走到「建会话 + 注册」这一步
+	startTime := time.Now()
+	sessionID, err := startService.sessionService.CreatePendingSession(
+		manualSessionTestGameID, startTime,
+	)
+	if err != nil {
+		t.Fatalf("CreatePendingSession: %v", err)
+	}
+	game, err := startService.gameService.GetGameByID(manualSessionTestGameID)
+	if err != nil {
+		t.Fatalf("GetGameByID: %v", err)
+	}
+	session := startService.registerActiveSession(
+		sessionID, manualSessionTestGameID, startTime, game, false,
+	)
+
+	// 检测失败 → 降级
+	startService.degradeToForegroundTracking(session)
+
+	if !session.processUnknown.Load() {
+		t.Error("会话应被标记为「无进程监控」")
+	}
+	if got := countOpenSessions(t, db); got != 1 {
+		t.Fatalf("会话必须保留（用户其实还在玩），实际未结束会话数 = %d", got)
+	}
+	if sessions := startService.unknownProcessSessions(); len(sessions) != 1 {
+		t.Fatalf("兜底 watcher 应能查到 1 条无进程会话，实际 %d", len(sessions))
+	}
+
+	// 依然可以手动结束，且时长正常落库
+	session.startTime = time.Now().Add(-30 * time.Minute)
+	if err := startService.EndCurrentPlaySession(manualSessionTestGameID); err != nil {
+		t.Fatalf("EndCurrentPlaySession: %v", err)
+	}
+	if got := countOpenSessions(t, db); got != 0 {
+		t.Fatalf("手动结束后不应残留会话，实际 %d", got)
+	}
+	recorded := totalRecordedSeconds(t, db)
+	if recorded < 1700 || recorded > 1810 {
+		t.Fatalf("应落库约 1800 秒，实际 %d", recorded)
+	}
+	if sessions := startService.unknownProcessSessions(); len(sessions) != 0 {
+		t.Fatalf("结算后不应再有待兜底会话，实际 %d", len(sessions))
+	}
+}

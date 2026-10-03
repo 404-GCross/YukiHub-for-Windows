@@ -21,6 +21,7 @@ import (
 	"yukihub/internal/utils/audioutils"
 	"yukihub/internal/utils/processutils"
 	"yukihub/internal/utils/timerutils"
+	"yukihub/internal/utils/timerutils/focusing"
 
 	"yukihub/internal/wailsruntime"
 )
@@ -57,6 +58,9 @@ type GameRuntimeChangedEvent struct {
 	TimingMode    GameRuntimeTimingMode `json:"timing_mode,omitempty"`
 	ActiveSeconds *int                  `json:"active_seconds,omitempty"`
 	IsFocused     *bool                 `json:"is_focused,omitempty"`
+	// ProcessUnknown 表示这是「进程识别失败」降级出来的会话：计时照常，
+	// 但没有进程可监控，结束靠「回到 YukiHub」兜底。前端据此提示用户。
+	ProcessUnknown bool `json:"process_unknown,omitempty"`
 }
 
 type StartService struct {
@@ -71,6 +75,11 @@ type StartService struct {
 
 	activeSessions   map[string]*activePlaySession
 	activeSessionsMu sync.Mutex
+
+	// 「回到 YukiHub」兜底 watcher：只在存在无进程会话时运行，
+	// 用 appForegroundGrace 的宽限判断用户是不是真的回来了。
+	foregroundFallbackMu     sync.Mutex
+	foregroundFallbackActive bool
 }
 
 type launchedProcess struct {
@@ -103,6 +112,9 @@ type activePlaySession struct {
 	// 因此即使开启了「仅记录活跃时长」也必须回退到墙钟 —— 否则 activeSeconds
 	// 恒为 0，整条会话会在结算时被当成 <60 秒的短会话直接删掉。
 	manual bool
+	// processUnknown 标记「进程识别失败」降级出来的会话：仍然计时，但没有
+	// 进程可监控，结束判定改由「回到 YukiHub」兜底或用户手动结束。
+	processUnknown atomic.Bool
 	// activeSeconds 由活跃窗口计时回调更新，供 15 秒心跳持久化读取。
 	activeSeconds   atomic.Int64
 	audioMu         sync.Mutex
@@ -426,14 +438,17 @@ func (s *StartService) detectAndMonitorProcess(session *activePlaySession, launc
 	if result.CloseLauncherHandle {
 		s.closeLauncherHandle(launcher)
 	}
-	if result.RequireProcessSelection {
-		applog.LogWarningf(s.ctx, "Process detection failed for game %s; ending monitoring so the process can be configured manually before relaunch", gameID)
-		s.deleteShortOrCancelledSession(session, "process-detection-failed")
-		return
-	}
-	if result.ProcessID == 0 {
-		applog.LogWarningf(s.ctx, "Staged process detection returned no process for game %s; ending monitoring", gameID)
-		s.deleteShortOrCancelledSession(session, "process-detection-failed")
+	if result.RequireProcessSelection || result.ProcessID == 0 {
+		// 进程识别失败 ≠ 用户没在玩。这里以前直接删会话（deleteShortOrCancelledSession），
+		// 于是「启动器套娃 / 进程名对不上 / 游戏秒退」这些情况全变成白玩一场 ——
+		// 原分支的老问题。改成降级：保留会话按墙钟继续计时，结束判定交给
+		// 「回到 YukiHub」兜底（watchForegroundFallback）或用户手动结束。
+		applog.LogWarningf(
+			s.ctx,
+			"Process detection failed for game %s (requireSelection=%v); keeping the session alive via foreground fallback",
+			gameID, result.RequireProcessSelection,
+		)
+		s.degradeToForegroundTracking(session)
 		return
 	}
 
@@ -929,6 +944,11 @@ func (s *StartService) activeSessionSnapshot() []*activePlaySession {
 	return sessions
 }
 
+// deleteShortOrCancelledSession 丢弃一次刚建立、但确定不该留下的会话。
+//
+// 注意：进程识别失败**不再**走这里（那会把「用户其实在玩、只是没识别出进程」
+// 的记录一并删掉，见 degradeToForegroundTracking）。目前没有调用点，保留给
+// 启动流程被取消的场景。
 func (s *StartService) deleteShortOrCancelledSession(session *activePlaySession, reason string) {
 	session.finalOnce.Do(func() {
 		close(session.done)
@@ -943,16 +963,119 @@ func (s *StartService) deleteShortOrCancelledSession(session *activePlaySession,
 	})
 }
 
+// appForegroundGrace 是「回到 YukiHub」判定的宽限期：YukiHub 需要连续处于
+// 前台这么久才算用户真的回来了（避免 alt-tab 瞄一眼就把会话结算掉）。
+const appForegroundGrace = 25 * time.Second
+
+// foregroundFallbackPollInterval 是兜底 watcher 的轮询间隔。
+const foregroundFallbackPollInterval = 5 * time.Second
+
+// degradeToForegroundTracking 把会话降级成「无进程监控」：计时照常走，
+// 但不靠进程退出来结束。
+func (s *StartService) degradeToForegroundTracking(session *activePlaySession) {
+	session.processUnknown.Store(true)
+	s.emitGameRuntimePlaying(session, "process-unknown")
+	s.watchForegroundFallback()
+}
+
+// unknownProcessSessions 返回当前所有「无进程监控」的活跃会话。
+func (s *StartService) unknownProcessSessions() []*activePlaySession {
+	s.activeSessionsMu.Lock()
+	defer s.activeSessionsMu.Unlock()
+
+	sessions := make([]*activePlaySession, 0, len(s.activeSessions))
+	for _, session := range s.activeSessions {
+		if session.processUnknown.Load() {
+			sessions = append(sessions, session)
+		}
+	}
+	return sessions
+}
+
+// watchForegroundFallback 保证有一个后台 goroutine 在盯「YukiHub 是否回到前台」。
+//
+// 手机版的计时闭环靠 Activity 生命周期：离开 App 开始、回到 App 结算，完全不
+// 依赖进程（手机上本来也监控不到进程）。桌面端「进程识别失败」的会话正好缺
+// 这个信号，于是用「YukiHub 自己连续处于前台」作为等价物：用户回到 YukiHub
+// 并停留够久，就说明他已经离开游戏了。
+//
+// 只在存在无进程会话时运行，全部结算完自动退出。
+func (s *StartService) watchForegroundFallback() {
+	s.foregroundFallbackMu.Lock()
+	if s.foregroundFallbackActive {
+		s.foregroundFallbackMu.Unlock()
+		return
+	}
+	s.foregroundFallbackActive = true
+	s.foregroundFallbackMu.Unlock()
+
+	go func() {
+		defer func() {
+			s.foregroundFallbackMu.Lock()
+			s.foregroundFallbackActive = false
+			s.foregroundFallbackMu.Unlock()
+		}()
+
+		// ctx 为 nil（测试）时让 done 保持 nil，select 会永久阻塞该分支
+		var done <-chan struct{}
+		if s.ctx != nil {
+			done = s.ctx.Done()
+		}
+
+		selfPID := uint32(os.Getpid())
+		ticker := time.NewTicker(foregroundFallbackPollInterval)
+		defer ticker.Stop()
+
+		var foregroundSince time.Time
+		for {
+			select {
+			case <-done:
+				return
+			case now := <-ticker.C:
+				pending := s.unknownProcessSessions()
+				if len(pending) == 0 {
+					return
+				}
+
+				foregroundPID, ok := focusing.GetForegroundProcessID()
+				if !ok || foregroundPID != selfPID {
+					// 游戏还在前台（或取不到）→ 重新计时宽限
+					foregroundSince = time.Time{}
+					continue
+				}
+				if foregroundSince.IsZero() {
+					foregroundSince = now
+					continue
+				}
+				if now.Sub(foregroundSince) < appForegroundGrace {
+					continue
+				}
+
+				for _, session := range pending {
+					applog.LogInfof(
+						s.ctx,
+						"Finalizing process-unknown session %s: app has been in foreground long enough",
+						session.sessionID,
+					)
+					s.finalizePlaySession(session, "foreground-return")
+				}
+				foregroundSince = time.Time{}
+			}
+		}
+	}()
+}
+
 func (s *StartService) emitGameRuntimePlaying(session *activePlaySession, reason string) {
 	s.emitGameRuntimeChanged(GameRuntimeChangedEvent{
-		GameID:        session.gameID,
-		Game:          &session.game,
-		SessionID:     session.sessionID,
-		StartTime:     session.startTime,
-		State:         GameRuntimeStatePlaying,
-		Reason:        reason,
-		TimingMode:    s.runtimeTimingMode(session),
-		ActiveSeconds: s.runtimeActiveSeconds(session, 0),
+		GameID:         session.gameID,
+		Game:           &session.game,
+		SessionID:      session.sessionID,
+		StartTime:      session.startTime,
+		State:          GameRuntimeStatePlaying,
+		Reason:         reason,
+		TimingMode:     s.runtimeTimingMode(session),
+		ActiveSeconds:  s.runtimeActiveSeconds(session, 0),
+		ProcessUnknown: session.processUnknown.Load(),
 	})
 }
 

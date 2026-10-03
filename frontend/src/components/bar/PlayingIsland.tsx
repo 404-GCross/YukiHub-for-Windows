@@ -176,10 +176,22 @@ function PlayingIslandBody({
     if (displayRuntime.state === "ending" || isEnding) {
       return t("playingIsland.ending");
     }
-    return t("playingIsland.elapsed", {
+    const elapsed = t("playingIsland.elapsed", {
       duration: formatDurationCompact(elapsedSeconds, t),
     });
-  }, [displayRuntime.state, elapsedSeconds, isEnding, t]);
+    // 没识别出进程时要说清楚这次是怎么计时的：游戏明明在跑、岛上的时间也在涨，
+    // 不说的话用户会以为计时坏了（或者以为结束按钮不好使）。
+    if (displayRuntime.processUnknown) {
+      return `${elapsed} · ${t("playingIsland.processUnknown")}`;
+    }
+    return elapsed;
+  }, [
+    displayRuntime.state,
+    displayRuntime.processUnknown,
+    elapsedSeconds,
+    isEnding,
+    t,
+  ]);
 
   const runtimeKey = getRuntimeKey(displayRuntime);
   const incomingRuntimeKey = getRuntimeKey(gameRuntime);

@@ -885,7 +885,8 @@
     "toast": {
       "endSuccess": "已结束本次游玩记录",
       "endFailed": "结束游玩失败"
-    }
+    },
+    "processUnknown": "未识别到进程，回本窗口即结束"
   },
   "categories": {
     "favorites": "最喜欢的游戏",

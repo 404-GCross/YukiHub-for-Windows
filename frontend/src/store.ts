@@ -40,6 +40,9 @@ export type GameRuntimeInfo = {
   // reason 来自后端事件的 reason 字段，用来区分会话是怎么来的：
   // "launched"=由 YukiHub 启动游戏，"manual-started"=纯手动计时。
   reason?: string;
+  // processUnknown=true：后端没识别出游戏进程，会话仍计时，但结束判定
+  // 改由「回到 YukiHub」兜底 —— 界面上要让用户知道，否则会以为计时坏了。
+  processUnknown?: boolean;
   sessionId: string;
   startTime: unknown;
   state: GameRuntimeState;
@@ -58,6 +61,8 @@ export type GameRuntimeChangedEvent = {
   state?: GameRuntimeState;
   reason?: string;
   timing_mode?: GameRuntimeTimingMode;
+  /** 进程识别失败降级出来的会话（靠回到 YukiHub 兜底结束） */
+  process_unknown?: boolean;
 };
 
 export type FetchHomeDataOptions = {
@@ -332,6 +337,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         state,
         timingMode: event.timing_mode ?? currentRuntime?.timingMode,
         reason: event.reason ?? currentRuntime?.reason,
+        processUnknown: event.process_unknown ?? currentRuntime?.processUnknown,
       };
       const nextGameRuntimes = {
         ...currentState.gameRuntimes,
@@ -386,6 +392,7 @@ export const useAppStore = create<AppState>((set, get) => ({
               : "playing",
           timingMode: currentRuntime?.timingMode,
           reason: currentRuntime?.reason,
+          processUnknown: currentRuntime?.processUnknown,
         };
       }
 

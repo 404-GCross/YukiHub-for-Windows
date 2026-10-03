@@ -885,7 +885,8 @@
     "toast": {
       "endSuccess": "このプレイ記録を終了しました",
       "endFailed": "プレイ記録の終了に失敗しました"
-    }
+    },
+    "processUnknown": "プロセス未検出・戻ると終了"
   },
   "categories": {
     "favorites": "お気に入りゲーム",

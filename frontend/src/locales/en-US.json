@@ -885,7 +885,8 @@
     "toast": {
       "endSuccess": "Ended this play session",
       "endFailed": "Failed to end play session"
-    }
+    },
+    "processUnknown": "process not detected; ends when you return"
   },
   "categories": {
     "favorites": "Favorites",
