@@ -1058,7 +1058,16 @@
       "bangumiTokenHint": "Bangumi の個人設定 → アプリ → 「個人アクセストークン」を新規作成して生成します（コレクション権限だけで十分です）。トークンはこの PC 内にのみ保存され、送信されません。",
       "bangumiTokenRequired": "先に Bangumi 個人アクセストークンを入力してください",
       "bangumiTokenSaved": "Bangumi に接続しました：{{name}}",
-      "bangumiTokenInvalid": "トークンの確認に失敗しました：{{error}}"
+      "bangumiTokenInvalid": "トークンの確認に失敗しました：{{error}}",
+      "overlayShortcutLabel": "フレンド欄を開くショートカット",
+      "overlayShortcutHint": "初期値は Shift + ~ です。ボタンを押してから新しい組み合わせを押してください（Ctrl / Alt / Shift のいずれかが必要です）。",
+      "overlayShortcutRecording": "キーの組み合わせを押してください…",
+      "overlayShortcutUnsupportedKey": "このキーはグローバルショートカットに使えません",
+      "overlayShortcutNeedsModifier": "Ctrl / Alt / Shift のいずれかを含めてください",
+      "overlayShortcutSaved": "ショートカットを {{shortcut}} に変更しました",
+      "overlayShortcutFailed": "ショートカットを変更できませんでした：{{error}}",
+      "overlayShortcutReset": "初期値に戻す",
+      "overlayShortcutInactive": "この組み合わせは登録できませんでした（他のアプリが使用中の可能性）。ショートカットでフレンド欄を開けません。"
     },
     "portableSetup": {
       "description": "ポータブル版は yukihub:// を個別に登録する必要があります。ここで現在のユーザー向けに登録できます（管理者権限は不要）。",
@@ -1854,6 +1863,7 @@
   },
   "friendsOverlay": {
     "title": "フレンド",
-    "hint": "もう一度ショートカットで閉じる"
+    "hint": "{{shortcut}} でもう一度閉じる",
+    "hintNoShortcut": "もう一度ショートカットで閉じる"
   }
 }

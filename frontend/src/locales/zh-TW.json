@@ -1058,7 +1058,16 @@
       "bangumiTokenHint": "權杖請在 Bangumi 個人設定 → 應用 → 新建「個人權杖」產生（勾選「收藏」權限即可）。權杖只保存在本機，不會上傳。",
       "bangumiTokenRequired": "請先填入 Bangumi 個人權杖",
       "bangumiTokenSaved": "Bangumi 已連線：{{name}}",
-      "bangumiTokenInvalid": "權杖驗證失敗：{{error}}"
+      "bangumiTokenInvalid": "權杖驗證失敗：{{error}}",
+      "overlayShortcutLabel": "呼出好友欄快速鍵",
+      "overlayShortcutHint": "預設為 Shift + ~。點一下按鈕，再按下新的組合鍵即可修改（需要包含 Ctrl / Alt / Shift 之一）。",
+      "overlayShortcutRecording": "請按下組合鍵…",
+      "overlayShortcutUnsupportedKey": "這個鍵不能當作全域快速鍵",
+      "overlayShortcutNeedsModifier": "至少要包含 Ctrl / Alt / Shift 之一",
+      "overlayShortcutSaved": "快速鍵已改為 {{shortcut}}",
+      "overlayShortcutFailed": "快速鍵沒有改成功：{{error}}",
+      "overlayShortcutReset": "恢復預設",
+      "overlayShortcutInactive": "這個組合沒有註冊成功（可能被其他程式占用），快速鍵暫時打不開好友欄。"
     },
     "portableSetup": {
       "description": "可攜版需要單獨註冊 yukihub://；可在此為目前使用者註冊通訊協定，無需管理員權限。",
@@ -1854,6 +1863,7 @@
   },
   "friendsOverlay": {
     "title": "好友",
-    "hint": "再次按快捷鍵收起"
+    "hint": "再按 {{shortcut}} 收起",
+    "hintNoShortcut": "再按一次快速鍵收起"
   }
 }

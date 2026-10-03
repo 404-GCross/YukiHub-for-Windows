@@ -82,6 +82,8 @@ type AccountService struct {
 	friendPlayActive bool
 	// friendListSignature 是上次推给前端的好友列表签名，用于「有变化才推」
 	friendListSignature string
+	// noticePresenter 由 main 注入：把「好友开始玩游戏」交给全局通知浮层。
+	noticePresenter func(FriendPlayEvent) bool
 	// 系统通知发送器（惰性创建，见 systemNotifier）
 	notifyMu    sync.Mutex
 	notifyReady bool
@@ -93,10 +95,18 @@ type AccountService struct {
 
 // NewAccountService 创建账号服务。
 func NewAccountService() *AccountService {
-	return &AccountService{
+	service := &AccountService{
 		client: yukihubaccount.NewClient(yukihubaccount.DefaultBaseURL),
 		now:    time.Now,
 	}
+	// emitEvent 先给个空实现，别留 nil。
+	//
+	// 事件通道要到 SetRuntime（窗口建好之后）才注入，而好友轮询在更早的
+	// Init 里就起来了 —— 中间那段时间推事件无人可推，**但绝不能是 nil**：
+	// nil 函数字段调用会直接 panic，把整个进程带走（实测：带着登录态启动，
+	// 第一次好友列表拉成功就闪退，日志停在启动阶段，看不出任何异常）。
+	service.emitEvent = func(string, ...interface{}) {}
+	return service
 }
 
 // Init 注入运行时依赖。imports 用于把云端快照落回本地库（复用现成的导入器）。
@@ -133,6 +143,13 @@ func (s *AccountService) SetRuntime(runtime wailsruntime.Runtime) {
 	s.emitEvent = func(name string, data ...interface{}) {
 		runtime.Emit(name, data...)
 	}
+
+	// 事件通道现在才算接通：把好友列表的推送签名清掉，让下一次轮询重新推一遍。
+	// 不清的话，启动早期那次「无人可推」的推送会被当成已推过，界面要等到
+	// 好友状态真发生变化才收到第一份列表。
+	s.mu.Lock()
+	s.friendListSignature = ""
+	s.mu.Unlock()
 }
 
 // ==================== 状态 ====================

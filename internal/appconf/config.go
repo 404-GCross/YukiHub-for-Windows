@@ -235,6 +235,11 @@ type AppConfig struct {
 	BigScreenDefaultCategory string `json:"bigscreen_default_category,omitempty"` // 大屏模式默认分类，默认 recent
 	BigScreenEffectLevel     string `json:"bigscreen_effect_level,omitempty"`     // 大屏氛围特效档位：off / low / high，默认 low
 	BigScreenSoundEnabled    bool   `json:"bigscreen_sound_enabled"`              // 大屏界面音效开关，默认 true
+
+	// OverlayShortcut 是「呼出游戏内好友栏」的全局快捷键，accelerator 形式
+	// （如 "shift+`"）。空字符串表示用默认值（service.DefaultOverlayShortcut）；
+	// 界面展示成 “Shift + ~”，转换在 service.FormatOverlayShortcut。
+	OverlayShortcut string `json:"overlay_shortcut,omitempty"`
 }
 
 // getConfigPath 获取配置文件路径

@@ -166,6 +166,63 @@ export class DownloadTask {
     }
 }
 
+/**
+ * FriendPlayEvent 是一条「好友开始玩游戏」的通知内容。
+ * 
+ * 前端拿它渲染 Steam 风格卡片（头像 + 「昵称 正在玩 / 绿色游戏名」）。
+ * 
+ * 昵称做成数组是为了「同一游戏多人同时开始」能合成一条通知，只有一个好友时
+ * 长度为 1。（注意：这不是照着某张截图的推论，而是为了不刷屏 —— 一次弹出
+ * 三四条同一个游戏的卡片没有意义。）
+ */
+export class FriendPlayEvent {
+    "uids": number[];
+    "nicknames": string[];
+    "avatars"?: string[];
+    "game_title": string;
+
+    /**
+     * Seq 是通知序号，由 OverlayService 分配。通知浮层「挂载时拉一次 +
+     * 订阅事件」两条路都会拿到同一条，靠它去重。
+     */
+    "seq"?: number;
+
+    /** Creates a new FriendPlayEvent instance. */
+    constructor($$source: Partial<FriendPlayEvent> = {}) {
+        if (!("uids" in $$source)) {
+            this["uids"] = [];
+        }
+        if (!("nicknames" in $$source)) {
+            this["nicknames"] = [];
+        }
+        if (!("game_title" in $$source)) {
+            this["game_title"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new FriendPlayEvent instance from a string or object.
+     */
+    static createFrom($$source: any = {}): FriendPlayEvent {
+        const $$createField0_0 = $$createType1;
+        const $$createField1_0 = $$createType2;
+        const $$createField2_0 = $$createType2;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("uids" in $$parsedSource) {
+            $$parsedSource["uids"] = $$createField0_0($$parsedSource["uids"]);
+        }
+        if ("nicknames" in $$parsedSource) {
+            $$parsedSource["nicknames"] = $$createField1_0($$parsedSource["nicknames"]);
+        }
+        if ("avatars" in $$parsedSource) {
+            $$parsedSource["avatars"] = $$createField2_0($$parsedSource["avatars"]);
+        }
+        return new FriendPlayEvent($$parsedSource as Partial<FriendPlayEvent>);
+    }
+}
+
 export class GameIDEnrichmentPreview {
     "scanned_games": number;
     "enrichable_games": number;
@@ -198,7 +255,7 @@ export class GameIDEnrichmentPreview {
      * Creates a new GameIDEnrichmentPreview instance from a string or object.
      */
     static createFrom($$source: any = {}): GameIDEnrichmentPreview {
-        const $$createField4_0 = $$createType2;
+        const $$createField4_0 = $$createType4;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("items" in $$parsedSource) {
             $$parsedSource["items"] = $$createField4_0($$parsedSource["items"]);
@@ -251,8 +308,8 @@ export class GameIDEnrichmentPreviewItem {
      * Creates a new GameIDEnrichmentPreviewItem instance from a string or object.
      */
     static createFrom($$source: any = {}): GameIDEnrichmentPreviewItem {
-        const $$createField4_0 = $$createType4;
-        const $$createField5_0 = $$createType4;
+        const $$createField4_0 = $$createType6;
+        const $$createField5_0 = $$createType6;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("existing_sources" in $$parsedSource) {
             $$parsedSource["existing_sources"] = $$createField4_0($$parsedSource["existing_sources"]);
@@ -434,7 +491,7 @@ export class GameLibraryPathChangePreview {
      * Creates a new GameLibraryPathChangePreview instance from a string or object.
      */
     static createFrom($$source: any = {}): GameLibraryPathChangePreview {
-        const $$createField4_0 = $$createType6;
+        const $$createField4_0 = $$createType8;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("changes" in $$parsedSource) {
             $$parsedSource["changes"] = $$createField4_0($$parsedSource["changes"]);
@@ -534,8 +591,8 @@ export class ImportResult {
      * Creates a new ImportResult instance from a string or object.
      */
     static createFrom($$source: any = {}): ImportResult {
-        const $$createField3_0 = $$createType7;
-        const $$createField4_0 = $$createType7;
+        const $$createField3_0 = $$createType2;
+        const $$createField4_0 = $$createType2;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("failed_names" in $$parsedSource) {
             $$parsedSource["failed_names"] = $$createField3_0($$parsedSource["failed_names"]);
@@ -643,7 +700,7 @@ export class PortableSetupStatus {
      * Creates a new PortableSetupStatus instance from a string or object.
      */
     static createFrom($$source: any = {}): PortableSetupStatus {
-        const $$createField4_0 = $$createType8;
+        const $$createField4_0 = $$createType9;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("protocol" in $$parsedSource) {
             $$parsedSource["protocol"] = $$createField4_0($$parsedSource["protocol"]);
@@ -766,7 +823,7 @@ export class SteamBatchImportItemResult {
      * Creates a new SteamBatchImportItemResult instance from a string or object.
      */
     static createFrom($$source: any = {}): SteamBatchImportItemResult {
-        const $$createField1_0 = $$createType9;
+        const $$createField1_0 = $$createType10;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("status" in $$parsedSource) {
             $$parsedSource["status"] = $$createField1_0($$parsedSource["status"]);
@@ -807,7 +864,7 @@ export class SteamBatchImportResult {
      * Creates a new SteamBatchImportResult instance from a string or object.
      */
     static createFrom($$source: any = {}): SteamBatchImportResult {
-        const $$createField0_0 = $$createType11;
+        const $$createField0_0 = $$createType12;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("items" in $$parsedSource) {
             $$parsedSource["items"] = $$createField0_0($$parsedSource["items"]);
@@ -840,7 +897,7 @@ export class SteamImportResult {
      * Creates a new SteamImportResult instance from a string or object.
      */
     static createFrom($$source: any = {}): SteamImportResult {
-        const $$createField0_0 = $$createType9;
+        const $$createField0_0 = $$createType10;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("status" in $$parsedSource) {
             $$parsedSource["status"] = $$createField0_0($$parsedSource["status"]);
@@ -997,8 +1054,8 @@ export class UpdateCheckResult {
      * Creates a new UpdateCheckResult instance from a string or object.
      */
     static createFrom($$source: any = {}): UpdateCheckResult {
-        const $$createField4_0 = $$createType7;
-        const $$createField5_0 = $$createType12;
+        const $$createField4_0 = $$createType2;
+        const $$createField5_0 = $$createType13;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("changelog" in $$parsedSource) {
             $$parsedSource["changelog"] = $$createField4_0($$parsedSource["changelog"]);
@@ -1012,15 +1069,16 @@ export class UpdateCheckResult {
 
 // Private type creation functions
 const $$createType0 = vo$0.InstallRequest.createFrom;
-const $$createType1 = GameIDEnrichmentPreviewItem.createFrom;
-const $$createType2 = $Create.Array($$createType1);
-const $$createType3 = GameIDEnrichmentSource.createFrom;
+const $$createType1 = $Create.Array($Create.Any);
+const $$createType2 = $Create.Array($Create.Any);
+const $$createType3 = GameIDEnrichmentPreviewItem.createFrom;
 const $$createType4 = $Create.Array($$createType3);
-const $$createType5 = GameLibraryPathChangeItem.createFrom;
+const $$createType5 = GameIDEnrichmentSource.createFrom;
 const $$createType6 = $Create.Array($$createType5);
-const $$createType7 = $Create.Array($Create.Any);
-const $$createType8 = PortableProtocolStatus.createFrom;
-const $$createType9 = SteamLaunchStatus.createFrom;
-const $$createType10 = SteamBatchImportItemResult.createFrom;
-const $$createType11 = $Create.Array($$createType10);
-const $$createType12 = $Create.Map($Create.Any, $Create.Any);
+const $$createType7 = GameLibraryPathChangeItem.createFrom;
+const $$createType8 = $Create.Array($$createType7);
+const $$createType9 = PortableProtocolStatus.createFrom;
+const $$createType10 = SteamLaunchStatus.createFrom;
+const $$createType11 = SteamBatchImportItemResult.createFrom;
+const $$createType12 = $Create.Array($$createType11);
+const $$createType13 = $Create.Map($Create.Any, $Create.Any);

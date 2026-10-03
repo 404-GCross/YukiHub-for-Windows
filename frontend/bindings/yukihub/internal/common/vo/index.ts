@@ -55,6 +55,7 @@ export {
     MetadataRequest,
     NextMoeAuthStatus,
     NextMoeProfile,
+    OverlayShortcut,
     PeriodStats,
     PeriodStatsRequest,
     ProtocolLaunchRequest,

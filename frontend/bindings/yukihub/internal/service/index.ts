@@ -18,6 +18,7 @@ import * as HomeService from "./homeservice.js";
 import * as ImportService from "./importservice.js";
 import * as IntegrationService from "./integrationservice.js";
 import * as NextMoeService from "./nextmoeservice.js";
+import * as OverlayService from "./overlayservice.js";
 import * as PortableSetupService from "./portablesetupservice.js";
 import * as SessionService from "./sessionservice.js";
 import * as StartService from "./startservice.js";
@@ -45,6 +46,7 @@ export {
     ImportService,
     IntegrationService,
     NextMoeService,
+    OverlayService,
     PortableSetupService,
     SessionService,
     StartService,
@@ -61,6 +63,7 @@ export {
     CoverImageDownloadItem,
     DownloadStatus,
     DownloadTask,
+    FriendPlayEvent,
     GameIDEnrichmentPreview,
     GameIDEnrichmentPreviewItem,
     GameIDEnrichmentResult,

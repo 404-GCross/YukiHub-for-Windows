@@ -2456,6 +2456,77 @@ export class NextMoeProfile {
     }
 }
 
+/**
+ * OverlayShortcut 是「呼出游戏内好友栏」快捷键的对外描述。
+ * 
+ * 后端存的是 Wails 的 accelerator 形式（如 "shift+`"），界面要的是人能认的
+ * 写法（"Shift + ~"），所以两个都给出去，前端不用自己拼。
+ */
+export class OverlayShortcut {
+    /**
+     * Accelerator 是配置里的值（accelerator 形式），SetOverlayShortcut 用它回写。
+     */
+    "accelerator": string;
+
+    /**
+     * Display 是 Accelerator 的展示文本，如 “Shift + ~”。
+     */
+    "display": string;
+
+    /**
+     * IsDefault 表示当前用的就是默认组合（设置页据此决定「恢复默认」是否可点）。
+     */
+    "is_default": boolean;
+
+    /**
+     * DefaultAccelerator / DefaultDisplay 是默认组合的两个形式。
+     */
+    "default_accelerator": string;
+    "default_display": string;
+
+    /**
+     * Active 是当前**真正注册成功**的组合。正常等于 Accelerator；被别的程序
+     * 占用而退回备选时会是备选值；空字符串表示一个都没注册上。
+     */
+    "active": string;
+    "active_display": string;
+
+    /** Creates a new OverlayShortcut instance. */
+    constructor($$source: Partial<OverlayShortcut> = {}) {
+        if (!("accelerator" in $$source)) {
+            this["accelerator"] = "";
+        }
+        if (!("display" in $$source)) {
+            this["display"] = "";
+        }
+        if (!("is_default" in $$source)) {
+            this["is_default"] = false;
+        }
+        if (!("default_accelerator" in $$source)) {
+            this["default_accelerator"] = "";
+        }
+        if (!("default_display" in $$source)) {
+            this["default_display"] = "";
+        }
+        if (!("active" in $$source)) {
+            this["active"] = "";
+        }
+        if (!("active_display" in $$source)) {
+            this["active_display"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new OverlayShortcut instance from a string or object.
+     */
+    static createFrom($$source: any = {}): OverlayShortcut {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new OverlayShortcut($$parsedSource as Partial<OverlayShortcut>);
+    }
+}
+
 export class PeriodStats {
     /**
      * day, week, month

@@ -7,11 +7,10 @@ import { Window } from "@wailsio/runtime";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ListFriends } from "../../../bindings/yukihub/internal/service/accountservice";
+import { GetOverlayShortcut } from "../../../bindings/yukihub/internal/service/overlayservice";
 import { onWailsEvent } from "../../bindings/runtime";
+import { FRIEND_LIST_UPDATED_EVENT } from "../../consts/events";
 import { ChatAvatar } from "../chat/ChatAvatar";
-
-/** 后端 account_friend_play.go 的好友列表推送事件 */
-const FRIEND_LIST_UPDATED_EVENT = "friend:list-updated";
 
 interface Sections {
   playing: Friend[];
@@ -20,7 +19,8 @@ interface Sections {
 }
 
 /**
- * 游戏内好友栏（overlay）—— 按 Alt+Shift+Tab 呼出，对齐 Steam 的 Shift+Tab。
+ * 游戏内好友栏（overlay）—— 按全局快捷键呼出（默认 Shift + ~，可在设置里改），
+ * 对应 Steam 的 Shift+Tab。
  *
  * 这是一个**独立的置顶窗口**（URL 走 /overlay），不是主窗口里的浮层：
  * 只有独立窗口才能盖在游戏画面上。窗口由 Go 侧惰性创建（main.go 的
@@ -36,6 +36,7 @@ export default function FriendsOverlay() {
   const { t } = useTranslation();
   const [friendList, setFriendList] = useState<FriendList | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [shortcut, setShortcut] = useState("");
 
   // 拉一次 + 订阅后端推送：浮层通常开得比第一次轮询早，所以要主动拉一次
   useEffect(() => {
@@ -71,6 +72,20 @@ export default function FriendsOverlay() {
   }, []);
 
   // Esc 收起浮层：游戏里手不会离开键盘，鼠标点关闭太慢
+  // 底部提示要写实际生效的组合：默认是 Shift + ~，但用户可能改过，
+  // 也可能因为冲突退到了备选组合 —— 写死一个按键只会误导。
+  useEffect(() => {
+    void (async () => {
+      try {
+        const info = await GetOverlayShortcut();
+        setShortcut(info.active_display || info.display || "");
+      }
+      catch {
+        // 拿不到就不显示按键，只留一句「再按一次收起」
+      }
+    })();
+  }, []);
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
@@ -166,7 +181,9 @@ export default function FriendsOverlay() {
         </div>
 
         <div className="shrink-0 border-t border-white/10 px-3.5 py-1.5 text-[10px] text-white/40">
-          {t("friendsOverlay.hint")}
+          {shortcut
+            ? t("friendsOverlay.hint", { shortcut })
+            : t("friendsOverlay.hintNoShortcut")}
         </div>
       </div>
     </div>

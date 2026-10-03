@@ -1058,7 +1058,16 @@
       "bangumiTokenHint": "Create one under Bangumi -> Settings -> Applications -> New Personal Access Token (the collection scope is enough). The token stays on this machine and is never uploaded.",
       "bangumiTokenRequired": "Enter a Bangumi access token first",
       "bangumiTokenSaved": "Bangumi connected: {{name}}",
-      "bangumiTokenInvalid": "Token check failed: {{error}}"
+      "bangumiTokenInvalid": "Token check failed: {{error}}",
+      "overlayShortcutLabel": "Shortcut to open the friends panel",
+      "overlayShortcutHint": "Default is Shift + ~. Click the button, then press a new combination (it has to include Ctrl / Alt / Shift).",
+      "overlayShortcutRecording": "Press a key combination…",
+      "overlayShortcutUnsupportedKey": "That key can't be used as a global shortcut",
+      "overlayShortcutNeedsModifier": "Include at least one of Ctrl / Alt / Shift",
+      "overlayShortcutSaved": "Shortcut changed to {{shortcut}}",
+      "overlayShortcutFailed": "Could not change the shortcut: {{error}}",
+      "overlayShortcutReset": "Reset to default",
+      "overlayShortcutInactive": "This combination could not be registered (another app may be using it), so the friends panel can't be opened by shortcut right now."
     },
     "portableSetup": {
       "description": "Portable builds must register yukihub:// separately. Register it for the current user here — no admin privileges needed.",
@@ -1854,6 +1863,7 @@
   },
   "friendsOverlay": {
     "title": "Friends",
-    "hint": "Press the shortcut again to hide"
+    "hint": "Press {{shortcut}} again to hide",
+    "hintNoShortcut": "Press the shortcut again to hide"
   }
 }

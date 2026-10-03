@@ -29,6 +29,7 @@ import (
 	"yukihub/internal/utils/dbutils"
 	"yukihub/internal/utils/imageutils"
 	"yukihub/internal/utils/sessionend"
+	"yukihub/internal/utils/winwindow"
 	"yukihub/internal/wailsruntime"
 
 	"yukihub/internal/appconf"
@@ -392,15 +393,33 @@ type startupCoordinator struct {
 	startup func(context.Context)
 }
 
+// spaWindowRoutes 是按「路由」打开的窗口路径，它们都指向同一份 index.html，
+// 再由 main.tsx 按 location.pathname 选择挂载哪个界面。
+var spaWindowRoutes = map[string]struct{}{
+	"/":        {},
+	"/startup": {},
+	"/overlay": {},
+	"/notice":  {},
+}
+
 func frontendAssetHandler(assets fs.FS) http.Handler {
 	fileServer := application.AssetFileServerFS(assets)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Wails serves files without an SPA fallback. Keep the browser URL at
-		// /startup so main.tsx selects StartupWindow, but serve the shared entry.
-		if r.URL.Path == "/startup" && (r.Method == http.MethodGet || r.Method == http.MethodHead) {
-			r = r.Clone(r.Context())
-			r.URL.Path = "/index.html"
-			r.URL.RawPath = ""
+		// Wails 的文件服务**没有 SPA fallback**：请求的路径不对就直接 404。
+		//
+		// 之前只对 /startup 硬编码了改写，于是 /overlay 与 /notice 拿到的是 404
+		// 页面（一片白）—— 前端脚本根本没跑，表现是「窗口建出来了、页面也请求了，
+		// 但什么都不显示，也没有任何接口调用」。
+		//
+		// 这里按路由白名单改写。**不要**改成「文件不存在就当 SPA 入口」：
+		// embed 的根带着 `frontend/dist/` 前缀，用 assets.Open 判断会永远失败，
+		// 结果把所有静态资源也都改写成 index.html（连主界面都白屏）。
+		if r.Method == http.MethodGet || r.Method == http.MethodHead {
+			if _, ok := spaWindowRoutes[r.URL.Path]; ok {
+				r = r.Clone(r.Context())
+				r.URL.Path = "/index.html"
+				r.URL.RawPath = ""
+			}
 		}
 		fileServer.ServeHTTP(w, r)
 	})
@@ -426,29 +445,38 @@ func extractAutostartLaunchFlag(args []string) ([]string, bool) {
 	return cleanArgs, launchedByAutostart
 }
 
-// 游戏内好友栏（overlay）相关常量。
+// 浮层类窗口（游戏内好友栏 overlay、好友通知浮层）相关常量。
 const (
-	overlayWindowName = "overlay"
-	// 呼出好友栏的快捷键候选，按顺序尝试，第一个注册成功的生效。
-	// 首位是用户选的 Alt+Shift+Tab，但**它经常被系统占用**（Alt+Shift 本身是
-	// Windows 输入法切换热键，实测注册会返回 ERROR_HOTKEY_ALREADY_REGISTERED），
-	// 所以准备了备选 —— 否则这个入口在部分机器上直接不可用。
-	overlayShortcutFallback = "ctrl+shift+tab"
-	overlayWindowWidth      = 380
-	overlayWindowHeight     = 560
+	overlayWindowName   = "overlay"
+	overlayWindowWidth  = 380
+	overlayWindowHeight = 560
 	// 离屏幕右边留一点空隙
 	overlayMargin = 24
+
+	// 好友通知浮层：贴在屏幕右下角，尺寸按内容裁紧，不留大块空白。
+	noticeWindowName   = "notice"
+	noticeWindowWidth  = 336
+	noticeWindowHeight = 68
+	noticeMargin       = 20
+	// noticeDismissDelay 是通知浮层自动消失前的停留时长。
+	// 这里只是兜底（防止前端没跑起来时它一直挂着），正常由前端倒计时收起。
+	noticeDismissDelay = 12 * time.Second
 )
 
-// overlayShortcutCandidates 按顺序尝试注册，第一个成功的生效。
-var overlayShortcutCandidates = []string{"alt+shift+tab", overlayShortcutFallback}
+// verifyOverlayShortcut 由 main 装配：启动后复查好友栏快捷键有没有真的绑上。
+//
+// 单独放一个变量是因为它必须在「配置加载之后」才能跑，而配置是在
+// ApplicationStarted 回调里面读的，比装配处更早。
+var verifyOverlayShortcut func()
 
 var (
-	// overlayWindow 与它的锁：快捷键回调可能在任意时候触发。
+	// floatMu 保护下面两个窗口的创建与显隐：快捷键回调、通知轮询、
+	// 前端调用都可能并发碰它们。
+	floatMu sync.Mutex
+	// overlayWindow 是游戏内好友栏；noticeWindow 是好友通知浮层。
 	overlayWindow *application.WebviewWindow
-	overlayMu     sync.Mutex
+	noticeWindow  *application.WebviewWindow
 	// activeOverlayShortcut 记录实际注册成功的组合（空 = 都没成功）。
-	// 界面上的提示文案不写死具体按键，就是因为它可能是备选的那个。
 	activeOverlayShortcut string
 )
 
@@ -516,6 +544,7 @@ func runGUI(
 	integrationService := service.NewIntegrationService()
 	categoryService := service.NewCategoryService()
 	configService := service.NewConfigService()
+	overlayService := service.NewOverlayService()
 	importService := service.NewImportService()
 	accountService := service.NewAccountService()
 	versionService := service.NewVersionService()
@@ -550,6 +579,7 @@ func runGUI(
 
 	initBoundServices := func(ctx context.Context) {
 		configService.Init(ctx, db, config)
+		overlayService.Init(ctx, config)
 		// Go controls the first show so the main window cannot cover the
 		// startup success state while its frontend is loading.
 		configService.SetSuppressInitialWindowShow(true)
@@ -666,6 +696,7 @@ func runGUI(
 		application.NewService(integrationService),
 		application.NewService(categoryService),
 		application.NewService(configService),
+		application.NewService(overlayService),
 		application.NewService(importService),
 		application.NewService(accountService),
 		application.NewService(versionService),
@@ -961,6 +992,7 @@ func runGUI(
 		nextMoeService.SetRuntime(guiRuntime)
 		cloudSyncService.SetRuntime(guiRuntime)
 		configService.SetRuntime(guiRuntime)
+		overlayService.SetRuntime(guiRuntime)
 		downloadService.SetRuntime(guiRuntime)
 		gameService.SetRuntime(guiRuntime)
 		importService.SetRuntime(guiRuntime)
@@ -1040,6 +1072,11 @@ func runGUI(
 			return fmt.Errorf("读取应用配置失败: %w", err)
 		}
 		config = loadedConfig
+		// 好友栏快捷键的复查要等配置读出来才知道用户设的是什么（见下面的
+		// verifyOverlayShortcut 装配处）。
+		if verifyOverlayShortcut != nil {
+			verifyOverlayShortcut()
+		}
 
 		// 转区 / 超分工具不随包分发（第三方，各自有许可证，Magpie 还要 .NET 运行时），
 		// 所以启动时自动找一遍：用户装过就直接认出来，不用自己去设置里挑路径。
@@ -1187,43 +1224,101 @@ func runGUI(
 		}()
 	})
 
-	// ===== 游戏内好友栏（overlay）=====
+	// ===== 浮层窗口：游戏内好友栏 + 好友通知 =====
 	//
-	// Steam 的 Shift+Tab 已经被 Steam 自己占用（注册会失败），这里用
-	// Alt+Shift+Tab。窗口惰性创建：不用这个功能的人不该白白多一个 webview。
+	// 两个窗口都惰性创建：不用这些功能的人不该白白多两个 webview。
 	//
-	// **必须在 Run() 之前注册**：这个时机 Wails 只是把快捷键入队，等主线程
+	// 快捷键**必须在 Run() 之前注册**：这个时机 Wails 只是把它入队，等主线程
 	// 消息循环就绪后再真正绑定。若放到 OnStartup 回调里注册，那时内部状态已是
 	// 「应用已启动」，会走去主线程同步执行的路径 —— 启动直接被卡死（实测：
 	// 进程无任何报错直接退出，日志停在 Platform Info）。
+	// clampToZero 把可能为负的坐标压到 0（屏幕比窗口还小时会算出负值）。
+	clampToZero := func(value int) int {
+		if value < 0 {
+			return 0
+		}
+		return value
+	}
+
+	// primaryScreenSize 返回主屏尺寸（拿不到时 ok=false）。
+	primaryScreenSize := func() (int, int, bool) {
+		screen := wailsApp.Screen.GetPrimary()
+		if screen == nil {
+			return 0, 0, false
+		}
+		return screen.Size.Width, screen.Size.Height, true
+	}
+
+	// floatingWindowOptions 是浮层窗口的公共外观：无边框 + 置顶 + 半透明，
+	// 且不在任务栏/Alt+Tab 里出现（它们是呼出式的浮层，不是独立应用）。
+	//
+	// X/Y 与 visible 都要在建窗时就定下来 —— **不能先建一个隐藏窗口再 Show()**：
+	// Show() 对「刚创建、还没跑起来的窗口」只会触发它的 run() 然后返回
+	// （Wails 里 impl == nil 就 InvokeSync(w.Run)），窗口永远不显示。实测就是
+	// 这样：日志里能看到浮层的页面被加载了，屏幕上却什么都没有。
+	floatingWindowOptions := func(name string, url string, width int, height int, x int, y int, visible bool) application.WebviewWindowOptions {
+		return application.WebviewWindowOptions{
+			Name:   name,
+			Title:  "YukiHub",
+			URL:    url,
+			Width:  width,
+			Height: height,
+			X:      x,
+			Y:      y,
+			// 必须显式指定用坐标：InitialPosition 默认是 WindowCentered，
+			// 那样 X/Y 会被忽略、窗口跑到屏幕正中间（实测就是这样）。
+			InitialPosition: application.WindowXY,
+			DisableResize:   true,
+			Frameless:       true,
+			AlwaysOnTop:     true,
+			Hidden:          !visible,
+			BackgroundType:  application.BackgroundTypeSolid,
+			BackgroundColour: func() application.RGBA {
+				if name == noticeWindowName {
+					return application.NewRGBA(255, 0, 255, 255)
+				}
+				return application.NewRGBA(0x16, 0x20, 0x2D, 255)
+			}(),
+			Windows: application.WindowsWindow{
+				BackdropType:    application.Auto,
+				Theme:           application.SystemDefault,
+				HiddenOnTaskbar: true,
+			},
+			Mac: application.MacWindow{
+				TitleBar: application.MacTitleBarHidden,
+				Backdrop: application.MacBackdropTranslucent,
+			},
+		}
+	}
+
+	// overlayWindowBounds 是好友栏的位置：贴主屏右侧竖直居中，不挡游戏主体。
+	overlayWindowBounds := func() (int, int) {
+		width, height, ok := primaryScreenSize()
+		if !ok {
+			return 0, 0
+		}
+		return clampToZero(width - overlayWindowWidth - overlayMargin),
+			clampToZero((height - overlayWindowHeight) / 2)
+	}
+
 	toggleOverlayWindow := func() {
-		overlayMu.Lock()
-		defer overlayMu.Unlock()
+		floatMu.Lock()
+		defer floatMu.Unlock()
 
 		if overlayWindow == nil {
-			overlayWindow = wailsApp.Window.NewWithOptions(application.WebviewWindowOptions{
-				Name:             overlayWindowName,
-				Title:            "YukiHub",
-				URL:              "/overlay",
-				Width:            overlayWindowWidth,
-				Height:           overlayWindowHeight,
-				DisableResize:    true,
-				Frameless:        true,
-				AlwaysOnTop:      true,
-				Hidden:           true,
-				BackgroundType:   application.BackgroundTypeTranslucent,
-				BackgroundColour: application.NewRGBA(18, 20, 22, 0),
-				Windows: application.WindowsWindow{
-					BackdropType: application.Auto,
-					Theme:        application.SystemDefault,
-					// 别在任务栏多出一个条目：它是呼出式的浮层，不是独立应用
-					HiddenOnTaskbar: true,
-				},
-				Mac: application.MacWindow{
-					TitleBar: application.MacTitleBarHidden,
-					Backdrop: application.MacBackdropTranslucent,
-				},
-			})
+			x, y := overlayWindowBounds()
+			// 首次呼出：直接以「可见」建出来（用户就是按了快捷键要看它），
+			// 位置建窗时给。刻意**不**聚焦：用户多半正在游戏里，抢焦点会把
+			// 游戏踢出前台（全屏游戏会因此最小化）。鼠标点它一样能用，
+			// 再按一次快捷键即可收起。
+			overlayWindow = wailsApp.Window.NewWithOptions(
+				floatingWindowOptions(
+					overlayWindowName, "/overlay",
+					overlayWindowWidth, overlayWindowHeight,
+					x, y, true,
+				),
+			)
+			return
 		}
 
 		if overlayWindow.IsVisible() {
@@ -1231,37 +1326,183 @@ func runGUI(
 			return
 		}
 
-		// 贴主屏右侧竖直居中：不挡游戏主体的同时一眼能看到
-		if screen := wailsApp.Screen.GetPrimary(); screen != nil {
-			x := screen.Size.Width - overlayWindowWidth - overlayMargin
-			y := (screen.Size.Height - overlayWindowHeight) / 2
-			if x < 0 {
-				x = 0
-			}
-			if y < 0 {
-				y = 0
-			}
-			overlayWindow.SetPosition(x, y)
-		}
+		x, y := overlayWindowBounds()
+		overlayWindow.SetPosition(x, y)
 		overlayWindow.Show()
 		overlayWindow.Focus()
 	}
 
-	if wailsApp.GlobalShortcut != nil {
-		registered := ""
-		for _, candidate := range overlayShortcutCandidates {
-			if err := wailsApp.GlobalShortcut.Register(candidate, toggleOverlayWindow); err == nil {
-				registered = candidate
-				break
+	hideFriendPlayNotice := func() {
+		application.InvokeSync(func() {
+			floatMu.Lock()
+			defer floatMu.Unlock()
+			if noticeWindow != nil {
+				noticeWindow.Hide()
+			}
+		})
+	}
+
+	// applyNoticeWindowStyle 等窗口真正建出来后（HWND 就绪）去掉它的激活能力。
+	//
+	// 不能建完立刻设：HWND 是在 run() 里创建的，而 run() 是异步的，那一刻
+	// NativeWindow() 还是空的。
+	applyNoticeWindowStyle := func(window *application.WebviewWindow) {
+		for attempt := 0; attempt < 60; attempt++ {
+			ready := false
+			application.InvokeSync(func() {
+				handle := window.NativeWindow()
+				if handle == nil {
+					return
+				}
+				ready = true
+				if err := winwindow.MakeNonActivating(handle); err != nil {
+					appLogger.Warning("通知浮层无法设置为不抢焦点：" + err.Error())
+				}
+			})
+			if ready {
+				return
+			}
+			time.Sleep(50 * time.Millisecond)
+		}
+		appLogger.Warning("通知浮层的窗口句柄迟迟没有就绪，没能去掉抢焦点行为")
+	}
+
+	// noticeWindowBounds 是通知浮层的位置：主屏右下角。
+	noticeWindowBounds := func() (int, int) {
+		width, height, ok := primaryScreenSize()
+		if !ok {
+			return 0, 0
+		}
+		return clampToZero(width - noticeWindowWidth - noticeMargin),
+			clampToZero(height - noticeWindowHeight - noticeMargin)
+	}
+
+	// showFriendPlayNotice 把「好友开始玩游戏」推到屏幕右下角。
+	//
+	// 返回 false 表示浮层用不了（没有桌面会话 / 建窗失败），调用方会退回系统通知 ——
+	// 宁可样式差一点，也不能什么都没提示。
+	showFriendPlayNotice := func(event service.FriendPlayEvent) bool {
+		// 先把内容存下来：窗口建出来之后浮层前端才挂载，它挂载时会主动拉一次
+		// （GetFriendPlayNotice），那才是拿到内容的主路径。事件是给「已经在显示
+		// 时又来一条」用的 —— 存的顺序不能晚于建窗，否则第一次通知会是空的。
+		stored := overlayService.SetPendingFriendPlayNotice(event)
+
+		shown := false
+		application.InvokeSync(func() {
+			floatMu.Lock()
+			defer floatMu.Unlock()
+
+			x, y := noticeWindowBounds()
+			if noticeWindow == nil {
+				noticeWindow = wailsApp.Window.NewWithOptions(
+					floatingWindowOptions(
+						noticeWindowName, "/notice",
+						noticeWindowWidth, noticeWindowHeight,
+						x, y, true,
+					),
+				)
+				if noticeWindow == nil {
+					return
+				}
+				// 立刻不可见的话不用管它；这里是为了后续每次 Show() 都不抢焦点 ——
+				// 通知把正在玩的游戏踢到后台就本末倒置了。
+				go applyNoticeWindowStyle(noticeWindow)
+
 			} else {
-				appLogger.Warning(fmt.Sprintf("注册好友栏快捷键 %s 失败：%v", candidate, err))
+				noticeWindow.SetPosition(x, y)
+				noticeWindow.Show()
+			}
+
+			noticeWindow.EmitEvent(service.FriendPlayNoticeEvent, stored)
+			shown = true
+		})
+		if shown {
+			// 兜底收起：正常由前端倒计时收起，万一前端没跑起来也别让它常驻。
+			time.AfterFunc(noticeDismissDelay, hideFriendPlayNotice)
+		}
+		return shown
+	}
+
+	// registerOverlayShortcut 注册（或换绑）好友栏快捷键，返回最终生效的组合。
+	//
+	// 换绑顺序是「先注册新的、成功后再注销旧的」：反过来的话，用户填了个被别的
+	// 程序占用的组合，就会把唯一入口弄没。
+	registerOverlayShortcut := func(accelerator string) (string, error) {
+		if wailsApp.GlobalShortcut == nil {
+			return "", fmt.Errorf("当前环境不支持全局快捷键")
+		}
+		normalized, err := service.NormalizeOverlayShortcut(accelerator)
+		if err != nil {
+			return "", err
+		}
+		if normalized == activeOverlayShortcut && wailsApp.GlobalShortcut.IsRegistered(normalized) {
+			return normalized, nil
+		}
+
+		if err := wailsApp.GlobalShortcut.Register(normalized, toggleOverlayWindow); err != nil {
+			return "", fmt.Errorf("%s 被别的程序占用了，换一个组合试试", service.FormatOverlayShortcut(normalized))
+		}
+
+		if activeOverlayShortcut != "" && activeOverlayShortcut != normalized {
+			if unregisterErr := wailsApp.GlobalShortcut.Unregister(activeOverlayShortcut); unregisterErr != nil {
+				appLogger.Warning("注销旧的好友栏快捷键失败：" + unregisterErr.Error())
 			}
 		}
-		activeOverlayShortcut = registered
-		if registered == "" {
-			appLogger.Warning("好友栏快捷键全部注册失败，Alt+Shift+Tab 入口不可用（不影响其它功能）")
-		} else {
-			appLogger.Info("好友栏快捷键已注册：" + registered)
+		activeOverlayShortcut = normalized
+		return normalized, nil
+	}
+
+	verifyOverlayShortcut = func() {
+		if wailsApp.GlobalShortcut == nil {
+			return
+		}
+		configured := service.DefaultOverlayShortcut
+		if normalized, err := service.NormalizeOverlayShortcut(config.OverlayShortcut); err == nil {
+			configured = normalized
+		}
+
+		// Run() 之前那次注册只是入队，真正绑定发生在启动时，而绑定失败**不会**
+		// 从 Register 返回（Wails 只往错误处理器塞一条），所以这里复查一次。
+		if wailsApp.GlobalShortcut.IsRegistered(configured) {
+			activeOverlayShortcut = configured
+			overlayService.SetActiveShortcut(configured)
+			appLogger.Info("好友栏快捷键：" + service.FormatOverlayShortcut(configured))
+			return
+		}
+
+		appLogger.Warning(
+			"好友栏快捷键 " + service.FormatOverlayShortcut(configured) + " 没能注册上（多半被别的程序占了），改用备选组合",
+		)
+		fallback, err := registerOverlayShortcut(service.OverlayShortcutFallback)
+		if err != nil {
+			activeOverlayShortcut = ""
+			overlayService.SetActiveShortcut("")
+			appLogger.Warning("备选组合也注册失败，好友栏入口暂时不可用（可在设置里换一个）：" + err.Error())
+			return
+		}
+		overlayService.SetActiveShortcut(fallback)
+	}
+
+	// 这里先自己读一次配置：Run() 之前 config 还是 nil（它在 ApplicationStarted
+	// 回调里才加载），而快捷键必须在这个时机入队。
+	initialShortcut := service.DefaultOverlayShortcut
+	if loaded, err := appconf.LoadConfig(); err != nil {
+		appLogger.Warning("读取配置失败，好友栏快捷键先按默认值处理：" + err.Error())
+	} else if normalized, normalizeErr := service.NormalizeOverlayShortcut(loaded.OverlayShortcut); normalizeErr == nil {
+		initialShortcut = normalized
+	}
+
+	overlayService.SetOverlayToggler(toggleOverlayWindow)
+	overlayService.SetNoticeHider(hideFriendPlayNotice)
+	overlayService.SetShortcutApplier(registerOverlayShortcut)
+	// 通知改由全局浮层承载：应用内 toast 只在 YukiHub 窗口看得见时才有意义，
+	// 而好友开玩的消息大半发生在用户正泡在游戏里的时候。
+	accountService.SetFriendPlayNoticePresenter(showFriendPlayNotice)
+
+	if wailsApp.GlobalShortcut != nil {
+		activeOverlayShortcut = initialShortcut
+		if err := wailsApp.GlobalShortcut.Register(initialShortcut, toggleOverlayWindow); err != nil {
+			appLogger.Warning(fmt.Sprintf("登记好友栏快捷键 %s 失败：%v", initialShortcut, err))
 		}
 	}
 

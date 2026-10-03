@@ -1,17 +1,24 @@
-import type { appconf, service } from "../../../src/bindings/models";
-import { useEffect, useRef, useState } from "react";
+import type { appconf, service, vo } from "../../../src/bindings/models";
+import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 import {
   PreviewGameLibraryPathChange,
   SelectDirectory,
 } from "../../../bindings/yukihub/internal/service/configservice";
+import {
+  GetOverlayShortcut,
+  ResetOverlayShortcut,
+  SetOverlayShortcut,
+} from "../../../bindings/yukihub/internal/service/overlayservice";
 import { appZoomOptions, languageOptions } from "../../consts/options";
 import { GameLibraryPathChangeModal } from "../modal/GameLibraryPathChangeModal";
 import { BetterActionInput } from "../ui/better/BetterActionInput";
+import { BetterButton } from "../ui/better/BetterButton";
 import { BetterInput } from "../ui/better/BetterInput";
 import { BetterSelect } from "../ui/better/BetterSelect";
 import { BetterSwitch } from "../ui/better/BetterSwitch";
+import { ShortcutRecorder } from "../ui/ShortcutRecorder";
 import { BangumiAccountSettings } from "./BangumiAccountSettings";
 import { NextMoeAccountSettings } from "./NextMoeAccountSettings";
 
@@ -101,6 +108,65 @@ export function BasicSettingsPanel({
       }
     };
   }, []);
+
+  // 呼出好友栏的全局快捷键。
+  //
+  // 它不由 formData 驱动：注册是后端的事，「有没有真的注册上」只有后端知道
+  // （可能被别的程序占用），所以以后端返回的信息为准；表单里同步一份
+  // accelerator，避免稍后防抖落盘时把新值覆盖回旧的。
+  const [overlayShortcut, setOverlayShortcut]
+    = useState<vo.OverlayShortcut | null>(null);
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        setOverlayShortcut(await GetOverlayShortcut());
+      }
+      catch {
+        // 拿不到就不显示控件内容，设置页其余部分照常用
+      }
+    })();
+  }, []);
+
+  const applyOverlayShortcutResult = useCallback(
+    (info: vo.OverlayShortcut) => {
+      setOverlayShortcut(info);
+      onChange({
+        ...formData,
+        overlay_shortcut: info.accelerator,
+      } as appconf.AppConfig);
+      toast.success(
+        t("settings.basic.overlayShortcutSaved", { shortcut: info.display }),
+      );
+    },
+    [formData, onChange, t],
+  );
+
+  const handleOverlayShortcutRecord = async (accelerator: string) => {
+    try {
+      applyOverlayShortcutResult(await SetOverlayShortcut(accelerator));
+    }
+    catch (error) {
+      toast.error(
+        t("settings.basic.overlayShortcutFailed", {
+          error: error instanceof Error ? error.message : String(error),
+        }),
+      );
+    }
+  };
+
+  const handleOverlayShortcutReset = async () => {
+    try {
+      applyOverlayShortcutResult(await ResetOverlayShortcut());
+    }
+    catch (error) {
+      toast.error(
+        t("settings.basic.overlayShortcutFailed", {
+          error: error instanceof Error ? error.message : String(error),
+        }),
+      );
+    }
+  };
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
@@ -442,6 +508,42 @@ export function BasicSettingsPanel({
               } as appconf.AppConfig)}
           />
         </div>
+      </div>
+
+      <div className="space-y-2">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
+            {t("settings.basic.overlayShortcutLabel")}
+          </label>
+          <div className="flex items-center gap-2">
+            <ShortcutRecorder
+              display={
+                overlayShortcut?.active_display
+                || overlayShortcut?.display
+                || ""
+              }
+              onRecord={accelerator =>
+                void handleOverlayShortcutRecord(accelerator)}
+            />
+            {overlayShortcut && !overlayShortcut.is_default ? (
+              <BetterButton
+                variant="ghost"
+                size="sm"
+                onClick={() => void handleOverlayShortcutReset()}
+              >
+                {t("settings.basic.overlayShortcutReset")}
+              </BetterButton>
+            ) : null}
+          </div>
+        </div>
+        <p className="text-xs text-brand-500 dark:text-brand-400">
+          {t("settings.basic.overlayShortcutHint")}
+        </p>
+        {overlayShortcut && !overlayShortcut.active ? (
+          <p className="text-xs text-amber-600 dark:text-amber-400">
+            {t("settings.basic.overlayShortcutInactive")}
+          </p>
+        ) : null}
       </div>
     </>
   );

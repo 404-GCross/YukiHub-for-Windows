@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -10,7 +9,6 @@ import (
 	"yukihub/internal/applog"
 	"yukihub/internal/service/yukihubaccount"
 	"yukihub/internal/utils/nativenotify"
-	"yukihub/internal/utils/timerutils/focusing"
 )
 
 const (
@@ -29,8 +27,12 @@ const (
 	// 却没来」。同时也省掉前端那路重复请求。
 	friendListUpdatedEvent = "friend:list-updated"
 
-	// friendPlayNotifyEvent 是后端 → 前端的「好友开始玩游戏」通知事件。
-	friendPlayNotifyEvent = "friend:playing"
+	// FriendPlayNoticeEvent 是「好友开始玩游戏」的通知事件名。
+	//
+	// 它的消费者是全局通知浮层：main.go 把它推给浮层窗口。刻意不做成
+	// 「应用内 toast」—— 好友开玩的消息大半发生在用户正泡在游戏里的时候，
+	// 只在 YukiHub 窗口里弹等于没提示。
+	FriendPlayNoticeEvent = "friend:playing"
 
 	// playingActivityPrefix 是 activity 里「正在玩」的固定前缀。
 	//
@@ -50,17 +52,17 @@ func stripPlayingPrefix(activity string) string {
 //
 // 前端拿它渲染 Steam 风格卡片（头像 + 「昵称 正在玩 / 绿色游戏名」）。
 //
-// 昵称做成数组是有意的：**Steam 会把同时在玩同一个游戏的好友合并成一条**
-// （卡片上写「BPT、Ali」，而不是弹两条）。这里照做，只有一个好友时长度为 1。
+// 昵称做成数组是为了「同一游戏多人同时开始」能合成一条通知，只有一个好友时
+// 长度为 1。（注意：这不是照着某张截图的推论，而是为了不刷屏 —— 一次弹出
+// 三四条同一个游戏的卡片没有意义。）
 type FriendPlayEvent struct {
 	UIDs      []int64  `json:"uids"`
 	Nicknames []string `json:"nicknames"`
 	Avatars   []string `json:"avatars,omitempty"`
 	GameTitle string   `json:"game_title"`
-	// NotifiedNatively 表示这条已经由系统通知送达（YukiHub 不在前台，
-	// 典型场景是游戏全屏盖住了窗口）。前端据此跳过应用内卡片，
-	// 免得同一件事打扰两次。
-	NotifiedNatively bool `json:"notified_natively,omitempty"`
+	// Seq 是通知序号，由 OverlayService 分配。通知浮层「挂载时拉一次 +
+	// 订阅事件」两条路都会拿到同一条，靠它去重。
+	Seq int64 `json:"seq,omitempty"`
 }
 
 // friendPlayTracker 用「上一次快照」比对出「刚开始玩」和「换了游戏」。
@@ -79,8 +81,8 @@ type friendPlayTracker struct {
 func (t *friendPlayTracker) observe(friends []yukihubaccount.Friend) []FriendPlayEvent {
 	next := make(map[int64]string, len(friends))
 
-	// 按游戏名归组，实现「同时在玩同一个游戏的好友合并成一条」——
-	// 与 Steam 一致（它一条通知里写「BPT、Ali」而不是弹两次）。
+	// 按游戏名归组：同一轮里多个好友开始玩同一个游戏时合成一条，
+	// 不然会连着弹三张一样的卡（游戏名相同，只是人不同）。
 	grouped := make(map[string]*FriendPlayEvent, 2)
 	order := make([]string, 0, 2)
 
@@ -126,6 +128,28 @@ func (t *friendPlayTracker) observe(friends []yukihubaccount.Friend) []FriendPla
 	return events
 }
 
+// SetFriendPlayNoticePresenter 注入全局通知浮层的展示器（由 main 装配）。
+//
+// 返回 false 表示浮层不可用（没有桌面会话 / 建窗失败），调用方退回系统通知。
+//
+//wails:ignore
+func (s *AccountService) SetFriendPlayNoticePresenter(presenter func(FriendPlayEvent) bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.noticePresenter = presenter
+}
+
+// presentFriendPlayNotice 把通知交给全局浮层，浮层不可用返回 false。
+func (s *AccountService) presentFriendPlayNotice(event FriendPlayEvent) bool {
+	s.mu.Lock()
+	presenter := s.noticePresenter
+	s.mu.Unlock()
+	if presenter == nil {
+		return false
+	}
+	return presenter(event)
+}
+
 // friendPlayNoticeText 系统通知的正文。
 //
 // 系统通知由 Go 侧发出，拿不到前端的界面语言，所以这里固定用中文 ——
@@ -140,12 +164,6 @@ func friendPlayNoticeTitle(event FriendPlayEvent) string {
 		return "好友"
 	}
 	return strings.Join(event.Nicknames, "、")
-}
-
-// appInForeground 判断前台窗口是不是 YukiHub 自己。
-func appInForeground() bool {
-	foregroundPID, ok := focusing.GetForegroundProcessID()
-	return ok && foregroundPID == uint32(os.Getpid())
 }
 
 // systemNotifier 惰性创建系统通知器。
@@ -326,14 +344,18 @@ func (s *AccountService) pollFriendPlay(tracker *friendPlayTracker) {
 	for _, event := range tracker.observe(friends.Friends) {
 		applog.LogDebugf(s.ctx, "好友开始游玩：%s - %s", friendPlayNoticeTitle(event), event.GameTitle)
 
-		// 分流：YukiHub 在前台时应用内卡片就够（用户看得见窗口）；
-		// 不在前台才需要系统通知 —— 系统通知由系统层绘制，能盖在全屏游戏上，
-		// 这是游戏里唯一能到达用户的通道。只发一种，不重复打扰。
-		if !appInForeground() {
-			event.NotifiedNatively = true
+		// 通知一律走**全局浮层**（屏幕右下角的卡片）：与 Steam 一致 ——
+		// 它的游玩通知是全局的，不管你当前在看哪个窗口、是不是在游戏里。
+		// 之前做成「应用内 toast、且只在 YukiHub 处于前台时才弹」，
+		// 结果就是大部分时候用户根本看不到。
+		presented := s.presentFriendPlayNotice(event)
+		if !presented {
+			// 浮层建不出来（没有桌面会话之类）才退回系统通知：样式差一点，
+			// 总比什么都没提示好。
 			s.notifyFriendPlayNatively(event)
 		}
-		s.emitEvent(friendPlayNotifyEvent, event)
+		// 事件照旧广播出去：浮层之外（主界面等）也可能想自己处理。
+		s.emitEvent(FriendPlayNoticeEvent, event)
 	}
 }
 

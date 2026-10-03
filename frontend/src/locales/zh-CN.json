@@ -1058,7 +1058,16 @@
       "bangumiTokenHint": "令牌在 Bangumi 个人设置 → 应用 → 新建「个人令牌」生成（勾选「收藏」权限即可）。令牌只保存在本机，不会上传。",
       "bangumiTokenRequired": "请先填入 Bangumi 个人令牌",
       "bangumiTokenSaved": "Bangumi 已连接：{{name}}",
-      "bangumiTokenInvalid": "令牌校验失败：{{error}}"
+      "bangumiTokenInvalid": "令牌校验失败：{{error}}",
+      "overlayShortcutLabel": "呼出好友栏快捷键",
+      "overlayShortcutHint": "默认 Shift + ~。点一下按钮，再按下新的组合键即可修改（需要带 Ctrl / Alt / Shift 之一）。",
+      "overlayShortcutRecording": "请按下组合键…",
+      "overlayShortcutUnsupportedKey": "这个键不能用作全局快捷键",
+      "overlayShortcutNeedsModifier": "至少要带 Ctrl / Alt / Shift 之一",
+      "overlayShortcutSaved": "快捷键已改为 {{shortcut}}",
+      "overlayShortcutFailed": "快捷键没改成功：{{error}}",
+      "overlayShortcutReset": "恢复默认",
+      "overlayShortcutInactive": "这个组合没能注册上（可能被别的程序占用了），快捷键暂时打不开好友栏。"
     },
     "portableSetup": {
       "description": "便携版需要单独注册 yukihub://；可在这里为当前用户注册协议，无需管理员权限。",
@@ -1854,6 +1863,7 @@
   },
   "friendsOverlay": {
     "title": "好友",
-    "hint": "再次按快捷键收起"
+    "hint": "再按 {{shortcut}} 收起",
+    "hintNoShortcut": "再按一次快捷键收起"
   }
 }

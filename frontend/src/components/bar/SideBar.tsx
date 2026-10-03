@@ -5,8 +5,8 @@ import { useTranslation } from "react-i18next";
 import { GetChatUnreadCount } from "../../../bindings/yukihub/internal/service/accountservice";
 import { onWailsEvent } from "../../../src/bindings/runtime";
 import galToolboxIconUrl from "../../assets/links/gal-toolbox.png";
+import { OPEN_FRIENDS_PANEL_EVENT } from "../../consts/events";
 import { useAccountStatus } from "../../hooks/useAccountStatus";
-import { OPEN_FRIENDS_EVENT } from "../../hooks/useFriendPlayNotifications";
 import { useAppStore } from "../../store";
 import { SnowflakeMark } from "../branding/SnowflakeMark";
 import { FriendsChatModal } from "../modal/FriendsChatModal";
@@ -66,14 +66,13 @@ export function SideBar({ bgEnabled = false, bgOpacity = 0.85 }: SideBarProps) {
     return unsubscribe;
   }, []);
 
-  // 好友「开始玩游戏」通知被点击时展开好友面板（Steam 同款行为）。
-  // 通知卡片不需要知道好友面板挂在哪个组件上，用窗口事件解耦。
-  useEffect(() => {
-    const handleOpenFriends = () => setChatOpen(true);
-    window.addEventListener(OPEN_FRIENDS_EVENT, handleOpenFriends);
-    return () =>
-      window.removeEventListener(OPEN_FRIENDS_EVENT, handleOpenFriends);
-  }, []);
+  // 「展开好友面板」由后端事件驱动：点通知浮层（Steam 同款：点通知打开好友
+  // 列表）或别处想直接进好友时，Go 侧广播 friend:open-panel。
+  // 通知浮层是另一个窗口里的 React 树，用事件解耦最省事。
+  useEffect(
+    () => onWailsEvent(OPEN_FRIENDS_PANEL_EVENT, () => setChatOpen(true)),
+    [],
+  );
 
   // 聊天未读数：登录后每 15 秒拉一次，并在后端推送好友列表变化时立刻刷（
   // 打开聊天弹窗时不拉，避免覆盖弹窗内的会话已读状态）

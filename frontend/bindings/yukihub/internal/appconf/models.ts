@@ -606,6 +606,13 @@ export class AppConfig {
      */
     "bigscreen_sound_enabled": boolean;
 
+    /**
+     * OverlayShortcut 是「呼出游戏内好友栏」的全局快捷键，accelerator 形式
+     * （如 "shift+`"）。空字符串表示用默认值（service.DefaultOverlayShortcut）；
+     * 界面展示成 “Shift + ~”，转换在 service.FormatOverlayShortcut。
+     */
+    "overlay_shortcut"?: string;
+
     /** Creates a new AppConfig instance. */
     constructor($$source: Partial<AppConfig> = {}) {
         if (!("allow_duplicate_metadata_import" in $$source)) {
