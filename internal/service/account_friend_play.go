@@ -48,12 +48,15 @@ func stripPlayingPrefix(activity string) string {
 
 // FriendPlayEvent 是一条「好友开始玩游戏」的通知内容。
 //
-// 前端拿它渲染 Steam 风格弹窗：头像 + 「昵称 开始玩 《游戏名》」。
+// 前端拿它渲染 Steam 风格卡片（头像 + 「昵称 正在玩 / 绿色游戏名」）。
+//
+// 昵称做成数组是有意的：**Steam 会把同时在玩同一个游戏的好友合并成一条**
+// （卡片上写「BPT、Ali」，而不是弹两条）。这里照做，只有一个好友时长度为 1。
 type FriendPlayEvent struct {
-	UID       int64  `json:"uid"`
-	Nickname  string `json:"nickname"`
-	Avatar    string `json:"avatar,omitempty"`
-	GameTitle string `json:"game_title"`
+	UIDs      []int64  `json:"uids"`
+	Nicknames []string `json:"nicknames"`
+	Avatars   []string `json:"avatars,omitempty"`
+	GameTitle string   `json:"game_title"`
 	// NotifiedNatively 表示这条已经由系统通知送达（YukiHub 不在前台，
 	// 典型场景是游戏全屏盖住了窗口）。前端据此跳过应用内卡片，
 	// 免得同一件事打扰两次。
@@ -75,7 +78,11 @@ type friendPlayTracker struct {
 // observe 吞入新快照，返回需要弹通知的条目。
 func (t *friendPlayTracker) observe(friends []yukihubaccount.Friend) []FriendPlayEvent {
 	next := make(map[int64]string, len(friends))
-	events := make([]FriendPlayEvent, 0, 2)
+
+	// 按游戏名归组，实现「同时在玩同一个游戏的好友合并成一条」——
+	// 与 Steam 一致（它一条通知里写「BPT、Ali」而不是弹两次）。
+	grouped := make(map[string]*FriendPlayEvent, 2)
+	order := make([]string, 0, 2)
 
 	for _, friend := range friends {
 		activity := ""
@@ -92,12 +99,26 @@ func (t *friendPlayTracker) observe(friends []yukihubaccount.Friend) []FriendPla
 			continue
 		}
 
-		events = append(events, FriendPlayEvent{
-			UID:       friend.UID,
-			Nickname:  friendDisplayName(friend),
-			Avatar:    friend.Avatar,
-			GameTitle: stripPlayingPrefix(activity),
-		})
+		title := stripPlayingPrefix(activity)
+		existing, ok := grouped[title]
+		if !ok {
+			grouped[title] = &FriendPlayEvent{
+				UIDs:      []int64{friend.UID},
+				Nicknames: []string{friendDisplayName(friend)},
+				Avatars:   []string{friend.Avatar},
+				GameTitle: title,
+			}
+			order = append(order, title)
+			continue
+		}
+		existing.UIDs = append(existing.UIDs, friend.UID)
+		existing.Nicknames = append(existing.Nicknames, friendDisplayName(friend))
+		existing.Avatars = append(existing.Avatars, friend.Avatar)
+	}
+
+	events := make([]FriendPlayEvent, 0, len(order))
+	for _, title := range order {
+		events = append(events, *grouped[title])
 	}
 
 	t.lastActivity = next
@@ -111,6 +132,14 @@ func (t *friendPlayTracker) observe(friends []yukihubaccount.Friend) []FriendPla
 // 与手机版 FriendNotifier 的「开始玩 《游戏名》」一致。
 func friendPlayNoticeText(event FriendPlayEvent) string {
 	return "开始玩 《" + event.GameTitle + "》"
+}
+
+// friendPlayNoticeTitle 系统通知的标题：多个好友用顿号连接。
+func friendPlayNoticeTitle(event FriendPlayEvent) string {
+	if len(event.Nicknames) == 0 {
+		return "好友"
+	}
+	return strings.Join(event.Nicknames, "、")
 }
 
 // appInForeground 判断前台窗口是不是 YukiHub 自己。
@@ -149,7 +178,7 @@ func (s *AccountService) notifyFriendPlayNatively(event FriendPlayEvent) {
 	}
 	// 文案与手机版 FriendNotifier 一致：标题=昵称，正文=开始玩 《游戏名》
 	body := friendPlayNoticeText(event)
-	if err := notifier.Notify(event.Nickname, body); err != nil {
+	if err := notifier.Notify(friendPlayNoticeTitle(event), body); err != nil {
 		applog.LogWarningf(s.ctx, "发送系统通知失败（忽略）：%v", err)
 	}
 }
@@ -295,7 +324,7 @@ func (s *AccountService) pollFriendPlay(tracker *friendPlayTracker) {
 		return
 	}
 	for _, event := range tracker.observe(friends.Friends) {
-		applog.LogDebugf(s.ctx, "好友开始游玩：%s - %s", event.Nickname, event.GameTitle)
+		applog.LogDebugf(s.ctx, "好友开始游玩：%s - %s", friendPlayNoticeTitle(event), event.GameTitle)
 
 		// 分流：YukiHub 在前台时应用内卡片就够（用户看得见窗口）；
 		// 不在前台才需要系统通知 —— 系统通知由系统层绘制，能盖在全屏游戏上，

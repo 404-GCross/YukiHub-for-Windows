@@ -30,7 +30,7 @@ export function useFriendPlayNotifications() {
     const unsubscribe = onWailsEvent<FriendPlayEvent>(
       "friend:playing",
       (event) => {
-        if (!event?.nickname || !event?.game_title) {
+        if (!event?.nicknames?.length || !event?.game_title) {
           return;
         }
         if (event.notified_natively) {

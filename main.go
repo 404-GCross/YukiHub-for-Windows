@@ -429,18 +429,27 @@ func extractAutostartLaunchFlag(args []string) ([]string, bool) {
 // 游戏内好友栏（overlay）相关常量。
 const (
 	overlayWindowName = "overlay"
-	// 避开 Steam 占用的 Shift+Tab
-	overlayShortcut     = "alt+shift+tab"
-	overlayWindowWidth  = 380
-	overlayWindowHeight = 560
+	// 呼出好友栏的快捷键候选，按顺序尝试，第一个注册成功的生效。
+	// 首位是用户选的 Alt+Shift+Tab，但**它经常被系统占用**（Alt+Shift 本身是
+	// Windows 输入法切换热键，实测注册会返回 ERROR_HOTKEY_ALREADY_REGISTERED），
+	// 所以准备了备选 —— 否则这个入口在部分机器上直接不可用。
+	overlayShortcutFallback = "ctrl+shift+tab"
+	overlayWindowWidth      = 380
+	overlayWindowHeight     = 560
 	// 离屏幕右边留一点空隙
 	overlayMargin = 24
 )
 
-// overlayWindow 与它的锁：快捷键回调可能在任意时候触发。
+// overlayShortcutCandidates 按顺序尝试注册，第一个成功的生效。
+var overlayShortcutCandidates = []string{"alt+shift+tab", overlayShortcutFallback}
+
 var (
+	// overlayWindow 与它的锁：快捷键回调可能在任意时候触发。
 	overlayWindow *application.WebviewWindow
 	overlayMu     sync.Mutex
+	// activeOverlayShortcut 记录实际注册成功的组合（空 = 都没成功）。
+	// 界面上的提示文案不写死具体按键，就是因为它可能是备选的那个。
+	activeOverlayShortcut string
 )
 
 func main() {
@@ -944,70 +953,6 @@ func runGUI(
 				Backdrop: application.MacBackdropTranslucent,
 			},
 		})
-		// ===== 游戏内好友栏（overlay）=====
-		//
-		// Steam 的 Shift+Tab 已经被 Steam 自己占用（注册会失败），这里用
-		// Alt+Shift+Tab。窗口惰性创建：不用这个功能的人不该白白多一个 webview。
-		//
-		// 必须诚实说明的限制：置顶窗口能盖在「窗口化 / 无边框全屏」游戏上，
-		// 但**盖不住独占全屏（exclusive fullscreen）的 DirectX 游戏** ——
-		// Steam 能做到是因为它往游戏进程里注入 hook，YukiHub 不做注入。
-		toggleOverlayWindow := func() {
-			overlayMu.Lock()
-			defer overlayMu.Unlock()
-
-			if overlayWindow == nil {
-				overlayWindow = wailsApp.Window.NewWithOptions(application.WebviewWindowOptions{
-					Name:             overlayWindowName,
-					Title:            "YukiHub",
-					URL:              "/overlay",
-					Width:            overlayWindowWidth,
-					Height:           overlayWindowHeight,
-					DisableResize:    true,
-					Frameless:        true,
-					AlwaysOnTop:      true,
-					Hidden:           true,
-					BackgroundType:   application.BackgroundTypeTranslucent,
-					BackgroundColour: application.NewRGBA(18, 20, 22, 0),
-					Windows: application.WindowsWindow{
-						BackdropType: application.Auto,
-						Theme:        application.SystemDefault,
-						// 别在任务栏多出一个条目：它是呼出式的浮层，不是独立应用
-						HiddenOnTaskbar: true,
-					},
-					Mac: application.MacWindow{
-						TitleBar: application.MacTitleBarHidden,
-						Backdrop: application.MacBackdropTranslucent,
-					},
-				})
-			}
-
-			if overlayWindow.IsVisible() {
-				overlayWindow.Hide()
-				return
-			}
-
-			// 贴主屏右侧竖直居中：不挡游戏主体的同时一眼能看到
-			if screen := wailsApp.Screen.GetPrimary(); screen != nil {
-				x := screen.Size.Width - overlayWindowWidth - overlayMargin
-				y := (screen.Size.Height - overlayWindowHeight) / 2
-				if x < 0 {
-					x = 0
-				}
-				if y < 0 {
-					y = 0
-				}
-				overlayWindow.SetPosition(x, y)
-			}
-			overlayWindow.Show()
-			overlayWindow.Focus()
-		}
-
-		if err := wailsApp.GlobalShortcut.Register(overlayShortcut, toggleOverlayWindow); err != nil {
-			// 被别的程序占用时不该让应用起不来，只是这个入口不可用
-			appLogger.Warning(fmt.Sprintf("注册好友栏快捷键 %s 失败（可能已被占用）：%v", overlayShortcut, err))
-		}
-
 		appState.SetRuntime(wailsApp, mainWindow)
 		guiRuntime = wailsruntime.New(wailsApp, mainWindow)
 		backupService.SetRuntime(guiRuntime)
@@ -1241,6 +1186,84 @@ func runGUI(
 			}
 		}()
 	})
+
+	// ===== 游戏内好友栏（overlay）=====
+	//
+	// Steam 的 Shift+Tab 已经被 Steam 自己占用（注册会失败），这里用
+	// Alt+Shift+Tab。窗口惰性创建：不用这个功能的人不该白白多一个 webview。
+	//
+	// **必须在 Run() 之前注册**：这个时机 Wails 只是把快捷键入队，等主线程
+	// 消息循环就绪后再真正绑定。若放到 OnStartup 回调里注册，那时内部状态已是
+	// 「应用已启动」，会走去主线程同步执行的路径 —— 启动直接被卡死（实测：
+	// 进程无任何报错直接退出，日志停在 Platform Info）。
+	toggleOverlayWindow := func() {
+		overlayMu.Lock()
+		defer overlayMu.Unlock()
+
+		if overlayWindow == nil {
+			overlayWindow = wailsApp.Window.NewWithOptions(application.WebviewWindowOptions{
+				Name:             overlayWindowName,
+				Title:            "YukiHub",
+				URL:              "/overlay",
+				Width:            overlayWindowWidth,
+				Height:           overlayWindowHeight,
+				DisableResize:    true,
+				Frameless:        true,
+				AlwaysOnTop:      true,
+				Hidden:           true,
+				BackgroundType:   application.BackgroundTypeTranslucent,
+				BackgroundColour: application.NewRGBA(18, 20, 22, 0),
+				Windows: application.WindowsWindow{
+					BackdropType: application.Auto,
+					Theme:        application.SystemDefault,
+					// 别在任务栏多出一个条目：它是呼出式的浮层，不是独立应用
+					HiddenOnTaskbar: true,
+				},
+				Mac: application.MacWindow{
+					TitleBar: application.MacTitleBarHidden,
+					Backdrop: application.MacBackdropTranslucent,
+				},
+			})
+		}
+
+		if overlayWindow.IsVisible() {
+			overlayWindow.Hide()
+			return
+		}
+
+		// 贴主屏右侧竖直居中：不挡游戏主体的同时一眼能看到
+		if screen := wailsApp.Screen.GetPrimary(); screen != nil {
+			x := screen.Size.Width - overlayWindowWidth - overlayMargin
+			y := (screen.Size.Height - overlayWindowHeight) / 2
+			if x < 0 {
+				x = 0
+			}
+			if y < 0 {
+				y = 0
+			}
+			overlayWindow.SetPosition(x, y)
+		}
+		overlayWindow.Show()
+		overlayWindow.Focus()
+	}
+
+	if wailsApp.GlobalShortcut != nil {
+		registered := ""
+		for _, candidate := range overlayShortcutCandidates {
+			if err := wailsApp.GlobalShortcut.Register(candidate, toggleOverlayWindow); err == nil {
+				registered = candidate
+				break
+			} else {
+				appLogger.Warning(fmt.Sprintf("注册好友栏快捷键 %s 失败：%v", candidate, err))
+			}
+		}
+		activeOverlayShortcut = registered
+		if registered == "" {
+			appLogger.Warning("好友栏快捷键全部注册失败，Alt+Shift+Tab 入口不可用（不影响其它功能）")
+		} else {
+			appLogger.Info("好友栏快捷键已注册：" + registered)
+		}
+	}
 
 	if err := wailsApp.Run(); err != nil {
 		appLogger.Fatal(err.Error())

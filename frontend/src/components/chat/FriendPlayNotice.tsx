@@ -3,9 +3,11 @@ import { ChatAvatar } from "./ChatAvatar";
 
 /** 后端 friend:playing 事件的负载（对应 Go 的 service.FriendPlayEvent）。 */
 export interface FriendPlayEvent {
-  uid: number;
-  nickname: string;
-  avatar?: string;
+  /** 同时收到通知的好友（Steam 会把玩同一游戏的人合并成一条） */
+  uids: number[];
+  /** 展示名，多个好友时用顿号连接显示 */
+  nicknames: string[];
+  avatars?: string[];
   /** 已经剥掉「正在玩：」前缀的游戏名 */
   game_title: string;
   /**
@@ -22,15 +24,21 @@ interface FriendPlayNoticeProps {
   onDismiss: () => void;
 }
 
+/** Steam 的「正在玩」绿（手机版 FriendNotifier 用的也是这个色值）。 */
+const STEAM_PLAYING_GREEN = "#90BA3C";
+
 /**
- * 「好友开始玩游戏」通知卡片（Steam 风格）。
+ * 「好友开始玩游戏」通知卡片 —— 对齐 Steam 自己的通知样式。
  *
- * 与普通 toast 的区别：Steam 的这类通知是**带头像的两行卡片**，且专门告诉
- * 你「谁 · 开始玩 · 什么游戏」。文案对齐手机版 FriendNotifier：
- * 标题=昵称，正文=`开始玩 《游戏名》`。
+ * 注意这不是 Windows 系统通知，是**应用内**自绘卡片（Steam 的也是它自己在
+ * overlay 里画的）：深色底 + 左侧头像 + 三行文字，游戏名用 Steam 绿。
  *
- * 用 toast.custom 渲染，因此定位、堆叠、自动过期都复用 toaster 那套；
- * 这里只负责外观。
+ * 与 Steam 的唯一差别：它左侧放的是游戏封面（它有 AppID），我们拿不到好友
+ * 在玩的游戏的封面（服务端只下发游戏名），所以用好友头像代替 —— 保留信息层次，
+ * 不假装有封面。
+ *
+ * 多个好友在玩同一个游戏时合并成一条，昵称用顿号连接（「BPT、Ali」），
+ * 与 Steam 一致。
  */
 export function FriendPlayNotice({
   event,
@@ -38,6 +46,8 @@ export function FriendPlayNotice({
   onDismiss,
 }: FriendPlayNoticeProps) {
   const { t } = useTranslation();
+  const names = event.nicknames ?? [];
+  const avatars = event.avatars ?? [];
 
   return (
     <div
@@ -50,16 +60,39 @@ export function FriendPlayNotice({
           onOpen();
         }
       }}
-      className="pointer-events-auto flex w-full cursor-pointer items-center gap-3 rounded-xl border border-brand-200/90 bg-white/97 p-3 shadow-2xl backdrop-blur-md transition-transform hover:scale-[1.02] dark:border-brand-700/90 dark:bg-brand-800/97"
+      className="pointer-events-auto flex w-full cursor-pointer items-center gap-3 rounded-lg border border-white/10 bg-[#16202d]/97 p-2.5 shadow-2xl backdrop-blur-md transition-transform hover:scale-[1.02]"
     >
-      <ChatAvatar name={event.nickname} avatar={event.avatar} size={44} />
+      {/* 左侧头像：多人时向左叠一张，最多三张，再多不叠了（宽度有限） */}
+      <div className="flex shrink-0 items-center">
+        {(avatars.length > 0 ? avatars : names).slice(0, 3).map((_, index) => (
+          <div
+            key={event.uids?.[index] ?? index}
+            className={index > 0 ? "-ml-3" : ""}
+            style={{ zIndex: 3 - index }}
+          >
+            <div className="rounded-full ring-2 ring-[#16202d]">
+              <ChatAvatar
+                name={names[index] ?? ""}
+                avatar={avatars[index]}
+                size={44}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
 
       <div className="min-w-0 flex-1">
-        <div className="truncate text-sm font-semibold text-brand-900 dark:text-white">
-          {event.nickname}
+        <div className="truncate text-[13px] font-semibold text-white">
+          {names.join("、")}
         </div>
-        <div className="truncate text-xs text-brand-600 dark:text-brand-300">
-          {t("friendsChat.friendPlayNotice", { game: event.game_title })}
+        <div className="truncate text-[11px] leading-tight text-white/55">
+          {t("friendsChat.playingLabel")}
+        </div>
+        <div
+          className="truncate text-[12px] font-semibold leading-snug"
+          style={{ color: STEAM_PLAYING_GREEN }}
+        >
+          {event.game_title}
         </div>
       </div>
 
@@ -70,7 +103,7 @@ export function FriendPlayNotice({
           clickEvent.stopPropagation();
           onDismiss();
         }}
-        className="shrink-0 rounded-lg p-1 text-brand-400 transition-colors hover:bg-brand-100 hover:text-brand-700 dark:hover:bg-brand-700 dark:hover:text-brand-200"
+        className="shrink-0 rounded-md p-1 text-white/40 transition-colors hover:bg-white/12 hover:text-white"
       >
         <span className="i-mdi-close text-base" aria-hidden="true" />
       </button>

@@ -52,7 +52,7 @@ func TestFriendPlayTrackerNotifiesOnStartAndGameChange(t *testing.T) {
 	if events[0].GameTitle != "樱之刻" {
 		t.Errorf("游戏名应剥掉中文前缀，实际 %q", events[0].GameTitle)
 	}
-	if events[0].Nickname != "Yuki" || events[0].UID != 1 {
+	if events[0].Nicknames[0] != "Yuki" || events[0].UIDs[0] != 1 {
 		t.Errorf("昵称/UID 不对：%+v", events[0])
 	}
 
@@ -108,8 +108,8 @@ func TestFriendPlayTrackerPrefersNote(t *testing.T) {
 	if len(events) != 1 {
 		t.Fatalf("应通知一次，实际 %d 条", len(events))
 	}
-	if events[0].Nickname != "小由纪" {
-		t.Errorf("展示名应优先用备注（与好友列表一致），实际 %q", events[0].Nickname)
+	if events[0].Nicknames[0] != "小由纪" {
+		t.Errorf("展示名应优先用备注（与好友列表一致），实际 %q", events[0].Nicknames[0])
 	}
 }
 
@@ -124,7 +124,7 @@ func TestFriendPlayTrackerBackfillsNicknameFallback(t *testing.T) {
 	if len(events) != 1 {
 		t.Fatalf("应通知一次，实际 %d 条", len(events))
 	}
-	if events[0].Nickname == "" {
+	if events[0].Nicknames[0] == "" {
 		t.Error("昵称兜底不应为空")
 	}
 }
@@ -192,5 +192,45 @@ func TestFriendListSignatureDetectsVisibleChanges(t *testing.T) {
 		if friendListSignature(base) == friendListSignature(list) {
 			t.Errorf("%s 的变化没被签名捕捉到，界面不会刷新", name)
 		}
+	}
+}
+
+// Steam 会把同时在玩同一个游戏的好友合并成一条通知（卡片写「BPT、Ali」），
+// 而不是一人弹一条。
+func TestFriendPlayTrackerMergesSameGame(t *testing.T) {
+	tracker := &friendPlayTracker{}
+	tracker.observe(nil)
+
+	events := tracker.observe([]yukihubaccount.Friend{
+		testFriend(1, "BPT", "", yukihubaccount.PresenceOnline, "正在玩：Counter-Strike 2"),
+		testFriend(2, "Ali", "", yukihubaccount.PresenceOnline, "正在玩：Counter-Strike 2"),
+	})
+
+	if len(events) != 1 {
+		t.Fatalf("同一个游戏应合并成一条，实际 %d 条", len(events))
+	}
+	if len(events[0].Nicknames) != 2 {
+		t.Fatalf("应带上两个昵称，实际 %v", events[0].Nicknames)
+	}
+	if events[0].Nicknames[0] != "BPT" || events[0].Nicknames[1] != "Ali" {
+		t.Errorf("昵称顺序应与好友列表一致，实际 %v", events[0].Nicknames)
+	}
+	if len(events[0].Avatars) != 2 || len(events[0].UIDs) != 2 {
+		t.Errorf("头像与 UID 也要一一对应，实际 %+v", events[0])
+	}
+}
+
+// 不同游戏不能被合并成一条。
+func TestFriendPlayTrackerKeepsDifferentGamesSeparate(t *testing.T) {
+	tracker := &friendPlayTracker{}
+	tracker.observe(nil)
+
+	events := tracker.observe([]yukihubaccount.Friend{
+		testFriend(1, "BPT", "", yukihubaccount.PresenceOnline, "正在玩：Counter-Strike 2"),
+		testFriend(2, "Ali", "", yukihubaccount.PresenceOnline, "正在玩：原神"),
+	})
+
+	if len(events) != 2 {
+		t.Fatalf("不同游戏应各自成条，实际 %d 条", len(events))
 	}
 }

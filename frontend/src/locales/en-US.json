@@ -1850,10 +1850,10 @@
     "playingNow": "Playing now",
     "playingFor": "Playing for {{duration}}",
     "profileSendMessage": "Send message",
-    "friendPlayNotice": "started playing {{game}}"
+    "playingLabel": "Playing"
   },
   "friendsOverlay": {
     "title": "Friends",
-    "hint": "Alt+Shift+Tab to hide"
+    "hint": "Press the shortcut again to hide"
   }
 }

@@ -1850,10 +1850,10 @@
     "playingNow": "正在玩",
     "playingFor": "已玩 {{duration}}",
     "profileSendMessage": "发消息",
-    "friendPlayNotice": "开始玩 《{{game}}》"
+    "playingLabel": "正在玩"
   },
   "friendsOverlay": {
     "title": "好友",
-    "hint": "Alt+Shift+Tab 收起"
+    "hint": "再次按快捷键收起"
   }
 }
