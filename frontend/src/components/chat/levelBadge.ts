@@ -28,15 +28,10 @@ export function levelBadgeStyle(level: number): CSSProperties {
   };
 }
 
-/** 游玩时长（秒）→ 「N 小时 M 分钟」；不足 1 小时只显示分钟。 */
-export function formatPlayTime(seconds: number): string {
-  if (!seconds || seconds <= 0) {
-    return "-";
-  }
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  if (hours <= 0) {
-    return `${minutes} 分钟`;
-  }
-  return minutes > 0 ? `${hours} 小时 ${minutes} 分钟` : `${hours} 小时`;
-}
+// 游玩时长的格式化统一用 utils/time 的 formatDuration / formatDurationCompact
+// （本文件曾有一份 formatPlayTime，硬编码中文「N 小时 M 分钟」，英文界面也显示
+// 中文，已删除；它依赖的 common.duration 单位键由 utils/time 共享）。
+//
+// 单位说明：服务端 /user/profile 的 totalPlayTime 与 recentGames[].playTime
+// 都是**秒**（手机版 FriendsChatDialog.formatPlayTime(int seconds) 同样按秒读），
+// 不要按同步格式的毫秒去换算。

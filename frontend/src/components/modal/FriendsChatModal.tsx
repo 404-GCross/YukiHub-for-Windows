@@ -41,6 +41,7 @@ import { levelBadgeStyle } from "../chat/levelBadge";
 import { UserProfileModal } from "../chat/UserProfileModal";
 import { BetterButton } from "../ui/better/BetterButton";
 import { BetterInput } from "../ui/better/BetterInput";
+import { ContextMenu } from "../ui/ContextMenu";
 import { ModalPortal } from "../ui/ModalPortal";
 
 interface FriendsChatModalProps {
@@ -51,6 +52,8 @@ interface FriendsChatModalProps {
 
 /** 轮询间隔，与手机版 FriendsChatDialog.POLL_INTERVAL_MS 一致（10 秒） */
 const POLL_INTERVAL_MS = 10_000;
+/** 好友列表轮询间隔：在线状态 / 正在玩靠服务端心跳判定，列表要跟着更新 */
+const FRIEND_LIST_POLL_INTERVAL = 30_000;
 /** 历史消息每页条数，与手机版一致 */
 const HISTORY_PAGE_SIZE = 20;
 
@@ -150,6 +153,9 @@ export function FriendsChatModal({
   const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
   // 用户资料弹窗
   const [profileUid, setProfileUid] = useState(0);
+  // 好友列表项的右键菜单（点整行仍然是进私聊，右键才出「查看资料/发消息」）
+  const [friendMenu, setFriendMenu] = useState<Friend | null>(null);
+  const [friendMenuPosition, setFriendMenuPosition] = useState({ x: 0, y: 0 });
   // 图片全屏查看
   const [viewerImageURL, setViewerImageURL] = useState("");
 
@@ -387,6 +393,30 @@ export function FriendsChatModal({
     }
     void refreshLists(true);
   }, [isOpen, isLoggedIn]);
+
+  // 好友列表轮询。
+  //
+  // 在线状态与「正在玩 XXX」都是服务端按心跳判定的结果，之前只在打开弹窗时拉
+  // 一次 —— 弹窗开着不动的话，对方的状态会永远停留在打开那一刻，右下角退出按钮
+  // 才刷新。30 秒与侧栏未读徽标的 45 秒同一量级。
+  //
+  // 只在列表视图轮询：进私聊后消息本身已有 10 秒轮询，没必要再叠一路请求。
+  useEffect(() => {
+    if (!isOpen || !isLoggedIn || view !== "list") {
+      return;
+    }
+    const timer = window.setInterval(() => {
+      void (async () => {
+        try {
+          setFriendList(await ListFriends());
+        }
+        catch {
+          // 静默失败：轮询不该弹错误框，下个周期自然重试
+        }
+      })();
+    }, FRIEND_LIST_POLL_INTERVAL);
+    return () => window.clearInterval(timer);
+  }, [isOpen, isLoggedIn, view]);
 
   // 轮询清理
   useEffect(
@@ -1139,6 +1169,15 @@ export function FriendsChatModal({
                                   type="button"
                                   onClick={() =>
                                     void openChat({ kind: "friend", friend })}
+                                  onContextMenu={(event) => {
+                                    // 点整行照旧进私聊；右键才出「查看资料 / 发消息」
+                                    event.preventDefault();
+                                    setFriendMenu(friend);
+                                    setFriendMenuPosition({
+                                      x: event.clientX,
+                                      y: event.clientY,
+                                    });
+                                  }}
                                   className="flex items-center gap-3 rounded-xl p-2 text-left transition-colors hover:bg-brand-100 dark:hover:bg-brand-700/60"
                                 >
                                   <div className="relative">
@@ -1670,11 +1709,49 @@ export function FriendsChatModal({
         }}
       />
 
+      {/* 好友列表项右键菜单：点整行照旧进私聊，这里补「查看资料 / 发消息」 */}
+      <ContextMenu
+        position={friendMenu ? friendMenuPosition : null}
+        onClose={() => setFriendMenu(null)}
+        items={[
+          {
+            key: "profile",
+            label: t("friendsChat.menuProfile"),
+            icon: "i-mdi-account-details-outline",
+            onSelect: () => {
+              if (Number(friendMenu?.uid ?? 0) > 0) {
+                setProfileUid(Number(friendMenu?.uid));
+              }
+            },
+          },
+          {
+            key: "message",
+            label: t("friendsChat.profileSendMessage"),
+            icon: "i-mdi-message-text-outline",
+            onSelect: () => {
+              if (friendMenu) {
+                void openChat({ kind: "friend", friend: friendMenu });
+              }
+            },
+          },
+        ]}
+      />
+
       {/* 用户资料页（点他人头像 / 菜单里「查看资料」） */}
       <UserProfileModal
         isOpen={profileUid > 0}
         uid={profileUid}
         onClose={() => setProfileUid(0)}
+        onMessage={(targetUid) => {
+          // 资料卡里点「发消息」：切到与该好友的私聊
+          const friend = friendList?.friends?.find(
+            item => Number(item.uid) === Number(targetUid),
+          );
+          if (friend) {
+            void openChat({ kind: "friend", friend });
+          }
+          setProfileUid(0);
+        }}
       />
 
       {/* 图片全屏查看 */}

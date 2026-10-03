@@ -55,7 +55,13 @@
     "close": "关闭",
     "details": "查看详情",
     "loadMore": "加载更多",
-    "retry": "重试"
+    "retry": "重试",
+    "relativeTime": {
+      "daysAgo": "{{days}} 天前",
+      "hoursAgo": "{{hours}} 小时前",
+      "minutesAgo": "{{minutes}} 分钟前",
+      "justNow": "刚刚"
+    }
   },
   "library": {
     "title": "游戏库",
@@ -1820,7 +1826,6 @@
     "menuRecall": "撤回消息（管理）",
     "menuDelete": "删除消息（管理）",
     "menuProfile": "查看资料",
-    "profileTitle": "用户资料",
     "profileGames": "游戏数",
     "profilePlayTime": "总时长",
     "openOriginal": "打开原图",
@@ -1838,6 +1843,9 @@
     "alreadyFriend": "已是好友",
     "friendRequestReceived": "对方已向你发送好友申请，可在「好友请求」里接受",
     "friendRequestSent": "好友申请已发送，等待对方通过",
-    "friendSince": "成为好友 · {{time}}"
+    "friendSince": "成为好友 · {{time}}",
+    "playingNow": "正在玩",
+    "playingFor": "已玩 {{duration}}",
+    "profileSendMessage": "发消息"
   }
 }

@@ -344,6 +344,16 @@ export class UserProfile {
     "recentGames"?: UserRecentGame[];
     "frame"?: AvatarFrame | null;
 
+    /**
+     * PlayingGame / PlayingStartedAt 是「正在玩」的结构化形式。
+     * 
+     * 服务端当前只下发 activity 这一句拼好的文案（"正在玩：xxx"），没有开始
+     * 时间，客户端算不出「已玩多久」。这两个字段先按别名列表预留：服务端补上
+     * 之后资料卡立刻能显示实时时长，不需要再改客户端。
+     */
+    "playingGame"?: string;
+    "playingStartedAt"?: number;
+
     /** Creates a new UserProfile instance. */
     constructor($$source: Partial<UserProfile> = {}) {
         if (!("uid" in $$source)) {

@@ -340,6 +340,13 @@ type UserProfile struct {
 	FriendDirection string           `json:"friendDirection,omitempty"`
 	RecentGames     []UserRecentGame `json:"recentGames,omitempty"`
 	Frame           *AvatarFrame     `json:"frame,omitempty"`
+	// PlayingGame / PlayingStartedAt 是「正在玩」的结构化形式。
+	//
+	// 服务端当前只下发 activity 这一句拼好的文案（"正在玩：xxx"），没有开始
+	// 时间，客户端算不出「已玩多久」。这两个字段先按别名列表预留：服务端补上
+	// 之后资料卡立刻能显示实时时长，不需要再改客户端。
+	PlayingGame      string `json:"playingGame,omitempty"`
+	PlayingStartedAt int64  `json:"playingStartedAt,omitempty"`
 }
 
 // UserRecentGame 是资料页「最近游玩」里的一条。
@@ -370,6 +377,18 @@ func (c *Client) UserProfile(ctx context.Context, token string, uid int64) (User
 		FriendStatus:  pickString(body, "friendStatus", "friend_status"),
 		FriendDirection: pickString(
 			body, "friendDirection", "friend_direction",
+		),
+		// 「正在玩」的结构化字段：认驼峰与下划线两种键名，另外容忍 playStartedAt
+		// / startedAt 这类同义命名，服务端用哪个都能取到。
+		PlayingGame: pickString(
+			body, "playingGame", "playing_game", "currentGame", "current_game",
+		),
+		PlayingStartedAt: pickInt64(
+			body,
+			"playingStartedAt", "playing_started_at",
+			"playStartedAt", "play_started_at",
+			"activityStartedAt", "activity_started_at",
+			"startedAt", "started_at",
 		),
 	}
 	// 最近游玩：手机版读 title / playTime / lastPlayedAt

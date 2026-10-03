@@ -55,7 +55,13 @@
     "close": "關閉",
     "details": "查看詳情",
     "loadMore": "載入更多",
-    "retry": "重試"
+    "retry": "重試",
+    "relativeTime": {
+      "daysAgo": "{{days}} 天前",
+      "hoursAgo": "{{hours}} 小時前",
+      "minutesAgo": "{{minutes}} 分鐘前",
+      "justNow": "剛剛"
+    }
   },
   "library": {
     "title": "遊戲庫",
@@ -1820,7 +1826,6 @@
     "menuRecall": "撤回訊息（管理）",
     "menuDelete": "刪除訊息（管理）",
     "menuProfile": "查看資料",
-    "profileTitle": "使用者資料",
     "profileGames": "遊戲數",
     "profilePlayTime": "總時長",
     "openOriginal": "開啟原圖",
@@ -1838,6 +1843,9 @@
     "alreadyFriend": "已是好友",
     "friendRequestReceived": "對方已傳送好友申請，可在「好友請求」中接受",
     "friendRequestSent": "好友申請已傳送，等待對方通過",
-    "friendSince": "成為好友 · {{time}}"
+    "friendSince": "成為好友 · {{time}}",
+    "playingNow": "正在玩",
+    "playingFor": "已玩 {{duration}}",
+    "profileSendMessage": "傳送訊息"
   }
 }

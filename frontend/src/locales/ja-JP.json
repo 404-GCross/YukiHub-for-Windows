@@ -55,7 +55,13 @@
     "close": "閉じる",
     "details": "詳細を表示",
     "loadMore": "さらに読み込む",
-    "retry": "再試行"
+    "retry": "再試行",
+    "relativeTime": {
+      "daysAgo": "{{days}}日前",
+      "hoursAgo": "時間{{hours}}前",
+      "minutesAgo": "分{{minutes}}前",
+      "justNow": "たった現"
+    }
   },
   "library": {
     "title": "ゲームライブラリ",
@@ -1820,7 +1826,6 @@
     "menuRecall": "撤回（管理者）",
     "menuDelete": "削除（管理者）",
     "menuProfile": "プロフィール",
-    "profileTitle": "プロフィール",
     "profileGames": "ゲーム数",
     "profilePlayTime": "総プレイ時間",
     "openOriginal": "元画像を開く",
@@ -1838,6 +1843,9 @@
     "alreadyFriend": "すでにフレンド",
     "friendRequestReceived": "相手からフレンド申請が届いています（リクエストから承認）",
     "friendRequestSent": "フレンド申請を送信しました",
-    "friendSince": "フレンド歴 · {{time}}"
+    "friendSince": "フレンド歴 · {{time}}",
+    "playingNow": "プレイ中",
+    "playingFor": "プレイ中 {{duration}}",
+    "profileSendMessage": "メッセージを送る"
   }
 }

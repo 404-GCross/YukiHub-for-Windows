@@ -55,7 +55,13 @@
     "close": "Close",
     "details": "View details",
     "loadMore": "Load more",
-    "retry": "Retry"
+    "retry": "Retry",
+    "relativeTime": {
+      "daysAgo": "{{days}}d ago",
+      "hoursAgo": "{{hours}}h ago",
+      "minutesAgo": "{{minutes}}m ago",
+      "justNow": "just now"
+    }
   },
   "library": {
     "title": "Game Library",
@@ -1820,7 +1826,6 @@
     "menuRecall": "Recall (admin)",
     "menuDelete": "Delete (admin)",
     "menuProfile": "View profile",
-    "profileTitle": "Profile",
     "profileGames": "Games",
     "profilePlayTime": "Play time",
     "openOriginal": "Open original",
@@ -1838,6 +1843,9 @@
     "alreadyFriend": "Already friends",
     "friendRequestReceived": "They sent you a friend request — accept it in Requests",
     "friendRequestSent": "Friend request sent",
-    "friendSince": "Friends since {{time}}"
+    "friendSince": "Friends since {{time}}",
+    "playingNow": "Playing now",
+    "playingFor": "Playing for {{duration}}",
+    "profileSendMessage": "Send message"
   }
 }
