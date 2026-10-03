@@ -20,7 +20,10 @@
 
 set -euo pipefail
 
-OLD_EMAIL="dev@yukihub.local"
+# 要被替换的旧署名邮箱。默认是仓库最初使用的占位邮箱；
+# 如果已经改写过一轮，可以传环境变量指定上一轮的邮箱：
+#   OLD_EMAIL=上一轮的邮箱 bash scripts/rewrite-author.sh
+OLD_EMAIL="${OLD_EMAIL:-dev@yukihub.local}"
 
 cd "$(dirname "$0")/.."
 
