@@ -2,12 +2,15 @@ package service
 
 import (
 	"context"
+	"os"
 	"strconv"
 	"strings"
 	"time"
 
 	"yukihub/internal/applog"
 	"yukihub/internal/service/yukihubaccount"
+	"yukihub/internal/utils/nativenotify"
+	"yukihub/internal/utils/timerutils/focusing"
 )
 
 const (
@@ -51,6 +54,10 @@ type FriendPlayEvent struct {
 	Nickname  string `json:"nickname"`
 	Avatar    string `json:"avatar,omitempty"`
 	GameTitle string `json:"game_title"`
+	// NotifiedNatively 表示这条已经由系统通知送达（YukiHub 不在前台，
+	// 典型场景是游戏全屏盖住了窗口）。前端据此跳过应用内卡片，
+	// 免得同一件事打扰两次。
+	NotifiedNatively bool `json:"notified_natively,omitempty"`
 }
 
 // friendPlayTracker 用「上一次快照」比对出「刚开始玩」和「换了游戏」。
@@ -96,6 +103,76 @@ func (t *friendPlayTracker) observe(friends []yukihubaccount.Friend) []FriendPla
 	t.lastActivity = next
 	t.primed = true
 	return events
+}
+
+// friendPlayNoticeText 系统通知的正文。
+//
+// 系统通知由 Go 侧发出，拿不到前端的界面语言，所以这里固定用中文 ——
+// 与手机版 FriendNotifier 的「开始玩 《游戏名》」一致。
+func friendPlayNoticeText(event FriendPlayEvent) string {
+	return "开始玩 《" + event.GameTitle + "》"
+}
+
+// appInForeground 判断前台窗口是不是 YukiHub 自己。
+func appInForeground() bool {
+	foregroundPID, ok := focusing.GetForegroundProcessID()
+	return ok && foregroundPID == uint32(os.Getpid())
+}
+
+// systemNotifier 惰性创建系统通知器。
+//
+// 惰性而不是在 Init 里创建：没有桌面会话（CI、服务方式启动）时创建会失败，
+// 那时应该静默降级成「只发应用内通知」，而不是让账号服务起不来。
+func (s *AccountService) systemNotifier() *nativenotify.Notifier {
+	s.notifyMu.Lock()
+	defer s.notifyMu.Unlock()
+
+	if s.notifyReady {
+		return s.notifier
+	}
+	s.notifyReady = true
+
+	notifier, err := nativenotify.New()
+	if err != nil {
+		applog.LogWarningf(s.ctx, "系统通知不可用，降级为仅应用内通知：%v", err)
+		return nil
+	}
+	s.notifier = notifier
+	return notifier
+}
+
+// notifyFriendPlayNatively 用系统通知把「好友开始玩游戏」带到用户眼前。
+func (s *AccountService) notifyFriendPlayNatively(event FriendPlayEvent) {
+	notifier := s.systemNotifier()
+	if notifier == nil {
+		return
+	}
+	// 文案与手机版 FriendNotifier 一致：标题=昵称，正文=开始玩 《游戏名》
+	body := friendPlayNoticeText(event)
+	if err := notifier.Notify(event.Nickname, body); err != nil {
+		applog.LogWarningf(s.ctx, "发送系统通知失败（忽略）：%v", err)
+	}
+}
+
+// CloseNativeNotifier 移除系统通知用的隐藏托盘图标。
+//
+// 应用退出时必须调用：不显式移除的话 Windows 会在托盘区留下「幽灵图标」，
+// 直到鼠标划过那一小块才会消失。
+func (s *AccountService) CloseNativeNotifier() {
+	s.closeSystemNotifier()
+}
+
+// closeSystemNotifier 移除隐藏托盘图标。
+func (s *AccountService) closeSystemNotifier() {
+	s.notifyMu.Lock()
+	notifier := s.notifier
+	s.notifier = nil
+	s.notifyReady = false
+	s.notifyMu.Unlock()
+
+	if notifier != nil {
+		notifier.Close()
+	}
 }
 
 // friendListSignature 生成好友列表的轻量签名，用于判断「有没有值得刷新的变化」。
@@ -219,6 +296,14 @@ func (s *AccountService) pollFriendPlay(tracker *friendPlayTracker) {
 	}
 	for _, event := range tracker.observe(friends.Friends) {
 		applog.LogDebugf(s.ctx, "好友开始游玩：%s - %s", event.Nickname, event.GameTitle)
+
+		// 分流：YukiHub 在前台时应用内卡片就够（用户看得见窗口）；
+		// 不在前台才需要系统通知 —— 系统通知由系统层绘制，能盖在全屏游戏上，
+		// 这是游戏里唯一能到达用户的通道。只发一种，不重复打扰。
+		if !appInForeground() {
+			event.NotifiedNatively = true
+			s.notifyFriendPlayNatively(event)
+		}
 		s.emitEvent(friendPlayNotifyEvent, event)
 	}
 }

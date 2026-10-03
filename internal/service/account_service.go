@@ -20,6 +20,7 @@ import (
 	"yukihub/internal/service/exporter"
 	"yukihub/internal/service/importer"
 	"yukihub/internal/service/yukihubaccount"
+	"yukihub/internal/utils/nativenotify"
 	"yukihub/internal/wailsruntime"
 )
 
@@ -81,7 +82,11 @@ type AccountService struct {
 	friendPlayActive bool
 	// friendListSignature 是上次推给前端的好友列表签名，用于「有变化才推」
 	friendListSignature string
-	lastSyncAt          time.Time
+	// 系统通知发送器（惰性创建，见 systemNotifier）
+	notifyMu    sync.Mutex
+	notifyReady bool
+	notifier    *nativenotify.Notifier
+	lastSyncAt  time.Time
 
 	now func() time.Time
 }

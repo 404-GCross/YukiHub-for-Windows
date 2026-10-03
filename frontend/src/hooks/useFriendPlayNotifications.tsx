@@ -33,6 +33,12 @@ export function useFriendPlayNotifications() {
         if (!event?.nickname || !event?.game_title) {
           return;
         }
+        if (event.notified_natively) {
+          // 后端已经用系统通知送达（YukiHub 不在前台，比如游戏全屏）——
+          // 系统通知能盖在全屏游戏上，应用内卡片这时反而看不见。
+          // 两个都弹就是重复打扰，所以这里直接跳过。
+          return;
+        }
 
         // toastId 在 toast.custom 返回后立刻被赋值，而渲染发生在其后，
         // 所以下面的闭包能安全读到它。

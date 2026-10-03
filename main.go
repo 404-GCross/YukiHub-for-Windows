@@ -732,6 +732,9 @@ func runGUI(
 		logShutdownStep("cleanup pending process selections", func() {
 			startService.CleanupPendingSessions()
 		})
+		logShutdownStep("release system notification icon", func() {
+			accountService.CloseNativeNotifier()
+		})
 		logShutdownStep("automatic database backup", func() {
 			if isSystemSessionEnding || !config.AutoBackupDB {
 				return

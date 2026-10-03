@@ -29,6 +29,16 @@ export function AcceptFriendRequest(friendshipID: string, uid: number): $Cancell
 }
 
 /**
+ * CloseNativeNotifier 移除系统通知用的隐藏托盘图标。
+ * 
+ * 应用退出时必须调用：不显式移除的话 Windows 会在托盘区留下「幽灵图标」，
+ * 直到鼠标划过那一小块才会消失。
+ */
+export function CloseNativeNotifier(): $CancellablePromise<void> {
+    return $Call.ByID(2011224681);
+}
+
+/**
  * GetAccountLevel 查询等级 / 经验 / 签到状态。
  */
 export function GetAccountLevel(): $CancellablePromise<vo$0.AccountLevel> {

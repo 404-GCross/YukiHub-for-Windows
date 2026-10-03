@@ -8,6 +8,11 @@ export interface FriendPlayEvent {
   avatar?: string;
   /** 已经剥掉「正在玩：」前缀的游戏名 */
   game_title: string;
+  /**
+   * true 表示这条后端已经用系统通知送达了（YukiHub 不在前台，典型是游戏全屏）。
+   * 前端据此跳过应用内卡片 —— 同一件事不该打扰两次。
+   */
+  notified_natively?: boolean;
 }
 
 interface FriendPlayNoticeProps {
