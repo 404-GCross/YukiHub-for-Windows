@@ -31,6 +31,7 @@ import {
   SendGroupMessage,
   UploadChatImage,
 } from "../../../bindings/yukihub/internal/service/accountservice";
+import { onWailsEvent } from "../../../src/bindings/runtime";
 import { useAccountStatus } from "../../hooks/useAccountStatus";
 import { resolveChatMediaURL } from "../../utils/chatMedia";
 import { proxiedImageSrc } from "../../utils/imageProxy";
@@ -52,8 +53,11 @@ interface FriendsChatModalProps {
 
 /** 轮询间隔，与手机版 FriendsChatDialog.POLL_INTERVAL_MS 一致（10 秒） */
 const POLL_INTERVAL_MS = 10_000;
-/** 好友列表轮询间隔：在线状态 / 正在玩靠服务端心跳判定，列表要跟着更新 */
-const FRIEND_LIST_POLL_INTERVAL = 30_000;
+/**
+ * 好友列表推送事件（后端 account_friend_play.go 的 friendListUpdatedEvent）。
+ * 后端有变化才推，且推的是整份列表，前端直接吃。
+ */
+const FRIEND_LIST_UPDATED_EVENT = "friend:list-updated";
 /** 历史消息每页条数，与手机版一致 */
 const HISTORY_PAGE_SIZE = 20;
 
@@ -394,29 +398,22 @@ export function FriendsChatModal({
     void refreshLists(true);
   }, [isOpen, isLoggedIn]);
 
-  // 好友列表轮询。
+  // 好友列表由后端推送驱动，前端不再自己定时拉。
   //
-  // 在线状态与「正在玩 XXX」都是服务端按心跳判定的结果，之前只在打开弹窗时拉
-  // 一次 —— 弹窗开着不动的话，对方的状态会永远停留在打开那一刻，右下角退出按钮
-  // 才刷新。30 秒与侧栏未读徽标的 45 秒同一量级。
-  //
-  // 只在列表视图轮询：进私聊后消息本身已有 10 秒轮询，没必要再叠一路请求。
+  // 后端每 10 秒轮询一次 /friends/list，有实质变化才把整份列表推过来
+  // （见 account_friend_play.go）。以前是前端 30 秒 + 后端 15 秒各跑各的，
+  // 于是会出现「列表已经显示有人在玩、通知却还没来」这种自相矛盾的状态，
+  // 而且白拉一倍请求。现在界面和通知吃的是同一份快照。
   useEffect(() => {
-    if (!isOpen || !isLoggedIn || view !== "list") {
+    if (!isOpen || !isLoggedIn) {
       return;
     }
-    const timer = window.setInterval(() => {
-      void (async () => {
-        try {
-          setFriendList(await ListFriends());
-        }
-        catch {
-          // 静默失败：轮询不该弹错误框，下个周期自然重试
-        }
-      })();
-    }, FRIEND_LIST_POLL_INTERVAL);
-    return () => window.clearInterval(timer);
-  }, [isOpen, isLoggedIn, view]);
+    return onWailsEvent<FriendList>(FRIEND_LIST_UPDATED_EVENT, (list) => {
+      if (list?.friends) {
+        setFriendList(list);
+      }
+    });
+  }, [isOpen, isLoggedIn]);
 
   // 轮询清理
   useEffect(

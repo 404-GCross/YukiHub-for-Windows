@@ -3,6 +3,8 @@ package service
 import (
 	"testing"
 
+	"yukihub/internal/appconf"
+
 	"yukihub/internal/service/yukihubaccount"
 )
 
@@ -124,5 +126,71 @@ func TestFriendPlayTrackerBackfillsNicknameFallback(t *testing.T) {
 	}
 	if events[0].Nickname == "" {
 		t.Error("昵称兜底不应为空")
+	}
+}
+
+// 回归：配置里还没有这个字段时必须按「开启」处理。
+//
+// 这个字段是后加的，老配置文件里没有它 —— 普通 bool 的零值会把
+// 「没设置过」误判成「用户关了通知」，于是新功能在已登录用户那里静默失效
+// （表现就是「好友都上线了，通知一直不来」）。所以用 *bool 区分 nil 与 false。
+func TestFriendPlayNotifyDefaultsToEnabledWhenUnset(t *testing.T) {
+	accountService := &AccountService{config: &appconf.AppConfig{}}
+
+	if !accountService.friendPlayNotifyEnabled() {
+		t.Error("配置里没有该字段时应视为开启（对齐手机版 getBoolean(..., true)）")
+	}
+
+	off := false
+	accountService.config.YukiHubAccountFriendPlayNotify = &off
+	if accountService.friendPlayNotifyEnabled() {
+		t.Error("用户主动关掉后应为关闭")
+	}
+
+	on := true
+	accountService.config.YukiHubAccountFriendPlayNotify = &on
+	if !accountService.friendPlayNotifyEnabled() {
+		t.Error("显式开启后应为开启")
+	}
+}
+
+// 列表签名必须捕捉到用户能看见的变化，否则界面不会刷新。
+func TestFriendListSignatureDetectsVisibleChanges(t *testing.T) {
+	base := yukihubaccount.FriendList{
+		Friends: []yukihubaccount.Friend{
+			testFriend(1, "Yuki", "", yukihubaccount.PresenceOnline, ""),
+		},
+	}
+	same := yukihubaccount.FriendList{
+		Friends: []yukihubaccount.Friend{
+			testFriend(1, "Yuki", "", yukihubaccount.PresenceOnline, ""),
+		},
+	}
+	if friendListSignature(base) != friendListSignature(same) {
+		t.Error("内容相同时签名应相同，否则会每轮都白推一次")
+	}
+
+	cases := map[string]yukihubaccount.FriendList{
+		"开始游玩": {
+			Friends: []yukihubaccount.Friend{
+				testFriend(1, "Yuki", "", yukihubaccount.PresenceOnline, "正在玩：樱之刻"),
+			},
+		},
+		"上线": {
+			Friends: []yukihubaccount.Friend{
+				testFriend(1, "Yuki", "", yukihubaccount.PresenceOnline, ""),
+				testFriend(2, "Sora", "", yukihubaccount.PresenceOnline, ""),
+			},
+		},
+		"昵称改了": {
+			Friends: []yukihubaccount.Friend{
+				testFriend(1, "Yuki改", "", yukihubaccount.PresenceOnline, ""),
+			},
+		},
+	}
+	for name, list := range cases {
+		if friendListSignature(base) == friendListSignature(list) {
+			t.Errorf("%s 的变化没被签名捕捉到，界面不会刷新", name)
+		}
 	}
 }

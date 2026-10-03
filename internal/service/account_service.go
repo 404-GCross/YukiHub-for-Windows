@@ -79,7 +79,9 @@ type AccountService struct {
 	// 「好友开始玩游戏」轮询（对齐手机版 PresenceService 的 15 秒好友轮询）
 	friendPlayCancel context.CancelFunc
 	friendPlayActive bool
-	lastSyncAt       time.Time
+	// friendListSignature 是上次推给前端的好友列表签名，用于「有变化才推」
+	friendListSignature string
+	lastSyncAt          time.Time
 
 	now func() time.Time
 }
@@ -105,7 +107,12 @@ func (s *AccountService) Init(ctx context.Context, db *sql.DB, config *appconf.A
 	}
 	if s.config != nil && s.config.YukiHubAccountAccessToken != "" {
 		// 上次是登录状态：应用启动后恢复心跳。
+		//
+		// 心跳和好友轮询必须一起起 —— 之前只起了心跳，「带着登录态启动应用」
+		// 时好友通知轮询压根没跑（只有本次会话里重新登录才会启动），
+		// 表现就是「好友都上线了、列表也变了，通知却一直不来」。
 		s.startPresence()
+		s.startFriendPlayPolling()
 	}
 }
 
@@ -150,7 +157,9 @@ func (s *AccountService) statusLocked() vo.AccountStatus {
 	status.HikarinagiBound = s.config.YukiHubAccountHikarinagiBound
 	status.CloudSyncEnabled = s.config.YukiHubAccountCloudSyncEnabled
 	status.SharePlaying = s.config.YukiHubAccountSharePlaying
-	status.FriendPlayNotify = s.config.YukiHubAccountFriendPlayNotify
+	// nil = 还没设置过，按默认开启显示（与 friendPlayNotifyEnabled 一致）
+	status.FriendPlayNotify = s.config.YukiHubAccountFriendPlayNotify == nil ||
+		*s.config.YukiHubAccountFriendPlayNotify
 	status.LastSyncAt = s.config.LastYukiHubAccountSyncAt
 	status.LastSyncHash = s.config.LastYukiHubAccountSyncHash
 	return status
@@ -296,9 +305,6 @@ func (s *AccountService) applySession(session yukihubaccount.Session) error {
 	// 语义，所以在登录成功这一刻显式置为 true（用户在账号面板里手动关掉后，
 	// 同一次登录会话内保持关闭）。
 	s.config.YukiHubAccountSharePlaying = true
-	// 「好友开始玩游戏时通知」同理：手机版读的也是默认值 true
-	// （PresenceManager.isFriendPlayNotifyEnabled 的 getBoolean(..., true)）。
-	s.config.YukiHubAccountFriendPlayNotify = true
 	s.persistConfigLocked()
 	s.mu.Unlock()
 

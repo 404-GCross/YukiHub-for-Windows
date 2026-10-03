@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"strconv"
 	"strings"
 	"time"
 
@@ -10,12 +11,20 @@ import (
 )
 
 const (
-	// friendPlayPollInterval 是好友「开始玩」的轮询间隔。
+	// friendPlayPollInterval 是好友状态的轮询间隔。
 	//
-	// 手机版 PresenceService.FRIEND_POLL_INTERVAL_MS 就是 15 秒，注释写着
-	// 「比 60s 更接近 Steam 体感」。桌面端照搬 —— 再慢就失去「正在玩」的实时感，
-	// 再快则白耗服务端。
-	friendPlayPollInterval = 15 * time.Second
+	// 手机版 PresenceService.FRIEND_POLL_INTERVAL_MS 是 15 秒，但实测下来
+	// 「好友都上线了列表还没变、通知更慢」的体感很差 —— 桌面端还多一层：
+	// 前端以前自己 30 秒拉一次列表，和后端通知各跑各的，两者不一致。
+	// 现在这里 10 秒统一驱动列表推送与通知，比手机版更跟手一点。
+	friendPlayPollInterval = 10 * time.Second
+
+	// friendListUpdatedEvent 把好友列表整份推给前端。
+	//
+	// 为什么要推整份而不是只发个信号让前端自己再拉一次：这样「列表里看到的」
+	// 和「通知的依据」永远是同一份快照，不会再出现「列表已经显示在玩、通知
+	// 却没来」。同时也省掉前端那路重复请求。
+	friendListUpdatedEvent = "friend:list-updated"
 
 	// friendPlayNotifyEvent 是后端 → 前端的「好友开始玩游戏」通知事件。
 	friendPlayNotifyEvent = "friend:playing"
@@ -89,6 +98,37 @@ func (t *friendPlayTracker) observe(friends []yukihubaccount.Friend) []FriendPla
 	return events
 }
 
+// friendListSignature 生成好友列表的轻量签名，用于判断「有没有值得刷新的变化」。
+//
+// 覆盖用户能直接看到的字段：在线状态、正在玩什么、最后一条消息、未读数、
+// 昵称 / 头像 / 备注。刻意不包含会抖动但对界面无意义的字段。
+func friendListSignature(list yukihubaccount.FriendList) string {
+	var builder strings.Builder
+	for _, friend := range list.Friends {
+		builder.WriteString(strconv.FormatInt(friend.UID, 10))
+		builder.WriteByte('|')
+		builder.WriteString(friend.Status)
+		builder.WriteByte('|')
+		builder.WriteString(friend.Activity)
+		builder.WriteByte('|')
+		builder.WriteString(friend.LastMessage)
+		builder.WriteByte('|')
+		builder.WriteString(friend.LastMessageAt)
+		builder.WriteByte('|')
+		builder.WriteString(strconv.Itoa(friend.UnreadCount))
+		builder.WriteByte('|')
+		builder.WriteString(friend.Nickname)
+		builder.WriteByte('|')
+		builder.WriteString(friend.Avatar)
+		builder.WriteByte('|')
+		builder.WriteString(friend.Note)
+		builder.WriteByte('\n')
+	}
+	builder.WriteString("pending=")
+	builder.WriteString(strconv.Itoa(list.PendingCount))
+	return builder.String()
+}
+
 // friendDisplayName 取展示名：备注优先，与好友列表一致。
 func friendDisplayName(friend yukihubaccount.Friend) string {
 	if note := strings.TrimSpace(friend.Note); note != "" {
@@ -150,9 +190,6 @@ func (s *AccountService) pollFriendPlay(tracker *friendPlayTracker) {
 	if !s.isLoggedIn() {
 		return
 	}
-	if !s.friendPlayNotifyEnabled() {
-		return
-	}
 
 	friends, err := s.ListFriends()
 	if err != nil {
@@ -161,6 +198,25 @@ func (s *AccountService) pollFriendPlay(tracker *friendPlayTracker) {
 		return
 	}
 
+	// 列表有实质变化才推给前端（在线状态 / 正在玩 / 最后一条消息 / 未读数 /
+	// 昵称头像备注，任何一个变了都值得界面刷新一次）。没变化就一声不吭，
+	// 免得每 10 秒白推一次。
+	signature := friendListSignature(friends)
+	s.mu.Lock()
+	changed := signature != s.friendListSignature
+	if changed {
+		s.friendListSignature = signature
+	}
+	s.mu.Unlock()
+	if changed {
+		s.emitEvent(friendListUpdatedEvent, friends)
+	}
+
+	// 通知才受开关控制：关掉通知**不该**连带停掉好友列表刷新，
+	// 列表推送是界面基础数据，与「要不要弹提示」是两件事。
+	if !s.friendPlayNotifyEnabled() {
+		return
+	}
 	for _, event := range tracker.observe(friends.Friends) {
 		applog.LogDebugf(s.ctx, "好友开始游玩：%s - %s", event.Nickname, event.GameTitle)
 		s.emitEvent(friendPlayNotifyEvent, event)
@@ -168,17 +224,24 @@ func (s *AccountService) pollFriendPlay(tracker *friendPlayTracker) {
 }
 
 // friendPlayNotifyEnabled 读「好友开始玩游戏时通知」开关。
+//
+// nil（配置里还没有这个字段）算开启 —— 与手机版
+// getBoolean(KEY_FRIEND_PLAY_NOTIFY, true) 的默认值一致。
 func (s *AccountService) friendPlayNotifyEnabled() bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return s.config == nil || s.config.YukiHubAccountFriendPlayNotify
+	if s.config == nil || s.config.YukiHubAccountFriendPlayNotify == nil {
+		return true
+	}
+	return *s.config.YukiHubAccountFriendPlayNotify
 }
 
 // SetAccountFriendPlayNotify 开关「好友开始玩游戏时通知」。
 func (s *AccountService) SetAccountFriendPlayNotify(enabled bool) error {
 	s.mu.Lock()
 	if s.config != nil {
-		s.config.YukiHubAccountFriendPlayNotify = enabled
+		value := enabled
+		s.config.YukiHubAccountFriendPlayNotify = &value
 		s.persistConfigLocked()
 	}
 	s.mu.Unlock()

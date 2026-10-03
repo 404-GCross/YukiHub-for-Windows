@@ -75,7 +75,7 @@ export function SideBar({ bgEnabled = false, bgOpacity = 0.85 }: SideBarProps) {
       window.removeEventListener(OPEN_FRIENDS_EVENT, handleOpenFriends);
   }, []);
 
-  // 聊天未读数：登录后每 45 秒拉一次（对齐手机版侧栏徽标；
+  // 聊天未读数：登录后每 15 秒拉一次，并在后端推送好友列表变化时立刻刷（
   // 打开聊天弹窗时不拉，避免覆盖弹窗内的会话已读状态）
   useEffect(() => {
     if (!isLoggedIn || chatOpen) {
@@ -95,10 +95,18 @@ export function SideBar({ bgEnabled = false, bgOpacity = 0.85 }: SideBarProps) {
         });
     };
     refresh();
-    const timer = window.setInterval(refresh, 45_000);
+    // 15 秒兜底轮询 + 后端好友列表推送时立刻刷一次：
+    // 新消息的未读不该等下一个固定周期才出现。
+    const timer = window.setInterval(refresh, 15_000);
+    const unsubscribe = onWailsEvent("friend:list-updated", () => {
+      if (!cancelled) {
+        refresh();
+      }
+    });
     return () => {
       cancelled = true;
       window.clearInterval(timer);
+      unsubscribe();
     };
   }, [isLoggedIn, chatOpen]);
 
