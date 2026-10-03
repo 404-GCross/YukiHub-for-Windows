@@ -16,7 +16,10 @@ YukiHub has two ends:
 | --- | --- | --- |
 | Android | https://github.com/xm486/YukiHub | GPL-3.0 |
 | Windows desktop (this repository) | https://github.com/xm486/YukiHub-for-Windows | AGPL-3.0 |
-| Windows desktop (China mirror) | https://gitcode.com/xm486/YukiHub-for-Windows | AGPL-3.0 |
+| Windows desktop (hosted on GitCode) | https://gitcode.com/xm486/YukiHub-for-Windows | AGPL-3.0 |
+
+The desktop edition is hosted on both GitHub and GitCode (a China-based code
+hosting platform); both copies are kept in sync.
 
 The desktop edition is not a port of the Android app. Both ends share the same data
 semantics and habits: game library, play sessions, metadata scraping, sync and backup.
