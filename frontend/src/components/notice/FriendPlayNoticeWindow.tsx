@@ -19,9 +19,9 @@ const NOTICE_VISIBLE_MS = 6000;
 /**
  * 拉取兜底窗口：窗口是刚建出来的，前端挂载一定晚于后端推送，
  * 所以「拉一次」是主路径；万一真的什么都没有（比如已经收起了），
- * 也别让一个空窗挂在屏幕角落。
+ * 立刻收起 —— 窗口底色是实心的，空窗会是一块深色方块。
  */
-const EMPTY_NOTICE_GRACE_MS = 1500;
+const EMPTY_NOTICE_GRACE_MS = 800;
 
 /** Steam 的「正在玩」绿（手机版 FriendNotifier 里也是这个色值）。 */
 const PLAYING_GREEN = "#90BA3C";
@@ -106,7 +106,7 @@ export default function FriendPlayNoticeWindow() {
   }, []);
 
   if (!notice) {
-    // 窗口是半透明的，没内容时什么都不画（窗口本身可能还在，但看不见）
+    // 没内容时什么都不画；窗口本身会由 Go 侧的兜底计时器收起
     return null;
   }
 
@@ -115,67 +115,67 @@ export default function FriendPlayNoticeWindow() {
   const avatarCount = Math.min(Math.max(names.length, 1), 3);
 
   return (
-    <div className="h-full w-full bg-transparent p-1.5">
-      <div
-        role="button"
-        tabIndex={0}
-        onClick={handleOpen}
-        onKeyDown={(event) => {
-          if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-            handleOpen();
-          }
-        }}
-        className="flex h-full w-full cursor-pointer items-center gap-2.5 rounded-xl border border-white/10 bg-[#16202d]/97 px-3 shadow-2xl backdrop-blur-md transition-colors hover:bg-[#1b2838]/97"
-      >
-        {/* 头像：多人时向左叠放。Steam 的卡片左侧也是用户头像。 */}
-        <div className="flex shrink-0 items-center">
-          {Array.from({ length: avatarCount }).map((_, index) => (
-            <div
-              key={notice.uids?.[index] ?? index}
-              className={index > 0 ? "-ml-3" : ""}
-              style={{ zIndex: 3 - index }}
-            >
-              <div className="rounded-full ring-2 ring-[#16202d]">
-                <ChatAvatar
-                  name={names[index] ?? ""}
-                  avatar={avatars[index]}
-                  size={38}
-                />
-              </div>
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={handleOpen}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          handleOpen();
+        }
+      }}
+      // 铺满整个窗口：窗口底色与卡片同色（见 main.go），
+      // 留白只会把窗口背景露出来，看着像一圈描边。
+      className="flex h-full w-full cursor-pointer items-center gap-3.5 bg-[#16202d] px-4 transition-colors hover:bg-[#1b2838]"
+    >
+      {/* 头像：多人时向左叠放。Steam 的卡片左侧也是用户头像。 */}
+      <div className="flex shrink-0 items-center">
+        {Array.from({ length: avatarCount }).map((_, index) => (
+          <div
+            key={notice.uids?.[index] ?? index}
+            className={index > 0 ? "-ml-3" : ""}
+            style={{ zIndex: 3 - index }}
+          >
+            <div className="rounded-full ring-2 ring-[#16202d]">
+              <ChatAvatar
+                name={names[index] ?? ""}
+                avatar={avatars[index]}
+                size={52}
+              />
             </div>
-          ))}
-        </div>
-
-        <div className="min-w-0 flex-1">
-          <div className="truncate text-[13px] font-semibold leading-tight text-white">
-            {names.join("、")}
           </div>
-          <div className="mt-0.5 flex min-w-0 items-baseline gap-1.5 leading-tight">
-            <span className="shrink-0 text-[11px] text-white/50">
-              {t("friendsChat.playingLabel")}
-            </span>
-            <span
-              className="truncate text-[12px] font-semibold"
-              style={{ color: PLAYING_GREEN }}
-            >
-              {notice.game_title}
-            </span>
-          </div>
-        </div>
-
-        <button
-          type="button"
-          aria-label={t("common.close")}
-          onClick={(event) => {
-            event.stopPropagation();
-            void DismissFriendPlayNotice();
-          }}
-          className="shrink-0 rounded-md p-1 text-white/40 transition-colors hover:bg-white/12 hover:text-white"
-        >
-          <span className="i-mdi-close text-base" aria-hidden="true" />
-        </button>
+        ))}
       </div>
+
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-[15px] font-semibold leading-tight text-white">
+          {names.join("、")}
+        </div>
+        <div className="mt-1 flex min-w-0 items-baseline gap-2 leading-tight">
+          <span className="shrink-0 text-[12.5px] text-white/55">
+            {t("friendsChat.playingLabel")}
+          </span>
+          <span
+            className="truncate text-[15px] font-semibold"
+            style={{ color: PLAYING_GREEN }}
+          >
+            {notice.game_title}
+          </span>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        aria-label={t("common.close")}
+        onClick={(event) => {
+          event.stopPropagation();
+          void DismissFriendPlayNotice();
+        }}
+        className="shrink-0 rounded-md p-1.5 text-white/40 transition-colors hover:bg-white/12 hover:text-white"
+      >
+        <span className="i-mdi-close text-lg" aria-hidden="true" />
+      </button>
     </div>
   );
 }

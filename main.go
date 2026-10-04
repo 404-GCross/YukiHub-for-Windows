@@ -455,8 +455,8 @@ const (
 
 	// 好友通知浮层：贴在屏幕右下角，尺寸按内容裁紧，不留大块空白。
 	noticeWindowName   = "notice"
-	noticeWindowWidth  = 336
-	noticeWindowHeight = 68
+	noticeWindowWidth  = 420
+	noticeWindowHeight = 88
 	noticeMargin       = 20
 	// noticeDismissDelay 是通知浮层自动消失前的停留时长。
 	// 这里只是兜底（防止前端没跑起来时它一直挂着），正常由前端倒计时收起。
@@ -1256,7 +1256,7 @@ func runGUI(
 	// Show() 对「刚创建、还没跑起来的窗口」只会触发它的 run() 然后返回
 	// （Wails 里 impl == nil 就 InvokeSync(w.Run)），窗口永远不显示。实测就是
 	// 这样：日志里能看到浮层的页面被加载了，屏幕上却什么都没有。
-	floatingWindowOptions := func(name string, url string, width int, height int, x int, y int, visible bool) application.WebviewWindowOptions {
+	floatingWindowOptions := func(name string, url string, width int, height int, x int, y int, visible bool, background application.RGBA) application.WebviewWindowOptions {
 		return application.WebviewWindowOptions{
 			Name:   name,
 			Title:  "YukiHub",
@@ -1272,13 +1272,10 @@ func runGUI(
 			Frameless:       true,
 			AlwaysOnTop:     true,
 			Hidden:          !visible,
-			BackgroundType:  application.BackgroundTypeSolid,
-			BackgroundColour: func() application.RGBA {
-				if name == noticeWindowName {
-					return application.NewRGBA(255, 0, 255, 255)
-				}
-				return application.NewRGBA(0x16, 0x20, 0x2D, 255)
-			}(),
+			// 实心背景 + 与卡片同色：此前用 BackgroundTypeTranslucent（走 DWM
+			// 背景材质）时，卡片外面那圈留白会被染成紫色描边。
+			BackgroundType:   application.BackgroundTypeSolid,
+			BackgroundColour: background,
 			Windows: application.WindowsWindow{
 				BackdropType:    application.Auto,
 				Theme:           application.SystemDefault,
@@ -1316,6 +1313,8 @@ func runGUI(
 					overlayWindowName, "/overlay",
 					overlayWindowWidth, overlayWindowHeight,
 					x, y, true,
+					// 与 FriendsOverlay 卡片的 bg-brand-900 (#0B1020) 同色
+					application.NewRGBA(0x0B, 0x10, 0x20, 255),
 				),
 			)
 			return
@@ -1399,6 +1398,8 @@ func runGUI(
 						noticeWindowName, "/notice",
 						noticeWindowWidth, noticeWindowHeight,
 						x, y, true,
+						// 与通知卡片底色 #16202d 一致，留白看不出边界
+						application.NewRGBA(0x16, 0x20, 0x2D, 255),
 					),
 				)
 				if noticeWindow == nil {
