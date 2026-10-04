@@ -454,8 +454,10 @@ const (
 	overlayMargin = 24
 
 	// 好友通知浮层：贴在屏幕右下角，尺寸按内容裁紧，不留大块空白。
-	noticeWindowName   = "notice"
-	noticeWindowWidth  = 420
+	noticeWindowName = "notice"
+	// 宽度按「头像 + 昵称 + 正在玩 + 较长的游戏名」定：420 时右侧会空出一大片
+	// （游戏名短的时候尤其明显），360 既能装下长标题也不会显得空。
+	noticeWindowWidth  = 360
 	noticeWindowHeight = 88
 	noticeMargin       = 20
 	// noticeDismissDelay 是通知浮层自动消失前的停留时长。

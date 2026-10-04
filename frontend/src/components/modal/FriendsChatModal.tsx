@@ -36,6 +36,10 @@ import { useAccountStatus } from "../../hooks/useAccountStatus";
 import { resolveChatMediaURL } from "../../utils/chatMedia";
 import { proxiedImageSrc } from "../../utils/imageProxy";
 import { ChatAvatar } from "../chat/ChatAvatar";
+import {
+  ChatMessageMedia,
+  emojiDisplayURL as sharedEmojiDisplayURL,
+} from "../chat/ChatMessageMedia";
 import { ChatMessageMenu } from "../chat/ChatMessageMenu";
 import { ImageViewerModal } from "../chat/ImageViewerModal";
 import { levelBadgeStyle } from "../chat/levelBadge";
@@ -176,19 +180,9 @@ export function FriendsChatModal({
   // 聊天图片 / 头像框素材的地址补全走公共工具（服务端下发的是相对路径）
   const resolveChatImageURL = resolveChatMediaURL;
 
-  /** 表情名 → 可显示 URL：http(s) 原样；本站表情先查列表映射，查不到再按手机版规则兜底 */
-  const emojiDisplayURL = (content: string): string => {
-    if (/^https?:\/\//i.test(content)) {
-      return content;
-    }
-    // 对齐手机版 emojiUrlMap：优先用 /chat/emojis 下发的真实 URL
-    // （兜底拼 uploads/emojis/<名>.webp 对改名/子目录表情会 404 → 丢图）
-    const mapped = emojis?.find(emoji => emoji.name === content);
-    if (mapped?.url) {
-      return mapped.url;
-    }
-    return `https://yukihub.zh.kg/uploads/emojis/${encodeURIComponent(content)}.webp`;
-  };
+  /** 表情名 → 可显示 URL（映射规则与浮层共用一份，见 ChatMessageMedia） */
+  const emojiDisplayURL = (content: string): string =>
+    sharedEmojiDisplayURL(content, emojis);
 
   /** 懒加载表情与贴纸数据（首次打开面板时） */
   const loadEmojiPanelData = async () => {
@@ -759,40 +753,13 @@ export function FriendsChatModal({
     const senderName = message.senderName || `UID ${message.senderUid}`;
     // 表情 / 图片 / 文本三种气泡（与手机版 buildMessageBubble 的分支一致）
     const bubbleContent = (() => {
-      if (message.msgType === "emoji") {
+      if (message.msgType === "emoji" || message.msgType === "image") {
+        // 加载策略（代理 → 直连）与浮层共用一份实现，别再各写一套
         return (
-          <img
-            src={proxiedImageSrc(emojiDisplayURL(message.content))}
-            alt=""
-            loading="lazy"
-            className="h-24 w-24 object-contain"
-            onError={(e) => {
-              // 列表映射也没命中时退回裸 URL 直连（代理偶发失败不至于丢图）
-              const img = e.currentTarget;
-              const raw = emojiDisplayURL(message.content);
-              if (!img.dataset.fallbackRaw && img.src !== raw) {
-                img.dataset.fallbackRaw = "1";
-                img.src = raw;
-              }
-            }}
-          />
-        );
-      }
-      if (message.msgType === "image") {
-        const fullImageURL = resolveChatImageURL(message.content);
-        return (
-          <img
-            src={proxiedImageSrc(fullImageURL)}
-            alt=""
-            loading="lazy"
-            className="max-h-48 rounded-xl object-contain"
-            onError={(e) => {
-              const img = e.currentTarget;
-              if (!img.dataset.fallbackRaw && img.src !== fullImageURL) {
-                img.dataset.fallbackRaw = "1";
-                img.src = fullImageURL;
-              }
-            }}
+          <ChatMessageMedia
+            msgType={message.msgType}
+            content={message.content}
+            emojis={emojis}
           />
         );
       }

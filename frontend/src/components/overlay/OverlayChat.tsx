@@ -1,4 +1,5 @@
 import type {
+  ChatEmoji,
   ChatMessage,
   Friend,
 } from "../../../bindings/yukihub/internal/service/yukihubaccount/models";
@@ -7,12 +8,12 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   GetChatHistory,
+  ListChatEmojis,
   PollChatMessages,
   SendChatMessage,
 } from "../../../bindings/yukihub/internal/service/accountservice";
-import { resolveChatMediaURL } from "../../utils/chatMedia";
-import { proxiedImageSrc } from "../../utils/imageProxy";
 import { ChatAvatar } from "../chat/ChatAvatar";
+import { ChatMessageMedia } from "../chat/ChatMessageMedia";
 
 /** 与主界面聊天一致：10 秒轮询新消息（手机版 FriendsChatDialog.POLL_INTERVAL_MS） */
 const POLL_INTERVAL_MS = 10_000;
@@ -45,6 +46,10 @@ function compareMessages(a: ChatMessage, b: ChatMessage): number {
  * 只做私聊、只做文字与图片：表情包面板、回复、举报、图片上传这些留在主界面的
  * 完整聊天弹窗里 —— 浮层是「游戏里瞄一眼、随手回一句」的场景，塞满功能反而不好用。
  *
+ * 图片 / 表情走与主界面完全相同的 `ChatMessageMedia`：**图片代理失败要退回直连**，
+ * 表情名还要查 `/chat/emojis` 的映射。这两步原先只写在主界面那份实现里，
+ * 浮层少了它们，于是同一个会话在主界面看得见图、在浮层里全是碎图标。
+ *
  * 不用 `toast`：浮层是独立窗口，主界面的 Toaster 不在这里挂载，弹出来也没人渲染，
  * 出错直接显示在输入框上方那一行。
  */
@@ -57,6 +62,8 @@ export function OverlayChat({ friend }: { friend: Friend }) {
   const [isSending, setIsSending] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  /** 表情映射表：表情消息的 content 可能是**表情名**而不是路径 */
+  const [emojis, setEmojis] = useState<ChatEmoji[] | null>(null);
 
   const afterIdRef = useRef("");
   const listRef = useRef<HTMLDivElement | null>(null);
@@ -84,6 +91,23 @@ export function OverlayChat({ friend }: { friend: Friend }) {
       return [...current, ...fresh].sort(compareMessages);
     });
   };
+
+  // 表情映射表：拿到就能把「表情名」解析成真实 URL，拿不到会退回按名字拼路径
+  useEffect(() => {
+    let cancelled = false;
+    ListChatEmojis()
+      .then((list) => {
+        if (!cancelled) {
+          setEmojis(list);
+        }
+      })
+      .catch(() => {
+        // 静默：表情只是消息里的一小块，拿不到映射不该影响文字聊天
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // 拉历史 + 起轮询。
   //
@@ -189,8 +213,8 @@ export function OverlayChat({ friend }: { friend: Friend }) {
 
         {messages.map((message) => {
           const isMine = Boolean(message.isMine);
-          const isImage = message.msgType === "image";
-          const isEmoji = message.msgType === "emoji";
+          const isMedia
+            = message.msgType === "image" || message.msgType === "emoji";
           return (
             <div
               key={message.id}
@@ -206,23 +230,25 @@ export function OverlayChat({ friend }: { friend: Friend }) {
                 />
               )}
               <div
-                className={`max-w-[76%] overflow-hidden rounded-2xl px-2.5 py-1.5 text-[12.5px] leading-snug break-words ${
+                className={`max-w-[76%] overflow-hidden rounded-2xl break-words ${
+                  isMedia ? "p-1.5" : "px-2.5 py-1.5 text-[12.5px] leading-snug"
+                } ${
                   isMine
                     ? "rounded-br-md bg-primary-500 text-white"
                     : "rounded-bl-md bg-white/10 text-white/92"
                 }`}
               >
-                {isImage ? (
-                  <img
-                    src={proxiedImageSrc(resolveChatMediaURL(message.content))}
-                    alt=""
-                    className="max-h-40 rounded-lg"
-                  />
-                ) : isEmoji ? (
-                  <img
-                    src={proxiedImageSrc(resolveChatMediaURL(message.content))}
-                    alt=""
-                    className="h-12 w-12"
+                {isMedia ? (
+                  <ChatMessageMedia
+                    msgType={message.msgType}
+                    content={message.content}
+                    emojis={emojis}
+                    // 浮层比弹窗窄，图小一号更合适
+                    className={
+                      message.msgType === "emoji"
+                        ? "h-20 w-20 object-contain"
+                        : "max-h-40 rounded-lg object-contain"
+                    }
                   />
                 ) : (
                   message.content
