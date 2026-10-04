@@ -210,6 +210,19 @@ export class Friend {
     "lastMessageAt"?: string;
     "unreadCount": number;
 
+    /**
+     * FriendStatus：none（不是好友）/ pending（申请中）/ accepted（已是好友）。
+     * 只有搜索结果会下发 —— 手机版据此把「加好友」按钮换成「已发送请求 / 已是好友」
+     * （FriendsChatDialog.renderSearchResults）。以前这里没解析，界面就只能一直显示
+     * 一个还能点的「加好友」，点了服务端也不理。
+     */
+    "friendStatus"?: string;
+
+    /**
+     * FriendDirection 仅在 pending 时有意义：received（对方申请我）/ sent（我申请的）
+     */
+    "friendDirection"?: string;
+
     /** Creates a new Friend instance. */
     constructor($$source: Partial<Friend> = {}) {
         if (!("id" in $$source)) {
@@ -275,27 +288,31 @@ export class FriendList {
 }
 
 /**
- * FriendRequest 是一条待处理的好友申请。
+ * FriendRequest 是一条好友申请。
+ * 
+ * FriendshipID 是**数字**（手机版 `r.optInt("friendshipId", 0)`，接受/拒绝也按数字
+ * 发回服务端）。以前这里写成 string，`pickString` 读数字字段会拿到空串，
+ * 于是「接受」按钮发出去的 friendshipId 是空 —— 点了没反应。
  */
 export class FriendRequest {
-    "friendshipId": string;
-    "uid": number;
-    "nickname": string;
+    "friendshipId"?: number;
+
+    /**
+     * UID 是申请里的**对方** uid：收到的申请取 fromUid，发出的取 toUid
+     */
+    "uid"?: number;
+    "nickname"?: string;
     "avatar"?: string;
     "signature"?: string;
     "createdAt"?: string;
 
+    /**
+     * Outgoing 为 true 表示这是「我发出去的」申请
+     */
+    "outgoing"?: boolean;
+
     /** Creates a new FriendRequest instance. */
     constructor($$source: Partial<FriendRequest> = {}) {
-        if (!("friendshipId" in $$source)) {
-            this["friendshipId"] = "";
-        }
-        if (!("uid" in $$source)) {
-            this["uid"] = 0;
-        }
-        if (!("nickname" in $$source)) {
-            this["nickname"] = "";
-        }
 
         Object.assign(this, $$source);
     }
@@ -306,6 +323,40 @@ export class FriendRequest {
     static createFrom($$source: any = {}): FriendRequest {
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         return new FriendRequest($$parsedSource as Partial<FriendRequest>);
+    }
+}
+
+/**
+ * FriendRequests 是 `/friends/requests` 的结果：收到的 + 已发出的。
+ * 
+ * **注意**：`/friends/list` 里那个 `pendingRequests` 只是一个**数字**（待处理条数，
+ * 手机版 `root.optInt("pendingRequests", 0)` 就是这么读的），真正的申请内容在这个
+ * 接口里。以前把 list 里的字段当数组解析，所以「有人加我」在界面上永远显示不出来。
+ */
+export class FriendRequests {
+    "incoming"?: FriendRequest[];
+    "outgoing"?: FriendRequest[];
+
+    /** Creates a new FriendRequests instance. */
+    constructor($$source: Partial<FriendRequests> = {}) {
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new FriendRequests instance from a string or object.
+     */
+    static createFrom($$source: any = {}): FriendRequests {
+        const $$createField0_0 = $$createType5;
+        const $$createField1_0 = $$createType5;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("incoming" in $$parsedSource) {
+            $$parsedSource["incoming"] = $$createField0_0($$parsedSource["incoming"]);
+        }
+        if ("outgoing" in $$parsedSource) {
+            $$parsedSource["outgoing"] = $$createField1_0($$parsedSource["outgoing"]);
+        }
+        return new FriendRequests($$parsedSource as Partial<FriendRequests>);
     }
 }
 

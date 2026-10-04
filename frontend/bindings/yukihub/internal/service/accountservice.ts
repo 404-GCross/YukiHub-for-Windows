@@ -23,8 +23,11 @@ import * as yukihubaccount$0 from "./yukihubaccount/models.js";
 
 /**
  * AcceptFriendRequest 接受好友申请。
+ * 
+ * friendshipID 是**数字**（服务端下发与回传都是数字）；只拿得到对方 uid 的场景
+ * （资料页）传 0 + uid。
  */
-export function AcceptFriendRequest(friendshipID: string, uid: number): $CancellablePromise<void> {
+export function AcceptFriendRequest(friendshipID: number, uid: number): $CancellablePromise<void> {
     return $Call.ByID(180565005, friendshipID, uid);
 }
 
@@ -138,11 +141,23 @@ export function ListChatStickerURLs(packID: string): $CancellablePromise<string[
 }
 
 /**
- * ListFriends 好友列表与待处理申请。
+ * ListFriendRequests 好友申请列表（收到的 + 已发出的）。
+ * 
+ * 与 ListFriends 分开：列表接口里的 `pendingRequests` 只是个**数字**，
+ * 申请内容要单独拉 `/friends/requests`（手机版 SocialApiClient.getFriendRequests）。
+ */
+export function ListFriendRequests(): $CancellablePromise<yukihubaccount$0.FriendRequests> {
+    return $Call.ByID(1858416362).then(($result: any) => {
+        return $$createType11($result);
+    });
+}
+
+/**
+ * ListFriends 好友列表与待处理申请数。
  */
 export function ListFriends(): $CancellablePromise<yukihubaccount$0.FriendList> {
     return $Call.ByID(138003445).then(($result: any) => {
-        return $$createType11($result);
+        return $$createType12($result);
     });
 }
 
@@ -201,7 +216,7 @@ export function RegisterAccount(email: string, password: string, nickname: strin
 /**
  * RejectFriendRequest 拒绝好友申请。
  */
-export function RejectFriendRequest(friendshipID: string): $CancellablePromise<void> {
+export function RejectFriendRequest(friendshipID: number): $CancellablePromise<void> {
     return $Call.ByID(282440252, friendshipID);
 }
 
@@ -233,7 +248,7 @@ export function ResetAccountPassword(email: string, code: string, password: stri
  */
 export function SearchUsers(keyword: string): $CancellablePromise<yukihubaccount$0.Friend[]> {
     return $Call.ByID(865387128, keyword).then(($result: any) => {
-        return $$createType13($result);
+        return $$createType14($result);
     });
 }
 
@@ -246,7 +261,7 @@ export function SearchUsers(keyword: string): $CancellablePromise<yukihubaccount
  */
 export function SelectChatImage(): $CancellablePromise<vo$0.ChatImagePick> {
     return $Call.ByID(917861247).then(($result: any) => {
-        return $$createType14($result);
+        return $$createType15($result);
     });
 }
 
@@ -330,7 +345,7 @@ export function StartQuickLogin(provider: string): $CancellablePromise<vo$0.Acco
  */
 export function SyncAccountNow(): $CancellablePromise<vo$0.AccountSyncResult> {
     return $Call.ByID(2194510418).then(($result: any) => {
-        return $$createType15($result);
+        return $$createType16($result);
     });
 }
 
@@ -367,8 +382,9 @@ const $$createType7 = yukihubaccount$0.ChatGroup.createFrom;
 const $$createType8 = $Create.Array($$createType7);
 const $$createType9 = vo$0.ChatStickerList.createFrom;
 const $$createType10 = $Create.Array($Create.Any);
-const $$createType11 = yukihubaccount$0.FriendList.createFrom;
-const $$createType12 = yukihubaccount$0.Friend.createFrom;
-const $$createType13 = $Create.Array($$createType12);
-const $$createType14 = vo$0.ChatImagePick.createFrom;
-const $$createType15 = vo$0.AccountSyncResult.createFrom;
+const $$createType11 = yukihubaccount$0.FriendRequests.createFrom;
+const $$createType12 = yukihubaccount$0.FriendList.createFrom;
+const $$createType13 = yukihubaccount$0.Friend.createFrom;
+const $$createType14 = $Create.Array($$createType13);
+const $$createType15 = vo$0.ChatImagePick.createFrom;
+const $$createType16 = vo$0.AccountSyncResult.createFrom;

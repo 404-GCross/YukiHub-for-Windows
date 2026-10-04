@@ -4,9 +4,11 @@ import type {
   ChatMessage,
   Friend,
   FriendList,
+  FriendRequest,
+  FriendRequests,
 } from "../../../bindings/yukihub/internal/service/yukihubaccount/models";
 import type { vo } from "../../../src/bindings/models";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 import {
@@ -18,6 +20,7 @@ import {
   ListChatGroups,
   ListChatStickerPacks,
   ListChatStickerURLs,
+  ListFriendRequests,
   ListFriends,
   ManageGroupMessage,
   PollChatMessages,
@@ -129,6 +132,8 @@ export function FriendsChatModal({
 
   const [view, setView] = useState<MainView>("list");
   const [friendList, setFriendList] = useState<FriendList | null>(null);
+  const [requests, setRequests] = useState<FriendRequests | null>(null);
+  const [requestsLoading, setRequestsLoading] = useState(false);
   const [groups, setGroups] = useState<ChatGroup[]>([]);
   const [groupOnlineCount, setGroupOnlineCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
@@ -409,6 +414,71 @@ export function FriendsChatModal({
     });
   }, [isOpen, isLoggedIn]);
 
+  // 好友申请：列表接口只给「待处理条数」，申请内容要单独拉 `/friends/requests`
+  // （手机版 SocialApiClient.getFriendRequests 也是这么分的 —— 以前把列表里那个
+  // 数字当数组解析，所以「手机上有人加我、PC 一片空白」）。
+  const loadRequests = useCallback(async () => {
+    setRequestsLoading(true);
+    try {
+      setRequests(await ListFriendRequests());
+    }
+    catch (error) {
+      toast.error(error instanceof Error ? error.message : String(error));
+    }
+    finally {
+      setRequestsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isOpen || !isLoggedIn || view !== "requests") {
+      return;
+    }
+    void loadRequests();
+  }, [isOpen, isLoggedIn, view, loadRequests]);
+
+  const handleAcceptRequest = async (request: FriendRequest) => {
+    try {
+      await AcceptFriendRequest(request.friendshipId ?? 0, request.uid ?? 0);
+      toast.success(t("friendsChat.toastAccepted"));
+      // 接受之后好友列表要立刻多出这个人
+      await Promise.all([loadRequests(), refreshLists(false)]);
+    }
+    catch (error) {
+      toast.error(error instanceof Error ? error.message : String(error));
+    }
+  };
+
+  /** 发好友申请。成功后把这一行标成「已发送请求」——不标的话按钮还能再点，会重复申请。 */
+  const handleSendFriendRequest = async (user: Friend) => {
+    try {
+      await SendFriendRequest(String(user.uid));
+      toast.success(t("friendsChat.toastRequestSent"));
+      setSearchResults(
+        current =>
+          current?.map(item =>
+            item.uid === user.uid
+              ? ({ ...item, friendStatus: "pending" } as Friend)
+              : item,
+          ) ?? current,
+      );
+    }
+    catch (error) {
+      toast.error(error instanceof Error ? error.message : String(error));
+    }
+  };
+
+  const handleRejectRequest = async (request: FriendRequest) => {
+    try {
+      await RejectFriendRequest(request.friendshipId ?? 0);
+      toast.success(t("friendsChat.toastRejected"));
+      await loadRequests();
+    }
+    catch (error) {
+      toast.error(error instanceof Error ? error.message : String(error));
+    }
+  };
+
   // 轮询清理
   useEffect(
     () => () => {
@@ -662,6 +732,45 @@ export function FriendsChatModal({
       </div>
     );
   };
+
+  /** 一条好友申请。actionable=true 时带「接受 / 拒绝」（只有收到的申请能操作）。 */
+  const renderRequestRow = (request: FriendRequest, actionable: boolean) => (
+    <div
+      key={request.friendshipId}
+      className="flex items-center gap-3 rounded-xl border border-brand-200/70 p-2.5 dark:border-brand-700/70"
+    >
+      {renderAvatar(request.nickname ?? "", request.avatar, "h-10 w-10")}
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-sm font-medium text-brand-800 dark:text-brand-100">
+          {request.nickname}
+        </div>
+        <div className="truncate text-[11px] text-brand-500 dark:text-brand-400">
+          UID
+          {" "}
+          {request.uid}
+          {request.signature ? ` · ${request.signature}` : ""}
+        </div>
+      </div>
+      {actionable && (
+        <>
+          <BetterButton
+            variant="primary"
+            size="sm"
+            onClick={() => void handleAcceptRequest(request)}
+          >
+            {t("friendsChat.accept")}
+          </BetterButton>
+          <BetterButton
+            variant="secondary"
+            size="sm"
+            onClick={() => void handleRejectRequest(request)}
+          >
+            {t("friendsChat.reject")}
+          </BetterButton>
+        </>
+      )}
+    </div>
+  );
 
   const statusDot = (status?: string) => {
     const colorClass
@@ -1195,75 +1304,41 @@ export function FriendsChatModal({
               <p className="mb-3 text-sm font-semibold text-brand-800 dark:text-brand-100">
                 {t("friendsChat.requestsTitle")}
               </p>
-              {(friendList?.pendingRequests?.length ?? 0) === 0 ? (
+
+              {requestsLoading && requests === null ? (
                 <p className="py-8 text-center text-sm text-brand-500 dark:text-brand-400">
-                  {t("friendsChat.noRequests")}
+                  {t("friendsChat.loading")}
                 </p>
               ) : (
-                <div className="flex flex-col gap-2">
-                  {friendList?.pendingRequests?.map(request => (
-                    <div
-                      key={request.friendshipId}
-                      className="flex items-center gap-3 rounded-xl border border-brand-200/70 p-2.5 dark:border-brand-700/70"
-                    >
-                      {renderAvatar(request.nickname, request.avatar)}
-                      <div className="min-w-0 flex-1">
-                        <div className="truncate text-sm font-medium text-brand-800 dark:text-brand-100">
-                          {request.nickname}
-                        </div>
-                        <div className="text-[11px] text-brand-500 dark:text-brand-400">
-                          UID
-                          {" "}
-                          {request.uid}
-                        </div>
-                      </div>
-                      <BetterButton
-                        variant="primary"
-                        size="sm"
-                        onClick={() =>
-                          void (async () => {
-                            try {
-                              await AcceptFriendRequest(
-                                request.friendshipId,
-                                request.uid,
-                              );
-                              toast.success(t("friendsChat.toastAccepted"));
-                              await refreshLists(false);
-                            }
-                            catch (error) {
-                              toast.error(
-                                error instanceof Error
-                                  ? error.message
-                                  : String(error),
-                              );
-                            }
-                          })()}
-                      >
-                        {t("friendsChat.accept")}
-                      </BetterButton>
-                      <BetterButton
-                        variant="secondary"
-                        size="sm"
-                        onClick={() =>
-                          void (async () => {
-                            try {
-                              await RejectFriendRequest(request.friendshipId);
-                              await refreshLists(false);
-                            }
-                            catch (error) {
-                              toast.error(
-                                error instanceof Error
-                                  ? error.message
-                                  : String(error),
-                              );
-                            }
-                          })()}
-                      >
-                        {t("friendsChat.reject")}
-                      </BetterButton>
+                <>
+                  <p className="mb-2 text-xs font-semibold tracking-wide text-brand-500 dark:text-brand-400">
+                    {t("friendsChat.requestsIncoming")}
+                  </p>
+                  {(requests?.incoming?.length ?? 0) === 0 ? (
+                    <p className="py-6 text-center text-sm text-brand-500 dark:text-brand-400">
+                      {t("friendsChat.noRequests")}
+                    </p>
+                  ) : (
+                    <div className="flex flex-col gap-2">
+                      {requests?.incoming?.map(request =>
+                        renderRequestRow(request, true),
+                      )}
                     </div>
-                  ))}
-                </div>
+                  )}
+
+                  {(requests?.outgoing?.length ?? 0) > 0 && (
+                    <>
+                      <p className="mt-4 mb-2 text-xs font-semibold tracking-wide text-brand-500 dark:text-brand-400">
+                        {t("friendsChat.requestsOutgoing")}
+                      </p>
+                      <div className="flex flex-col gap-2">
+                        {requests?.outgoing?.map(request =>
+                          renderRequestRow(request, false),
+                        )}
+                      </div>
+                    </>
+                  )}
+                </>
               )}
             </div>
           )}
@@ -1302,46 +1377,48 @@ export function FriendsChatModal({
                     {t("friendsChat.noSearchResults")}
                   </p>
                 )}
-                {searchResults?.map(user => (
-                  <div
-                    key={user.id}
-                    className="flex items-center gap-3 rounded-xl border border-brand-200/70 p-2.5 dark:border-brand-700/70"
-                  >
-                    {renderAvatar(user.nickname, user.avatar)}
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-sm font-medium text-brand-800 dark:text-brand-100">
-                        {user.nickname}
-                      </div>
-                      <div className="text-[11px] text-brand-500 dark:text-brand-400">
-                        UID
-                        {" "}
-                        {user.uid}
-                        {user.signature ? ` · ${user.signature}` : ""}
-                      </div>
-                    </div>
-                    <BetterButton
-                      variant="primary"
-                      size="sm"
-                      icon="i-mdi-account-plus"
-                      onClick={() =>
-                        void (async () => {
-                          try {
-                            await SendFriendRequest(String(user.uid));
-                            toast.success(t("friendsChat.toastRequestSent"));
-                          }
-                          catch (error) {
-                            toast.error(
-                              error instanceof Error
-                                ? error.message
-                                : String(error),
-                            );
-                          }
-                        })()}
+                {searchResults?.map((user) => {
+                  // 与手机版 renderSearchResults 同一套判断：已是好友 / 申请中都不该
+                  // 再显示可点的「加好友」（点了服务端也不会重复受理）
+                  const friendStatus = user.friendStatus || "none";
+                  return (
+                    <div
+                      key={user.id}
+                      className="flex items-center gap-3 rounded-xl border border-brand-200/70 p-2.5 dark:border-brand-700/70"
                     >
-                      {t("friendsChat.sendRequest")}
-                    </BetterButton>
-                  </div>
-                ))}
+                      {renderAvatar(user.nickname, user.avatar)}
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-sm font-medium text-brand-800 dark:text-brand-100">
+                          {user.nickname}
+                        </div>
+                        <div className="truncate text-[11px] text-brand-500 dark:text-brand-400">
+                          UID
+                          {" "}
+                          {user.uid}
+                          {user.signature ? ` · ${user.signature}` : ""}
+                        </div>
+                      </div>
+                      {friendStatus === "accepted" ? (
+                        <span className="shrink-0 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+                          {t("friendsChat.alreadyFriend")}
+                        </span>
+                      ) : friendStatus === "pending" ? (
+                        <span className="shrink-0 text-[11px] font-medium text-brand-500 dark:text-brand-400">
+                          {t("friendsChat.requestPending")}
+                        </span>
+                      ) : (
+                        <BetterButton
+                          variant="primary"
+                          size="sm"
+                          icon="i-mdi-account-plus"
+                          onClick={() => void handleSendFriendRequest(user)}
+                        >
+                          {t("friendsChat.sendRequest")}
+                        </BetterButton>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}

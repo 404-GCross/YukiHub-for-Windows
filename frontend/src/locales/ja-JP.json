@@ -1859,7 +1859,11 @@
     "playingNow": "プレイ中",
     "playingFor": "プレイ中 {{duration}}",
     "profileSendMessage": "メッセージを送る",
-    "playingLabel": "プレイ中"
+    "playingLabel": "プレイ中",
+    "requestsIncoming": "受け取った申請",
+    "requestsOutgoing": "送信済みの申請",
+    "toastRejected": "フレンド申請を拒否しました",
+    "requestPending": "送信済み"
   },
   "friendsOverlay": {
     "title": "フレンド",

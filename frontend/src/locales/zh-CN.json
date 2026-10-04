@@ -1859,7 +1859,11 @@
     "playingNow": "正在玩",
     "playingFor": "已玩 {{duration}}",
     "profileSendMessage": "发消息",
-    "playingLabel": "正在玩"
+    "playingLabel": "正在玩",
+    "requestsIncoming": "收到的请求",
+    "requestsOutgoing": "已发出的请求",
+    "toastRejected": "已拒绝好友请求",
+    "requestPending": "已发送请求"
   },
   "friendsOverlay": {
     "title": "好友",

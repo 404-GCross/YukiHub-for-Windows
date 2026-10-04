@@ -1,8 +1,12 @@
+import type { FriendList } from "../../../bindings/yukihub/internal/service/yukihubaccount/models";
 import { Link } from "@tanstack/react-router";
 import { Browser } from "@wailsio/runtime";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { GetChatUnreadCount } from "../../../bindings/yukihub/internal/service/accountservice";
+import {
+  GetChatUnreadCount,
+  ListFriends,
+} from "../../../bindings/yukihub/internal/service/accountservice";
 import { onWailsEvent } from "../../../src/bindings/runtime";
 import galToolboxIconUrl from "../../assets/links/gal-toolbox.png";
 import { OPEN_FRIENDS_PANEL_EVENT } from "../../consts/events";
@@ -30,6 +34,8 @@ export function SideBar({ bgEnabled = false, bgOpacity = 0.85 }: SideBarProps) {
   const accountStatus = useAccountStatus();
   const isLoggedIn = Boolean(accountStatus?.logged_in);
   const [chatUnread, setChatUnread] = useState(0);
+  // 待处理好友申请数：收到申请必须能一眼看到（以前只有打开弹窗才知道）
+  const [pendingRequests, setPendingRequests] = useState(0);
   const [chatOpen, setChatOpen] = useState(false);
 
   const [prevSidebarOpen, setPrevSidebarOpen] = useState(isSidebarOpen);
@@ -94,20 +100,44 @@ export function SideBar({ bgEnabled = false, bgOpacity = 0.85 }: SideBarProps) {
         });
     };
     refresh();
+
+    // 好友申请数：拉一次拿初值，之后靠后端推送更新。
+    // 后端推的是**整份好友列表**（含 pendingCount），而它「有实质变化才推」、
+    // 变化检测里就含 pendingCount —— 所以有人加我时这里会立刻收到，不用额外轮询。
+    ListFriends()
+      .then((list) => {
+        if (!cancelled) {
+          setPendingRequests(list.pendingCount ?? 0);
+        }
+      })
+      .catch(() => {
+        // 静默：拿不到就保持原值
+      });
+
     // 15 秒兜底轮询 + 后端好友列表推送时立刻刷一次：
     // 新消息的未读不该等下一个固定周期才出现。
     const timer = window.setInterval(refresh, 15_000);
-    const unsubscribe = onWailsEvent("friend:list-updated", () => {
-      if (!cancelled) {
+    const unsubscribe = onWailsEvent<FriendList>(
+      "friend:list-updated",
+      (list) => {
+        if (cancelled) {
+          return;
+        }
+        if (typeof list?.pendingCount === "number") {
+          setPendingRequests(list.pendingCount);
+        }
         refresh();
-      }
-    });
+      },
+    );
     return () => {
       cancelled = true;
       window.clearInterval(timer);
       unsubscribe();
     };
   }, [isLoggedIn, chatOpen]);
+
+  // 弹窗打开时（或未登录）不必显示申请角标：弹窗自己会显示数量
+  const pendingBadge = isLoggedIn && !chatOpen ? pendingRequests : 0;
 
   const navItems = [
     { to: "/", label: t("sideBar.home"), icon: "i-mdi-home" },
@@ -223,6 +253,12 @@ export function SideBar({ bgEnabled = false, bgOpacity = 0.85 }: SideBarProps) {
                 {chatUnread > 0 && (
                   <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 flex items-center justify-center bg-error-500 text-white text-[10px] font-bold rounded-full leading-none pointer-events-none">
                     {chatUnread > 99 ? "99+" : chatUnread}
+                  </span>
+                )}
+                {/* 好友申请：放右下角，与未读数区分开（两件事互不覆盖） */}
+                {pendingBadge > 0 && (
+                  <span className="absolute -right-1 -bottom-1 min-w-[16px] h-4 px-1 flex items-center justify-center bg-amber-500 text-white text-[10px] font-bold rounded-full leading-none pointer-events-none">
+                    {pendingBadge > 99 ? "99+" : pendingBadge}
                   </span>
                 )}
               </div>

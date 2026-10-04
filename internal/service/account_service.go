@@ -661,10 +661,20 @@ func (s *AccountService) resolvePlayingActivity() string {
 
 // ==================== 社交（好友 / 私聊 / 群聊） ====================
 
-// ListFriends 好友列表与待处理申请。
+// ListFriends 好友列表与待处理申请数。
 func (s *AccountService) ListFriends() (yukihubaccount.FriendList, error) {
 	return accountFetch(s, func(token string) (yukihubaccount.FriendList, error) {
 		return s.client.ListFriends(s.resolveContext(nil), token)
+	})
+}
+
+// ListFriendRequests 好友申请列表（收到的 + 已发出的）。
+//
+// 与 ListFriends 分开：列表接口里的 `pendingRequests` 只是个**数字**，
+// 申请内容要单独拉 `/friends/requests`（手机版 SocialApiClient.getFriendRequests）。
+func (s *AccountService) ListFriendRequests() (yukihubaccount.FriendRequests, error) {
+	return accountFetch(s, func(token string) (yukihubaccount.FriendRequests, error) {
+		return s.client.ListFriendRequests(s.resolveContext(nil), token)
 	})
 }
 
@@ -686,14 +696,17 @@ func (s *AccountService) SendFriendRequest(target string) error {
 }
 
 // AcceptFriendRequest 接受好友申请。
-func (s *AccountService) AcceptFriendRequest(friendshipID string, uid int64) error {
+//
+// friendshipID 是**数字**（服务端下发与回传都是数字）；只拿得到对方 uid 的场景
+// （资料页）传 0 + uid。
+func (s *AccountService) AcceptFriendRequest(friendshipID int64, uid int64) error {
 	return s.withToken(func(token string) error {
 		return s.client.AcceptFriendRequest(s.resolveContext(nil), token, friendshipID, uid)
 	})
 }
 
 // RejectFriendRequest 拒绝好友申请。
-func (s *AccountService) RejectFriendRequest(friendshipID string) error {
+func (s *AccountService) RejectFriendRequest(friendshipID int64) error {
 	return s.withToken(func(token string) error {
 		return s.client.RejectFriendRequest(s.resolveContext(nil), token, friendshipID)
 	})

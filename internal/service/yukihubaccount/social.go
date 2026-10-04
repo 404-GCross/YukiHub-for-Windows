@@ -42,16 +42,40 @@ type Friend struct {
 	LastMessage   string `json:"lastMessage,omitempty"`
 	LastMessageAt string `json:"lastMessageAt,omitempty"`
 	UnreadCount   int    `json:"unreadCount"`
+	// FriendStatus：none（不是好友）/ pending（申请中）/ accepted（已是好友）。
+	// 只有搜索结果会下发 —— 手机版据此把「加好友」按钮换成「已发送请求 / 已是好友」
+	// （FriendsChatDialog.renderSearchResults）。以前这里没解析，界面就只能一直显示
+	// 一个还能点的「加好友」，点了服务端也不理。
+	FriendStatus string `json:"friendStatus,omitempty"`
+	// FriendDirection 仅在 pending 时有意义：received（对方申请我）/ sent（我申请的）
+	FriendDirection string `json:"friendDirection,omitempty"`
 }
 
-// FriendRequest 是一条待处理的好友申请。
+// FriendRequest 是一条好友申请。
+//
+// FriendshipID 是**数字**（手机版 `r.optInt("friendshipId", 0)`，接受/拒绝也按数字
+// 发回服务端）。以前这里写成 string，`pickString` 读数字字段会拿到空串，
+// 于是「接受」按钮发出去的 friendshipId 是空 —— 点了没反应。
 type FriendRequest struct {
-	FriendshipID string `json:"friendshipId"`
-	UID          int64  `json:"uid"`
-	Nickname     string `json:"nickname"`
-	Avatar       string `json:"avatar,omitempty"`
-	Signature    string `json:"signature,omitempty"`
-	CreatedAt    string `json:"createdAt,omitempty"`
+	FriendshipID int64 `json:"friendshipId,omitempty"`
+	// UID 是申请里的**对方** uid：收到的申请取 fromUid，发出的取 toUid
+	UID       int64  `json:"uid,omitempty"`
+	Nickname  string `json:"nickname,omitempty"`
+	Avatar    string `json:"avatar,omitempty"`
+	Signature string `json:"signature,omitempty"`
+	CreatedAt string `json:"createdAt,omitempty"`
+	// Outgoing 为 true 表示这是「我发出去的」申请
+	Outgoing bool `json:"outgoing,omitempty"`
+}
+
+// FriendRequests 是 `/friends/requests` 的结果：收到的 + 已发出的。
+//
+// **注意**：`/friends/list` 里那个 `pendingRequests` 只是一个**数字**（待处理条数，
+// 手机版 `root.optInt("pendingRequests", 0)` 就是这么读的），真正的申请内容在这个
+// 接口里。以前把 list 里的字段当数组解析，所以「有人加我」在界面上永远显示不出来。
+type FriendRequests struct {
+	Incoming []FriendRequest `json:"incoming,omitempty"`
+	Outgoing []FriendRequest `json:"outgoing,omitempty"`
 }
 
 // FriendList 是好友列表 + 待处理申请数。
@@ -144,22 +168,67 @@ func (c *Client) ListFriends(ctx context.Context, token string) (FriendList, err
 	for _, raw := range toMapSlice(payload["friends"]) {
 		result.Friends = append(result.Friends, parseFriend(raw))
 	}
+	// 有的服务端版本会把申请数组塞在 list 里，顺手也解析掉
 	for _, raw := range toMapSlice(payload["pendingRequests"]) {
-		result.PendingRequests = append(result.PendingRequests, FriendRequest{
-			FriendshipID: pickString(raw, "friendshipId", "friendship_id", "id"),
-			UID:          pickInt64(raw, "uid", "userId", "userIdFrom"),
-			Nickname:     pickString(raw, "nickname", "name"),
-			Avatar:       pickString(raw, "avatarUrl", "avatar_url", "avatar"),
-			Signature:    pickString(raw, "signature"),
-			CreatedAt:    pickString(raw, "createdAt", "created_at"),
-		})
+		result.PendingRequests = append(result.PendingRequests, parseFriendRequest(raw, false))
 	}
-	// 待处理数：有的版本直接给 total，有的只给数组
-	result.PendingCount = int(pickInt64(payload, "pendingCount", "totalPending", "requestCount"))
+	// 待处理数：现在服务端把 `pendingRequests` 当**数字**给（手机版就是这么读的），
+	// 所以它必须在这个别名列表里，否则「有人加我」的角标永远是 0。
+	result.PendingCount = int(pickInt64(
+		payload, "pendingCount", "pendingRequests", "totalPending", "requestCount", "total",
+	))
 	if result.PendingCount == 0 && len(result.PendingRequests) > 0 {
 		result.PendingCount = len(result.PendingRequests)
 	}
 	return result, nil
+}
+
+// ListFriendRequests 拉取好友申请：收到的（incoming）与已发出的（outgoing）。
+func (c *Client) ListFriendRequests(ctx context.Context, token string) (FriendRequests, error) {
+	body, err := c.doJSON(ctx, http.MethodGet, c.baseURL+"/friends/requests", token, nil)
+	if err != nil {
+		return FriendRequests{}, err
+	}
+
+	// 兼容 {incoming,outgoing} 与 {data:{incoming,outgoing}} 两种外层
+	payload := body
+	if data, ok := body["data"].(map[string]any); ok {
+		if _, has := data["incoming"]; has {
+			payload = data
+		} else if _, has := data["outgoing"]; has {
+			payload = data
+		}
+	}
+
+	result := FriendRequests{}
+	for _, raw := range toMapSlice(payload["incoming"]) {
+		result.Incoming = append(result.Incoming, parseFriendRequest(raw, false))
+	}
+	for _, raw := range toMapSlice(payload["outgoing"]) {
+		result.Outgoing = append(result.Outgoing, parseFriendRequest(raw, true))
+	}
+	return result, nil
+}
+
+// parseFriendRequest 解析一条好友申请。
+//
+// 两套别名都要列：服务端对「收到」和「发出」用的是不同的键
+// （incoming 给 fromUid，outgoing 给 toUid），手机版 FriendsChatDialog.renderRequests
+// 也是分开读的。漏一项就会把对方显示成 UID 0。
+func parseFriendRequest(raw map[string]any, outgoing bool) FriendRequest {
+	uidAliases := []string{"fromUid", "uid", "userId", "friendUid", "toUid"}
+	if outgoing {
+		uidAliases = []string{"toUid", "uid", "userId", "friendUid", "fromUid"}
+	}
+	return FriendRequest{
+		FriendshipID: pickInt64(raw, "friendshipId", "friendship_id", "id"),
+		UID:          pickInt64(raw, uidAliases...),
+		Nickname:     pickString(raw, "nickname", "name", "fromNickname", "toNickname"),
+		Avatar:       pickString(raw, "avatarUrl", "avatar_url", "avatar"),
+		Signature:    pickString(raw, "signature"),
+		CreatedAt:    pickString(raw, "createdAt", "created_at"),
+		Outgoing:     outgoing,
+	}
 }
 
 // SearchUsers 按关键词搜用户（返回的是好友列表同构的条目）。
@@ -189,11 +258,12 @@ func (c *Client) SendFriendRequest(ctx context.Context, token, target string) er
 }
 
 // AcceptFriendRequest 接受好友申请。
-func (c *Client) AcceptFriendRequest(ctx context.Context, token, friendshipID string, uid int64) error {
+func (c *Client) AcceptFriendRequest(ctx context.Context, token string, friendshipID int64, uid int64) error {
 	payload := map[string]any{}
-	if strings.TrimSpace(friendshipID) != "" {
-		payload["friendshipId"] = strings.TrimSpace(friendshipID)
+	if friendshipID > 0 {
+		payload["friendshipId"] = friendshipID
 	}
+	// 资料页那条路只拿得到 uid（手机版 acceptFriendRequestByUid 同样只发 uid）
 	if uid > 0 {
 		payload["uid"] = uid
 	}
@@ -201,8 +271,8 @@ func (c *Client) AcceptFriendRequest(ctx context.Context, token, friendshipID st
 }
 
 // RejectFriendRequest 拒绝好友申请。
-func (c *Client) RejectFriendRequest(ctx context.Context, token, friendshipID string) error {
-	payload := map[string]string{"friendshipId": strings.TrimSpace(friendshipID)}
+func (c *Client) RejectFriendRequest(ctx context.Context, token string, friendshipID int64) error {
+	payload := map[string]any{"friendshipId": friendshipID}
 	return c.doEmpty(ctx, http.MethodPost, c.baseURL+"/friends/reject", token, payload)
 }
 
@@ -591,6 +661,9 @@ func parseFriend(raw map[string]any) Friend {
 		LastMessage:   pickString(raw, "lastMessage", "last_message"),
 		LastMessageAt: pickString(raw, "lastMessageAt", "last_message_at", "updatedAt"),
 		UnreadCount:   int(pickInt64(raw, "unreadCount", "unread")),
+
+		FriendStatus:    pickString(raw, "friendStatus", "friend_status"),
+		FriendDirection: pickString(raw, "friendDirection", "friend_direction"),
 	}
 	// 有些实现把 uid 放在嵌套的 user 里
 	if friend.UID == 0 || friend.Nickname == "" {

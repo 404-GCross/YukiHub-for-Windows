@@ -1859,7 +1859,11 @@
     "playingNow": "Playing now",
     "playingFor": "Playing for {{duration}}",
     "profileSendMessage": "Send message",
-    "playingLabel": "Playing"
+    "playingLabel": "Playing",
+    "requestsIncoming": "Received requests",
+    "requestsOutgoing": "Sent requests",
+    "toastRejected": "Friend request rejected",
+    "requestPending": "Request sent"
   },
   "friendsOverlay": {
     "title": "Friends",
