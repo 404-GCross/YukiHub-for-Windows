@@ -11,11 +11,17 @@ import { GetOverlayShortcut } from "../../../bindings/yukihub/internal/service/o
 import { onWailsEvent } from "../../bindings/runtime";
 import { FRIEND_LIST_UPDATED_EVENT } from "../../consts/events";
 import { ChatAvatar } from "../chat/ChatAvatar";
+import { OverlayChat } from "./OverlayChat";
 
 interface Sections {
   playing: Friend[];
   online: Friend[];
   offline: Friend[];
+}
+
+/** 好友展示名：备注优先（与主界面、通知一致）。 */
+function friendDisplayName(friend: Friend): string {
+  return friend.note?.trim() || friend.nickname;
 }
 
 /**
@@ -26,8 +32,14 @@ interface Sections {
  * 只有独立窗口才能盖在游戏画面上。窗口由 Go 侧惰性创建（main.go 的
  * toggleOverlayWindow），这里只负责画内容。
  *
+ * 点好友 → 在浮层内直接进入私聊（对齐 Steam：overlay 里就能聊天，不必退出游戏）。
+ *
  * 数据来源与主界面完全一致：后端每 10 秒轮询一次 /friends/list，有变化就推
  * 整份列表过来，所以浮层里的状态和主界面永远同步。
+ *
+ * 关于外观：窗口是**实心圆角**（圆角由 Go 侧用 DWM 设置，见 winwindow），
+ * 所以这里的根节点直接铺满、不再留边距、也不再自己画圆角与边框 ——
+ * 之前留的那圈边距会露出窗口背景，看上去就是「圆角卡片外面还套了一层直角框」。
  *
  * 诚实的限制：能盖在窗口化 / 无边框全屏游戏上，盖不住独占全屏游戏
  * （Steam 靠往游戏进程注入 hook 才做到，YukiHub 不做注入）。
@@ -37,6 +49,8 @@ export default function FriendsOverlay() {
   const [friendList, setFriendList] = useState<FriendList | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [shortcut, setShortcut] = useState("");
+  /** 当前正在私聊的好友；null = 停在好友列表 */
+  const [activeFriend, setActiveFriend] = useState<Friend | null>(null);
 
   // 拉一次 + 订阅后端推送：浮层通常开得比第一次轮询早，所以要主动拉一次
   useEffect(() => {
@@ -71,7 +85,6 @@ export default function FriendsOverlay() {
     };
   }, []);
 
-  // Esc 收起浮层：游戏里手不会离开键盘，鼠标点关闭太慢
   // 底部提示要写实际生效的组合：默认是 Shift + ~，但用户可能改过，
   // 也可能因为冲突退到了备选组合 —— 写死一个按键只会误导。
   useEffect(() => {
@@ -86,15 +99,29 @@ export default function FriendsOverlay() {
     })();
   }, []);
 
+  // Esc：在聊天里退回列表，在列表上收起浮层。
+  // 游戏里手不会离开键盘，鼠标点关闭太慢。
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        void Window.Hide();
+      if (event.key !== "Escape") {
+        return;
       }
+      if (activeFriend) {
+        setActiveFriend(null);
+        return;
+      }
+      void Window.Hide();
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  }, [activeFriend]);
+
+  const openChat = (friend: Friend) => {
+    setActiveFriend(friend);
+    // 聊天要打字，必须让浮层拿到键盘焦点。
+    // （列表态刻意不聚焦：只看一眼不该把游戏踢到后台；但打字不可能不聚焦。）
+    void Window.Focus();
+  };
 
   // 分组规则与主界面一致（正在游戏 → 在线 → 离线）
   const sections = useMemo<Sections>(() => {
@@ -122,14 +149,35 @@ export default function FriendsOverlay() {
       > 0;
 
   return (
-    // 浮层整体透明，真实外观靠内层卡片；外层留一点边距当阴影空间
-    <div className="h-screen w-screen bg-transparent p-1.5">
-      <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-white/12 bg-brand-900/90 text-white shadow-2xl backdrop-blur-xl">
-        {/* 顶栏兼拖动柄：overlay 没有标题栏，得给用户一个能拖的地方 */}
-        <div
-          className="flex shrink-0 items-center justify-between border-b border-white/10 px-3.5 py-2.5"
-          style={{ "--wails-draggable": "drag" } as React.CSSProperties}
-        >
+    // 铺满窗口：圆角由窗口本身提供（Go 侧 DWM），这里不再套第二层卡片
+    <div className="flex h-screen w-screen flex-col overflow-hidden bg-brand-900 text-white">
+      {/* 顶栏兼拖动柄：overlay 没有标题栏，得给用户一个能拖的地方 */}
+      <div
+        className="flex shrink-0 items-center justify-between gap-2 border-b border-white/10 px-3 py-2.5"
+        style={{ "--wails-draggable": "drag" } as React.CSSProperties}
+      >
+        {activeFriend ? (
+          <span className="flex min-w-0 items-center gap-1.5">
+            <button
+              type="button"
+              aria-label={t("common.back")}
+              // 阻止拖动：按钮在拖动区域里，不拦的话点它会变成拖窗口
+              onMouseDown={event => event.stopPropagation()}
+              onClick={() => setActiveFriend(null)}
+              className="-ml-1 shrink-0 rounded-md p-0.5 text-white/60 transition-colors hover:bg-white/12 hover:text-white"
+            >
+              <span className="i-mdi-chevron-left text-xl" aria-hidden="true" />
+            </button>
+            <ChatAvatar
+              name={friendDisplayName(activeFriend)}
+              avatar={activeFriend.avatar}
+              size={22}
+            />
+            <span className="truncate text-[13px] font-bold">
+              {friendDisplayName(activeFriend)}
+            </span>
+          </span>
+        ) : (
           <span className="flex items-center gap-1.5 text-[13px] font-bold">
             <span
               className="i-mdi-account-group-outline text-base text-primary-300"
@@ -137,55 +185,65 @@ export default function FriendsOverlay() {
             />
             {t("friendsOverlay.title")}
           </span>
-          <button
-            type="button"
-            aria-label={t("common.close")}
-            onClick={() => void Window.Hide()}
-            className="rounded-md p-1 text-white/60 transition-colors hover:bg-white/12 hover:text-white"
-          >
-            <span className="i-mdi-close text-base" aria-hidden="true" />
-          </button>
-        </div>
-
-        <div className="min-h-0 flex-1 overflow-y-auto px-1.5 py-2">
-          {error && (
-            <p className="px-2 py-6 text-center text-xs text-white/60">
-              {error}
-            </p>
-          )}
-          {!error && !friendList && (
-            <p className="px-2 py-6 text-center text-xs text-white/60">
-              {t("friendsChat.loading")}
-            </p>
-          )}
-          {!error && friendList && !hasAnyFriend && (
-            <p className="px-3 py-6 text-center text-xs whitespace-pre-line text-white/60">
-              {t("friendsChat.noFriends")}
-            </p>
-          )}
-
-          <OverlaySection
-            title={t("friendsChat.section.playing")}
-            friends={sections.playing}
-            highlight
-          />
-          <OverlaySection
-            title={t("friendsChat.section.online")}
-            friends={sections.online}
-          />
-          <OverlaySection
-            title={t("friendsChat.section.offline")}
-            friends={sections.offline}
-            dim
-          />
-        </div>
-
-        <div className="shrink-0 border-t border-white/10 px-3.5 py-1.5 text-[10px] text-white/40">
-          {shortcut
-            ? t("friendsOverlay.hint", { shortcut })
-            : t("friendsOverlay.hintNoShortcut")}
-        </div>
+        )}
+        <button
+          type="button"
+          aria-label={t("common.close")}
+          onMouseDown={event => event.stopPropagation()}
+          onClick={() => void Window.Hide()}
+          className="shrink-0 rounded-md p-1 text-white/60 transition-colors hover:bg-white/12 hover:text-white"
+        >
+          <span className="i-mdi-close text-base" aria-hidden="true" />
+        </button>
       </div>
+
+      {activeFriend ? (
+        <OverlayChat key={activeFriend.id} friend={activeFriend} />
+      ) : (
+        <>
+          <div className="min-h-0 flex-1 overflow-y-auto px-1.5 py-2">
+            {error && (
+              <p className="px-2 py-6 text-center text-xs text-white/60">
+                {error}
+              </p>
+            )}
+            {!error && !friendList && (
+              <p className="px-2 py-6 text-center text-xs text-white/60">
+                {t("friendsChat.loading")}
+              </p>
+            )}
+            {!error && friendList && !hasAnyFriend && (
+              <p className="px-3 py-6 text-center text-xs whitespace-pre-line text-white/60">
+                {t("friendsChat.noFriends")}
+              </p>
+            )}
+
+            <OverlaySection
+              title={t("friendsChat.section.playing")}
+              friends={sections.playing}
+              highlight
+              onSelect={openChat}
+            />
+            <OverlaySection
+              title={t("friendsChat.section.online")}
+              friends={sections.online}
+              onSelect={openChat}
+            />
+            <OverlaySection
+              title={t("friendsChat.section.offline")}
+              friends={sections.offline}
+              dim
+              onSelect={openChat}
+            />
+          </div>
+
+          <div className="shrink-0 border-t border-white/10 px-3.5 py-1.5 text-[10px] text-white/40">
+            {shortcut
+              ? t("friendsOverlay.hint", { shortcut })
+              : t("friendsOverlay.hintNoShortcut")}
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -195,12 +253,16 @@ function OverlaySection({
   friends,
   highlight = false,
   dim = false,
+  onSelect,
 }: {
   title: string;
   friends: Friend[];
   highlight?: boolean;
   dim?: boolean;
+  onSelect: (friend: Friend) => void;
 }) {
+  const { t } = useTranslation();
+
   if (friends.length === 0) {
     return null;
   }
@@ -213,13 +275,17 @@ function OverlaySection({
         {friends.length}
       </div>
       {friends.map(friend => (
-        <div
+        <button
           key={friend.id || friend.uid}
-          className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 transition-colors hover:bg-white/8"
+          type="button"
+          onClick={() => onSelect(friend)}
+          // 整行可点进私聊：Steam 的 overlay 也是点一下就开始聊
+          title={t("friendsOverlay.openChat")}
+          className="flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-white/8"
         >
           <div className={`relative shrink-0 ${dim ? "opacity-55" : ""}`}>
             <ChatAvatar
-              name={friend.note || friend.nickname}
+              name={friendDisplayName(friend)}
               avatar={friend.avatar}
               size={32}
             />
@@ -237,7 +303,7 @@ function OverlaySection({
             <div
               className={`truncate text-[12px] font-medium ${dim ? "text-white/55" : "text-white/92"}`}
             >
-              {friend.note || friend.nickname}
+              {friendDisplayName(friend)}
             </div>
             <div
               className={`truncate text-[10px] ${
@@ -247,7 +313,7 @@ function OverlaySection({
               {friend.activity?.trim() || ""}
             </div>
           </div>
-        </div>
+        </button>
       ))}
     </div>
   );

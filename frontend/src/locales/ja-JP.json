@@ -1864,6 +1864,9 @@
   "friendsOverlay": {
     "title": "フレンド",
     "hint": "{{shortcut}} でもう一度閉じる",
-    "hintNoShortcut": "もう一度ショートカットで閉じる"
+    "hintNoShortcut": "もう一度ショートカットで閉じる",
+    "openChat": "クリックしてチャット",
+    "send": "送信",
+    "noMessages": "まだメッセージがありません"
   }
 }

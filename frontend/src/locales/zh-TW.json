@@ -1864,6 +1864,9 @@
   "friendsOverlay": {
     "title": "好友",
     "hint": "再按 {{shortcut}} 收起",
-    "hintNoShortcut": "再按一次快速鍵收起"
+    "hintNoShortcut": "再按一次快速鍵收起",
+    "openChat": "點一下開始聊天",
+    "send": "傳送",
+    "noMessages": "還沒有訊息，說點什麼吧"
   }
 }

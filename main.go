@@ -461,6 +461,11 @@ const (
 	// noticeDismissDelay 是通知浮层自动消失前的停留时长。
 	// 这里只是兜底（防止前端没跑起来时它一直挂着），正常由前端倒计时收起。
 	noticeDismissDelay = 12 * time.Second
+
+	// floatingCornerRadius 是浮层窗口的圆角半径（像素）。
+	// Win11 走 DWM 圆角时系统会按 DPI 自行调整，这个值只在退回 SetWindowRgn
+	// 裁剪（Win10）时才真正用到。
+	floatingCornerRadius = 16
 )
 
 // verifyOverlayShortcut 由 main 装配：启动后复查好友栏快捷键有没有真的绑上。
@@ -1298,6 +1303,46 @@ func runGUI(
 			clampToZero((height - overlayWindowHeight) / 2)
 	}
 
+	// applyFloatingWindowChrome 在窗口句柄就绪后设置原生外观：圆角 +（可选）不抢焦点。
+	//
+	// 必须等 HWND 就绪 —— 它是在窗口的 run() 里创建的，而 run() 是异步的，
+	// 建完立刻取 NativeWindow() 还是空的。
+	//
+	// 圆角是硬需求：Wails 的无边框窗口是直角矩形，界面里画的是圆角卡片，
+	// 不处理的话要么露出直角边框、要么卡片被切成直角（用户看到的
+	// 「圆角窗口外面还套了一层直角框」就是这个）。
+	applyFloatingWindowChrome := func(window *application.WebviewWindow, nonActivating bool) {
+		for attempt := 0; attempt < 60; attempt++ {
+			ready := false
+			application.InvokeSync(func() {
+				handle := window.NativeWindow()
+				if handle == nil {
+					return
+				}
+				ready = true
+				method, err := winwindow.SetRoundedCorners(handle, floatingCornerRadius)
+				if err != nil {
+					appLogger.Warning("浮层窗口设置圆角失败：" + err.Error())
+				}
+				if nonActivating {
+					if err := winwindow.MakeNonActivating(handle); err != nil {
+						appLogger.Warning("通知浮层无法设置为不抢焦点：" + err.Error())
+					}
+				}
+				applog.LogInfof(
+					context.Background(),
+					"浮层窗口外观已设置（圆角方式=%s，不抢焦点=%v）",
+					method, nonActivating,
+				)
+			})
+			if ready {
+				return
+			}
+			time.Sleep(50 * time.Millisecond)
+		}
+		appLogger.Warning("浮层窗口句柄迟迟没有就绪，没能设置窗口外观")
+	}
+
 	toggleOverlayWindow := func() {
 		floatMu.Lock()
 		defer floatMu.Unlock()
@@ -1317,6 +1362,9 @@ func runGUI(
 					application.NewRGBA(0x0B, 0x10, 0x20, 255),
 				),
 			)
+			// 好友栏要能收键盘输入（按 Esc 收起、进聊天后打字），所以**不**加
+			// WS_EX_NOACTIVATE —— 那是通知浮层专用的。
+			go applyFloatingWindowChrome(overlayWindow, false)
 			return
 		}
 
@@ -1339,31 +1387,6 @@ func runGUI(
 				noticeWindow.Hide()
 			}
 		})
-	}
-
-	// applyNoticeWindowStyle 等窗口真正建出来后（HWND 就绪）去掉它的激活能力。
-	//
-	// 不能建完立刻设：HWND 是在 run() 里创建的，而 run() 是异步的，那一刻
-	// NativeWindow() 还是空的。
-	applyNoticeWindowStyle := func(window *application.WebviewWindow) {
-		for attempt := 0; attempt < 60; attempt++ {
-			ready := false
-			application.InvokeSync(func() {
-				handle := window.NativeWindow()
-				if handle == nil {
-					return
-				}
-				ready = true
-				if err := winwindow.MakeNonActivating(handle); err != nil {
-					appLogger.Warning("通知浮层无法设置为不抢焦点：" + err.Error())
-				}
-			})
-			if ready {
-				return
-			}
-			time.Sleep(50 * time.Millisecond)
-		}
-		appLogger.Warning("通知浮层的窗口句柄迟迟没有就绪，没能去掉抢焦点行为")
 	}
 
 	// noticeWindowBounds 是通知浮层的位置：主屏右下角。
@@ -1407,7 +1430,7 @@ func runGUI(
 				}
 				// 立刻不可见的话不用管它；这里是为了后续每次 Show() 都不抢焦点 ——
 				// 通知把正在玩的游戏踢到后台就本末倒置了。
-				go applyNoticeWindowStyle(noticeWindow)
+				go applyFloatingWindowChrome(noticeWindow, true)
 
 			} else {
 				noticeWindow.SetPosition(x, y)

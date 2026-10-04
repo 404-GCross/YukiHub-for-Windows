@@ -1864,6 +1864,9 @@
   "friendsOverlay": {
     "title": "Friends",
     "hint": "Press {{shortcut}} again to hide",
-    "hintNoShortcut": "Press the shortcut again to hide"
+    "hintNoShortcut": "Press the shortcut again to hide",
+    "openChat": "Click to chat",
+    "send": "Send",
+    "noMessages": "No messages yet"
   }
 }
