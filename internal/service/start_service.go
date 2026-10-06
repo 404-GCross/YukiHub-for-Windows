@@ -115,6 +115,15 @@ type activePlaySession struct {
 	// processUnknown 标记「进程识别失败」降级出来的会话：仍然计时，但没有
 	// 进程可监控，结束判定改由「回到 YukiHub」兜底或用户手动结束。
 	processUnknown atomic.Bool
+	// activeTrackStarted 标记这次会话**真的**启动了活跃窗口计时器。
+	//
+	// 判断「该不该用活跃时长」只能看它，不能只看 RecordActiveTimeOnly：
+	//   - 纯手动计时没有进程，`startGameFocusTracking` 从不被调用；
+	//   - 进程识别失败的降级会话走前台兜底，同样不调用它；
+	//   - 追踪器自身启动失败时也不会置位。
+	// 这三种情况 activeSeconds 恒为 0，若仍按活跃时长结算，整场游玩会被
+	// `<60 秒` 规则删掉（真丢记录），前端计时也会冻结在 00:00:00。
+	activeTrackStarted atomic.Bool
 	// activeSeconds 由活跃窗口计时回调更新，供 15 秒心跳持久化读取。
 	activeSeconds   atomic.Int64
 	audioMu         sync.Mutex
@@ -122,7 +131,18 @@ type activePlaySession struct {
 	audioMuted      bool
 	audioStateKnown bool
 	audioLastError  string
+	// audioStopped 标记会话已进入收尾：此后的焦点回调一律只做「解除静音」，
+	// 不允许再把进程静音（否则收尾期间的 in-flight 回调会重新种下残留静音）。
+	audioStopped bool
+	// audioLastMuteScan 记录上一次**实际执行**静音扫描的时间，用于后台节流。
+	audioLastMuteScan time.Time
 }
+
+// audioBackgroundRescanInterval 是游戏在后台时重新扫描音频会话的最小间隔。
+//
+// 焦点回调每秒一次，而一次扫描要走完整 COM 枚举，成本不低；10 秒一次既能覆盖
+// 「游戏在后台新建音频流 / 换输出设备」，又不会把 CPU 和 COM 压满。
+const audioBackgroundRescanInterval = 10 * time.Second
 
 func intPtr(value int) *int {
 	return &value
@@ -384,7 +404,6 @@ func (s *StartService) startGame(gameID string, options launcherpkg.LaunchOption
 
 // detectAndMonitorProcess 检测实际游戏进程并开始监控。
 func (s *StartService) detectAndMonitorProcess(session *activePlaySession, launcher launchedProcess, launcherExeName string, launchDir string, savedProcessName string, plan launcherpkg.LaunchPlan) {
-	sessionID := session.sessionID
 	gameID := session.gameID
 
 	if plan.DetectionMode == launcherpkg.DetectionLauncherOnly {
@@ -453,7 +472,7 @@ func (s *StartService) detectAndMonitorProcess(session *activePlaySession, launc
 	}
 
 	s.emitGameRuntimePlaying(session, "process-detected")
-	s.startGameFocusTracking(sessionID, gameID, result.ProcessID, plan.ActiveTrack)
+	s.startGameFocusTracking(session, result.ProcessID, plan.ActiveTrack)
 
 	if result.UseLauncherHandle && launcher.Handle != 0 {
 		s.monitorProcessByHandle(session, result.ProcessID, result.ProcessName, launcher.Handle, handoff)
@@ -485,7 +504,7 @@ func (s *StartService) closeLauncherHandle(launcher launchedProcess) {
 
 func (s *StartService) monitorLauncherOnly(session *activePlaySession, launcher launchedProcess, plan launcherpkg.LaunchPlan) {
 	s.emitGameRuntimePlaying(session, "launcher-monitoring")
-	s.startGameFocusTracking(session.sessionID, session.gameID, launcher.PID, plan.ActiveTrack)
+	s.startGameFocusTracking(session, launcher.PID, plan.ActiveTrack)
 	var handoff *processHandoffState
 	if plan.EnableProcessHandoff {
 		handoff = &processHandoffState{
@@ -506,16 +525,17 @@ func (s *StartService) monitorLauncherOnly(session *activePlaySession, launcher 
 	s.monitorProcessByPIDWithExitWatch(session, launcher.PID, launcher.Name, plan.ExitWatch, handoff)
 }
 
-func (s *StartService) startGameFocusTracking(sessionID string, gameID string, processID uint32, activeTrack launcherpkg.ActiveTrack) {
+func (s *StartService) startGameFocusTracking(session *activePlaySession, processID uint32, activeTrack launcherpkg.ActiveTrack) {
 	shouldTrackFocusForMute := s.config.MuteGameInBackground && audioutils.IsProcessMuteSupported()
 	if !s.config.RecordActiveTimeOnly && !shouldTrackFocusForMute {
 		return
 	}
 
-	_, err := s.activeTimeTracker.StartTrackingWithActiveTrack(sessionID, gameID, processID, activeTrack)
-	if err != nil {
+	if _, err := s.activeTimeTracker.StartTrackingWithActiveTrack(session.sessionID, session.gameID, processID, activeTrack); err != nil {
 		applog.LogWarningf(s.ctx, "Failed to start active time tracking: %v", err)
+		return
 	}
+	session.activeTrackStarted.Store(true)
 }
 
 func (s *StartService) persistSelectedProcessName(gameID string, selectedProcessName string) {
@@ -636,6 +656,8 @@ func (s *StartService) waitForProcessExit(session *activePlaySession, processNam
 	select {
 	case <-exitChan:
 		applog.LogInfof(s.ctx, "Game process %s (PID %d) has exited", processName, processID)
+		// 先解除静音：继任者检测最多要等几秒，不能把静音状态拖到那之后。
+		s.restoreSessionAudio(session)
 		// 进程退出不一定是游戏结束：彩窗/启动器可能已把控制权交给了新进程
 		// （spawn 子进程后自退、同名 re-exec 等），先做一轮继任者检测。
 		if successor, ok := s.detectSuccessorProcess(session, processID, processName, handoff); ok {
@@ -722,7 +744,7 @@ func (s *StartService) finalizePlaySessionOnce(session *activePlaySession, reaso
 
 	close(session.done)
 	s.unregisterActiveSession(gameID, sessionID)
-	s.restoreSessionAudio(session)
+	s.stopSessionAudio(session)
 
 	// 确保停止追踪（无论如何都要执行）
 	activeSeconds := s.activeTimeTracker.StopTracking(gameID)
@@ -740,11 +762,11 @@ func (s *StartService) finalizePlaySessionOnce(session *activePlaySession, reaso
 
 	endTime := time.Now()
 
-	// 如果启用活跃时间追踪，使用累加的活跃时长；否则使用整个运行时长。
-	// 纯手动计时的会话没有进程可追踪，即便开着「仅记录活跃时长」也只能用墙钟。
+	// 只有真正跑过活跃追踪的会话才用活跃时长；手动计时与进程识别失败的降级会话
+	// 都没有追踪器可用，一律回退墙钟（否则会被 <60 秒规则删掉）。
 	var duration int
 	switch {
-	case !session.manual && s.config.RecordActiveTimeOnly:
+	case s.usesActiveTimeTracking(session):
 		duration = activeSeconds
 		applog.LogInfof(s.ctx, "Game %s active play time: %d seconds", gameID, duration)
 	default:
@@ -900,7 +922,7 @@ func (s *StartService) persistSessionHeartbeats(session *activePlaySession) {
 			return
 		case heartbeatAt := <-ticker.C:
 			duration := int(heartbeatAt.Sub(session.startTime).Seconds())
-			if !session.manual && s.config != nil && s.config.RecordActiveTimeOnly {
+			if s.usesActiveTimeTracking(session) {
 				duration = int(session.activeSeconds.Load())
 			}
 			if duration < 0 {
@@ -956,7 +978,7 @@ func (s *StartService) deleteShortOrCancelledSession(session *activePlaySession,
 		if err := s.sessionService.DeletePlaySession(session.sessionID); err != nil {
 			applog.LogErrorf(s.ctx, "Failed to delete cancelled play session %s: %v", session.sessionID, err)
 		}
-		s.restoreSessionAudio(session)
+		s.stopSessionAudio(session)
 		s.activeTimeTracker.StopTracking(session.gameID)
 		s.emitGameRuntimeIdle(session, reason)
 		s.requestHomeRefresh()
@@ -1132,6 +1154,11 @@ func (s *StartService) handleFocusUpdate(update timerutils.FocusUpdate) {
 
 	session.audioMu.Lock()
 	defer session.audioMu.Unlock()
+	if session.audioStopped {
+		// 会话已收尾，只允许收尾后的解除静音，禁止重新静音。
+		s.restoreSessionAudioLocked(session)
+		return
+	}
 	select {
 	case <-session.done:
 		s.restoreSessionAudioLocked(session)
@@ -1145,30 +1172,50 @@ func (s *StartService) handleFocusUpdate(update timerutils.FocusUpdate) {
 	}
 
 	// 进程退出时，焦点追踪器可能会先发出一次“失去前台”通知。
-	// 这类通知只代表窗口消失，不应再为已经结束的进程设置静音状态。
+	// Windows 音频会话的生命周期可能晚于进程本身，因此仍需先尝试解除静音。
 	if !update.IsFocused && !processutils.IsProcessPresentByPID(update.ProcessID) {
 		if session.audioStateKnown && session.audioPID == update.ProcessID {
-			session.audioPID = 0
-			session.audioMuted = false
-			session.audioStateKnown = false
-			session.audioLastError = ""
+			s.restoreSessionAudioLocked(session)
 		}
 		return
 	}
 
 	shouldMute := !update.IsFocused
-	if session.audioStateKnown && session.audioPID == update.ProcessID && session.audioMuted == shouldMute {
-		return
+	if session.audioStateKnown && session.audioPID == update.ProcessID && session.audioLastError == "" {
+		if !shouldMute {
+			// 已经在前台且没有残留错误：无事可做。
+			return
+		}
+		// 已经在后台静音：仍然要隔一段时间重扫一次，因为游戏可能在不切换焦点的
+		// 情况下重建音频流或换到别的输出设备。但焦点回调是**每秒**无条件发一次
+		// （见 timerutils.active_time_tracker），COM 全量枚举很贵 ——
+		// 每条会话要两次 QueryInterface + GetProcessID + GetSessionInstanceIdentifier。
+		// 不节流的话长时间挂机就是每秒压一次 COM。
+		if session.audioMuted && time.Since(session.audioLastMuteScan) < audioBackgroundRescanInterval {
+			return
+		}
 	}
 
 	if session.audioStateKnown && session.audioPID != update.ProcessID {
-		if session.audioMuted {
-			_, _ = audioutils.SetProcessMuted(session.audioPID, false)
+		s.restoreSessionAudioLocked(session)
+		if session.audioStateKnown {
+			// 上一个 PID 还没恢复成功时保留它，别把线索丢掉。
+			return
 		}
-		session.audioStateKnown = false
 	}
 
 	matched, err := audioutils.SetProcessMuted(update.ProcessID, shouldMute)
+	// 枚举过程中可能先改掉了部分会话、随后才在另一条上报错；这些改动要记下来。
+	if matched {
+		session.audioPID = update.ProcessID
+		// 报错可能发生在部分会话已改完之后，只要没全部确认改成就先按“已静音”记，
+		// 交给后续回调继续重试，避免残留静音被当成已恢复。
+		session.audioMuted = shouldMute || err != nil
+		session.audioStateKnown = true
+	}
+	if shouldMute {
+		session.audioLastMuteScan = time.Now()
+	}
 	if err != nil {
 		s.logAudioErrorLocked(session, update.ProcessID, err)
 		return
@@ -1192,18 +1239,47 @@ func (s *StartService) restoreSessionAudio(session *activePlaySession) {
 	s.restoreSessionAudioLocked(session)
 }
 
+// stopSessionAudio 在会话收尾时解除静音：先立 audioStopped 挡住 in-flight 的
+// 焦点回调，再做几次短重试覆盖瞬时失败（会话刚枚举到、COM 忙等）。
+func (s *StartService) stopSessionAudio(session *activePlaySession) {
+	if session == nil || !audioutils.IsProcessMuteSupported() {
+		return
+	}
+	session.audioMu.Lock()
+	defer session.audioMu.Unlock()
+	session.audioStopped = true
+	for attempt := 0; attempt < 3; attempt++ {
+		s.restoreSessionAudioLocked(session)
+		if !session.audioStateKnown {
+			return
+		}
+		if attempt < 2 {
+			time.Sleep(100 * time.Millisecond)
+		}
+	}
+}
+
 func (s *StartService) restoreSessionAudioLocked(session *activePlaySession) {
 	if !session.audioStateKnown {
 		return
 	}
 	if session.audioMuted {
 		matched, err := audioutils.SetProcessMuted(session.audioPID, false)
-		if err != nil {
-			s.logAudioErrorLocked(session, session.audioPID, err)
+		// matched 优先于 err：一次恢复里可能「这个 PID 的新会话解了、上一代遗留的
+		// 死会话解不了」。此时若因为 err 提前返回，audioStateKnown 会永远卡在
+		// 「已静音」，之后每次重试都重复同一个结果 —— 状态机彻底死锁。
+		if !matched {
+			if err != nil {
+				s.logAudioErrorLocked(session, session.audioPID, err)
+				return
+			}
+			// 枚举不到会话说明引用已经失效（或换过输出设备），必须报错并保留状态，
+			// 静默清状态会留下“以为恢复了、其实还静音着”的残留。
+			s.logAudioErrorLocked(session, session.audioPID, fmt.Errorf("no audio session found while restoring process audio"))
 			return
 		}
-		if !matched {
-			return
+		if err != nil {
+			s.logAudioErrorLocked(session, session.audioPID, err)
 		}
 	}
 	session.audioPID = 0
@@ -1221,18 +1297,31 @@ func (s *StartService) logAudioErrorLocked(session *activePlaySession, processID
 	applog.LogWarningf(s.ctx, "Failed to update background mute for game %s (PID %d): %v", session.gameID, processID, err)
 }
 
+// usesActiveTimeTracking 判断这次会话该不该用「活跃时长」结算。
+//
+// 唯一判据是会话自己有没有真的启动活跃窗口计时器（见 activeTrackStarted），
+// 而不是只看 RecordActiveTimeOnly 开关。纯手动计时、进程识别失败的降级会话、
+// 以及追踪器启动失败的会话都没有活跃时长可用，必须回退墙钟 ——
+// 否则 activeSeconds 恒为 0，整条记录会被 `<60 秒` 规则删掉。
+func (s *StartService) usesActiveTimeTracking(session *activePlaySession) bool {
+	return session != nil &&
+		!session.manual &&
+		session.activeTrackStarted.Load() &&
+		s.config != nil && s.config.RecordActiveTimeOnly
+}
+
 // runtimeTimingMode 决定这次会话用墙钟还是活跃时长计时。
-// 纯手动计时的会话没有进程可追踪「活跃时长」，一律按墙钟走 —— 否则前端
-// 会一直显示 00:00:00，而落库时长也会是 0。
+// 没有真正启动过活跃追踪的会话一律按墙钟走 —— 否则前端会一直显示 00:00:00，
+// 而落库时长也会是 0。
 func (s *StartService) runtimeTimingMode(session *activePlaySession) GameRuntimeTimingMode {
-	if !session.manual && s.config != nil && s.config.RecordActiveTimeOnly {
+	if s.usesActiveTimeTracking(session) {
 		return GameRuntimeTimingModeActive
 	}
 	return GameRuntimeTimingModeWallClock
 }
 
 func (s *StartService) runtimeActiveSeconds(session *activePlaySession, activeSeconds int) *int {
-	if !session.manual && s.config != nil && s.config.RecordActiveTimeOnly {
+	if s.usesActiveTimeTracking(session) {
 		return intPtr(activeSeconds)
 	}
 	return nil
@@ -1259,7 +1348,7 @@ func (s *StartService) CleanupPendingSessions() {
 	// 停止所有活跃时间追踪
 	if s.activeTimeTracker != nil {
 		for _, session := range activeSessions {
-			s.restoreSessionAudio(session)
+			s.stopSessionAudio(session)
 		}
 		activeDurations = s.activeTimeTracker.StopAllTracking()
 		applog.LogInfof(s.ctx, "Stopped all active time tracking")
@@ -1271,8 +1360,13 @@ func (s *StartService) CleanupPendingSessions() {
 		applog.LogInfof(s.ctx, "Completing %d active play sessions during shutdown", len(activeSessions))
 		for _, session := range activeSessions {
 			duration := int(endTime.Sub(session.startTime).Seconds())
-			if s.config.RecordActiveTimeOnly {
-				duration = activeDurations[session.gameID]
+			// 与心跳/结算同一判据：只有真的跑过活跃追踪的会话才取活跃时长。
+			// 旧实现只看配置开关，手动计时与降级会话会被算成 0 秒并直接删除 ——
+			// 同一场手动计时的会话「崩溃能恢复、正常退出反而丢」。
+			if s.usesActiveTimeTracking(session) {
+				if active, ok := activeDurations[session.gameID]; ok {
+					duration = active
+				}
 			}
 
 			session.finalOnce.Do(func() {

@@ -174,16 +174,72 @@ func TestManualSessionFallsBackToWallClockWhenActiveOnlyEnabled(t *testing.T) {
 }
 
 // 启动游戏的会话仍然按活跃时长计时，别被手动计时的回退逻辑带偏。
+//
+// 注意判据是「这次会话真的启动了活跃追踪器」（activeTrackStarted），
+// 而不是只看配置开关 —— 只看开关会让没启动追踪器的会话恒得 0 秒。
 func TestLaunchedSessionStillUsesActiveTime(t *testing.T) {
 	config := &appconf.AppConfig{RecordActiveTimeOnly: true}
 	startService, _ := setupManualPlaySessionTest(t, config)
 
 	launched := &activePlaySession{gameID: manualSessionTestGameID}
+	launched.activeTrackStarted.Store(true)
 	if mode := startService.runtimeTimingMode(launched); mode != GameRuntimeTimingModeActive {
 		t.Fatalf("启动游戏的会话应保持活跃时长模式，实际 %q", mode)
 	}
 	if seconds := startService.runtimeActiveSeconds(launched, 42); seconds == nil || *seconds != 42 {
 		t.Fatalf("活跃时长模式下应下发 active_seconds=42，实际 %v", seconds)
+	}
+
+	// 开了开关但追踪器没起来（启动失败）→ 必须回退墙钟，否则整场会被算成 0 秒。
+	notTracked := &activePlaySession{gameID: manualSessionTestGameID}
+	if mode := startService.runtimeTimingMode(notTracked); mode != GameRuntimeTimingModeWallClock {
+		t.Fatalf("未启动活跃追踪的会话必须回退墙钟，实际 %q", mode)
+	}
+	if seconds := startService.runtimeActiveSeconds(notTracked, 0); seconds != nil {
+		t.Fatalf("回退墙钟时不应下发 active_seconds，实际 %v", *seconds)
+	}
+}
+
+// 回归测试（会丢记录的那条）：开启「仅记录活跃时长」时，进程识别失败降级出来的
+// 会话没有活跃追踪器，activeSeconds 恒为 0。旧实现只看配置开关，于是整场游玩
+// 被 `<60 秒` 规则删掉 —— 用户玩了两小时，记录里什么都没有。
+func TestDegradedSessionFallsBackToWallClockWhenActiveOnlyEnabled(t *testing.T) {
+	config := &appconf.AppConfig{RecordActiveTimeOnly: true}
+	startService, db := setupManualPlaySessionTest(t, config)
+
+	startTime := time.Now()
+	sessionID, err := startService.sessionService.CreatePendingSession(
+		manualSessionTestGameID, startTime,
+	)
+	if err != nil {
+		t.Fatalf("CreatePendingSession: %v", err)
+	}
+	game, err := startService.gameService.GetGameByID(manualSessionTestGameID)
+	if err != nil {
+		t.Fatalf("GetGameByID: %v", err)
+	}
+	session := startService.registerActiveSession(
+		sessionID, manualSessionTestGameID, startTime, game, false,
+	)
+
+	// 进程识别失败 → 降级（不会调用 startGameFocusTracking）
+	startService.degradeToForegroundTracking(session)
+
+	if session.activeTrackStarted.Load() {
+		t.Fatal("降级会话不应被标记为已启动活跃追踪")
+	}
+	if mode := startService.runtimeTimingMode(session); mode != GameRuntimeTimingModeWallClock {
+		t.Fatalf("降级会话应上报墙钟模式（否则前端计时冻结在 00:00:00），实际 %q", mode)
+	}
+
+	session.startTime = time.Now().Add(-90 * time.Minute)
+	if err := startService.EndCurrentPlaySession(manualSessionTestGameID); err != nil {
+		t.Fatalf("EndCurrentPlaySession: %v", err)
+	}
+
+	recorded := totalRecordedSeconds(t, db)
+	if recorded < 5300 || recorded > 5410 {
+		t.Fatalf("降级会话也必须按墙钟落库约 5400 秒，实际 %d（0 表示被当短会话删了）", recorded)
 	}
 }
 
