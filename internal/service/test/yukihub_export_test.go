@@ -344,8 +344,12 @@ func TestYukiHubImportAppliesFavoriteToSystemCategory(t *testing.T) {
 // TestYukiHubMetadataCacheRoundTrip 验证元数据缓存负载在两个方向都能原样往返。
 //
 // 往返语义：桌面端存量缓存（已是 Android VnMetadata 结构）→ 导出快照 → 导入另一个库
-// → 再导出，JSON 必须逐字节一致，且游戏仍按 local_id 关联。桌面端自建条目没有
-// legacy_local_id，无从映射回 Android 的整数 local_id，导出时必须跳过，否则会产出孤儿缓存。
+// → 再导出，JSON 必须逐字节一致。
+//
+// 条目关联分两档，与手机版一致：有 legacy_local_id 的按 local_id，没有的（桌面端自己
+// 扫描进来的游戏）按游戏标题。早期版本把后者整段跳过，直接后果就是
+// 「PC 端用 nextmoe 刮的资料同步到手机端后全没了、退回默认的 vndb」——
+// 手机端是靠 metadata_cache 里 source='nextmoe' 那一行取资料的。
 func TestYukiHubMetadataCacheRoundTrip(t *testing.T) {
 	sourceDB, sourceCleanup := setupTestDB(t)
 	defer sourceCleanup()
@@ -353,6 +357,7 @@ func TestYukiHubMetadataCacheRoundTrip(t *testing.T) {
 	defer targetCleanup()
 
 	payload := `{"id":"v9000","chineseTitle":"往返缓存游戏","romanTitle":"Round Trip Cache","screenshotUrls":["https://example.com/s1.jpg"]}`
+	selfPayload := `{"id":"v1"}`
 	createdAt := time.Date(2026, time.September, 28, 11, 0, 0, 0, time.Local)
 	if _, err := sourceDB.Exec(`
 		INSERT INTO games (id, name, status, source_type, source_id, created_at, updated_at, legacy_local_id)
@@ -360,10 +365,11 @@ func TestYukiHubMetadataCacheRoundTrip(t *testing.T) {
 		"game-cache", "往返缓存游戏", "completed", "vndb", "v9000", createdAt, createdAt.Add(time.Hour), "42"); err != nil {
 		t.Fatalf("插入游戏失败: %v", err)
 	}
+	// 桌面端自建游戏：没有 legacy_local_id，只能靠标题关联。
 	if _, err := sourceDB.Exec(`
 		INSERT INTO games (id, name, status, source_type, source_id, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?)`,
-		"game-orphan", "自建条目", "unplayed", "vndb", "v1", createdAt, createdAt); err != nil {
+		"game-self", "自建条目", "unplayed", "vndb", "v1", createdAt, createdAt); err != nil {
 		t.Fatalf("插入自建游戏失败: %v", err)
 	}
 	for _, entry := range []struct {
@@ -372,7 +378,7 @@ func TestYukiHubMetadataCacheRoundTrip(t *testing.T) {
 		payload  string
 	}{
 		{"game-cache", "v9000", payload},
-		{"game-orphan", "v1", `{"id":"v1"}`},
+		{"game-self", "v1", selfPayload},
 	} {
 		if _, err := sourceDB.Exec(`
 			INSERT INTO game_metadata_sources (game_id, source_type, source_id, cache_json, cached_at, created_at, updated_at)
@@ -387,15 +393,28 @@ func TestYukiHubMetadataCacheRoundTrip(t *testing.T) {
 		t.Fatalf("导出失败: %v", err)
 	}
 	snapshot := readYukiHubSnapshot(t, snapshotPath)
-	if len(snapshot.MetadataCache) != 1 {
-		t.Fatalf("导出缓存条目数 = %d, want 1（无 legacy_local_id 的条目应被跳过）", len(snapshot.MetadataCache))
+	if len(snapshot.MetadataCache) != 2 {
+		t.Fatalf("导出缓存条目数 = %d, want 2（自建条目应按标题关联，不再被跳过）", len(snapshot.MetadataCache))
 	}
-	entry := snapshot.MetadataCache[0]
-	if entry.GameLocalID != 42 || entry.Source != "vndb" || entry.SourceID != "v9000" {
-		t.Fatalf("缓存条目身份 = %+v, want local_id 42 / vndb / v9000", entry)
+	bySourceID := make(map[string]yukihub.MetadataCache, len(snapshot.MetadataCache))
+	for _, entry := range snapshot.MetadataCache {
+		bySourceID[entry.SourceID] = entry
 	}
-	if entry.JSON != payload {
-		t.Fatalf("导出缓存负载 = %q, want %q", entry.JSON, payload)
+
+	linked := bySourceID["v9000"]
+	if linked.GameLocalID != 42 || linked.Source != "vndb" || linked.GameTitle != "往返缓存游戏" {
+		t.Fatalf("本地 ID 条目 = %+v, want local_id 42 / vndb / 标题「往返缓存游戏」", linked)
+	}
+	if linked.JSON != payload {
+		t.Fatalf("导出缓存负载 = %q, want %q", linked.JSON, payload)
+	}
+	// 自建条目：local_id 只能是 0，但必须带上标题，否则对端无从匹配。
+	selfBuilt := bySourceID["v1"]
+	if selfBuilt.GameLocalID != 0 || selfBuilt.GameTitle != "自建条目" {
+		t.Fatalf("自建条目 = %+v, want local_id 0 + 标题「自建条目」", selfBuilt)
+	}
+	if selfBuilt.JSON != selfPayload {
+		t.Fatalf("自建条目负载 = %q, want %q", selfBuilt.JSON, selfPayload)
 	}
 
 	imported, err := importer.NewYukiHubImporter(newTestImporterDependencies(targetDB)).
@@ -403,7 +422,6 @@ func TestYukiHubMetadataCacheRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("导入失败: %v", err)
 	}
-	// 两条游戏都会作为新条目落库（自建条目只是没有缓存，游戏本身仍会导出与导入）。
 	if imported.Success != 2 || imported.Failed != 0 {
 		t.Fatalf("导入结果 = success %d / failed %d (%v), want 2/0", imported.Success, imported.Failed, imported.FailedNames)
 	}
@@ -420,16 +438,37 @@ func TestYukiHubMetadataCacheRoundTrip(t *testing.T) {
 		t.Fatalf("导入后的缓存负载 = %q, want %q", persisted, payload)
 	}
 
+	// 关键回归点：自建条目的缓存必须挂到同名游戏上（靠标题兜底）。
+	// 旧实现下这里会「查询不到行」——缓存整段丢失。
+	var selfPersisted string
+	if err := targetDB.QueryRow(`
+		SELECT s.cache_json
+		FROM game_metadata_sources s
+		JOIN games g ON g.id = s.game_id
+		WHERE g.name = '自建条目' AND s.source_type = 'vndb'`).Scan(&selfPersisted); err != nil {
+		t.Fatalf("自建条目的缓存没落到同名游戏上（标题兜底失效）: %v", err)
+	}
+	if selfPersisted != selfPayload {
+		t.Fatalf("自建条目导入后的缓存 = %q, want %q", selfPersisted, selfPayload)
+	}
+
 	reExportedPath := filepath.Join(t.TempDir(), "metadata-cache-again.ykbak")
 	if err := exporter.NewYukiHubExporter(context.Background(), targetDB).Export(reExportedPath); err != nil {
 		t.Fatalf("再次导出失败: %v", err)
 	}
 	again := readYukiHubSnapshot(t, reExportedPath)
-	if len(again.MetadataCache) != 1 {
-		t.Fatalf("再次导出缓存条目数 = %d, want 1", len(again.MetadataCache))
+	if len(again.MetadataCache) != 2 {
+		t.Fatalf("再次导出缓存条目数 = %d, want 2", len(again.MetadataCache))
 	}
-	if again.MetadataCache[0].JSON != payload || again.MetadataCache[0].GameLocalID != 42 {
-		t.Fatalf("往返后的缓存 = %+v, want 与首次导出逐字节一致", again.MetadataCache[0])
+	againBySourceID := make(map[string]yukihub.MetadataCache, len(again.MetadataCache))
+	for _, entry := range again.MetadataCache {
+		againBySourceID[entry.SourceID] = entry
+	}
+	if againBySourceID["v9000"].JSON != payload || againBySourceID["v9000"].GameLocalID != 42 {
+		t.Fatalf("往返后的本地 ID 缓存 = %+v, want 与首次导出一致", againBySourceID["v9000"])
+	}
+	if againBySourceID["v1"].JSON != selfPayload || againBySourceID["v1"].GameTitle != "自建条目" {
+		t.Fatalf("往返后的自建缓存 = %+v, want 与首次导出一致", againBySourceID["v1"])
 	}
 }
 
