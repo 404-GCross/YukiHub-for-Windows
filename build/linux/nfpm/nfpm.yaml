@@ -8,7 +8,7 @@ maintainer: "${MAINTAINER}"
 description: "YukiHub game library manager"
 vendor: "YukiHub"
 homepage: "https://github.com/xm486/YukiHub"
-license: "MIT"
+license: "AGPL-3.0"
 release: "1"
 
 contents:
@@ -20,8 +20,6 @@ contents:
     dst: "/usr/lib/yukihub/YukiHub"
     file_info:
       mode: 0755
-  - src: "./build/bin/yukihubcli"
-    dst: "/usr/bin/yukihubcli"
   - src: "./build/bin/7zz"
     dst: "/usr/lib/yukihub/7zz"
     file_info:

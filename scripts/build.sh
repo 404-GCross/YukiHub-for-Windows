@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # YukiHub Unix release builder for Wails v3.
-# Usage: ./scripts/build.sh [installer|appimage|all] [version] [amd64|arm64]
+# Usage: ./scripts/build.sh [installer|appimage|all] [version] [amd64]
 
 set -euo pipefail
 
@@ -13,7 +13,7 @@ VERSION_ARG="${2:-}"
 TARGET_ARCH="${3:-}"
 
 usage() {
-    echo "Usage: ./scripts/build.sh [installer|appimage|all] [version] [amd64|arm64]"
+    echo "Usage: ./scripts/build.sh [installer|appimage|all] [version] [amd64]"
 }
 
 case "$BUILD_MODE" in
@@ -45,10 +45,9 @@ if [[ -z "$TARGET_ARCH" ]]; then
 fi
 
 case "$TARGET_ARCH" in
-    arm64|aarch64) TARGET_ARCH="arm64" ;;
     amd64|x64|x86_64) TARGET_ARCH="amd64" ;;
     *)
-        echo "ERROR: Unsupported target architecture: $TARGET_ARCH"
+        echo "ERROR: Unsupported target architecture: $TARGET_ARCH (YukiHub Linux builds support amd64 only)"
         usage
         exit 1
         ;;
@@ -56,17 +55,12 @@ esac
 
 HOST_OS="$(uname -s)"
 case "$HOST_OS" in
-    Darwin|Linux) ;;
+    Linux) ;;
     *)
-        echo "ERROR: scripts/build.sh only supports macOS and Linux hosts."
+        echo "ERROR: scripts/build.sh only supports Linux hosts."
         exit 1
         ;;
 esac
-
-if [[ "$HOST_OS" == "Darwin" && "$BUILD_MODE" == "appimage" ]]; then
-    echo "ERROR: macOS distribution uses a DMG; AppImage mode is only available on Linux."
-    exit 1
-fi
 
 trim_env_value() {
     local value="$1"
@@ -240,10 +234,6 @@ LDFLAGS_APPIMAGE="$LDFLAGS_BASE $(ldflag_set 'yukihub/internal/version.BuildMode
 
 BIN_DIR="build/bin"
 APP_BINARY="$BIN_DIR/YukiHub"
-CLI_BINARY="$BIN_DIR/yukihubcli"
-APP_BUNDLE="$BIN_DIR/YukiHub.app"
-DMG_PATH="$BIN_DIR/YukiHub-${VERSION}-macos-${TARGET_ARCH}.dmg"
-DMG_STAGING="build/dmg/YukiHub-${VERSION}-macos-${TARGET_ARCH}"
 LINUX_DEB_PATH="$BIN_DIR/YukiHub-${VERSION}-linux-${TARGET_ARCH}.deb"
 LINUX_RPM_PATH="$BIN_DIR/YukiHub-${VERSION}-linux-${TARGET_ARCH}.rpm"
 LINUX_APPIMAGE_STAGING="build/linux/appimage/YukiHub.AppDir"
@@ -251,8 +241,6 @@ LINUX_APPIMAGE_PATH="$BIN_DIR/YukiHub-${VERSION}-linux-${TARGET_ARCH}.AppImage"
 LINUX_SEVENZIP_SOURCE="lib/linux${TARGET_ARCH}/7z/7zz"
 LINUX_SEVENZIP_PACKAGE_PATH="$BIN_DIR/7zz"
 LINUX_INSTALLER_LAUNCHER="$BIN_DIR/YukiHub-linux-launcher"
-# The checked-in 7zz is a universal Mach-O binary (x86_64 + arm64).
-MAC_SEVENZIP_SOURCE="lib/macarm64/7z/7zz"
 
 check_tool() {
     command -v "$1" >/dev/null 2>&1 || {
@@ -264,16 +252,11 @@ check_tool() {
 check_tool go
 check_tool pnpm
 check_tool wails3
-if [[ "$HOST_OS" == "Darwin" ]]; then
-    check_tool hdiutil
-    check_tool codesign
-else
-    if [[ "$BUILD_MODE" == "installer" || "$BUILD_MODE" == "all" ]]; then
-        check_tool nfpm
-    fi
-    if [[ "$BUILD_MODE" == "appimage" || "$BUILD_MODE" == "all" ]]; then
-        check_tool appimagetool
-    fi
+if [[ "$BUILD_MODE" == "installer" || "$BUILD_MODE" == "all" ]]; then
+    check_tool nfpm
+fi
+if [[ "$BUILD_MODE" == "appimage" || "$BUILD_MODE" == "all" ]]; then
+    check_tool appimagetool
 fi
 
 EXPECTED_WAILS_VERSION="$(go list -m -f '{{.Version}}' github.com/wailsapp/wails/v3)"
@@ -293,13 +276,8 @@ if [[ "$HOST_OS" == "Linux" ]]; then
 fi
 
 echo "========================================"
-if [[ "$HOST_OS" == "Linux" ]]; then
-    echo "YukiHub Wails v3 Linux Build"
-    echo "Target: linux/$TARGET_ARCH"
-else
-    echo "YukiHub Wails v3 macOS Build"
-    echo "Target: darwin/$TARGET_ARCH"
-fi
+echo "YukiHub Wails v3 Linux Build"
+echo "Target: linux/$TARGET_ARCH"
 echo "Build Mode: $BUILD_MODE"
 echo "Version: $VERSION"
 if [[ "$HOST_OS" == "Linux" ]]; then echo "Package Version: $(linux_package_version "$VERSION")"; fi
@@ -309,8 +287,7 @@ echo "Bangumi OAuth Injection: $BANGUMI_OAUTH_STATUS"
 echo "Hikarinagi OAuth Injection: $HIKARINAGI_OAUTH_STATUS"
 echo "TouchGAL Token Injection: $TOUCHGAL_TOKEN_STATUS"
 echo "Umbra Registration Token Injection: $UMBRA_REGISTRATION_STATUS"
-if [[ "$HOST_OS" == "Linux" && -f "$LINUX_SEVENZIP_SOURCE" ]]; then echo "Bundled 7zz: $LINUX_SEVENZIP_SOURCE"; fi
-if [[ "$HOST_OS" == "Darwin" && -f "$MAC_SEVENZIP_SOURCE" ]]; then echo "Bundled 7zz: $MAC_SEVENZIP_SOURCE"; fi
+if [[ -f "$LINUX_SEVENZIP_SOURCE" ]]; then echo "Bundled 7zz: $LINUX_SEVENZIP_SOURCE"; fi
 echo "========================================"
 echo
 
@@ -332,9 +309,7 @@ if [[ "$HOST_OS" == "Linux" ]]; then
         mkdir -p "$BIN_DIR"
         GOOS=linux GOARCH="$TARGET_ARCH" CGO_ENABLED=1 \
             go build -tags "$GO_BUILD_TAGS" -trimpath -buildvcs=false -ldflags "$ldflags" -o "$APP_BINARY" .
-        GOOS=linux GOARCH="$TARGET_ARCH" CGO_ENABLED=1 \
-            go build -tags "$GO_BUILD_TAGS" -trimpath -buildvcs=false -ldflags "$ldflags" -o "$CLI_BINARY" ./cmd/yukihubcli
-        chmod 755 "$APP_BINARY" "$CLI_BINARY"
+        chmod 755 "$APP_BINARY"
     }
 
     stage_linux_sevenzip() {
@@ -392,12 +367,6 @@ fi
 EOF
             write_linux_runtime_env
             cat <<'EOF'
-case "${1:-}" in
-    cli|yukihubcli)
-        shift
-        exec "$APP_DIR/usr/bin/yukihubcli" "$@"
-        ;;
-esac
 exec "$APP_DIR/usr/bin/YukiHub" "$@"
 EOF
         } > "$target"
@@ -462,8 +431,7 @@ EOF
         cp "$LINUX_APPIMAGE_STAGING/com.yukihub.desktop.desktop" \
             "$LINUX_APPIMAGE_STAGING/usr/share/applications/com.yukihub.desktop.desktop"
         cp "$APP_BINARY" "$LINUX_APPIMAGE_STAGING/usr/bin/YukiHub"
-        cp "$CLI_BINARY" "$LINUX_APPIMAGE_STAGING/usr/bin/yukihubcli"
-        chmod 755 "$LINUX_APPIMAGE_STAGING/usr/bin/YukiHub" "$LINUX_APPIMAGE_STAGING/usr/bin/yukihubcli"
+        chmod 755 "$LINUX_APPIMAGE_STAGING/usr/bin/YukiHub"
         stage_linux_sevenzip "$LINUX_APPIMAGE_STAGING/usr/bin/7zz"
         cp build/appicon.png "$LINUX_APPIMAGE_STAGING/com.yukihub.desktop.png"
         cp build/appicon.png "$LINUX_APPIMAGE_STAGING/usr/share/icons/hicolor/512x512/apps/com.yukihub.desktop.png"
@@ -481,87 +449,3 @@ EOF
     echo "========================================"
     exit 0
 fi
-
-echo "[1/5] Generating macOS icon..."
-wails3 generate icons -input build/appicon.png -macfilename build/darwin/icons.icns
-
-echo "[2/5] Building GUI and CLI..."
-mkdir -p "$BIN_DIR"
-GOOS=darwin GOARCH="$TARGET_ARCH" CGO_ENABLED=1 \
-    CGO_CFLAGS="-mmacosx-version-min=12.0" \
-    CGO_LDFLAGS="-mmacosx-version-min=12.0" \
-    MACOSX_DEPLOYMENT_TARGET="12.0" \
-    go build -tags "production,private_mac_apis" -trimpath -buildvcs=false -ldflags "$LDFLAGS_INSTALLER" -o "$APP_BINARY" .
-GOOS=darwin GOARCH="$TARGET_ARCH" CGO_ENABLED=1 \
-    CGO_CFLAGS="-mmacosx-version-min=12.0" \
-    CGO_LDFLAGS="-mmacosx-version-min=12.0" \
-    MACOSX_DEPLOYMENT_TARGET="12.0" \
-    go build -tags production -trimpath -buildvcs=false -ldflags "$LDFLAGS_INSTALLER" -o "$CLI_BINARY" ./cmd/yukihubcli
-chmod 755 "$APP_BINARY" "$CLI_BINARY"
-
-echo "[3/5] Creating app bundle..."
-rm -rf "$APP_BUNDLE"
-mkdir -p "$APP_BUNDLE/Contents/MacOS" "$APP_BUNDLE/Contents/Resources/bin"
-cp "$APP_BINARY" "$APP_BUNDLE/Contents/MacOS/YukiHub"
-cp "$CLI_BINARY" "$APP_BUNDLE/Contents/Resources/bin/yukihubcli"
-cp build/darwin/icons.icns "$APP_BUNDLE/Contents/Resources/icons.icns"
-cp build/darwin/Info.plist "$APP_BUNDLE/Contents/Info.plist"
-chmod 755 "$APP_BUNDLE/Contents/MacOS/YukiHub" "$APP_BUNDLE/Contents/Resources/bin/yukihubcli"
-
-if [[ -f "$MAC_SEVENZIP_SOURCE" ]]; then
-    cp "$MAC_SEVENZIP_SOURCE" "$APP_BUNDLE/Contents/Resources/bin/7zz"
-    chmod 755 "$APP_BUNDLE/Contents/Resources/bin/7zz"
-fi
-
-echo "[4/5] Signing app bundle..."
-if [[ -n "${MACOS_SIGN_IDENTITY:-}" ]]; then
-    codesign --force --deep --options runtime --timestamp --sign "$MACOS_SIGN_IDENTITY" "$APP_BUNDLE"
-else
-    codesign --force --deep --sign - "$APP_BUNDLE"
-fi
-codesign --verify --deep --strict --verbose=2 "$APP_BUNDLE"
-
-echo "[5/5] Creating DMG..."
-rm -rf "$DMG_STAGING"
-mkdir -p "$DMG_STAGING"
-ditto "$APP_BUNDLE" "$DMG_STAGING/YukiHub.app"
-ln -s /Applications "$DMG_STAGING/Applications"
-rm -f "$DMG_PATH"
-
-DMG_SOURCE_SIZE_KB="$(du -sk "$DMG_STAGING" | awk '{print $1}')"
-if [[ ! "$DMG_SOURCE_SIZE_KB" =~ ^[0-9]+$ ]]; then
-    echo "ERROR: Unable to determine the DMG source size."
-    exit 1
-fi
-DMG_SIZE_MB=$(((((DMG_SOURCE_SIZE_KB + 1023) / 1024) * 2) + 64))
-
-echo "DMG source size: ${DMG_SOURCE_SIZE_KB} KiB"
-echo "DMG image capacity: ${DMG_SIZE_MB} MiB"
-df -h "$BIN_DIR"
-hdiutil create \
-    -volname "YukiHub" \
-    -srcfolder "$DMG_STAGING" \
-    -size "${DMG_SIZE_MB}m" \
-    -fs HFS+ \
-    -ov \
-    -format UDZO \
-    "$DMG_PATH" >/dev/null
-rm -rf "$DMG_STAGING"
-
-if [[ -n "${MACOS_SIGN_IDENTITY:-}" ]]; then
-    codesign --force --timestamp --sign "$MACOS_SIGN_IDENTITY" "$DMG_PATH"
-    codesign --verify --verbose=2 "$DMG_PATH"
-fi
-
-if [[ -n "${MACOS_NOTARY_PROFILE:-}" ]]; then
-    xcrun notarytool submit "$DMG_PATH" --keychain-profile "$MACOS_NOTARY_PROFILE" --wait
-    xcrun stapler staple "$DMG_PATH"
-    xcrun stapler validate "$DMG_PATH"
-fi
-
-echo
-echo "========================================"
-echo "Build completed successfully."
-echo "DMG: $DMG_PATH"
-echo "App bundle: $APP_BUNDLE"
-echo "========================================"

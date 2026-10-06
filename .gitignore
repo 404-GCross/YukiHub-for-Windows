@@ -10,6 +10,7 @@ build/*.db
 node_modules
 frontend/dist
 frontend/packages/*/dist
+build/linux/appimage/
 .idea
 .DS_Store
 frontend/package.json.md5
