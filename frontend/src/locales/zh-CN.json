@@ -473,12 +473,6 @@
       "selectFileFailed": "选择文件失败",
       "nsfwMarked": "已标记为 NSFW",
       "nsfwUnmarked": "已取消 NSFW 标记"
-    },
-    "manualTiming": {
-      "start": "仅计时",
-      "running": "计时中",
-      "started": "已开始记录《{{name}}》的游玩时长",
-      "startFailed": "《{{name}}》没能开始计时"
     }
   },
   "gameReview": {
@@ -1227,6 +1221,11 @@
       "cropConfirm": "确认裁剪"
     },
     "game": {
+      "timingMode": "计时模式",
+      "timingModeHint": "进程监测：按游戏进程自动开始与结束计时，无需手动操作。可配合下方选项微调。",
+      "timingModeProcess": "进程监测",
+      "timingModeManual": "手动计时（Yuki 式）",
+      "timingModeManualHint": "手动计时：点「启动」立即开始计时，不做任何进程监测；游玩结束后回到 YukiHub，在顶部计时岛点停止按钮结算。这是手机版的计时方式，也最准确。",
       "recordActiveOnly": "仅记录活跃游玩时长",
       "recordActiveOnlyHint": "启用后，仅当游戏窗口处于前台焦点时才会记录游玩时间。这可以更准确地统计实际游玩时长，排除挂机和后台运行时间。",
       "warningTitle": "注意：",

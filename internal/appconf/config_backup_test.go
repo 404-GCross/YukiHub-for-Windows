@@ -74,6 +74,36 @@ func TestParseConfigWithBackupIgnoresUnusableSnapshot(t *testing.T) {
 	}
 }
 
+// 主文件读不了（被独占/权限）且快照也坏：必须退默认值而不是 panic，
+// 也绝不能回写 —— 主文件这次只是读不到，不代表它坏了。
+func TestApplyConfigFallbackNeverPanicsOnUnusableBackup(t *testing.T) {
+	outcome, config := applyConfigFallback([]byte("{oops"), defaultAppConfig(), os.ErrPermission, "X:\\gone\\appconf.json.bak")
+	if outcome != configLoadFellBackToDefaults {
+		t.Fatalf("outcome = %v, want configLoadFellBackToDefaults", outcome)
+	}
+	if config == nil {
+		t.Fatal("config must never be nil")
+	}
+	if config.MCPPort != defaultAppConfig().MCPPort {
+		t.Fatalf("expected defaults, got port=%d", config.MCPPort)
+	}
+}
+
+// 主文件读不了但快照可用：正常恢复。
+func TestApplyConfigFallbackUsesReadableBackup(t *testing.T) {
+	good, err := json.Marshal(&AppConfig{MCPPort: 45678})
+	if err != nil {
+		t.Fatal(err)
+	}
+	outcome, config := applyConfigFallback(good, defaultAppConfig(), os.ErrPermission, "X:\\gone\\appconf.json.bak")
+	if outcome != configLoadRecoveredFromBackup {
+		t.Fatalf("outcome = %v, want configLoadRecoveredFromBackup", outcome)
+	}
+	if config.MCPPort != 45678 {
+		t.Fatalf("snapshot values were not restored: port=%d", config.MCPPort)
+	}
+}
+
 // Windows 上 PowerShell / 部分编辑器会写 BOM，那不是「损坏」，不该丢设置。
 func TestParseConfigWithBackupAcceptsUTF8BOM(t *testing.T) {
 	dir := t.TempDir()

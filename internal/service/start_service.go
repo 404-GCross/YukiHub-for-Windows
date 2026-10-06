@@ -76,6 +76,10 @@ type StartService struct {
 	activeSessions   map[string]*activePlaySession
 	activeSessionsMu sync.Mutex
 
+	// setProcessMuted 可注入，便于在不碰真实 COM 的情况下测试焦点状态机。
+	// Init 时若为 nil 会补上 audioutils.SetProcessMuted。
+	setProcessMuted func(processID uint32, muted bool) (matched bool, err error)
+
 	// 「回到 YukiHub」兜底 watcher：只在存在无进程会话时运行，
 	// 用 appForegroundGrace 的宽限判断用户是不是真的回来了。
 	foregroundFallbackMu     sync.Mutex
@@ -99,6 +103,12 @@ type processHandoffState struct {
 	savedProcessName string
 	exitWatch        launcherpkg.ExitWatch
 	handoffs         int
+	// launcherFallback 标记被监控的进程并非「确认的游戏本体」：它可能是
+	// 检测超时后兜底监控的启动器（AGES 等引擎的自启动器正好是这种），或
+	// 用户显式声明按启动器监控的进程。这类进程把控制权交给新进程的时刻
+	// 完全取决于用户在菜单里停留多久，继任者检测不能按 60 秒启动期裁剪
+	// 宽限重试，否则会把手-off 误判成「游戏已关闭」提前结算。
+	launcherFallback bool
 }
 
 type activePlaySession struct {
@@ -125,7 +135,15 @@ type activePlaySession struct {
 	// `<60 秒` 规则删掉（真丢记录），前端计时也会冻结在 00:00:00。
 	activeTrackStarted atomic.Bool
 	// activeSeconds 由活跃窗口计时回调更新，供 15 秒心跳持久化读取。
-	activeSeconds   atomic.Int64
+	activeSeconds atomic.Int64
+	// exitTimeNanos 记录被监控进程**真正退出**的时刻（UnixNano；0 = 非进程
+	// 退出路径）。继任者检测有数秒宽限，若等检测结束后才取「现在」当
+	// endTime，宽限会被误算进游玩时长；结算时优先用它。
+	exitTimeNanos atomic.Int64
+	// uiIdleEmitted 标记已经提前对前端发过 idle（兜底监控的进程退出时，
+	// 岛屿立刻消失、宽限挪到后台）。结算时就不要再发 ending —— 那会把刚
+	// 消失的计时岛闪回来一下。
+	uiIdleEmitted   atomic.Bool
 	audioMu         sync.Mutex
 	audioPID        uint32
 	audioMuted      bool
@@ -163,6 +181,9 @@ func NewStartService() *StartService {
 //wails:ignore
 func (s *StartService) Init(ctx context.Context, db *sql.DB, config *appconf.AppConfig) {
 	s.ctx = ctx
+	if s.setProcessMuted == nil {
+		s.setProcessMuted = audioutils.SetProcessMuted
+	}
 	// db 不再使用，但保留参数以保持与其他服务的接口一致性
 	s.config = config
 	// 初始化内部服务
@@ -392,6 +413,18 @@ func (s *StartService) startGame(gameID string, options launcherpkg.LaunchOption
 		Reason:    "launched",
 	})
 
+	// 手动计时模式（Yuki 式计时）：游戏照常拉起，但**不做任何进程监测** ——
+	// 直接进 playing，由用户回到 YukiHub 手动点停止（EndCurrentPlaySession）结算。
+	// 这是手机版的口径（Android 上本来也监控不到进程），也彻底绕开「启动器套娃 /
+	// 进程名对不上 / 游戏秒退」带来的时长识别问题。句柄不再用于等待退出，直接关掉。
+	if s.usesManualTimingMode() {
+		s.closeLauncherHandle(launcher)
+		s.emitGameRuntimePlaying(session, "manual-timing-started")
+		s.requestHomeRefresh()
+		applog.LogInfof(s.ctx, "Game %s launched under manual timing mode; process monitoring disabled", gameID)
+		return true, nil
+	}
+
 	// 启动进程检测和监控 goroutine
 	go s.detectAndMonitorProcess(session, launcher, launcherExeName, plan.DetectionDir, processName, plan)
 
@@ -457,6 +490,7 @@ func (s *StartService) detectAndMonitorProcess(session *activePlaySession, launc
 	if result.CloseLauncherHandle {
 		s.closeLauncherHandle(launcher)
 	}
+	handoff.launcherFallback = result.MonitoredLauncherAsGame
 	if result.RequireProcessSelection || result.ProcessID == 0 {
 		// 进程识别失败 ≠ 用户没在玩。这里以前直接删会话（deleteShortOrCancelledSession），
 		// 于是「启动器套娃 / 进程名对不上 / 游戏秒退」这些情况全变成白玩一场 ——
@@ -511,6 +545,9 @@ func (s *StartService) monitorLauncherOnly(session *activePlaySession, launcher 
 			launchDir:        plan.DetectionDir,
 			savedProcessName: session.game.ProcessName,
 			exitWatch:        plan.ExitWatch,
+			// 显式按启动器监控 ≠ 确认了游戏本体：AGES 这类「exe 即菜单，
+			// 点开始后自重启」的引擎也会在这里发生任意时刻的接力。
+			launcherFallback: true,
 		}
 	}
 	if launcher.Handle != 0 {
@@ -656,10 +693,24 @@ func (s *StartService) waitForProcessExit(session *activePlaySession, processNam
 	select {
 	case <-exitChan:
 		applog.LogInfof(s.ctx, "Game process %s (PID %d) has exited", processName, processID)
+		// 先记下真实退出时刻：继任者检测有数秒宽限，等检测结束后再取
+		// 「现在」当 endTime 会把宽限算进游玩时长。
+		session.exitTimeNanos.Store(time.Now().UnixNano())
 		// 先解除静音：继任者检测最多要等几秒，不能把静音状态拖到那之后。
 		s.restoreSessionAudio(session)
+		if handoff != nil && handoff.launcherFallback {
+			// 兜底监控的进程退出：UI **立刻**放行（idle → 计时岛马上消失，
+			// 退游戏零延迟），完整宽限挪到后台找自重启的接力进程，找到就把
+			// 同一场会话续上。同步等宽限会让每次退游戏凭空卡好几秒。
+			session.uiIdleEmitted.Store(true)
+			s.emitGameRuntimeIdle(session, "launcher-exit-handoff-watch")
+			s.requestHomeRefresh()
+			s.watchLauncherHandoff(session, processID, processName, handoff)
+			return
+		}
 		// 进程退出不一定是游戏结束：彩窗/启动器可能已把控制权交给了新进程
 		// （spawn 子进程后自退、同名 re-exec 等），先做一轮继任者检测。
+		// 确认过身份的游戏进程只做一次即时检查，不拖慢正常退出。
 		if successor, ok := s.detectSuccessorProcess(session, processID, processName, handoff); ok {
 			s.continueMonitoringSuccessor(session, successor, handoff)
 			return
@@ -675,6 +726,25 @@ func (s *StartService) waitForProcessExit(session *activePlaySession, processNam
 	s.finalizePlaySession(session, "process-exited")
 }
 
+// watchLauncherHandoff 在兜底监控的进程退出后，于后台宽限窗内继续找自重启的
+// 接力进程（AGES 等引擎：菜单进程退出后真身才迟迟出现）。
+//
+// UI 不等这个窗口：退出瞬间已经发过 idle，岛屿早就消失了。宽限结束时——
+//   - 找到接力且本会话仍是当前注册会话 → 续接（岛屿重新出现，计时连续）；
+//   - 否则 → 真正结算，endTime 用进程真实退出时刻，宽限不计入时长。
+func (s *StartService) watchLauncherHandoff(session *activePlaySession, exitedPID uint32, exitedName string, handoff *processHandoffState) {
+	go func() {
+		successor, ok := s.detectSuccessorProcess(session, exitedPID, exitedName, handoff)
+		if ok && s.getActiveSession(session.gameID) == session {
+			// 宽限期间用户可能重新启动了游戏（注册表已换成新会话）：
+			// 旧会话安静结算，别去抢新会话的 UI。
+			s.continueMonitoringSuccessor(session, successor, handoff)
+			return
+		}
+		s.finalizePlaySession(session, "process-exited")
+	}()
+}
+
 // detectSuccessorProcess 在被监控进程退出后，于短暂宽限期内寻找接管的游戏进程。
 func (s *StartService) detectSuccessorProcess(session *activePlaySession, exitedPID uint32, exitedName string, handoff *processHandoffState) (processutils.ProcessInfo, bool) {
 	if handoff == nil {
@@ -686,13 +756,14 @@ func (s *StartService) detectSuccessorProcess(session *activePlaySession, exited
 	}
 
 	input := launcherpkg.SuccessorDetectionInput{
-		GameID:            session.gameID,
-		ExitedPID:         exitedPID,
-		ExitedProcessName: exitedName,
-		LaunchDir:         handoff.launchDir,
-		SavedProcessName:  handoff.savedProcessName,
-		SessionStart:      session.startTime,
-		SelfPID:           uint32(os.Getpid()),
+		GameID:                      session.gameID,
+		ExitedPID:                   exitedPID,
+		ExitedProcessName:           exitedName,
+		LaunchDir:                   handoff.launchDir,
+		SavedProcessName:            handoff.savedProcessName,
+		SessionStart:                session.startTime,
+		SelfPID:                     uint32(os.Getpid()),
+		MonitoredIsLauncherFallback: handoff.launcherFallback,
 	}
 	return launcherpkg.DetectSuccessorProcess(input, serviceDetectionLogger{ctx: s.ctx})
 }
@@ -744,23 +815,32 @@ func (s *StartService) finalizePlaySessionOnce(session *activePlaySession, reaso
 
 	close(session.done)
 	s.unregisterActiveSession(gameID, sessionID)
+	// 结束时间优先取被监控进程的真实退出时刻（进程退出路径在退出瞬间已记下，
+	// 继任者检测 / 音频恢复的耗时都不该算进游玩时长）；手动结束、前台兜底、
+	// 24h 超时没有这个时刻，退回「现在」。
+	endTime := time.Now()
+	if nanos := session.exitTimeNanos.Load(); nanos != 0 {
+		endTime = time.Unix(0, nanos)
+	}
 	s.stopSessionAudio(session)
 
 	// 确保停止追踪（无论如何都要执行）
 	activeSeconds := s.activeTimeTracker.StopTracking(gameID)
 
-	s.emitGameRuntimeChanged(GameRuntimeChangedEvent{
-		GameID:        gameID,
-		Game:          &session.game,
-		SessionID:     sessionID,
-		StartTime:     startTime,
-		State:         GameRuntimeStateEnding,
-		Reason:        reason,
-		TimingMode:    s.runtimeTimingMode(session),
-		ActiveSeconds: s.runtimeActiveSeconds(session, activeSeconds),
-	})
-
-	endTime := time.Now()
+	// 兜底路径已在进程退出瞬间发过 idle（岛屿已消失），这里再发 ending 会
+	// 把岛闪回来；其余路径维持「先 ending 后 idle」的原有节奏。
+	if !session.uiIdleEmitted.Load() {
+		s.emitGameRuntimeChanged(GameRuntimeChangedEvent{
+			GameID:        gameID,
+			Game:          &session.game,
+			SessionID:     sessionID,
+			StartTime:     startTime,
+			State:         GameRuntimeStateEnding,
+			Reason:        reason,
+			TimingMode:    s.runtimeTimingMode(session),
+			ActiveSeconds: s.runtimeActiveSeconds(session, activeSeconds),
+		})
+	}
 
 	// 只有真正跑过活跃追踪的会话才用活跃时长；手动计时与进程识别失败的降级会话
 	// 都没有追踪器可用，一律回退墙钟（否则会被 <60 秒规则删掉）。
@@ -1182,8 +1262,11 @@ func (s *StartService) handleFocusUpdate(update timerutils.FocusUpdate) {
 
 	shouldMute := !update.IsFocused
 	if session.audioStateKnown && session.audioPID == update.ProcessID && session.audioLastError == "" {
-		if !shouldMute {
-			// 已经在前台且没有残留错误：无事可做。
+		// 已在前台且当前并没有静音：无事可做。
+		// audioMuted 这个守卫不能丢 —— 游戏从后台回前台时 shouldMute 变 false，
+		// 但 audioMuted 还是 true，这里若直接 return 就**永远不会解除静音**，
+		// 游戏回到前台也没声音（这是加节流时必须一并保住的分支）。
+		if !shouldMute && !session.audioMuted {
 			return
 		}
 		// 已经在后台静音：仍然要隔一段时间重扫一次，因为游戏可能在不切换焦点的
@@ -1191,7 +1274,7 @@ func (s *StartService) handleFocusUpdate(update timerutils.FocusUpdate) {
 		// （见 timerutils.active_time_tracker），COM 全量枚举很贵 ——
 		// 每条会话要两次 QueryInterface + GetProcessID + GetSessionInstanceIdentifier。
 		// 不节流的话长时间挂机就是每秒压一次 COM。
-		if session.audioMuted && time.Since(session.audioLastMuteScan) < audioBackgroundRescanInterval {
+		if shouldMute && session.audioMuted && time.Since(session.audioLastMuteScan) < audioBackgroundRescanInterval {
 			return
 		}
 	}
@@ -1204,7 +1287,7 @@ func (s *StartService) handleFocusUpdate(update timerutils.FocusUpdate) {
 		}
 	}
 
-	matched, err := audioutils.SetProcessMuted(update.ProcessID, shouldMute)
+	matched, err := s.setProcessMuted(update.ProcessID, shouldMute)
 	// 枚举过程中可能先改掉了部分会话、随后才在另一条上报错；这些改动要记下来。
 	if matched {
 		session.audioPID = update.ProcessID
@@ -1264,7 +1347,7 @@ func (s *StartService) restoreSessionAudioLocked(session *activePlaySession) {
 		return
 	}
 	if session.audioMuted {
-		matched, err := audioutils.SetProcessMuted(session.audioPID, false)
+		matched, err := s.setProcessMuted(session.audioPID, false)
 		// matched 优先于 err：一次恢复里可能「这个 PID 的新会话解了、上一代遗留的
 		// 死会话解不了」。此时若因为 err 提前返回，audioStateKnown 会永远卡在
 		// 「已静音」，之后每次重试都重复同一个结果 —— 状态机彻底死锁。
@@ -1295,6 +1378,15 @@ func (s *StartService) logAudioErrorLocked(session *activePlaySession, processID
 	}
 	session.audioLastError = message
 	applog.LogWarningf(s.ctx, "Failed to update background mute for game %s (PID %d): %v", session.gameID, processID, err)
+}
+
+// usesManualTimingMode 判断当前是不是「手动计时 / Yuki 式计时」模式。
+//
+// 手动计时下启动游戏不做进程监测，会话一直挂着直到用户手动停止；只有
+// 「进程监测」模式才走 detectAndMonitorProcess 那套自动结算。
+func (s *StartService) usesManualTimingMode() bool {
+	return s.config != nil &&
+		appconf.NormalizePlayTimingMode(s.config.PlayTimingMode) == appconf.PlayTimingModeManual
 }
 
 // usesActiveTimeTracking 判断这次会话该不该用「活跃时长」结算。

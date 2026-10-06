@@ -72,6 +72,19 @@ const MaxScheduledDBBackupIntervalMinutes = 10080
 const DefaultScheduledDBBackupTime = "03:00"
 const DefaultLocalDBBackupRetention = 5
 
+// 计时模式决定一次游玩会话「什么时候开始、什么时候结束、时长怎么算」。
+//
+//   - process（默认）：按被监控的游戏进程存活墙钟计时（可叠加「仅记录活跃时长」），
+//     进程退出后自动结算。这是 LunaBox 血统的原始行为。
+//   - manual（手动计时 / Yuki 式计时）：点「启动」即开始计时，全程**不做任何
+//     进程监测**，回到 YukiHub 手动点「停止」才结算。与手机版一致（手机上本来
+//     也监控不到进程），且完全不受进程识别失败 / 启动器套娃的影响。
+const (
+	PlayTimingModeProcess = "process"
+	PlayTimingModeManual  = "manual"
+	DefaultPlayTimingMode = PlayTimingModeProcess
+)
+
 // AppConfig 应用配置结构体
 type AppConfig struct {
 	BangumiAccessToken            string   `json:"access_token,omitempty"`
@@ -222,6 +235,9 @@ type AppConfig struct {
 	RecordActiveTimeOnly       bool `json:"record_active_time_only"`       // 仅记录活跃游玩时长（窗口在前台时）
 	MuteGameInBackground       bool `json:"mute_game_in_background"`       // 游戏窗口进入后台时静音
 	ProcessDetectionTimeoutSec int  `json:"process_detection_timeout_sec"` // 启动后检测实际游戏进程的最长等待时间
+	// PlayTimingMode 是全局计时模式：process（进程监测，默认）/ manual（手动计时）。
+	// 空串（老配置里没有这个字段）按默认处理，见 NormalizePlayTimingMode。
+	PlayTimingMode string `json:"play_timing_mode,omitempty"`
 	// 自动更新配置
 	CheckUpdateOnStartup bool   `json:"check_update_on_startup"`     // 启动时自动检查更新
 	UpdateCheckURL       string `json:"update_check_url,omitempty"`  // 自定义更新检查 URL
@@ -385,6 +401,7 @@ func defaultAppConfig() *AppConfig {
 		RecordActiveTimeOnly:       false, // 默认关闭，向后兼容
 		MuteGameInBackground:       false,
 		ProcessDetectionTimeoutSec: DefaultProcessDetectionTimeoutSec,
+		PlayTimingMode:             DefaultPlayTimingMode,
 		CheckUpdateOnStartup:       true, // 默认开启启动时检查更新
 		UpdateCheckURL:             "",
 		LastUpdateCheck:            "",
@@ -448,14 +465,11 @@ func LoadConfig() (*AppConfig, error) {
 	loadOutcome := configLoadPrimary
 	data, err := os.ReadFile(configPath)
 	if err != nil {
-		backupPath := configPath + configBackupSuffix
-		backupData, backupErr := os.ReadFile(backupPath)
+		backupData, backupErr := os.ReadFile(configPath + configBackupSuffix)
 		if backupErr != nil {
 			return config, err
 		}
-		log.Printf("failed to read appconf (%v), falling back to %s", err, backupPath)
-		loadOutcome = configLoadRecoveredFromBackup
-		*config = *parseConfigBytes(backupData, config)
+		loadOutcome, config = applyConfigFallback(backupData, config, err, configPath+configBackupSuffix)
 	} else {
 		var parsed *AppConfig
 		loadOutcome, parsed = parseConfigWithBackup(data, configPath, config)
@@ -477,6 +491,7 @@ func LoadConfig() (*AppConfig, error) {
 	config.ScrapedTagLimit = NormalizeScrapedTagLimit(config.ScrapedTagLimit)
 	config.HomeGameCarouselIntervalSec = NormalizeHomeGameCarouselIntervalSec(config.HomeGameCarouselIntervalSec)
 	config.ProcessDetectionTimeoutSec = NormalizeProcessDetectionTimeoutSec(config.ProcessDetectionTimeoutSec)
+	config.PlayTimingMode = NormalizePlayTimingMode(config.PlayTimingMode)
 	config.GameCardLayout = NormalizeGameCardLayout(config.GameCardLayout)
 	config.BigScreenDefaultCategory = NormalizeBigScreenDefaultCategory(config.BigScreenDefaultCategory)
 	config.BigScreenEffectLevel = NormalizeBigScreenEffectLevel(config.BigScreenEffectLevel)
@@ -581,6 +596,7 @@ func SaveConfig(config *AppConfig) error {
 	config.ScrapedTagLimit = NormalizeScrapedTagLimit(config.ScrapedTagLimit)
 	config.HomeGameCarouselIntervalSec = NormalizeHomeGameCarouselIntervalSec(config.HomeGameCarouselIntervalSec)
 	config.ProcessDetectionTimeoutSec = NormalizeProcessDetectionTimeoutSec(config.ProcessDetectionTimeoutSec)
+	config.PlayTimingMode = NormalizePlayTimingMode(config.PlayTimingMode)
 	config.GameCardLayout = NormalizeGameCardLayout(config.GameCardLayout)
 	config.BigScreenDefaultCategory = NormalizeBigScreenDefaultCategory(config.BigScreenDefaultCategory)
 	config.BigScreenEffectLevel = NormalizeBigScreenEffectLevel(config.BigScreenEffectLevel)
@@ -622,6 +638,18 @@ const (
 	// 损坏原文已另存为 .corrupt，那是唯一的现场证据。
 	configLoadFellBackToDefaults
 )
+
+// applyConfigFallback 主文件读不了时的回退决策：快照可用就用快照；
+// 快照也解析不了只能用默认值，且**不回写** —— 主文件这次只是读不到，
+// 不代表它坏了，覆盖掉可能毁掉唯一一份可用配置。
+func applyConfigFallback(backupData []byte, defaults *AppConfig, readErr error, backupPath string) (configLoadOutcome, *AppConfig) {
+	if parsed := parseConfigBytes(backupData, defaults); parsed != nil {
+		log.Printf("failed to read appconf (%v), falling back to %s", readErr, backupPath)
+		return configLoadRecoveredFromBackup, parsed
+	}
+	log.Printf("failed to read appconf (%v) and %s is unusable; using defaults without writing back", readErr, backupPath)
+	return configLoadFellBackToDefaults, defaultAppConfig()
+}
 
 // parseConfigBytes 把一段 JSON 解析进 defaults 的副本，剥掉 UTF-8 BOM。
 //

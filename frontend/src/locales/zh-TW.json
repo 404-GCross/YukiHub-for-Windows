@@ -473,12 +473,6 @@
       "selectFileFailed": "選擇檔案失敗",
       "nsfwMarked": "已標記為 NSFW",
       "nsfwUnmarked": "已取消 NSFW 標記"
-    },
-    "manualTiming": {
-      "start": "僅計時",
-      "running": "計時中",
-      "started": "已開始記錄《{{name}}》的遊玩時長",
-      "startFailed": "《{{name}}》沒能開始計時"
     }
   },
   "gameReview": {
@@ -1227,6 +1221,11 @@
       "cropConfirm": "確認裁剪"
     },
     "game": {
+      "timingMode": "計時模式",
+      "timingModeHint": "程序監測：依遊戲程序自動開始與結束計時，無需手動操作。可配合下方選項微調。",
+      "timingModeProcess": "程序監測",
+      "timingModeManual": "手動計時（Yuki 式）",
+      "timingModeManualHint": "手動計時：點「啟動」立即開始計時，不做任何程序監測；遊玩結束後回到 YukiHub，在頂部計時島點停止按鈕結算。這是手機版的計時方式，也最準確。",
       "recordActiveOnly": "僅記錄活躍遊玩時長",
       "recordActiveOnlyHint": "啟用後，僅當遊戲視窗處於前臺焦點時才會記錄遊玩時間。這可以更準確地統計實際遊玩時長，排除掛機和後臺執行時間。",
       "warningTitle": "注意：",

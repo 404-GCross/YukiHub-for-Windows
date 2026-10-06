@@ -120,86 +120,124 @@ export function GameSettingsPanel({
     }
   };
 
+  // 「手动计时 / Yuki 式计时」：点启动即开始计时，不做任何进程监测，回到
+  // YukiHub 手动点停止才结算。下面那几项进程相关的设置在这种模式下都无意义。
+  const isManualTiming = formData.play_timing_mode === "manual";
+  const timingModeOptions = [
+    { value: "process", label: t("settings.game.timingModeProcess") },
+    { value: "manual", label: t("settings.game.timingModeManual") },
+  ];
+
   return (
     <>
       <div className="space-y-2">
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex-1 space-y-2">
-            <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
-              {t("settings.game.recordActiveOnly")}
-            </label>
-            <p className="text-xs text-brand-500 dark:text-brand-400">
-              {t("settings.game.recordActiveOnlyHint")}
-            </p>
-          </div>
-          <BetterSwitch
-            id="record_active_time_only"
-            checked={formData.record_active_time_only || false}
-            onCheckedChange={checked =>
-              onChange({
-                ...formData,
-                record_active_time_only: checked,
-              } as appconf.AppConfig)}
-          />
-        </div>
+        <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
+          {t("settings.game.timingMode")}
+        </label>
+        <BetterSelect
+          name="play_timing_mode"
+          value={isManualTiming ? "manual" : "process"}
+          options={timingModeOptions}
+          onChange={value =>
+            onChange({
+              ...formData,
+              play_timing_mode: value,
+            } as appconf.AppConfig)}
+          className="w-full"
+        />
+        <p className="text-xs text-brand-500 dark:text-brand-400">
+          {isManualTiming
+            ? t("settings.game.timingModeManualHint")
+            : t("settings.game.timingModeHint")}
+        </p>
       </div>
 
-      {backgroundProcessMuteSupported ? (
-        <div className="mt-6 border-t border-brand-200 dark:border-brand-700 pt-6">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex-1 space-y-2">
+      {/*
+        下面这几项只在「进程监测」模式下有意义：手动计时不跟踪任何进程，
+        既算不了活跃时长，也没有进程可静音、更没有进程可等待检测。
+      */}
+      {isManualTiming ? null : (
+        <>
+          <div className="mt-6 border-t border-brand-200 dark:border-brand-700 pt-6">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex-1 space-y-2">
+                <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
+                  {t("settings.game.recordActiveOnly")}
+                </label>
+                <p className="text-xs text-brand-500 dark:text-brand-400">
+                  {t("settings.game.recordActiveOnlyHint")}
+                </p>
+              </div>
+              <BetterSwitch
+                id="record_active_time_only"
+                checked={formData.record_active_time_only || false}
+                onCheckedChange={checked =>
+                  onChange({
+                    ...formData,
+                    record_active_time_only: checked,
+                  } as appconf.AppConfig)}
+              />
+            </div>
+          </div>
+
+          {backgroundProcessMuteSupported ? (
+            <div className="mt-6 border-t border-brand-200 dark:border-brand-700 pt-6">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex-1 space-y-2">
+                  <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
+                    {t("settings.game.muteInBackground")}
+                  </label>
+                  <p className="text-xs text-brand-500 dark:text-brand-400">
+                    {t("settings.game.muteInBackgroundHint")}
+                  </p>
+                </div>
+                <BetterSwitch
+                  id="mute_game_in_background"
+                  checked={formData.mute_game_in_background ?? false}
+                  onCheckedChange={checked =>
+                    onChange({
+                      ...formData,
+                      mute_game_in_background: checked,
+                    } as appconf.AppConfig)}
+                />
+              </div>
+            </div>
+          ) : null}
+
+          <div className="mt-6 border-t border-brand-200 dark:border-brand-700 pt-6">
+            <div className="space-y-2">
               <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
-                {t("settings.game.muteInBackground")}
+                {t("settings.game.processDetectionTimeout")}
               </label>
+              <BetterSelect
+                name="process_detection_timeout_sec"
+                value={String(formData.process_detection_timeout_sec || 60)}
+                options={processDetectionTimeoutOptions}
+                onChange={value =>
+                  onChange({
+                    ...formData,
+                    process_detection_timeout_sec: Number(value),
+                  } as appconf.AppConfig)}
+                className="w-full"
+              />
               <p className="text-xs text-brand-500 dark:text-brand-400">
-                {t("settings.game.muteInBackgroundHint")}
+                {t("settings.game.processDetectionTimeoutHint")}
               </p>
             </div>
-            <BetterSwitch
-              id="mute_game_in_background"
-              checked={formData.mute_game_in_background ?? false}
-              onCheckedChange={checked =>
-                onChange({
-                  ...formData,
-                  mute_game_in_background: checked,
-                } as appconf.AppConfig)}
-            />
-          </div>
-        </div>
-      ) : null}
-
-      <div className="mt-6 border-t border-brand-200 dark:border-brand-700 pt-6">
-        <div className="space-y-2">
-          <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
-            {t("settings.game.processDetectionTimeout")}
-          </label>
-          <BetterSelect
-            name="process_detection_timeout_sec"
-            value={String(formData.process_detection_timeout_sec || 60)}
-            options={processDetectionTimeoutOptions}
-            onChange={value =>
-              onChange({
-                ...formData,
-                process_detection_timeout_sec: Number(value),
-              } as appconf.AppConfig)}
-            className="w-full"
-          />
-          <p className="text-xs text-brand-500 dark:text-brand-400">
-            {t("settings.game.processDetectionTimeoutHint")}
-          </p>
-        </div>
-        <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-700 dark:bg-amber-900/20">
-          <div className="flex items-start gap-2">
-            <span className="i-mdi-alert mt-0.5 text-lg text-amber-600 dark:text-amber-400" />
-            <div className="text-xs text-amber-700 dark:text-amber-300">
-              <p className="mb-1 font-medium">
-                {t("settings.game.warningTitle")}
-              </p>
-              <p>{t("settings.game.processDetectionTimeoutWarning")}</p>
+            <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-700 dark:bg-amber-900/20">
+              <div className="flex items-start gap-2">
+                <span className="i-mdi-alert mt-0.5 text-lg text-amber-600 dark:text-amber-400" />
+                <div className="text-xs text-amber-700 dark:text-amber-300">
+                  <p className="mb-1 font-medium">
+                    {t("settings.game.warningTitle")}
+                  </p>
+                  <p>{t("settings.game.processDetectionTimeoutWarning")}</p>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
+        </>
+      )}
 
       {/* Launch Tools Configuration */}
       <div className="mt-6 border-t border-brand-200 dark:border-brand-700 pt-6">
