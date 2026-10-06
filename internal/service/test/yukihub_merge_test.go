@@ -220,3 +220,118 @@ func TestYukiHubImportMergeUpdatesMetadata(t *testing.T) {
 		t.Errorf("status = %q, want dropped（本地更新更晚时不得被旧快照覆盖）", status)
 	}
 }
+
+// TestYukiHubSyncMergeAppliesNewerFieldsOnly 验证 sync_merge（云同步 / WebDAV
+// 自持同步）对已有游戏的两条规则：
+//
+//  1. 对端 updated_at 不早于本地，才更新字段（与手机版 importGamesJson 一致）；
+//  2. 文本字段「非空才覆盖」——对端可能只带 games 段、没有任何 metadata_cache，
+//     那时 summary / company 全是空串，照抄会把桌面端刮削好的资料冲成空白。
+//
+// 这条规则只能用 sync_merge：merge_sessions 根本不碰游戏记录（手机端改过的
+// 状态同步不回来），merge 又会无条件照抄空值（桌面端资料被抹平）。
+func TestYukiHubSyncMergeAppliesNewerFieldsOnly(t *testing.T) {
+	targetDB, targetCleanup := setupTestDB(t)
+	defer targetCleanup()
+
+	createdAt := time.Date(2026, time.September, 28, 8, 0, 0, 0, time.Local)
+	localNewerAt := createdAt.Add(2 * time.Hour)
+	if _, err := targetDB.Exec(`
+		INSERT INTO games (id, name, summary, company, status, source_type, source_id, is_nsfw, hidden, path, created_at, updated_at)
+		VALUES
+			(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?),
+			(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		// 对端更新：状态/隐藏应被采纳，空的文本字段不得抹掉桌面端资料
+		"sync-1", "同步目标", "桌面端简介", "桌面端会社", "unplayed", "vndb", "v9999", false, false,
+		"D:/Games/sync/game.exe", createdAt, createdAt,
+		// 本地更晚更新过：对端是旧快照，状态应保留本地值
+		"sync-2", "本地更新过", "桌面端简介", "", "dropped", "local", "", false, false,
+		"D:/Games/sync/game2.exe", createdAt, localNewerAt); err != nil {
+		t.Fatalf("插入已有游戏失败: %v", err)
+	}
+
+	backup := yukihub.Backup{
+		App:       "YukiHub",
+		Schema:    5,
+		CreatedAt: createdAt.UnixMilli(),
+		Games: []yukihub.Game{
+			{
+				LocalID: 1,
+				Title:   "同步目标",
+				// 对端没有 metadata_cache，所以这几个文本字段是空的
+				Description:   "",
+				Tags:          "",
+				OriginalTitle: "",
+				PlayStatus:    "completed",
+				Hidden:        true,
+				TotalPlayTime: 90_000,
+				CreatedAt:     createdAt.UnixMilli(),
+				UpdatedAt:     createdAt.Add(time.Hour).UnixMilli(),
+			},
+			{
+				LocalID:       2,
+				Title:         "本地更新过",
+				PlayStatus:    "playing",
+				TotalPlayTime: 0,
+				CreatedAt:     createdAt.UnixMilli(),
+				UpdatedAt:     createdAt.UnixMilli(),
+			},
+		},
+	}
+	snapshotPath := writeSnapshotFile(t, t.TempDir(), backup)
+
+	result, err := importer.NewYukiHubImporter(newTestImporterDependencies(targetDB)).
+		Import(snapshotPath, false, importer.SamePathActionSyncMerge)
+	if err != nil {
+		t.Fatalf("同步合并导入失败: %v", err)
+	}
+	if result.Success != 2 {
+		t.Fatalf("同步合并结果 = success %d / skipped %d (%v), want 2/0",
+			result.Success, result.Skipped, result.SkippedNames)
+	}
+
+	var summary, company, status, sourceType, sourceID, gamePath string
+	var hidden bool
+	if err := targetDB.QueryRow(
+		`SELECT summary, company, status, source_type, COALESCE(source_id, ''), COALESCE(path, ''), hidden
+		 FROM games WHERE id = 'sync-1'`).
+		Scan(&summary, &company, &status, &sourceType, &sourceID, &gamePath, &hidden); err != nil {
+		t.Fatalf("查询同步合并结果失败: %v", err)
+	}
+	if status != "completed" {
+		t.Errorf("status = %q, want completed（对端更新更晚时应采纳）", status)
+	}
+	if !hidden {
+		t.Errorf("hidden = %v, want true（对端更新更晚时应采纳）", hidden)
+	}
+	if summary != "桌面端简介" {
+		t.Errorf("summary = %q, want 保留桌面端简介（对端空值不得覆盖）", summary)
+	}
+	if company != "桌面端会社" {
+		t.Errorf("company = %q, want 保留桌面端会社（对端空值不得覆盖）", company)
+	}
+	if sourceType != "vndb" || sourceID != "v9999" {
+		t.Errorf("来源 = %s/%s, want 保留 vndb/v9999（对端没有元数据时不得抹成 local）", sourceType, sourceID)
+	}
+	if gamePath != "D:/Games/sync/game.exe" {
+		t.Errorf("path = %q, want 保留桌面端本机路径", gamePath)
+	}
+
+	if err := targetDB.QueryRow(
+		`SELECT status FROM games WHERE id = 'sync-2'`).Scan(&status); err != nil {
+		t.Fatalf("查询 sync-2 失败: %v", err)
+	}
+	if status != "dropped" {
+		t.Errorf("status = %q, want dropped（本地更新更晚时不得被旧快照覆盖）", status)
+	}
+
+	// 会话仍然并集去重 + 聚合补偿（total_play_time 90s → 一条聚合会话）。
+	var totalSeconds int
+	if err := targetDB.QueryRow(
+		`SELECT COALESCE(SUM(duration), 0) FROM play_sessions WHERE game_id = 'sync-1'`).Scan(&totalSeconds); err != nil {
+		t.Fatalf("统计时长失败: %v", err)
+	}
+	if totalSeconds != 90 {
+		t.Errorf("同步合并后总时长 = %d 秒, want 90（会话并集 + 聚合补偿）", totalSeconds)
+	}
+}

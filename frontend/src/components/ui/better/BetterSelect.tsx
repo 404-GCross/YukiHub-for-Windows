@@ -4,6 +4,7 @@ import {
   ListboxOption,
   ListboxOptions,
 } from "@headlessui/react";
+import { useTranslation } from "react-i18next";
 
 export interface BetterSelectOption {
   value: string;
@@ -25,13 +26,15 @@ export function BetterSelect({
   value,
   onChange,
   options,
-  placeholder = "请选择",
+  placeholder,
   disabled = false,
   className = "",
   buttonClassName = "",
 }: BetterSelectProps) {
+  const { t } = useTranslation();
+  const resolvedPlaceholder = placeholder ?? t("common.pleaseSelect");
   const selectedOption = options.find(opt => opt.value === value);
-  const displayValue = selectedOption?.label || placeholder;
+  const displayValue = selectedOption?.label || resolvedPlaceholder;
   const buttonClasses = `glass-card relative w-full px-3 py-2 pr-10
                      text-left cursor-pointer
                      border border-brand-300 dark:border-brand-600

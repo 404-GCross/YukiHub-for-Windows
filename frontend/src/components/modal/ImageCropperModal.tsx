@@ -1,5 +1,6 @@
 import type { Crop } from "react-image-crop";
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import ReactCrop, { centerCrop, makeAspectCrop } from "react-image-crop";
 import { ModalPortal } from "../ui/ModalPortal";
 import "react-image-crop/dist/ReactCrop.css";
@@ -45,6 +46,7 @@ export function ImageCropperModal({
   windowWidth,
   windowHeight,
 }: ImageCropperModalProps) {
+  const { t } = useTranslation();
   const [crop, setCrop] = useState<Crop>();
   const [completedCrop, setCompletedCrop] = useState<Crop>();
   const imgRef = useRef<HTMLImageElement>(null);
@@ -137,12 +139,12 @@ export function ImageCropperModal({
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b border-brand-200 dark:border-brand-700">
             <h2 className="text-lg font-semibold text-brand-900 dark:text-brand-100">
-              裁剪背景图片
+              {t("settings.appearance.cropTitle")}
             </h2>
             <button
               type="button"
               onClick={onCancel}
-              aria-label="关闭裁剪窗口"
+              aria-label={t("settings.appearance.cropClose")}
               className="text-brand-400 hover:text-brand-600 dark:hover:text-brand-200 transition-colors"
             >
               <span className="i-mdi-close text-xl" />
@@ -152,7 +154,7 @@ export function ImageCropperModal({
           {/* 宽高比选择 */}
           <div className="flex items-center gap-2 p-4 border-b border-brand-200 dark:border-brand-700">
             <span className="text-sm text-brand-600 dark:text-brand-300">
-              宽高比：
+              {t("settings.appearance.cropAspect")}
             </span>
             <button
               type="button"
@@ -163,7 +165,10 @@ export function ImageCropperModal({
                   : "bg-brand-100 dark:bg-brand-700 text-brand-700 dark:text-brand-300 hover:bg-brand-200 dark:hover:bg-brand-600"
               }`}
             >
-              {`当前窗口 (${windowWidth}x${windowHeight})`}
+              {t("settings.appearance.cropAspectWindow", {
+                width: windowWidth,
+                height: windowHeight,
+              })}
             </button>
             <button
               type="button"
@@ -174,7 +179,7 @@ export function ImageCropperModal({
                   : "bg-brand-100 dark:bg-brand-700 text-brand-700 dark:text-brand-300 hover:bg-brand-200 dark:hover:bg-brand-600"
               }`}
             >
-              自由
+              {t("settings.appearance.cropAspectFree")}
             </button>
             <button
               type="button"
@@ -246,14 +251,14 @@ export function ImageCropperModal({
               onClick={onCancel}
               className="px-4 py-2 bg-brand-100 dark:bg-brand-700 text-brand-700 dark:text-brand-300 rounded-md hover:bg-brand-200 dark:hover:bg-brand-600 transition-colors text-sm font-medium"
             >
-              取消
+              {t("common.cancel")}
             </button>
             <button
               type="button"
               onClick={handleConfirm}
               className="px-4 py-2 bg-neutral-600 text-white rounded-md hover:bg-neutral-700 transition-colors text-sm font-medium"
             >
-              确认裁剪
+              {t("settings.appearance.cropConfirm")}
             </button>
           </div>
         </div>

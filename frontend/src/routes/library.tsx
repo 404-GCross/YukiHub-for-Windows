@@ -18,6 +18,7 @@ import {
   GetCategories,
 } from "../../bindings/yukihub/internal/service/categoryservice";
 import {
+  BatchSetGameHidden,
   BatchUpdateStatus,
   DeleteGames,
   GetGames,
@@ -377,6 +378,11 @@ function LibraryPage() {
         && readStoredLibraryMetadataSourceFilterInverted(),
     );
   const [tagFilterInverted, setTagFilterInverted] = useState(false);
+  // 已隐藏的游戏默认不显示（对齐手机版 GameRepository.getAll 的 hidden=0）。
+  // 打开后才能看到并把它们恢复回来。
+  const [showHiddenGames, setShowHiddenGames] = useState(
+    () => readStoredValue(`${LIBRARY_STORAGE_KEY}_showHiddenGames`) === "true",
+  );
   const libraryGamesRevision = useGameCacheStore(
     state => state.libraryRevision,
   );
@@ -673,6 +679,8 @@ function LibraryPage() {
         : {}),
       tags: selectedTags,
       exclude_tags: tagFilterInverted && selectedTags.length > 0,
+      // 已隐藏的游戏默认排除，与手机版 getAll() 的 hidden=0 保持一致
+      exclude_hidden: !showHiddenGames,
       sort_by: sortBy,
       sort_order: sortOrder,
       secondary_sort_by: secondarySortBy,
@@ -689,6 +697,7 @@ function LibraryPage() {
       selectedTags,
       secondarySortBy,
       secondarySortOrder,
+      showHiddenGames,
       sortBy,
       sortOrder,
       statusFilter,
@@ -1017,6 +1026,64 @@ function LibraryPage() {
     }
   };
 
+  const handleShowHiddenGamesChange = (value: boolean) => {
+    setShowHiddenGames(value);
+    if (value) {
+      window.localStorage.setItem(
+        `${LIBRARY_STORAGE_KEY}_showHiddenGames`,
+        "true",
+      );
+    }
+    else {
+      window.localStorage.removeItem(`${LIBRARY_STORAGE_KEY}_showHiddenGames`);
+    }
+  };
+
+  // 隐藏 / 取消隐藏。走 BatchSetGameHidden（单条 UPDATE、一次写锁），
+  // 不要用 SetGameHidden 循环：全选几百条会把全局写锁堵死，而且
+  // Promise.all 的部分成功会被误报成「全部失败」。
+  const handleBatchSetHidden = async (hidden: boolean) => {
+    if (selectedGameIds.length === 0)
+      return;
+    const requested = selectedGameIds.length;
+    try {
+      const affected = await BatchSetGameHidden(selectedGameIds, hidden);
+      if (affected < requested) {
+        toast.error(
+          t("library.toast.batchHiddenPartial", {
+            done: affected,
+            count: requested,
+          }),
+        );
+      }
+      else {
+        toast.success(
+          t(
+            hidden
+              ? "library.toast.batchHidden"
+              : "library.toast.batchUnhidden",
+            { count: requested },
+          ),
+        );
+      }
+    }
+    catch (error) {
+      console.error("Failed to batch update hidden:", error);
+      toast.error(
+        t(
+          hidden
+            ? "library.toast.batchHiddenFailed"
+            : "library.toast.batchUnhiddenFailed",
+        ),
+      );
+    }
+    finally {
+      // 失败也要刷：可能已经改了一部分，不刷新列表会和数据库对不上。
+      invalidateAndRefreshLibrary();
+      setSelectedGameIds([]);
+    }
+  };
+
   const openBatchAddModal = async () => {
     if (selectedGameIds.length === 0)
       return;
@@ -1162,6 +1229,9 @@ function LibraryPage() {
     currentQueryKeyRef.current = queryKey;
     loadingWindowsRef.current.clear();
     setSelectedGameIds([]);
+    // 筛选条件变了（可能包含刚被隐藏的游戏从列表消失），详情面板不能继续显示
+    // 一个当前列表里根本不存在的条目。
+    setActiveGame(null);
 
     const cached = getLibraryGameListCache(queryKey);
     if (cached?.revision === libraryGamesRevision) {
@@ -1261,6 +1331,8 @@ function LibraryPage() {
               setMetadataSourceFilterInverted
             }
             metadataSourceOptions={metadataSourceOptions}
+            showHiddenGames={showHiddenGames}
+            onShowHiddenGamesChange={handleShowHiddenGamesChange}
             storageKey="library"
             onRandomGame={handleOpenRandomGame}
             randomGameDisabled={
@@ -1362,6 +1434,41 @@ function LibraryPage() {
                     pillColor: cfg.color,
                     onClick: () => handleBatchStatusUpdate(key),
                   }))}
+                />
+                {/* 批量隐藏 / 取消隐藏（取消隐藏需先打开「显示已隐藏」） */}
+                <BetterDropdownMenu
+                  title={t("library.setHidden")}
+                  align="end"
+                  menuWidth="min-w-[150px]"
+                  disabled={selectedGameIds.length === 0}
+                  trigger={(
+                    <div
+                      className={`glass-panel flex items-center gap-2 px-3 py-2 text-sm
+                              bg-white dark:bg-brand-800 border border-brand-200 dark:border-brand-700
+                              rounded-lg hover:bg-brand-100 dark:hover:bg-brand-700 text-brand-700 dark:text-brand-300
+                              ${selectedGameIds.length === 0 ? "opacity-50 cursor-not-allowed" : ""}`}
+                    >
+                      <div className="i-mdi-eye-off-outline text-lg" />
+                    </div>
+                  )}
+                  items={[
+                    {
+                      key: "hide",
+                      label: t("library.hideSelected"),
+                      icon: "i-mdi-eye-off-outline",
+                      onClick: () => {
+                        void handleBatchSetHidden(true);
+                      },
+                    },
+                    {
+                      key: "unhide",
+                      label: t("library.unhideSelected"),
+                      icon: "i-mdi-eye-outline",
+                      onClick: () => {
+                        void handleBatchSetHidden(false);
+                      },
+                    },
+                  ]}
                 />
                 {/* 批量添加到收藏 */}
                 <button

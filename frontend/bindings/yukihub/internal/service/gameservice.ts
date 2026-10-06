@@ -30,6 +30,17 @@ export function AddGameFromWebMetadata(meta: vo$0.GameMetadataFromWebVO): $Cance
 }
 
 /**
+ * BatchSetGameHidden 批量设置「已隐藏」标记，返回实际改到的条数。
+ * 
+ * 走单条 UPDATE 而不是前端循环调 SetGameHidden：一次调用只抢一次 DuckDB
+ * 写锁（全选可能几百条），也不会出现「部分成功」被前端误报成全部失败。
+ * 返回的 count 小于请求条数说明有些 id 已不存在，调用方应据此提示。
+ */
+export function BatchSetGameHidden(ids: string[], hidden: boolean): $CancellablePromise<number> {
+    return $Call.ByID(2709273571, ids, hidden);
+}
+
+/**
  * BatchUpdateStatus 批量更新多个游戏的游玩状态
  */
 export function BatchUpdateStatus(ids: string[], status: string): $CancellablePromise<void> {
@@ -263,6 +274,20 @@ export function SelectWineRunnerExecutable(currentPath: string): $CancellablePro
 
 export function SetDefaultMetadataSource(gameID: string, source: enums$0.SourceType): $CancellablePromise<void> {
     return $Call.ByID(3919185436, gameID, source);
+}
+
+/**
+ * SetGameHidden 单独更新「已隐藏」标记。
+ * 
+ * 语义对齐手机版 GameRepository.setHidden：只改 hidden 与 updated_at，
+ * 不碰封面 / PV / 时长等其他字段 —— 走 UpdateGame 那种整行覆盖会把
+ * 详情页手上可能已经过期的字段一起写回去。
+ * 
+ * updated_at 必须推进：云同步按「对端 updated_at 不早于本地」判断谁更新，
+ * 隐藏状态变了却不更新时间戳，手机端就永远收不到这次隐藏。
+ */
+export function SetGameHidden(gameID: string, hidden: boolean): $CancellablePromise<void> {
+    return $Call.ByID(736556997, gameID, hidden);
 }
 
 /**

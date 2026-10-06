@@ -155,6 +155,14 @@ export function MetadataSettingsPanel({
       hint: t("settings.metadata.sourceHints.vndb"),
       icon: getMetadataSourceIcon(enums.SourceType.VNDB) ?? "",
     },
+    // 次序对齐手机版设置页：NextMoe 紧随默认源 VNDB 之后
+    // （MainActivity 的资料源下拉：VNDB（默认）/ NextMoe（推荐）/ Bangumi / …）。
+    {
+      value: enums.SourceType.NextMoe,
+      label: t("gameEdit.sourceNextMoe"),
+      hint: t("settings.metadata.sourceHints.nextmoe"),
+      icon: getMetadataSourceIcon(enums.SourceType.NextMoe) ?? "",
+    },
     {
       value: enums.SourceType.Bangumi,
       label: "Bangumi",
@@ -178,12 +186,6 @@ export function MetadataSettingsPanel({
       label: "Hikarinagi",
       hint: t("settings.metadata.sourceHints.hikarinagi"),
       icon: getMetadataSourceIcon(enums.SourceType.Hikarinagi) ?? "",
-    },
-    {
-      value: enums.SourceType.NextMoe,
-      label: t("gameEdit.sourceNextMoe"),
-      hint: t("settings.metadata.sourceHints.nextmoe"),
-      icon: getMetadataSourceIcon(enums.SourceType.NextMoe) ?? "",
     },
   ];
 

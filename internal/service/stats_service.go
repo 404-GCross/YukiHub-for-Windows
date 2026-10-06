@@ -19,6 +19,21 @@ import (
 	"yukihub/internal/wailsruntime"
 )
 
+// statsSessionSource 是「计入统计的会话」的 FROM 源（固定别名 ps）。
+//
+// 清零（games.playtime_reset_at）之前的会话不计入统计，但记录本身保留 —— 与
+// gamehelper.QueryGamesPlayTime、导出方向 exporter.sessionsAfterReset，以及
+// Android 侧 exportPlaySessionsJson 的口径一致（手机端重置时直接删掉旧会话，
+// 可观测结果相同）。所有统计查询都必须从这里取会话，不要直接 FROM play_sessions，
+// 否则同一游戏的「游戏库时长」与「统计页时长」会对不上（前者过滤、后者不过滤）。
+const statsSessionSource = `(
+			SELECT ps.id, ps.game_id, ps.start_time, ps.end_time, ps.duration
+			FROM play_sessions ps
+			JOIN games g ON g.id = ps.game_id
+			WHERE g.playtime_reset_at IS NULL
+			   OR COALESCE(ps.end_time, ps.start_time) >= g.playtime_reset_at
+		) ps`
+
 type StatsService struct {
 	ctx     context.Context
 	db      *sql.DB
@@ -157,7 +172,7 @@ func (s *StatsService) GetGameStats(req vo.GameStatsRequest) (vo.GameDetailStats
 			endDate = "current_date"
 		case enums.All:
 			// 所有记录：从第一条记录到现在
-			startDate = "(SELECT COALESCE(MIN(start_time::DATE), current_date) FROM play_sessions WHERE game_id = ?)"
+			startDate = "(SELECT COALESCE(MIN(start_time::DATE), current_date) FROM " + statsSessionSource + " WHERE game_id = ?)"
 			endDate = "current_date"
 		default:
 			return stats, fmt.Errorf("invalid dimension: %s", req.Dimension)
@@ -190,7 +205,7 @@ func (s *StatsService) GetGameStats(req vo.GameStatsRequest) (vo.GameDetailStats
 		// 获取实际日期范围用于显示
 		var actualStart, actualEnd string
 		if req.Dimension == enums.All {
-			err := s.db.QueryRowContext(s.ctx, "SELECT COALESCE(MIN(start_time::DATE), current_date), COALESCE(MAX(start_time::DATE), current_date) FROM play_sessions WHERE game_id = ?", req.GameID).Scan(&actualStart, &actualEnd)
+			err := s.db.QueryRowContext(s.ctx, "SELECT COALESCE(MIN(start_time::DATE), current_date), COALESCE(MAX(start_time::DATE), current_date) FROM "+statsSessionSource+" WHERE game_id = ?", req.GameID).Scan(&actualStart, &actualEnd)
 			if err == nil {
 				stats.StartDate = actualStart
 				stats.EndDate = actualEnd
@@ -205,7 +220,7 @@ func (s *StatsService) GetGameStats(req vo.GameStatsRequest) (vo.GameDetailStats
 	}
 
 	// 1. Total Play Count & Duration (in selected period)
-	queryTotal := fmt.Sprintf("SELECT COALESCE(COUNT(*), 0), COALESCE(SUM(duration), 0) FROM play_sessions WHERE game_id = ? AND start_time >= %s AND start_time <= %s + INTERVAL 1 DAY", startDateExpr, endDateExpr)
+	queryTotal := fmt.Sprintf("SELECT COALESCE(COUNT(*), 0), COALESCE(SUM(duration), 0) FROM "+statsSessionSource+" WHERE game_id = ? AND start_time >= %s AND start_time <= %s + INTERVAL 1 DAY", startDateExpr, endDateExpr)
 	if req.Dimension == enums.All && req.StartDate == "" {
 		// For 'all' dimension without custom dates, we need special handling
 		err := s.db.QueryRowContext(s.ctx, queryTotal, req.GameID, req.GameID).Scan(&stats.TotalPlayCount, &stats.TotalPlayTime)
@@ -222,7 +237,7 @@ func (s *StatsService) GetGameStats(req vo.GameStatsRequest) (vo.GameDetailStats
 	}
 
 	// 2. Today Play Time (always show today regardless of period)
-	err := s.db.QueryRowContext(s.ctx, "SELECT COALESCE(SUM(duration), 0) FROM play_sessions WHERE game_id = ? AND start_time >= current_date", req.GameID).Scan(&stats.TodayPlayTime)
+	err := s.db.QueryRowContext(s.ctx, "SELECT COALESCE(SUM(duration), 0) FROM "+statsSessionSource+" WHERE game_id = ? AND start_time >= current_date", req.GameID).Scan(&stats.TodayPlayTime)
 	if err != nil {
 		applog.LogErrorf(s.ctx, "failed to get today play time: %v", err)
 		return stats, err
@@ -236,7 +251,7 @@ func (s *StatsService) GetGameStats(req vo.GameStatsRequest) (vo.GameDetailStats
 			SELECT
 				strftime(start_time::DATE, '%Y-%m-%d'),
 				COALESCE(SUM(duration), 0)
-			FROM play_sessions
+			FROM ` + statsSessionSource + `
 			WHERE game_id = ?
 			GROUP BY start_time::DATE
 			ORDER BY start_time::DATE ASC
@@ -251,7 +266,7 @@ func (s *StatsService) GetGameStats(req vo.GameStatsRequest) (vo.GameDetailStats
 				strftime(m.month, '%s'),
 				COALESCE(SUM(ps.duration), 0)
 			FROM months m
-			LEFT JOIN play_sessions ps ON ps.game_id = ? AND DATE_TRUNC('month', ps.start_time) = m.month
+			LEFT JOIN `+statsSessionSource+` ON ps.game_id = ? AND DATE_TRUNC('month', ps.start_time) = m.month
 			GROUP BY m.month
 			ORDER BY m.month ASC
 		`, seriesStart, seriesEnd, stepInterval, dateFormat)
@@ -265,7 +280,7 @@ func (s *StatsService) GetGameStats(req vo.GameStatsRequest) (vo.GameDetailStats
 				strftime(d.day, '%s'), 
 				COALESCE(SUM(ps.duration), 0)
 			FROM dates d
-			LEFT JOIN play_sessions ps ON ps.game_id = ? AND ps.start_time::DATE = d.day
+			LEFT JOIN `+statsSessionSource+` ON ps.game_id = ? AND ps.start_time::DATE = d.day
 			GROUP BY d.day
 			ORDER BY d.day ASC
 		`, seriesStart, seriesEnd, stepInterval, dateFormat)
@@ -332,7 +347,7 @@ func (s *StatsService) GetGlobalPeriodStats(req vo.PeriodStatsRequest) (vo.Perio
 			endDate = "current_date"
 		case enums.All:
 			// 所有记录：从第一条记录到现在
-			startDate = "(SELECT COALESCE(MIN(start_time::DATE), current_date) FROM play_sessions)"
+			startDate = "(SELECT COALESCE(MIN(start_time::DATE), current_date) FROM " + statsSessionSource + ")"
 			endDate = "current_date"
 		default:
 			return stats, fmt.Errorf("invalid dimension: %s", req.Dimension)
@@ -365,7 +380,7 @@ func (s *StatsService) GetGlobalPeriodStats(req vo.PeriodStatsRequest) (vo.Perio
 		// 获取实际日期范围用于显示
 		if req.Dimension == enums.All {
 			var actualStart, actualEnd string
-			err := s.db.QueryRowContext(s.ctx, "SELECT COALESCE(MIN(start_time::DATE), current_date), current_date FROM play_sessions").Scan(&actualStart, &actualEnd)
+			err := s.db.QueryRowContext(s.ctx, "SELECT COALESCE(MIN(start_time::DATE), current_date), current_date FROM "+statsSessionSource).Scan(&actualStart, &actualEnd)
 			if err == nil {
 				stats.StartDate = actualStart
 				stats.EndDate = actualEnd
@@ -381,7 +396,7 @@ func (s *StatsService) GetGlobalPeriodStats(req vo.PeriodStatsRequest) (vo.Perio
 	}
 
 	// 总游玩次数和时长
-	queryTotal := fmt.Sprintf("SELECT COALESCE(COUNT(*), 0), COALESCE(SUM(duration), 0) FROM play_sessions WHERE start_time >= %s AND start_time <= %s + INTERVAL 1 DAY", startDateExpr, endDateExpr)
+	queryTotal := fmt.Sprintf("SELECT COALESCE(COUNT(*), 0), COALESCE(SUM(duration), 0) FROM "+statsSessionSource+" WHERE start_time >= %s AND start_time <= %s + INTERVAL 1 DAY", startDateExpr, endDateExpr)
 	err := s.db.QueryRowContext(s.ctx, queryTotal).Scan(&stats.TotalPlayCount, &stats.TotalPlayDuration)
 	if err != nil {
 		applog.LogErrorf(s.ctx, "failed to get total play count and duration: %v", err)
@@ -393,7 +408,7 @@ func (s *StatsService) GetGlobalPeriodStats(req vo.PeriodStatsRequest) (vo.Perio
 		SELECT 
 			COUNT(DISTINCT ps.game_id),
 			COUNT(DISTINCT CASE WHEN g.status = 'completed' THEN g.id END)
-		FROM play_sessions ps
+		FROM `+statsSessionSource+`
 		JOIN games g ON ps.game_id = g.id
 		WHERE ps.start_time >= %s AND ps.start_time <= %s + INTERVAL 1 DAY
 	`, startDateExpr, endDateExpr)
@@ -429,7 +444,7 @@ func (s *StatsService) GetGlobalPeriodStats(req vo.PeriodStatsRequest) (vo.Perio
 	stats.AllCompletedGamesCount = completedCount
 
 	// 查询所有session数量和总时长
-	queryAllSessions := "SELECT COALESCE(COUNT(*), 0), COALESCE(SUM(duration), 0) FROM play_sessions"
+	queryAllSessions := "SELECT COALESCE(COUNT(*), 0), COALESCE(SUM(duration), 0) FROM " + statsSessionSource
 	err = s.db.QueryRowContext(s.ctx, queryAllSessions).Scan(&stats.AllSessionsCount, &stats.AllSessionsDuration)
 	if err != nil {
 		applog.LogErrorf(s.ctx, "failed to get all sessions stats: %v", err)
@@ -438,7 +453,7 @@ func (s *StatsService) GetGlobalPeriodStats(req vo.PeriodStatsRequest) (vo.Perio
 	stats.PlayTimeLeaderboard = make([]vo.GamePlayStats, 0)
 	queryLeaderboard := fmt.Sprintf(`
 		SELECT ps.game_id, g.name, COALESCE(g.cover_url, '') as cover_url, COALESCE(g.is_nsfw, FALSE) as is_nsfw, SUM(ps.duration) as total
-		FROM play_sessions ps
+		FROM `+statsSessionSource+`
 		JOIN games g ON ps.game_id = g.id
 		WHERE ps.start_time >= %s AND ps.start_time <= %s + INTERVAL 1 DAY
 		GROUP BY ps.game_id, g.name, g.cover_url, g.is_nsfw
@@ -478,7 +493,7 @@ func (s *StatsService) GetGlobalPeriodStats(req vo.PeriodStatsRequest) (vo.Perio
 				strftime(m.month, '%s'),
 				COALESCE(SUM(ps.duration), 0)
 			FROM months m
-			LEFT JOIN play_sessions ps ON DATE_TRUNC('month', ps.start_time) = m.month
+			LEFT JOIN `+statsSessionSource+` ON DATE_TRUNC('month', ps.start_time) = m.month
 			GROUP BY m.month
 			ORDER BY m.month ASC
 		`, seriesStart, seriesEnd, stepInterval, dateFormat)
@@ -492,7 +507,7 @@ func (s *StatsService) GetGlobalPeriodStats(req vo.PeriodStatsRequest) (vo.Perio
 				strftime(d.day, '%s'), 
 				COALESCE(SUM(ps.duration), 0)
 			FROM dates d
-			LEFT JOIN play_sessions ps ON ps.start_time::DATE = d.day
+			LEFT JOIN `+statsSessionSource+` ON ps.start_time::DATE = d.day
 			GROUP BY d.day
 			ORDER BY d.day ASC
 		`, seriesStart, seriesEnd, stepInterval, dateFormat)
@@ -537,7 +552,7 @@ func (s *StatsService) GetGlobalPeriodStats(req vo.PeriodStatsRequest) (vo.Perio
 				strftime(d.day, '%s'), 
 				COALESCE(SUM(ps.duration), 0)
 			FROM dates d
-			LEFT JOIN play_sessions ps ON ps.game_id = ? AND ps.start_time::DATE = d.day
+			LEFT JOIN `+statsSessionSource+` ON ps.game_id = ? AND ps.start_time::DATE = d.day
 			GROUP BY d.day
 			ORDER BY d.day ASC
 		`, seriesStart, seriesEnd, stepInterval, dateFormat)
@@ -552,7 +567,7 @@ func (s *StatsService) GetGlobalPeriodStats(req vo.PeriodStatsRequest) (vo.Perio
 					strftime(m.month, '%s'),
 					COALESCE(SUM(ps.duration), 0)
 				FROM months m
-				LEFT JOIN play_sessions ps ON ps.game_id = ? AND DATE_TRUNC('month', ps.start_time) = m.month
+				LEFT JOIN `+statsSessionSource+` ON ps.game_id = ? AND DATE_TRUNC('month', ps.start_time) = m.month
 				GROUP BY m.month
 				ORDER BY m.month ASC
 			`, seriesStart, seriesEnd, stepInterval, dateFormat)
@@ -581,7 +596,7 @@ func (s *StatsService) GetGlobalPeriodStats(req vo.PeriodStatsRequest) (vo.Perio
 	stats.TagDistribution = make([]vo.TagPlayStats, 0)
 	queryTagDistribution := fmt.Sprintf(`
 		SELECT gt.name, SUM(ps.duration) AS total, COUNT(DISTINCT ps.game_id) AS game_count
-		FROM play_sessions ps
+		FROM `+statsSessionSource+`
 		JOIN game_tags gt ON gt.game_id = ps.game_id
 		WHERE ps.start_time >= %s AND ps.start_time <= %s + INTERVAL 1 DAY
 		  AND COALESCE(gt.is_spoiler, FALSE) = FALSE
@@ -619,7 +634,7 @@ func (s *StatsService) GetGlobalPeriodStats(req vo.PeriodStatsRequest) (vo.Perio
 			strftime(d.day, '%%Y-%%m-%%d'),
 			COALESCE(SUM(ps.duration), 0)
 		FROM dates d
-		LEFT JOIN play_sessions ps ON ps.start_time::DATE = d.day
+		LEFT JOIN `+statsSessionSource+` ON ps.start_time::DATE = d.day
 		GROUP BY d.day
 		ORDER BY d.day ASC
 	`, seriesStart, seriesEnd)
@@ -685,7 +700,7 @@ func (s *StatsService) GetGlobalPeriodStats(req vo.PeriodStatsRequest) (vo.Perio
 	}
 	queryHourly := fmt.Sprintf(`
 		SELECT EXTRACT(hour FROM start_time)::INT AS h, COALESCE(SUM(duration), 0)
-		FROM play_sessions
+		FROM `+statsSessionSource+`
 		WHERE start_time >= %s AND start_time <= %s + INTERVAL 1 DAY
 		GROUP BY h
 		ORDER BY h
@@ -715,7 +730,7 @@ func (s *StatsService) GetGlobalPeriodStats(req vo.PeriodStatsRequest) (vo.Perio
 	}
 	queryWeekday := fmt.Sprintf(`
 		SELECT EXTRACT(dow FROM start_time)::INT AS w, COALESCE(SUM(duration), 0)
-		FROM play_sessions
+		FROM `+statsSessionSource+`
 		WHERE start_time >= %s AND start_time <= %s + INTERVAL 1 DAY
 		GROUP BY w
 		ORDER BY w

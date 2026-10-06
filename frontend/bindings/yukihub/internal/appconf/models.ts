@@ -279,7 +279,7 @@ export class AppConfig {
     "onedrive_refresh_token"?: string;
 
     /**
-     * WebDAV 配置
+     * WebDAV 配置（游戏存档 / 数据库备份用的云存储）
      * WebDAV 服务地址（可含子路径）
      */
     "webdav_url"?: string;
@@ -293,6 +293,38 @@ export class AppConfig {
      * WebDAV 密码
      */
     "webdav_password"?: string;
+
+    /**
+     * 自持同步（WebDAV）：把与手机版**完全相同**的 schema 5 快照同步到用户自己的
+     * WebDAV 网盘，对应手机版 SyncManager 的 `sync()`（云端文件 YukiHub/YukiHub_sync.json）。
+     * 
+     * 与上面那组 WebDAV 配置是两回事：那组是「游戏存档备份」的云存储后端（LunaBox 血统），
+     * 这组是「游戏库整体同步」的传输通道（手机版血统）。两者互不影响，可以只配一个。
+     * 密码同样明文存 appconf.json —— 与手机版存 SharedPreferences、以及本文件其它凭据一致。
+     * WebDAV 服务地址
+     */
+    "self_sync_url"?: string;
+
+    /**
+     * WebDAV 用户名
+     */
+    "self_sync_username"?: string;
+
+    /**
+     * WebDAV 密码 / 应用密码
+     */
+    "self_sync_password"?: string;
+
+    /**
+     * SelfSyncAutoSync 对应手机版的「自动同步」开关（启动时同步一次）。
+     */
+    "self_sync_auto_sync": boolean;
+
+    /**
+     * SelfSyncLastHash 是上次同步时本地快照的哈希，用于判断两边有没有改动。
+     */
+    "self_sync_last_hash"?: string;
+    "self_sync_last_at"?: string;
 
     /**
      * Umbra OAuth 配置（token 与设备密钥由 DPAPI 加密存储，不写入配置文件）
@@ -683,6 +715,9 @@ export class AppConfig {
         }
         if (!("yukihub_account_share_playing" in $$source)) {
             this["yukihub_account_share_playing"] = false;
+        }
+        if (!("self_sync_auto_sync" in $$source)) {
+            this["self_sync_auto_sync"] = false;
         }
         if (!("auto_backup_db" in $$source)) {
             this["auto_backup_db"] = false;

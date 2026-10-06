@@ -65,10 +65,23 @@ const (
 	ImportActionCreate         = "create"
 	ImportActionUpdateExisting = "update_existing"
 	ImportActionMergeSessions  = "merge_sessions"
+	// ImportActionSyncMerge 是云同步 / WebDAV 自持同步专用的「合并」动作。
+	//
+	// 它同时做两件事：并集去重地并入对端会话（与 merge_sessions 相同），以及按
+	// 手机版 importGamesJson 的规则更新已有游戏的字段——「键存在且非空 + 对端
+	// updated_at 不早于本地」才覆盖。merge_sessions 只做前者，于是手机端改过的
+	// 状态 / 隐藏 / NSFW / 标题同步回桌面端时会被全部丢掉。
+	//
+	// 与 update_existing 的区别：后者给 PotatoVN / Playnite 这类自带完整元数据的
+	// 导入格式用，会无条件写入 summary/company/rating 等文本字段（对端空值会冲掉
+	// 本地）；云同步的对端可能只有 games 段而没有任何 metadata_cache，必须逐字段
+	// 判空，所以单独一条动作。
+	ImportActionSyncMerge = "sync_merge"
 
 	SamePathActionSkip          = "skip"
 	SamePathActionMerge         = "merge"
 	SamePathActionMergeSessions = "merge_sessions"
+	SamePathActionSyncMerge     = "sync_merge"
 
 	ConflictTypeNone        = ""
 	ConflictTypeSamePath    = "same_path"
@@ -93,16 +106,22 @@ func NormalizeSamePathAction(action string) string {
 		return SamePathActionMerge
 	case SamePathActionMergeSessions:
 		return SamePathActionMergeSessions
+	case SamePathActionSyncMerge:
+		return SamePathActionSyncMerge
 	}
 	return SamePathActionSkip
 }
 
 func IsSamePathMergeAction(action string) bool {
-	return action == SamePathActionMerge || action == SamePathActionMergeSessions
+	return action == SamePathActionMerge ||
+		action == SamePathActionMergeSessions ||
+		action == SamePathActionSyncMerge
 }
 
 func TargetsExistingGame(action string) bool {
-	return action == ImportActionUpdateExisting || action == ImportActionMergeSessions
+	return action == ImportActionUpdateExisting ||
+		action == ImportActionMergeSessions ||
+		action == ImportActionSyncMerge
 }
 
 func newImportSelectionFilter(selections []vo.ImportSelection) importSelectionFilter {
@@ -319,7 +338,10 @@ func addImportedItems(deps Dependencies, items []ImportItem) (ImportResult, erro
 
 	result := newImportResult()
 	for _, item := range items {
-		if item.Action == ImportActionMergeSessions {
+		// merge_sessions / sync_merge 都是「命中已有条目」的动作：前者只并会话，
+		// 后者还要按字段级守卫更新元数据。没有 AddItems 依赖时做不了字段级合并，
+		// 这里退化成只并会话（宁可少改，也不能把本地字段写坏）。
+		if item.Action == ImportActionMergeSessions || item.Action == ImportActionSyncMerge {
 			addPlaySessions(deps, "ImportItems", &result, item.DisplayName, item.Sessions)
 			result.Success++
 			continue

@@ -582,6 +582,7 @@ func runGUI(
 	overlayService := service.NewOverlayService()
 	importService := service.NewImportService()
 	accountService := service.NewAccountService()
+	selfSyncService := service.NewSelfSyncService()
 	versionService := service.NewVersionService()
 	templateService := service.NewTemplateService()
 	updateService := service.NewUpdateService(func() {
@@ -654,6 +655,7 @@ func runGUI(
 		categoryService.Init(ctx, db, config)
 		importService.Init(ctx, db, config)
 		accountService.Init(ctx, db, config, importService)
+		selfSyncService.Init(ctx, db, config, importService)
 		versionService.Init(ctx)
 		templateService.Init(ctx, db, config)
 		updateService.Init(ctx)
@@ -734,6 +736,7 @@ func runGUI(
 		application.NewService(overlayService),
 		application.NewService(importService),
 		application.NewService(accountService),
+		application.NewService(selfSyncService),
 		application.NewService(versionService),
 		application.NewService(templateService),
 		application.NewService(updateService),
@@ -1032,6 +1035,7 @@ func runGUI(
 		gameService.SetRuntime(guiRuntime)
 		importService.SetRuntime(guiRuntime)
 		accountService.SetRuntime(guiRuntime)
+		selfSyncService.SetRuntime(guiRuntime)
 		startService.SetRuntime(guiRuntime)
 		statsService.SetRuntime(guiRuntime)
 		templateService.SetRuntime(guiRuntime)
@@ -1094,6 +1098,7 @@ func runGUI(
 			cloudSyncService.RunStartupSync()
 		}
 		cloudSyncService.StartScheduledSync()
+		selfSyncService.RunStartupSelfSync()
 		backupService.StartScheduledDBBackups()
 	}
 

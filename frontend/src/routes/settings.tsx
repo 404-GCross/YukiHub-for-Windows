@@ -17,6 +17,7 @@ import { FullDataBackupPanel } from "../components/panel/FullDataBackupPanel";
 import { GameSettingsPanel } from "../components/panel/GameSettingsPanel";
 import { MetadataSettingsPanel } from "../components/panel/MetadataSettingsPanel";
 import { PortableSetupPanel } from "../components/panel/PortableSetupPanel";
+import { SelfSyncPanel } from "../components/panel/SelfSyncPanel";
 import { UpdateSettingsPanel } from "../components/panel/UpdateSettingsPanel";
 import { SettingsSkeleton } from "../components/skeleton/SettingsSkeleton";
 import { CollapsibleSection } from "../components/ui/CollapsibleSection";
@@ -254,6 +255,14 @@ function SettingsPage() {
               formData={draftConfig}
               onChange={handleDraftChange}
             />
+          </SettingsSubSection>
+
+          <SettingsSubSection
+            title={t("settings.subSections.selfSync")}
+            hint={t("settings.subSections.selfSyncHint")}
+            icon="i-mdi-cloud-sync-outline"
+          >
+            <SelfSyncPanel />
           </SettingsSubSection>
 
           <SettingsSubSection

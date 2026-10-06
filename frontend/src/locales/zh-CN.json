@@ -61,7 +61,8 @@
       "hoursAgo": "{{hours}} 小时前",
       "minutesAgo": "{{minutes}} 分钟前",
       "justNow": "刚刚"
-    }
+    },
+    "pleaseSelect": "请选择"
   },
   "library": {
     "title": "游戏库",
@@ -72,6 +73,9 @@
     "emptyStateAction": "添加一些游戏开始吧",
     "notFound": "未找到匹配的游戏",
     "setStatus": "设为状态",
+    "setHidden": "隐藏",
+    "hideSelected": "隐藏所选",
+    "unhideSelected": "取消隐藏所选",
     "batchAddToFilter": "批量添加到收藏",
     "batchImportToSteam": "批量导入 Steam",
     "addGame": "添加游戏",
@@ -92,6 +96,11 @@
     "importSteamDesc": "扫描本机已安装的 Steam 游戏",
     "toast": {
       "batchStatusUpdated": "已将 {{count}} 个游戏状态更新为「{{status}}」",
+      "batchHidden": "已隐藏 {{count}} 个游戏",
+      "batchHiddenPartial": "已隐藏 {{done}} 个，另有 {{count}} 个已不存在",
+      "batchUnhidden": "已取消隐藏 {{count}} 个游戏",
+      "batchHiddenFailed": "隐藏游戏失败",
+      "batchUnhiddenFailed": "取消隐藏失败",
       "batchStatusFailed": "批量更新状态失败",
       "loadFavFailed": "加载收藏夹失败",
       "batchAddFavSuccess": "已添加 {{count}} 个游戏到收藏",
@@ -125,6 +134,8 @@
     "status": "状态",
     "metadataSource": "元数据来源",
     "invertMetadataSourceFilter": "反选数据源筛选",
+    "showHiddenGames": "显示已隐藏的游戏",
+    "showHiddenGamesHint": "已隐藏的游戏默认不显示；打开后可以在这里把它们恢复回来。",
     "allMetadataSources": "全部来源",
     "noMetadataSource": "local",
     "invert": "反选",
@@ -410,7 +421,9 @@
       "desc": "选择 LunaBox 的备份文件（.zip）",
       "hint": "在 LunaBox 的「设置 → 备份」里导出，或直接选 %APPDATA%\\LunaBox\\backups\\database 下的 .zip；会导入游戏、游玩记录、标签与封面，游玩状态自动换算成 YukiHub 的五态",
       "btn": "选择备份文件"
-    }
+    },
+    "samePathSyncMerge": "合并（保资料）",
+    "samePathSyncMergeHint": "并入游玩记录，并在备份较新时更新状态、隐藏、评分等字段；备份中为空的字段不会覆盖本机资料。"
   },
   "game": {
     "notFound": "未找到该游戏",
@@ -541,7 +554,7 @@
     "cloudBackups": "云端备份",
     "noCloudBackups": "暂无云端备份记录",
     "cloudNotEnabled": "云备份未启用",
-    "cloudConfigHint": "前往设置页面配置云备份，将存档同步到云端",
+    "cloudConfigHint": "桌面端暂未提供云存储配置界面。跨设备同步游戏库请用「设置 → 数据管理 → WebDAV 同步」；存档可先用「立即备份」保存在本地。",
     "modal": {
       "restoreTitle": "恢复存档",
       "restoreMsg": "确定要恢复到 {{time}} 的备份吗？当前存档将被覆盖。",
@@ -1205,7 +1218,13 @@
       "toast": {
         "selectFailed": "选择背景图片失败: {{error}}",
         "cropFailed": "裁剪保存失败: {{error}}"
-      }
+      },
+      "cropTitle": "裁剪背景图片",
+      "cropClose": "关闭裁剪窗口",
+      "cropAspect": "宽高比：",
+      "cropAspectWindow": "当前窗口 ({{width}}x{{height}})",
+      "cropAspectFree": "自由",
+      "cropConfirm": "确认裁剪"
     },
     "game": {
       "recordActiveOnly": "仅记录活跃游玩时长",
@@ -1258,7 +1277,7 @@
         "ymgal": "请感受这绝妙的文艺体裁",
         "hikarinagi": "你和同好的ACGN社区",
         "bangumiMirror": "Bangumi 的备用镜像站点，账号与主站通用",
-        "nextmoe": "面向 ACG 作品的资料目录站点"
+        "nextmoe": "推荐 · 面向 ACG 作品的资料目录站点，需连接未萌账号后使用（配额按账号计算）"
       },
       "allowDuplicateMetadataImport": "允许导入相同元数据 ID 的游戏",
       "allowDuplicateMetadataImportHint": "开启后，批量导入和外部导入不会因为 source_type + source_id 相同而跳过，仅保留路径重复拦截。",
@@ -1439,7 +1458,40 @@
       "about": "关于与开源许可",
       "appDataHint": "应用的数据目录位置，以及导出日志用于排查问题。",
       "backup": "备份",
-      "backupHint": "自动备份、手动备份与恢复。备份保存在本机，云端备份等账号系统上线后再单独做。"
+      "backupHint": "自动备份、手动备份与恢复。备份保存在本机，云端备份等账号系统上线后再单独做。",
+      "selfSync": "WebDAV 同步",
+      "selfSyncHint": "把游戏库同步到你自己搭的 WebDAV 网盘（与手机版同一份数据）"
+    },
+    "selfSync": {
+      "server": "服务器地址",
+      "serverPlaceholder": "https://dav.jianguoyun.com/dav",
+      "serverHint": "坚果云等请先手动创建 YukiHub 文件夹；缺协议头会自动补 https://",
+      "username": "用户名",
+      "password": "密码 / 应用密码",
+      "autoSync": "自动同步",
+      "autoSyncHint": "启动时自动同步一次（距上次不足 10 分钟会跳过）",
+      "testConnection": "测试连接",
+      "testing": "测试中…",
+      "testSuccess": "连接成功",
+      "testFailed": "连接失败：{{error}}",
+      "save": "保存配置",
+      "saved": "配置已保存",
+      "saveFailed": "保存失败：{{error}}",
+      "syncNow": "立即同步",
+      "syncing": "同步中…",
+      "syncFailed": "同步失败：{{error}}",
+      "resultUploaded": "已上传到云端",
+      "resultDownloaded": "已从云端下载",
+      "resultMerged": "已智能合并",
+      "resultNoop": "已是最新",
+      "resultCancelled": "已取消同步",
+      "lastSync": "上次同步：{{time}}",
+      "lastSyncNever": "尚未同步过",
+      "conflictTitle": "同步冲突",
+      "conflictMessage": "本地和云端都有改动，请选择处理方式。本地约 {{local}} KB，云端约 {{remote}} KB。智能合并会按游戏路径与游玩记录去重合并，两边都不会丢。",
+      "merge": "智能合并",
+      "useRemote": "使用云端",
+      "useLocal": "使用本地"
     },
     "backup": {
       "autoBackup": "自动备份",
@@ -1518,7 +1570,10 @@
       "toastSubmitFailed": "操作失败：{{error}}",
       "toastQuickLoginFailed": "快捷登录失败：{{error}}",
       "friendPlayNotify": "好友开始玩游戏时通知",
-      "friendPlayNotifyHint": "好友开始游玩时弹出提示"
+      "friendPlayNotifyHint": "好友开始游玩时弹出提示",
+      "levelProgress": "Lv.{{level}} · {{exp}}/{{next}} EXP",
+      "levelMaxed": "Lv.{{level}} · {{exp}} EXP · 已满级",
+      "checkedIn": "已签到"
     }
   },
   "downloads": {
@@ -1938,7 +1993,16 @@
     "requestsIncoming": "收到的请求",
     "requestsOutgoing": "已发出的请求",
     "toastRejected": "已拒绝好友请求",
-    "requestPending": "已发送请求"
+    "requestPending": "已发送请求",
+    "menuSetNote": "设置备注",
+    "menuRemoveFriend": "删除好友",
+    "noteHint": "为 {{name}} 设置备注（最多 {{max}} 字）",
+    "noteTooLong": "备注最多 {{max}} 字",
+    "noteSaved": "备注已保存",
+    "noteSaveFailed": "保存备注失败：{{error}}",
+    "removeFriendConfirm": "确定要删除好友「{{name}}」吗？删除后聊天记录不会丢失，但好友关系将永久解除。",
+    "friendRemoved": "已删除好友",
+    "friendRemoveFailed": "删除好友失败：{{error}}"
   },
   "friendsOverlay": {
     "title": "好友",
@@ -1947,5 +2011,8 @@
     "openChat": "点一下开始聊天",
     "send": "发送",
     "noMessages": "还没有消息，说点什么吧"
+  },
+  "protocolLaunch": {
+    "launchFailed": "快捷启动失败"
   }
 }

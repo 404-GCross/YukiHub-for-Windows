@@ -11,6 +11,7 @@ import type { FetchHomeDataOptions, GameRuntimeChangedEvent } from "../store";
 import { ShouldShowMainWindowOnReady } from "../../bindings/yukihub/internal/service/configservice";
 import { GetPendingInstall } from "../../bindings/yukihub/internal/service/downloadservice";
 import { onWailsEvent } from "../../src/bindings/runtime";
+import { invalidateAllGameLists } from "../cache/gameCache";
 import { useAppStore } from "../store";
 
 export type QuitSyncRequest = {
@@ -205,7 +206,8 @@ export function useAppRuntimeEffects({
         kind?: string;
         config_key?: string;
       }) => {
-        const message = payload?.message?.trim() || "快捷启动失败";
+        const message
+          = payload?.message?.trim() || t("protocolLaunch.launchFailed");
         const detail = payload?.detail?.trim();
         void Window.Show();
         if (
@@ -344,6 +346,18 @@ export function useAppRuntimeEffects({
 
     return unsubscribe;
   }, [t]);
+
+  useEffect(() => {
+    // 同步（账号云同步 / WebDAV 自持同步）把数据写回本地库后，必须让游戏库与首页
+    // 立即看到新数据 —— 否则用户以为「同步了没效果」，其实只是界面没刷新。
+    const unsubscribe = onWailsEvent("yukihub-sync:applied", () => {
+      invalidateAllGameLists();
+      void refreshHomeData({ showLoading: false, syncRuntime: false });
+      void refreshConfig();
+    });
+
+    return unsubscribe;
+  }, [refreshConfig, refreshHomeData]);
 
   useEffect(() => {
     const unsubscribe = onWailsEvent("home:refresh-requested", () => {

@@ -110,7 +110,7 @@ func (b *AIStatsBuilder) Build(dimension enums.Period) (*AIStatsData, error) {
 		startDateExpr = "current_date - INTERVAL 364 DAY"
 		startDate = now.AddDate(0, 0, -364)
 	case enums.All:
-		startDateExpr = "(SELECT COALESCE(MIN(start_time::DATE), current_date) FROM play_sessions)"
+		startDateExpr = "(SELECT COALESCE(MIN(start_time::DATE), current_date) FROM " + statsSessionSource + ")"
 		startDate = time.Time{} // will be set from DB
 	default:
 		startDateExpr = "current_date - INTERVAL 6 DAY"
@@ -119,7 +119,7 @@ func (b *AIStatsBuilder) Build(dimension enums.Period) (*AIStatsData, error) {
 
 	if dimension == enums.All {
 		var actualStart string
-		if err := b.db.QueryRowContext(b.ctx, "SELECT COALESCE(MIN(start_time::DATE), current_date) FROM play_sessions").Scan(&actualStart); err == nil {
+		if err := b.db.QueryRowContext(b.ctx, "SELECT COALESCE(MIN(start_time::DATE), current_date) FROM "+statsSessionSource).Scan(&actualStart); err == nil {
 			data.StartDate = actualStart
 		}
 	} else {
@@ -129,7 +129,7 @@ func (b *AIStatsBuilder) Build(dimension enums.Period) (*AIStatsData, error) {
 	data.DateRange = fmt.Sprintf("%s 至 %s", data.StartDate, data.EndDate)
 
 	queryTotal := fmt.Sprintf(
-		"SELECT COALESCE(COUNT(*), 0), COALESCE(SUM(duration), 0) FROM play_sessions WHERE start_time >= %s AND start_time <= %s + INTERVAL 1 DAY",
+		"SELECT COALESCE(COUNT(*), 0), COALESCE(SUM(duration), 0) FROM "+statsSessionSource+" WHERE start_time >= %s AND start_time <= %s + INTERVAL 1 DAY",
 		startDateExpr,
 		endDateExpr,
 	)
@@ -153,7 +153,7 @@ func (b *AIStatsBuilder) Build(dimension enums.Period) (*AIStatsData, error) {
 			COALESCE(gp.spoiler_boundary, ?) AS spoiler_boundary,
 			COALESCE(gp.progress_note, '') AS progress_note,
 			COALESCE(gp.route, '') AS route
-		FROM play_sessions ps
+		FROM `+statsSessionSource+`
 		JOIN games g ON ps.game_id = g.id
 		LEFT JOIN (
 			SELECT game_id, spoiler_boundary, progress_note, route
@@ -246,7 +246,7 @@ func (b *AIStatsBuilder) Build(dimension enums.Period) (*AIStatsData, error) {
 			COALESCE(ps.duration, 0) AS duration,
 			dayofweek(timezone(?, ps.start_time)) AS dow,
 			hour(timezone(?, ps.start_time)) AS hr
-		FROM play_sessions ps
+		FROM `+statsSessionSource+`
 		JOIN games g ON ps.game_id = g.id
 		WHERE ps.start_time >= %s AND ps.start_time <= %s + INTERVAL 1 DAY
 		ORDER BY ps.start_time DESC, ps.id DESC

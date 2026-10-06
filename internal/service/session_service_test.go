@@ -255,3 +255,51 @@ func TestCompleteUnfinishedSessionWithDurationDeletesShortActiveSession(t *testi
 		t.Fatalf("expected short active session to be deleted, found %d rows", count)
 	}
 }
+
+// TestCleanupUnfinishedSessionsSurvivesCancelledContext 退出路径上应用上下文
+// 已经被取消，未完成会话的清理必须仍然跑完。
+//
+// 老实现直接用 s.ctx 查询，退出时拿到 `context canceled`，清理静默失败：
+// 日志里有报错，但 play_sessions 里 end_time 仍是 NULL，下次启动又按心跳重算。
+func TestCleanupUnfinishedSessionsSurvivesCancelledContext(t *testing.T) {
+	db := setupSessionServiceTestDB(t)
+	sessionService := NewSessionService()
+
+	// 模拟退出：Init 用的 ctx 已经取消
+	appCtx, cancelApp := context.WithCancel(context.Background())
+	sessionService.Init(appCtx, db, &appconf.AppConfig{})
+	cancelApp()
+
+	startTime := time.Now().Add(-3 * time.Hour).Truncate(time.Second)
+	heartbeatAt := startTime.Add(180 * time.Second)
+	if _, err := db.Exec(
+		`INSERT INTO play_sessions (id, game_id, start_time, end_time, duration, updated_at)
+		 VALUES (?, ?, ?, NULL, ?, ?)`,
+		"session-cancelled-ctx",
+		"game-1",
+		startTime,
+		180,
+		heartbeatAt,
+	); err != nil {
+		t.Fatalf("insert running session: %v", err)
+	}
+
+	if err := sessionService.CleanupUnfinishedSessions(); err != nil {
+		t.Fatalf("退出清理不应因应用上下文取消而失败: %v", err)
+	}
+
+	var endTime *time.Time
+	var duration int
+	if err := db.QueryRow(
+		`SELECT end_time, duration FROM play_sessions WHERE id = ?`,
+		"session-cancelled-ctx",
+	).Scan(&endTime, &duration); err != nil {
+		t.Fatalf("query recovered session: %v", err)
+	}
+	if endTime == nil {
+		t.Fatalf("退出清理后 end_time 不应仍为 NULL（会话没被收尾）")
+	}
+	if duration != 180 {
+		t.Fatalf("expected recovered duration 180, got %d", duration)
+	}
+}

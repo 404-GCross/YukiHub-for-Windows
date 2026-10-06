@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -52,9 +53,9 @@ func (s *AiService) GetPromptPresets() []enums2.PromptType {
 
 // AISummarize 生成AI锐评总结
 func (s *AiService) AISummarize(req vo.AISummaryRequest) (vo.AISummaryResponse, error) {
-	if s.appConfig.AIAPIKey == "" {
-		applog.LogError(s.ctx, "[AIService] please configure AI API Key first")
-		return vo.AISummaryResponse{}, fmt.Errorf("please configure AI API Key first")
+	if strings.TrimSpace(s.appConfig.AIAPIKey) == "" {
+		applog.LogError(s.ctx, "[AIService] AI API Key 未配置")
+		return vo.AISummaryResponse{}, errors.New("请先配置 AI API Key")
 	}
 
 	// 确定防剧透等级（请求覆盖 > 全局配置 > 默认 none）
@@ -69,6 +70,13 @@ func (s *AiService) AISummarize(req vo.AISummaryRequest) (vo.AISummaryResponse, 
 	if err != nil {
 		applog.LogError(s.ctx, "[AIService] fail to get stats: "+err.Error())
 		return vo.AISummaryResponse{}, fmt.Errorf("获取统计数据失败: %w", err)
+	}
+
+	// 空数据护栏：这个区间一场都没玩就别往下走了。
+	// 否则模型拿到一份「空快照」只能凭空编造，用户看到的是看起来很真的假总结。
+	if statsData.TotalPlayCount == 0 && len(statsData.TopGames) == 0 {
+		applog.LogInfof(s.ctx, "[AIService] no play records in range %s", statsData.DateRange)
+		return vo.AISummaryResponse{}, errors.New("该时间段还没有游玩记录，先玩一会儿再来生成总结吧")
 	}
 
 	// 构建三层 Prompt
@@ -330,16 +338,45 @@ var webSearchToolDef = vo.Tool{
 	},
 }
 
-// callAIAPIWithTools 调用 AI API，支持多轮 WebSearch Tool Use
-func (s *AiService) callAIAPIWithTools(messages []vo.Message, enableWebSearch bool) (string, bool, error) {
-	baseURL := s.appConfig.AIBaseURL
+// aiProviderPreset 是内置 provider 的默认接入点与模型。
+//
+// 设置页的 provider 下拉框只写 ai_provider，base_url / model 留空时以前会静默
+// 落到 OpenAI + gpt-3.5-turbo —— 用户明明选了 DeepSeek，请求却打到了 OpenAI 上，
+// 报鉴权错还找不到原因。预设值对齐手机版 AiReviewSettings。
+type aiProviderPreset struct {
+	baseURL string
+	model   string
+}
+
+var aiProviderPresets = map[string]aiProviderPreset{
+	"openai":   {baseURL: "https://api.openai.com/v1", model: "gpt-4o-mini"},
+	"deepseek": {baseURL: "https://api.deepseek.com/v1", model: "deepseek-chat"},
+}
+
+// resolveAIEndpoint 按 provider 预设补全 base_url / model，显式填写的值优先。
+// provider 为空或 "custom" 时沿用历史兜底值，避免改变老配置的行为。
+func (s *AiService) resolveAIEndpoint() (string, string) {
+	baseURL := strings.TrimSpace(s.appConfig.AIBaseURL)
+	model := strings.TrimSpace(s.appConfig.AIModel)
+	preset := aiProviderPresets[strings.ToLower(strings.TrimSpace(s.appConfig.AIProvider))]
+	if baseURL == "" {
+		baseURL = preset.baseURL
+	}
 	if baseURL == "" {
 		baseURL = "https://api.openai.com/v1"
 	}
-	model := s.appConfig.AIModel
+	if model == "" {
+		model = preset.model
+	}
 	if model == "" {
 		model = "gpt-3.5-turbo"
 	}
+	return baseURL, model
+}
+
+// callAIAPIWithTools 调用 AI API，支持多轮 WebSearch Tool Use
+func (s *AiService) callAIAPIWithTools(messages []vo.Message, enableWebSearch bool) (string, bool, error) {
+	baseURL, model := s.resolveAIEndpoint()
 
 	apiURL := strings.TrimSuffix(baseURL, "/") + "/chat/completions"
 	webSearchUsed := false
@@ -397,6 +434,12 @@ func (s *AiService) callAIAPIWithTools(messages []vo.Message, enableWebSearch bo
 
 	if len(rawResp.Choices) == 0 {
 		return "", webSearchUsed, fmt.Errorf("AI未返回有效响应")
+	}
+	// 内容为空不能当成功返回：前端拿到空串会把整张卡片藏起来、也不弹提示，
+	// 用户只看到「点了一下什么也没发生」。多轮 tool_calls 用尽后最容易出现这种结果。
+	content := strings.TrimSpace(rawResp.Choices[0].Message.Content)
+	if content == "" {
+		return "", webSearchUsed, fmt.Errorf("AI 返回了空内容，请重试或更换模型")
 	}
 	return rawResp.Choices[0].Message.Content, webSearchUsed, nil
 }

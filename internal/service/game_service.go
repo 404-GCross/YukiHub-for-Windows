@@ -1869,7 +1869,10 @@ func (s *GameService) applyRemoteMetadataResult(existingGame models.Game, metaRe
 	// NSFW is safety metadata and follows supporting sources independently of
 	// the user-selected descriptive fields. Sources without this field must not
 	// overwrite a user's manual classification during refresh.
-	if remoteGame.SourceType == enums2.Bangumi || remoteGame.SourceType == enums2.VNDB || remoteGame.SourceType == enums2.Hikarinagi {
+	//
+	// 这里必须用 gamehelper 的统一名单：早先硬编码成 Bangumi/VNDB/Hikarinagi 三个，
+	// bangumi_mirror / nextmoe 的 NSFW 就永远更新不了（写名单时这两个来源还不存在）。
+	if gamehelper.IsNSFWAuthoritativeSource(remoteGame.SourceType) {
 		existingGame.IsNSFW = remoteGame.IsNSFW
 	}
 	existingGame.CachedAt = time.Now()
@@ -1879,6 +1882,16 @@ func (s *GameService) applyRemoteMetadataResult(existingGame models.Game, metaRe
 		if strings.TrimSpace(existingGame.CoverURL) == "" || gamehelper.IsDownloadableCoverURL(existingGame.CoverURL) {
 			existingGame.CoverURL = remoteCoverURL
 		}
+	}
+
+	// UpdateGame 是整行覆盖，会把 hidden 一起写回去。existingGame 是在锁外读
+	// 的快照，而上面这次远程抓取可能耗时数秒 —— 期间用户完全可能刚在游戏库里
+	// 隐藏/取消隐藏了这款游戏。所以整行写回之前重新读一次 hidden，别把新状态
+	// 覆盖成过期值（其它字段同样以这次读到的为准，不受影响）。
+	if current, err := s.GetGameByID(existingGame.ID); err == nil {
+		existingGame.Hidden = current.Hidden
+	} else {
+		applog.LogWarningf(s.ctx, "applyRemoteMetadataResult: failed to refresh hidden for game %s: %v", existingGame.ID, err)
 	}
 
 	if err := s.UpdateGame(existingGame); err != nil {
@@ -2182,6 +2195,101 @@ func (s *GameService) UpdateGameProcessName(gameID string, processName string) e
 
 	applog.LogInfof(s.ctx, "UpdateGameProcessName: updated process_name for game %s to %s", gameID, processName)
 	return nil
+}
+
+// SetGameHidden 单独更新「已隐藏」标记。
+//
+// 语义对齐手机版 GameRepository.setHidden：只改 hidden 与 updated_at，
+// 不碰封面 / PV / 时长等其他字段 —— 走 UpdateGame 那种整行覆盖会把
+// 详情页手上可能已经过期的字段一起写回去。
+//
+// updated_at 必须推进：云同步按「对端 updated_at 不早于本地」判断谁更新，
+// 隐藏状态变了却不更新时间戳，手机端就永远收不到这次隐藏。
+func (s *GameService) SetGameHidden(gameID string, hidden bool) error {
+	gameID = strings.TrimSpace(gameID)
+	if gameID == "" {
+		return fmt.Errorf("game id is required")
+	}
+
+	var rowsAffected int64
+	err := dbutils.WithDuckDBWriteLock(s.db, func() error {
+		return dbutils.RetryDuckDBWriteConflict(s.ctx, func() error {
+			result, err := s.db.ExecContext(
+				s.ctx,
+				`UPDATE games SET hidden = ?, updated_at = ? WHERE id = ?`,
+				hidden,
+				time.Now(),
+				gameID,
+			)
+			if err != nil {
+				return err
+			}
+			rowsAffected, err = result.RowsAffected()
+			return err
+		})
+	})
+	if err != nil {
+		applog.LogErrorf(s.ctx, "SetGameHidden: failed to update hidden for game %s: %v", gameID, err)
+		return fmt.Errorf("failed to update hidden: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("game not found with id: %s", gameID)
+	}
+
+	applog.LogInfof(s.ctx, "SetGameHidden: game %s hidden=%v", gameID, hidden)
+	return nil
+}
+
+// BatchSetGameHidden 批量设置「已隐藏」标记，返回实际改到的条数。
+//
+// 走单条 UPDATE 而不是前端循环调 SetGameHidden：一次调用只抢一次 DuckDB
+// 写锁（全选可能几百条），也不会出现「部分成功」被前端误报成全部失败。
+// 返回的 count 小于请求条数说明有些 id 已不存在，调用方应据此提示。
+func (s *GameService) BatchSetGameHidden(ids []string, hidden bool) (int, error) {
+	ids = utils.UniqueNonEmptyStrings(ids)
+	if len(ids) == 0 {
+		return 0, nil
+	}
+
+	placeholders := utils.BuildPlaceholders(len(ids))
+	args := make([]interface{}, 0, 2+len(ids))
+	args = append(args, hidden, time.Now())
+	for _, id := range ids {
+		args = append(args, id)
+	}
+
+	var rowsAffected int64
+	err := dbutils.WithDuckDBWriteLock(s.db, func() error {
+		return dbutils.RetryDuckDBWriteConflict(s.ctx, func() error {
+			tx, err := s.db.BeginTx(s.ctx, nil)
+			if err != nil {
+				return fmt.Errorf("begin batch hidden transaction: %w", err)
+			}
+			defer tx.Rollback()
+
+			result, err := tx.ExecContext(
+				s.ctx,
+				fmt.Sprintf("UPDATE games SET hidden = ?, updated_at = ? WHERE id IN (%s)", placeholders),
+				args...,
+			)
+			if err != nil {
+				return fmt.Errorf("update games hidden: %w", err)
+			}
+			rowsAffected, err = result.RowsAffected()
+			if err != nil {
+				return fmt.Errorf("read affected game count: %w", err)
+			}
+			return tx.Commit()
+		})
+	})
+	if err != nil {
+		applog.LogErrorf(s.ctx, "BatchSetGameHidden: failed to update hidden for %d games: %v", len(ids), err)
+		return 0, fmt.Errorf("failed to update hidden: %w", err)
+	}
+
+	applog.LogInfof(s.ctx, "BatchSetGameHidden: %d/%d games hidden=%v", rowsAffected, len(ids), hidden)
+	return int(rowsAffected), nil
 }
 
 // BatchUpdateStatus 批量更新多个游戏的游玩状态
