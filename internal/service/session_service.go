@@ -19,6 +19,23 @@ type SessionService struct {
 	config *appconf.AppConfig
 }
 
+// 未完成会话清理的超时。清理只跑在退出 / 启动路径上，用的是独立上下文，
+// 见 sessionMaintenanceContext。
+const (
+	sessionCleanupQueryTimeout   = 30 * time.Second
+	sessionCleanupSessionTimeout = 15 * time.Second
+)
+
+// sessionMaintenanceContext 返回一个**不受应用生命周期影响**的上下文。
+//
+// 未完成会话的清理必然发生在退出路径上，而那时 s.ctx 已被取消：继续用 s.ctx
+// 查询会直接拿到 `context canceled`，清理静默失败 —— 日志里有报错，但会话仍留在
+// 库里（end_time 仍是 NULL），下次启动又按心跳时间重算一遍。
+// 退出清理是为了「把已经发生的游玩记录写完整」，必须用自己的上下文跑完。
+func sessionMaintenanceContext(timeout time.Duration) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.Background(), timeout)
+}
+
 func NewSessionService() *SessionService {
 	return &SessionService{}
 }
@@ -220,20 +237,20 @@ func (s *SessionService) UpdatePlaySession(session models.PlaySession) error {
 	return nil
 }
 
-func (s *SessionService) completeUnfinishedSession(sessionID string, endTime time.Time, duration int) (bool, error) {
+func (s *SessionService) completeUnfinishedSession(ctx context.Context, sessionID string, endTime time.Time, duration int) (bool, error) {
 	if duration < 60 {
-		_, err := s.db.ExecContext(s.ctx, "DELETE FROM play_sessions WHERE id = ?", sessionID)
+		_, err := s.db.ExecContext(ctx, "DELETE FROM play_sessions WHERE id = ?", sessionID)
 		if err != nil {
 			return true, fmt.Errorf("delete short unfinished session: %w", err)
 		}
-		if err := cloudsync.UpsertTombstone(s.ctx, s.db, cloudsync.EntityPlaySession, sessionID, endTime); err != nil {
+		if err := cloudsync.UpsertTombstone(ctx, s.db, cloudsync.EntityPlaySession, sessionID, endTime); err != nil {
 			return true, err
 		}
 		return true, nil
 	}
 
 	result, err := s.db.ExecContext(
-		s.ctx,
+		ctx,
 		`UPDATE play_sessions SET end_time = ?, duration = ?, updated_at = ? WHERE id = ?`,
 		endTime,
 		duration,
@@ -252,7 +269,7 @@ func (s *SessionService) completeUnfinishedSession(sessionID string, endTime tim
 		return false, fmt.Errorf("游玩记录不存在: %s", sessionID)
 	}
 
-	if err := cloudsync.DeleteTombstone(s.ctx, s.db, cloudsync.EntityPlaySession, sessionID); err != nil {
+	if err := cloudsync.DeleteTombstone(ctx, s.db, cloudsync.EntityPlaySession, sessionID); err != nil {
 		applog.LogWarningf(s.ctx, "completeUnfinishedSession: failed to clear play_session tombstone %s: %v", sessionID, err)
 	}
 	return false, nil
@@ -260,8 +277,12 @@ func (s *SessionService) completeUnfinishedSession(sessionID string, endTime tim
 
 // completeUnfinishedSessionWithDuration 使用指定结束时间和时长完成一个未完成会话。
 // duration 是实际应计入统计的秒数；在仅记录活跃窗口时，它可能小于墙钟时间。
+//
+// 调用点只有退出路径，因此这里自建维护上下文（见 sessionMaintenanceContext）。
 func (s *SessionService) completeUnfinishedSessionWithDuration(sessionID string, endTime time.Time, duration int) error {
-	_, err := s.completeUnfinishedSession(sessionID, endTime, duration)
+	ctx, cancel := sessionMaintenanceContext(sessionCleanupSessionTimeout)
+	defer cancel()
+	_, err := s.completeUnfinishedSession(ctx, sessionID, endTime, duration)
 	if err != nil {
 		applog.LogErrorf(s.ctx, "completeUnfinishedSessionWithDuration: failed to complete session %s: %v", sessionID, err)
 		return fmt.Errorf("完成游玩会话失败: %w", err)
@@ -315,8 +336,12 @@ func (s *SessionService) BatchAddPlaySessions(sessions []models.PlaySession) err
 // duration/updated_at 恢复，避免把断电后的时间误算为游玩时间。
 // 同时兼容旧版本使用 duration == 0 且 end_time == start_time 的待完成记录。
 func (s *SessionService) CleanupUnfinishedSessions() error {
+	// 退出路径上 s.ctx 已被取消，必须用自己的上下文，否则清理全部失败。
+	queryCtx, cancelQuery := sessionMaintenanceContext(sessionCleanupQueryTimeout)
+	defer cancelQuery()
+
 	rows, err := s.db.QueryContext(
-		s.ctx,
+		queryCtx,
 		`SELECT
 			id,
 			game_id,
@@ -382,7 +407,10 @@ func (s *SessionService) CleanupUnfinishedSessions() error {
 			endTime = session.StartTime
 		}
 
-		sessionDeleted, err := s.completeUnfinishedSession(session.ID, endTime, duration)
+		// 每条会话各给一个独立超时：一条卡住不影响其余的清理。
+		sessionCtx, cancelSession := sessionMaintenanceContext(sessionCleanupSessionTimeout)
+		sessionDeleted, err := s.completeUnfinishedSession(sessionCtx, session.ID, endTime, duration)
+		cancelSession()
 		if err != nil {
 			applog.LogErrorf(s.ctx, "CleanupUnfinishedSessions: failed to complete session %s: %v", session.ID, err)
 			continue

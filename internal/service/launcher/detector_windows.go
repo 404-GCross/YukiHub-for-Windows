@@ -437,6 +437,14 @@ var successorGraceDelays = []time.Duration{0, 1 * time.Second, 2 * time.Second, 
 // hand-offs normally happen. It matches the minimum session duration: sessions
 // shorter than this are deleted anyway, so the grace waits cannot distort any
 // recorded play time.
+//
+// The cutoff only applies to processes that staged detection CONFIRMED as the
+// game itself. A launcher-fallback monitor (detection timed out and we are
+// watching the launcher, or the game is configured to monitor the launcher
+// directly) can hand off at any moment — the user may sit in a launcher menu
+// for minutes before clicking 开始 — so those always get the full grace
+// retries (the real exit time is recorded separately, so the extra waits
+// never inflate the recorded play time).
 const successorStartupPhase = 60 * time.Second
 
 // DetectSuccessorProcess looks for a process that took over from an exited
@@ -446,11 +454,12 @@ const successorStartupPhase = 60 * time.Second
 // genuine game shutdown.
 func DetectSuccessorProcess(input SuccessorDetectionInput, logger DetectionLogger) (processutils.ProcessInfo, bool) {
 	delays := successorGraceDelays
-	if !input.SessionStart.IsZero() && time.Since(input.SessionStart) >= successorStartupPhase {
+	if !input.MonitoredIsLauncherFallback && !input.SessionStart.IsZero() && time.Since(input.SessionStart) >= successorStartupPhase {
 		// Past the start-up phase the game's window/process structure is
 		// stable: a genuine exit leaves the game directory without processes.
 		// A single immediate check keeps hand-off support for in-game restarts
-		// without delaying session finalization.
+		// without delaying session finalization. Launcher-fallback monitors
+		// are excluded — see successorStartupPhase above.
 		delays = successorGraceDelays[:1]
 	}
 

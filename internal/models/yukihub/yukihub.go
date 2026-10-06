@@ -34,9 +34,16 @@ type BackupSettings struct {
 }
 
 type Game struct {
-	LocalID       int64  `json:"local_id"`
-	Title         string `json:"title"`
-	OriginalTitle string `json:"original_title"`
+	LocalID int64  `json:"local_id"`
+	Title   string `json:"title"`
+	// OriginalTitle / Description / Tags 必须是 omitempty。
+	//
+	// 手机版 importGamesJson 一律用 `optString(key, 本地值)`：
+	// **键存在但为空串 = 确认清空**，键缺失才保留本地值。
+	// 桌面端这三项经常是空的（没刮削的游戏没有简介 / 标签，别名数组也可能为空），
+	// 早先写成 `""` 会把手机端同名字段直接抹掉。
+	// 需要「桌面端删掉标签也能同步过去」时再引入显式清空语义，不要靠写空串。
+	OriginalTitle string `json:"original_title,omitempty"`
 	// Engine 是 Android 侧的引擎类型，桌面端不存储：导出时留空并省略，
 	// 手机端读不到就保留自己那一条的值。
 	Engine          string `json:"engine,omitempty"`
@@ -51,8 +58,8 @@ type Game struct {
 	EmulatorPackage    string `json:"emulator_package,omitempty"`
 	LaunchTarget       string `json:"launch_target,omitempty"`
 	WinlatorLaunchMode string `json:"winlator_launch_mode,omitempty"`
-	Description        string `json:"description"`
-	Tags               string `json:"tags"`
+	Description        string `json:"description,omitempty"`
+	Tags               string `json:"tags,omitempty"`
 	// GamehubLocalGameId 是 Android 侧无本地目录条目的身份键，桌面端没有对应概念。
 	// 同样必须省略：写成空串会把对端的身份键抹掉，破坏后续匹配。
 	GamehubLocalGameId string `json:"gamehub_local_game_id,omitempty"`
@@ -84,16 +91,30 @@ type PlaySession struct {
 	GameEngine          string `json:"game_engine"`
 	GameEmulatorPackage string `json:"game_emulator_package"`
 	StartTime           int64  `json:"start_time"`
-	EndTime             int64  `json:"end_time"`
-	Duration            int64  `json:"duration"` // 毫秒
-	LaunchType          string `json:"launch_type"`
-	DeviceID            string `json:"device_id"`
-	CreatedAt           int64  `json:"created_at"`
-	UpdatedAt           int64  `json:"updated_at"`
+	// EndTime 必须是 omitempty：手机版 exportPlaySessionsJson 只在 end_time
+	// 非 null 时才写这个键，导入时用 `o.has("end_time") && !o.isNull(...)` 判断
+	// 「是否已结束」，未结束的会话落库为 NULL。
+	// 桌面端早期恒写 0，对端会把「还在玩」的会话当成「1970 年就结束了」，
+	// 并且 end_time=0 在手机端 IS NOT NULL，会被算进聚合统计。
+	EndTime    int64  `json:"end_time,omitempty"`
+	Duration   int64  `json:"duration"` // 毫秒
+	LaunchType string `json:"launch_type"`
+	DeviceID   string `json:"device_id"`
+	CreatedAt  int64  `json:"created_at"`
+	UpdatedAt  int64  `json:"updated_at"`
 }
 
+// MetadataCache 是 metadata_cache 段的一个元素。
+//
+// GameRootUri / GameTitle 不是可选的装饰字段：手机版 importMetadataJson
+// （MetadataRepository.java）先按 game_root_uri 匹配、为空时再按 game_title
+// 精确匹配，**只有 title 非空**才会回退到 game_local_id。
+// 桌面端不写这两个键 → 前两步都失败、第三步被「title 为空」挡住 →
+// 整个 metadata_cache 段在手机端被逐条静默丢弃。
 type MetadataCache struct {
 	GameLocalID int64  `json:"game_local_id"`
+	GameRootUri string `json:"game_root_uri"`
+	GameTitle   string `json:"game_title"`
 	Source      string `json:"source"`
 	SourceID    string `json:"source_id"`
 	JSON        string `json:"json"`

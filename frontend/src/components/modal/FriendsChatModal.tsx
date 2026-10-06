@@ -26,12 +26,14 @@ import {
   PollChatMessages,
   PollGroupMessages,
   RejectFriendRequest,
+  RemoveFriend,
   ReportChatMessage,
   SearchUsers,
   SelectChatImage,
   SendChatMessage,
   SendFriendRequest,
   SendGroupMessage,
+  SetFriendNote,
   UploadChatImage,
 } from "../../../bindings/yukihub/internal/service/accountservice";
 import { onWailsEvent } from "../../../src/bindings/runtime";
@@ -51,6 +53,7 @@ import { BetterButton } from "../ui/better/BetterButton";
 import { BetterInput } from "../ui/better/BetterInput";
 import { ContextMenu } from "../ui/ContextMenu";
 import { ModalPortal } from "../ui/ModalPortal";
+import { ConfirmModal } from "./ConfirmModal";
 
 interface FriendsChatModalProps {
   isOpen: boolean;
@@ -73,6 +76,9 @@ type ChatTarget
     | { kind: "group"; group: ChatGroup };
 
 type MainView = "list" | "requests" | "add" | "chat";
+
+/** 好友备注长度上限，与手机版 FriendsChatDialog 的「最多50字」一致。 */
+const FRIEND_NOTE_MAX_LENGTH = 50;
 
 interface ChatDraft {
   text: string;
@@ -169,6 +175,13 @@ export function FriendsChatModal({
   // 好友列表项的右键菜单（点整行仍然是进私聊，右键才出「查看资料/发消息」）
   const [friendMenu, setFriendMenu] = useState<Friend | null>(null);
   const [friendMenuPosition, setFriendMenuPosition] = useState({ x: 0, y: 0 });
+  // 「设置备注」对话框的目标好友与草稿（上限 50 字，与手机版一致）
+  const [noteTarget, setNoteTarget] = useState<Friend | null>(null);
+  const [noteDraft, setNoteDraft] = useState("");
+  const [savingNote, setSavingNote] = useState(false);
+  // 「删除好友」确认框的目标好友
+  const [deleteTarget, setDeleteTarget] = useState<Friend | null>(null);
+  const [deletingFriend, setDeletingFriend] = useState(false);
   // 图片全屏查看
   const [viewerImageURL, setViewerImageURL] = useState("");
 
@@ -396,6 +409,63 @@ export function FriendsChatModal({
     }
     void refreshLists(true);
   }, [isOpen, isLoggedIn]);
+
+  const openNoteEditor = (friend: Friend) => {
+    setNoteTarget(friend);
+    setNoteDraft(friend.note ?? "");
+  };
+
+  const handleSaveNote = async () => {
+    if (!noteTarget || savingNote) {
+      return;
+    }
+    const note = noteDraft.trim();
+    if (note.length > FRIEND_NOTE_MAX_LENGTH) {
+      toast.error(
+        t("friendsChat.noteTooLong", { max: FRIEND_NOTE_MAX_LENGTH }),
+      );
+      return;
+    }
+    setSavingNote(true);
+    try {
+      await SetFriendNote(noteTarget.id, note);
+      setNoteTarget(null);
+      await refreshLists(false);
+      toast.success(t("friendsChat.noteSaved"));
+    }
+    catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      toast.error(t("friendsChat.noteSaveFailed", { error: message }));
+    }
+    finally {
+      setSavingNote(false);
+    }
+  };
+
+  const handleRemoveFriend = async () => {
+    if (!deleteTarget || deletingFriend) {
+      return;
+    }
+    setDeletingFriend(true);
+    try {
+      await RemoveFriend(deleteTarget.id);
+      const removedID = deleteTarget.id;
+      setDeleteTarget(null);
+      // 正在和这个人聊天就直接退回列表，别停在一个已经没有好友关系的会话里
+      if (target?.kind === "friend" && target.friend.id === removedID) {
+        setTarget(null);
+      }
+      await refreshLists(false);
+      toast.success(t("friendsChat.friendRemoved"));
+    }
+    catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      toast.error(t("friendsChat.friendRemoveFailed", { error: message }));
+    }
+    finally {
+      setDeletingFriend(false);
+    }
+  };
 
   // 好友列表由后端推送驱动，前端不再自己定时拉。
   //
@@ -1775,6 +1845,27 @@ export function FriendsChatModal({
               }
             },
           },
+          {
+            key: "note",
+            label: t("friendsChat.menuSetNote"),
+            icon: "i-mdi-note-edit-outline",
+            onSelect: () => {
+              if (friendMenu) {
+                openNoteEditor(friendMenu);
+              }
+            },
+          },
+          {
+            key: "remove",
+            label: t("friendsChat.menuRemoveFriend"),
+            icon: "i-mdi-account-remove-outline",
+            danger: true,
+            onSelect: () => {
+              if (friendMenu) {
+                setDeleteTarget(friendMenu);
+              }
+            },
+          },
         ]}
       />
 
@@ -1800,6 +1891,66 @@ export function FriendsChatModal({
         isOpen={Boolean(viewerImageURL)}
         url={viewerImageURL}
         onClose={() => setViewerImageURL("")}
+      />
+
+      {/* 好友备注（手机版：长按好友 → 设置备注，最多 50 字） */}
+      {noteTarget && (
+        <ModalPortal>
+          <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+            <div className="w-full max-w-md rounded-xl border border-brand-200 bg-white p-6 shadow-xl dark:border-brand-700 dark:bg-brand-800">
+              <h3 className="mb-1 text-lg font-bold text-brand-900 dark:text-white">
+                {t("friendsChat.menuSetNote")}
+              </h3>
+              <p className="mb-4 text-sm text-brand-600 dark:text-brand-400">
+                {t("friendsChat.noteHint", {
+                  name: noteTarget.nickname,
+                  max: FRIEND_NOTE_MAX_LENGTH,
+                })}
+              </p>
+              <BetterInput
+                value={noteDraft}
+                maxLength={FRIEND_NOTE_MAX_LENGTH}
+                placeholder={noteTarget.nickname}
+                onChange={event => setNoteDraft(event.target.value)}
+              />
+              <div className="mt-1 text-right text-xs text-brand-500 dark:text-brand-400">
+                {noteDraft.length}
+                /
+                {FRIEND_NOTE_MAX_LENGTH}
+              </div>
+              <div className="mt-6 flex justify-end gap-3">
+                <BetterButton
+                  type="button"
+                  variant="secondary"
+                  onClick={() => setNoteTarget(null)}
+                >
+                  {t("common.cancel")}
+                </BetterButton>
+                <BetterButton
+                  type="button"
+                  variant="primary"
+                  isLoading={savingNote}
+                  onClick={() => void handleSaveNote()}
+                >
+                  {t("common.save")}
+                </BetterButton>
+              </div>
+            </div>
+          </div>
+        </ModalPortal>
+      )}
+
+      {/* 删除好友（不可撤销，给一次确认） */}
+      <ConfirmModal
+        isOpen={Boolean(deleteTarget)}
+        type="danger"
+        title={t("friendsChat.menuRemoveFriend")}
+        message={t("friendsChat.removeFriendConfirm", {
+          name: deleteTarget?.note || deleteTarget?.nickname || "",
+        })}
+        confirmText={t("friendsChat.menuRemoveFriend")}
+        onConfirm={() => void handleRemoveFriend()}
+        onClose={() => setDeleteTarget(null)}
       />
     </ModalPortal>
   );

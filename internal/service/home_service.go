@@ -115,6 +115,8 @@ func (s *HomeService) GetHomePageData() (vo.HomePageData, error) {
 		FROM games g
 		JOIN session_rollup rollup ON rollup.game_id = g.id
 		JOIN latest_sessions latest ON latest.game_id = g.id AND latest.row_num = 1
+		-- 已隐藏的游戏不进首页「最近游玩」，与手机版 HomeActivity 走 getAll()（hidden=0）一致
+		WHERE COALESCE(g.hidden, FALSE) = FALSE
 		ORDER BY rollup.last_played_at DESC, g.created_at DESC, g.id ASC
 		LIMIT ?
 	`

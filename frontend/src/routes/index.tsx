@@ -46,6 +46,32 @@ export const Route = createRoute({
   component: HomePage,
 });
 
+/**
+ * 首页顶部条：左侧用户区 + 右侧刷新按钮。
+ *
+ * 抽出来是因为空游戏库画面也要用——`HomeUserProfile` 是账号 / 登录 / 云同步
+ * 在整个应用里的唯一入口（SideBar 里已明确不放第二个入口），
+ * 任何一条首页分支都不能把它漏掉。
+ */
+function HomeHeader({ onRefresh }: { onRefresh: () => void }) {
+  const { t } = useTranslation();
+
+  return (
+    <header className="flex items-center gap-3">
+      <HomeUserProfile />
+      <div className="min-w-0 flex-1" />
+      <button
+        type="button"
+        onClick={onRefresh}
+        aria-label={t("home.refresh")}
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/50 bg-white/40 text-brand-700 transition-colors hover:bg-white/70 dark:border-white/12 dark:bg-white/8 dark:text-white/85 dark:hover:bg-white/16"
+      >
+        <span className="i-mdi-refresh text-lg" />
+      </button>
+    </header>
+  );
+}
+
 function HomePage() {
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -363,25 +389,33 @@ function HomePage() {
 
   const lastPlayed = homeData.last_played;
   if (!lastPlayed || !selectedGame) {
+    // 空游戏库画面**必须**保留顶部用户区：它是账号 / 登录 / 云同步在全局的
+    // 唯一入口（见 HomeUserProfile 与 SideBar 里的注释）。
+    // 曾经这里直接 return 了一块不含 header 的占位页，于是「清空游戏库后
+    // 首页连登录按钮都没有了」——而新设备首次同步恰好就是空库场景，
+    // 等于把唯一的自救入口锁死。
     return (
       <div className="relative min-h-full">
         <div className="yh-hero-gradient-light dark:yh-hero-gradient pointer-events-none absolute inset-0" />
-        <div className="relative flex min-h-full flex-col items-center justify-center gap-3 p-6 text-center">
-          <SnowflakeMark className="h-16 w-16 text-brand-400/70 dark:text-white/25" />
-          <h1 className="text-2xl font-bold text-brand-900 dark:text-white">
-            {t("home.title")}
-          </h1>
-          <p className="max-w-md text-sm text-brand-700 dark:text-white/80">
-            {t("home.noPlayRecordHint")}
-          </p>
-          <button
-            type="button"
-            onClick={() => navigate({ to: "/library" })}
-            className="yh-primary-pill mt-2 inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-bold text-white shadow-lg shadow-black/20 transition-all hover:brightness-110 active:scale-95"
-          >
-            <span className="i-mdi-gamepad-variant text-lg" />
-            {t("home.browseLibrary")}
-          </button>
+        <div className="relative flex min-h-full flex-col p-5">
+          <HomeHeader onRefresh={handleRefresh} />
+          <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
+            <SnowflakeMark className="h-16 w-16 text-brand-400/70 dark:text-white/25" />
+            <h1 className="text-2xl font-bold text-brand-900 dark:text-white">
+              {t("home.title")}
+            </h1>
+            <p className="max-w-md text-sm text-brand-700 dark:text-white/80">
+              {t("home.noPlayRecordHint")}
+            </p>
+            <button
+              type="button"
+              onClick={() => navigate({ to: "/library" })}
+              className="yh-primary-pill mt-2 inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-bold text-white shadow-lg shadow-black/20 transition-all hover:brightness-110 active:scale-95"
+            >
+              <span className="i-mdi-gamepad-variant text-lg" />
+              {t("home.browseLibrary")}
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -423,18 +457,7 @@ function HomePage() {
       </div>
 
       <div className="relative flex min-h-full flex-col gap-4 p-5">
-        <header className="flex items-center gap-3">
-          <HomeUserProfile />
-          <div className="min-w-0 flex-1" />
-          <button
-            type="button"
-            onClick={handleRefresh}
-            aria-label={t("home.refresh")}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/50 bg-white/40 text-brand-700 transition-colors hover:bg-white/70 dark:border-white/12 dark:bg-white/8 dark:text-white/85 dark:hover:bg-white/16"
-          >
-            <span className="i-mdi-refresh text-lg" />
-          </button>
-        </header>
+        <HomeHeader onRefresh={handleRefresh} />
 
         <div className="flex min-h-0 flex-1 flex-col gap-4 lg:flex-row">
           <section className="flex min-w-0 flex-[1.6] flex-col gap-4">

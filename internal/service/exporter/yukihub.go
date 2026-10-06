@@ -167,6 +167,8 @@ func (e *YukiHubExporter) build(kind snapshotKind) (*yukihub.Backup, error) {
 	// metadata_cache 取自 game_metadata_sources.cache_json，负载沿用 Android 的
 	// VnMetadata 结构，两个方向都能原样往返。
 	backup.MetadataCache = metadataCache
+	// 预先建成空切片，序列化时才是 `[]` 而不是 `null`（手机版恒写 `[]`）。
+	backup.PlaySessions = make([]yukihub.PlaySession, 0)
 	for _, game := range games {
 		// 跳过无标题条目：Android 侧会把空标题落成「未命名游戏」，
 		// 这类条目在跨端同步时只会制造无法匹配的占位记录。
@@ -373,12 +375,19 @@ func (e *YukiHubExporter) loadFavorites() (map[string]bool, error) {
 
 // loadMetadataCache 读取每个来源的元数据负载，映射为快照的 metadata_cache 元素。
 //
-// game_local_id 只能由 games.legacy_local_id 还原：Android 的 metadata_cache 以整数
-// local_id 关联游戏，桌面端自建条目没有 legacy_local_id，无从关联，只能跳过。
-// 无标题游戏与 games 导出保持同一口径（同样跳过），避免产生无法匹配的孤儿缓存。
+// game_root_uri / game_title 必须带上：手机版 importMetadataJson 先按 root_uri 匹配、
+// 为空时按 title 精确匹配，只有 title 非空才回退 local_id。少了这两个键，
+// 整段 metadata_cache 会在手机端被逐条丢弃。
+//
+// **不能因为 local_id 为 0 就跳过**：桌面端自己扫描进来的游戏没有 Android 侧的整数
+// ID（games.legacy_local_id 为空 → local_id 恒为 0），早期版本把它们整段跳过，
+// 结果是「PC 上用 nextmoe 刮的资料同步到手机后全没了、退回默认的 vndb」——
+// 手机端是靠 metadata_cache 里 source='nextmoe' 那一行取资料的。
+// 手机端本来就不依赖 local_id（标题能匹配上就用标题），所以照常导出即可。
 func (e *YukiHubExporter) loadMetadataCache() ([]yukihub.MetadataCache, error) {
 	rows, err := e.db.QueryContext(e.ctx, `SELECT
 		COALESCE(g.legacy_local_id, ''),
+		COALESCE(g.name, ''),
 		s.source_type,
 		COALESCE(s.source_id, ''),
 		COALESCE(s.cache_json, ''),
@@ -397,19 +406,21 @@ func (e *YukiHubExporter) loadMetadataCache() ([]yukihub.MetadataCache, error) {
 	entries := make([]yukihub.MetadataCache, 0)
 	for rows.Next() {
 		var legacyLocalID string
+		var title string
 		var sourceType string
 		var sourceID string
 		var payload string
 		var updatedAt time.Time
-		if err := rows.Scan(&legacyLocalID, &sourceType, &sourceID, &payload, &updatedAt); err != nil {
+		if err := rows.Scan(&legacyLocalID, &title, &sourceType, &sourceID, &payload, &updatedAt); err != nil {
 			return nil, fmt.Errorf("读取元数据缓存失败: %w", err)
 		}
-		localID := parseYukiHubLocalID(legacyLocalID)
-		if localID <= 0 {
-			continue
-		}
 		entries = append(entries, yukihub.MetadataCache{
-			GameLocalID: localID,
+			// 桌面端自建游戏没有对端整数 ID，写 0；对端与桌面端导入器都会改用标题匹配。
+			GameLocalID: parseYukiHubLocalID(legacyLocalID),
+			// 与 games 段同口径：桌面端不导出本机绝对路径，恒为空串。
+			// 手机端对空 root_uri 会转向 game_title 精确匹配。
+			GameRootUri: "",
+			GameTitle:   strings.TrimSpace(title),
 			Source:      string(gamehelper.NormalizeMetadataSourceType(enums.SourceType(sourceType))),
 			SourceID:    strings.TrimSpace(sourceID),
 			JSON:        payload,

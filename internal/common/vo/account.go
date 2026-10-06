@@ -31,6 +31,45 @@ type AccountStatus struct {
 	ServiceURL string `json:"service_url"`
 }
 
+// SelfSyncConfig 是「自持同步（WebDAV）」的配置回显。
+//
+// 对应手机版 WebDavSettingsDialog 里的三个输入框 + 自动同步开关。
+// 密码会回传给前端以支持「保存后仍显示」（手机版同样把密码填回输入框）。
+type SelfSyncConfig struct {
+	ServerURL string `json:"server_url"`
+	Username  string `json:"username"`
+	Password  string `json:"password"`
+	AutoSync  bool   `json:"auto_sync"`
+	// Configured：URL / 用户名 / 密码三者齐全（对齐手机版 isConfigured）
+	Configured bool `json:"configured"`
+	// LastSyncAt / LastSyncHash：上次同步时间与快照哈希
+	LastSyncAt   string `json:"last_sync_at,omitempty"`
+	LastSyncHash string `json:"last_sync_hash,omitempty"`
+}
+
+// SelfSyncResult 是一次自持同步的结果。
+//
+// Action 取值：
+//   - uploaded   已上传（本地更新）
+//   - downloaded 已下载（云端更新）
+//   - merged     已合并（两边都变了，用户选了智能合并）
+//   - noop       已是最新
+//   - cancelled  用户在冲突对话框里选了取消
+//   - conflict   本地与云端都变过，需要用户决定（此时 LocalBytes / RemoteBytes 有值）
+type SelfSyncResult struct {
+	Action      string `json:"action"`
+	Games       int    `json:"games"`
+	Sessions    int    `json:"sessions"`
+	Imported    int    `json:"imported,omitempty"`
+	Skipped     int    `json:"skipped,omitempty"`
+	Failed      int    `json:"failed,omitempty"`
+	LocalBytes  int    `json:"local_bytes"`
+	RemoteBytes int    `json:"remote_bytes"`
+	SyncedAt    string `json:"synced_at,omitempty"`
+	// UpdatedAt：上传方向才有，云端文件的写入时刻
+	UpdatedAt string `json:"updated_at,omitempty"`
+}
+
 // AccountSyncResult 是一次云同步的结果。
 type AccountSyncResult struct {
 	// Action: uploaded / downloaded / merged / noop

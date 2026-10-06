@@ -412,3 +412,74 @@ func TestIdentityKeysAreOmitted(t *testing.T) {
 		}
 	}
 }
+
+// TestEmptyTextFieldsAreOmitted 空文本字段必须省略，不能写成空串。
+//
+// 手机版 importGamesJson 用的是 optString(key, 本地值)：键存在但为空串 =
+// 「确认清空」。桌面端这三项经常是空的（没刮削的游戏没有简介 / 标签）。
+// 早先恒写 ""，会把手机端同名字段直接抹掉。
+func TestEmptyTextFieldsAreOmitted(t *testing.T) {
+	t.Parallel()
+
+	empty, _ := json.Marshal(yukihub.Game{Title: "没有简介的游戏"})
+	for _, key := range []string{"original_title", "description", "tags"} {
+		if strings.Contains(string(empty), `"`+key+`"`) {
+			t.Errorf("空的 %s 应被省略：%s", key, empty)
+		}
+	}
+
+	filled, _ := json.Marshal(yukihub.Game{
+		Title:         "有简介的游戏",
+		OriginalTitle: "原名",
+		Description:   "简介",
+		Tags:          "标签A,标签B",
+	})
+	for _, key := range []string{"original_title", "description", "tags"} {
+		if !strings.Contains(string(filled), `"`+key+`"`) {
+			t.Errorf("非空的 %s 必须写出：%s", key, filled)
+		}
+	}
+}
+
+// TestUnfinishedSessionOmitsEndTime 未结束会话不能写 end_time:0。
+//
+// 手机版只在 end_time 非 null 时才写这个键，导入时用 has()/isNull() 判断
+// 「是否已结束」，未结束的落库为 NULL。写 0 会被当成「1970 年就结束了」，
+// 而且 0 在手机端 IS NOT NULL，会被算进时长聚合。
+func TestUnfinishedSessionOmitsEndTime(t *testing.T) {
+	t.Parallel()
+
+	pending, _ := json.Marshal(yukihub.PlaySession{SessionUUID: "u1", StartTime: 1000})
+	if strings.Contains(string(pending), `"end_time"`) {
+		t.Errorf("未结束会话应省略 end_time：%s", pending)
+	}
+
+	finished, _ := json.Marshal(yukihub.PlaySession{SessionUUID: "u1", StartTime: 1000, EndTime: 2000})
+	if !strings.Contains(string(finished), `"end_time":2000`) {
+		t.Errorf("已结束会话必须写出 end_time：%s", finished)
+	}
+}
+
+// TestMetadataCacheCarriesMatchKeys metadata_cache 必须带 game_root_uri / game_title。
+//
+// 手机版 importMetadataJson 先按 game_root_uri 匹配、为空时按 game_title 精确匹配，
+// 只有 title 非空才回退 game_local_id。少了这两个键，整段会被逐条静默丢弃。
+func TestMetadataCacheCarriesMatchKeys(t *testing.T) {
+	t.Parallel()
+
+	raw, err := json.Marshal(yukihub.MetadataCache{
+		GameLocalID: 7,
+		GameTitle:   "游戏 A",
+		Source:      "vndb",
+		SourceID:    "v1",
+		JSON:        "{}",
+	})
+	if err != nil {
+		t.Fatalf("marshal metadata cache: %v", err)
+	}
+	for _, key := range []string{"game_root_uri", "game_title", "game_local_id"} {
+		if !strings.Contains(string(raw), `"`+key+`"`) {
+			t.Errorf("metadata_cache 缺少 %s：%s", key, raw)
+		}
+	}
+}

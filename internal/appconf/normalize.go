@@ -84,6 +84,19 @@ func NormalizeProcessDetectionTimeoutSec(timeoutSec int) int {
 	return timeoutSec
 }
 
+// NormalizePlayTimingMode 把计时模式收敛到白名单。
+//
+// 空串（老配置里没有这个字段 / 反序列化缺省）与任何未知取值都回退到默认的
+// 「进程监测」，保证升级用户行为不变。
+func NormalizePlayTimingMode(mode string) string {
+	switch strings.ToLower(strings.TrimSpace(mode)) {
+	case PlayTimingModeManual:
+		return PlayTimingModeManual
+	default:
+		return PlayTimingModeProcess
+	}
+}
+
 func NormalizeBatchImportPreferences(config *AppConfig) bool {
 	if config == nil {
 		return false

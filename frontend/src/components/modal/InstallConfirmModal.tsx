@@ -1,19 +1,11 @@
-import type { vo } from "../../../src/bindings/models";
+import type { enums, vo } from "../../../src/bindings/models";
 import { Browser } from "@wailsio/runtime";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { StartDownload } from "../../../bindings/yukihub/internal/service/downloadservice";
 import { getMetadataSourceURL } from "../../utils/metadataSources";
+import { sourceLabel } from "../ui/import/importFlow";
 import { ModalPortal } from "../ui/ModalPortal";
-
-const META_SOURCE_LABELS: Record<string, string> = {
-  vndb: "VNDB",
-  bangumi: "Bangumi",
-  bangumi_mirror: "Bangumi (镜像)",
-  ymgal: "月幕Galgame",
-  hikarinagi: "Hikarinagi",
-  nextmoe: "未萌",
-};
 
 interface InstallConfirmModalProps {
   request: vo.InstallRequest | null;
@@ -97,9 +89,10 @@ export function InstallConfirmModal({
             {request.meta_source
               && request.meta_id
               && (() => {
-                const label
-                  = META_SOURCE_LABELS[request.meta_source]
-                    ?? request.meta_source;
+                const label = sourceLabel(
+                  request.meta_source as enums.SourceType,
+                  t,
+                );
                 const href = getMetadataSourceURL(
                   request.meta_source,
                   request.meta_id,

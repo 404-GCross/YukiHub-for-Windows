@@ -457,6 +457,24 @@ func (s *AccountService) SyncAccountNow() (vo.AccountSyncResult, error) {
 			return result, err
 		}
 		result = s.finishSync("uploaded", localSnapshot, vo.AccountSyncResult{})
+	case snapshotIsEmpty(localSnapshot) && !snapshotIsEmpty(remoteRaw):
+		// 本地游戏库为空、云端有数据 → **一律下载**，绝不用空库覆盖云端。
+		//
+		// 这条分支覆盖手机版 SyncManager.syncToServer 的「新设备首次同步」分支
+		// （本地为空 + 云端有数据 + 从没同步过 → 直接下载），并且**刻意放宽了一点**：
+		// 手机版额外要求 lastHash 为空，桌面端不做这个要求。
+		//
+		// 原因是手机版剩下的分支在「清空游戏库后再点同步」时会走
+		// `localChanged && !remoteChanged` → 上传 —— 也就是把云端数据抹成空的。
+		// 本同步机制没有任何删除传播（导入是纯增量、没有墓碑），单条游戏的删除
+		// 本来就不会同步出去；用一把「同步」按钮顺手清空云端属于纯粹的误伤，
+		// 而空库恰恰是重装 / 换设备 / 手滑清库后最需要它的时候。
+		// 真要清空云端，应当走显式的覆盖式操作，而不是靠空库上传。
+		imported, importErr := s.importSnapshot(remoteRaw)
+		if importErr != nil {
+			return result, importErr
+		}
+		result = s.finishSync("downloaded", remoteRaw, vo.AccountSyncResult{Imported: imported})
 	case localChanged && !remoteChanged:
 		if err := s.uploadSnapshot(localSnapshot); err != nil {
 			return result, err
@@ -494,6 +512,11 @@ func (s *AccountService) SyncAccountNow() (vo.AccountSyncResult, error) {
 	// 同步后游戏库可能变了，通知界面刷新。
 	if s.emitEvent != nil {
 		s.emitEvent(yukihubAccountSyncEvent, result)
+		// 下载 / 合并方向会改动本地库，额外广播一次「同步已落库」，
+		// 让游戏库与首页立刻失效缓存重取数据（否则用户会以为同步没生效）。
+		if result.Action == "downloaded" || result.Action == "merged" {
+			s.emitEvent(selfSyncAppliedEvent, result)
+		}
 	}
 	return result, nil
 }
@@ -518,14 +541,27 @@ func (s *AccountService) finishSync(action string, snapshot []byte, result vo.Ac
 
 // buildLocalSnapshot 生成 Android 侧 schema 5 快照的 JSON 字节。
 func (s *AccountService) buildLocalSnapshot() ([]byte, error) {
-	if s.db == nil {
+	return buildYukiHubSnapshot(s.resolveContext(nil), s.db, s.config)
+}
+
+// buildYukiHubSnapshot 生成 Android 侧 schema 5 快照的 JSON 字节。
+//
+// 账号云同步（传到 yukihub.zh.kg）与自持同步（传到用户自己的 WebDAV）共用这一份
+// 构造逻辑：两边产出的必须是**同一个格式**，否则数据在手机端与桌面端之间往返时
+// 会互相丢字段。
+//
+// 快照要带 profile 段（昵称 / 头像），与手机版一致：对端下载后会更新自己的资料。
+func buildYukiHubSnapshot(ctx context.Context, db *sql.DB, config *appconf.AppConfig) ([]byte, error) {
+	if db == nil {
 		return nil, errors.New("数据库尚未就绪")
 	}
-	exporterInstance := exporter.NewYukiHubExporter(s.resolveContext(nil), s.db)
-	// 快照要带 profile 段（昵称 / 头像），与手机版一致：对端下载后会更新自己的资料。
-	if s.config != nil {
-		exporterInstance.SetProfile(s.config.YukiHubAccountNickname, s.config.YukiHubAccountAvatar)
-		exporterInstance.SetMetadataSource(string(s.config.CurrentMetadataSource))
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	exporterInstance := exporter.NewYukiHubExporter(ctx, db)
+	if config != nil {
+		exporterInstance.SetProfile(config.YukiHubAccountNickname, config.YukiHubAccountAvatar)
+		exporterInstance.SetMetadataSource(string(config.CurrentMetadataSource))
 	}
 	backup, err := exporterInstance.Build()
 	if err != nil {
@@ -553,32 +589,50 @@ func (s *AccountService) uploadSnapshot(snapshot []byte) error {
 // 落盘成临时文件是因为导入器是按路径读取的；导入策略选「同名同路径合并会话」，
 // 这样两边都有的游戏不会重复创建，也不会把本地游玩记录冲掉。
 func (s *AccountService) importSnapshot(snapshot []byte) (int, error) {
-	if s.imports == nil {
-		return 0, errors.New("导入服务尚未就绪")
+	result, err := importYukiHubSnapshot(s.resolveContext(nil), s.imports, snapshot)
+	if err != nil {
+		return 0, err
+	}
+	return result.Success, nil
+}
+
+// importYukiHubSnapshot 把快照写进本地库。
+//
+// 落盘成临时文件是因为导入器是按路径读取的；导入策略选「同名同路径合并会话」，
+// 这样两边都有的游戏不会重复创建，也不会把本地游玩记录冲掉。
+//
+// 账号云同步与自持同步共用这一份实现 —— 导入语义必须完全一致，否则同一份快照
+// 走两条通道会得到不同的本地库。
+func importYukiHubSnapshot(ctx context.Context, imports *ImportService, snapshot []byte) (importer.ImportResult, error) {
+	if imports == nil {
+		return importer.ImportResult{}, errors.New("导入服务尚未就绪")
 	}
 	tempFile, err := os.CreateTemp("", "yukihub-account-sync-*.json")
 	if err != nil {
-		return 0, fmt.Errorf("创建临时文件失败: %w", err)
+		return importer.ImportResult{}, fmt.Errorf("创建临时文件失败: %w", err)
 	}
 	tempPath := tempFile.Name()
 	defer func() { _ = os.Remove(tempPath) }()
 
 	if _, err := tempFile.Write(snapshot); err != nil {
 		_ = tempFile.Close()
-		return 0, fmt.Errorf("写入临时快照失败: %w", err)
+		return importer.ImportResult{}, fmt.Errorf("写入临时快照失败: %w", err)
 	}
 	if err := tempFile.Close(); err != nil {
-		return 0, fmt.Errorf("写入临时快照失败: %w", err)
+		return importer.ImportResult{}, fmt.Errorf("写入临时快照失败: %w", err)
 	}
 
-	deps := s.imports.importerDependencies()
-	result, err := importer.NewYukiHubImporter(deps).Import(tempPath, false, importer.SamePathActionMergeSessions)
+	deps := imports.importerDependencies()
+	// sync_merge：并集去重地并入对端会话，同时按手机版 importGamesJson 的规则
+	// （非空 + 对端 updated_at 不早于本地）更新已有游戏字段。用 merge_sessions
+	// 的话，手机端改过的状态/隐藏/NSFW 同步回桌面端会被整段丢掉。
+	result, err := importer.NewYukiHubImporter(deps).Import(tempPath, false, importer.SamePathActionSyncMerge)
 	if err != nil {
-		return 0, fmt.Errorf("导入云端快照失败: %w", err)
+		return importer.ImportResult{}, fmt.Errorf("导入快照失败: %w", err)
 	}
-	applog.LogInfof(s.ctx, "YukiHub 账号：云端快照导入完成 success=%d skipped=%d failed=%d sessions=%d",
+	applog.LogInfof(ctx, "YukiHub 同步：快照导入完成 success=%d skipped=%d failed=%d sessions=%d",
 		result.Success, result.Skipped, result.Failed, result.SessionsImported)
-	return result.Success, nil
+	return result, nil
 }
 
 // ==================== 在线状态 ====================
@@ -1142,4 +1196,11 @@ func countSnapshotEntries(data []byte) (int, int) {
 		return 0, 0
 	}
 	return len(parsed.Games), len(parsed.PlaySessions)
+}
+
+// snapshotIsEmpty 判断快照是否「没有游戏库」，对应手机版 SyncManager.isSnapshotEmpty：
+// 只看 games 数组为不为空，不看游玩记录 / 元数据缓存。
+func snapshotIsEmpty(data []byte) bool {
+	games, _ := countSnapshotEntries(data)
+	return games == 0
 }

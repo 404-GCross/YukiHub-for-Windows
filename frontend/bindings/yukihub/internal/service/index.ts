@@ -20,6 +20,7 @@ import * as IntegrationService from "./integrationservice.js";
 import * as NextMoeService from "./nextmoeservice.js";
 import * as OverlayService from "./overlayservice.js";
 import * as PortableSetupService from "./portablesetupservice.js";
+import * as SelfSyncService from "./selfsyncservice.js";
 import * as SessionService from "./sessionservice.js";
 import * as StartService from "./startservice.js";
 import * as StartupService from "./startupservice.js";
@@ -48,6 +49,7 @@ export {
     NextMoeService,
     OverlayService,
     PortableSetupService,
+    SelfSyncService,
     SessionService,
     StartService,
     StartupService,

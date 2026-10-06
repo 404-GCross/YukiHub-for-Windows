@@ -504,24 +504,36 @@ func SplitScanCandidates(candidates []vo.BatchImportCandidate, idx Index, allowD
 	return result
 }
 
-func splitCommitItemsByAction(items []CommitItem) ([]CommitItem, []CommitItem) {
-	createItems := make([]CommitItem, 0, len(items))
-	updateItems := make([]CommitItem, 0)
+// splitCommitItemsByAction 按动作把条目分成三组：
+//
+//   - createItems：新建条目
+//   - updateItems：update_existing（对端自带完整元数据，文本字段照抄）
+//   - syncItems：sync_merge（云同步，文本字段非空才覆盖）
+//
+// updateItems 与 syncItems 必须分开：两者的字段级守卫不同，走同一条 UPDATE
+// 会让其中一方拿到错误的语义。
+func splitCommitItemsByAction(items []CommitItem) (createItems, updateItems, syncItems []CommitItem) {
+	createItems = make([]CommitItem, 0, len(items))
 	for _, item := range items {
 		switch item.Action {
 		case ImportActionUpdateExisting:
 			updateItems = append(updateItems, item)
+		case ImportActionSyncMerge:
+			syncItems = append(syncItems, item)
 		case ImportActionCreate:
 			createItems = append(createItems, item)
 		}
 	}
-	return createItems, updateItems
+	return createItems, updateItems, syncItems
 }
 
+// commitItemsWithMetadata 过滤掉「只并会话」的动作：它们不去写
+// game_metadata_sources / tags / favorites，避免同步把桌面端自己的元数据来源
+// 覆盖掉。
 func commitItemsWithMetadata(items []CommitItem) []CommitItem {
 	filtered := make([]CommitItem, 0, len(items))
 	for _, item := range items {
-		if item.Action != ImportActionMergeSessions {
+		if item.Action != ImportActionMergeSessions && item.Action != ImportActionSyncMerge {
 			filtered = append(filtered, item)
 		}
 	}
@@ -677,7 +689,23 @@ func (c *Committer) addImportedItems(ctx context.Context, conn *sql.Conn, items 
 	return len(items), nil
 }
 
+// updateImportedItemMetadata 处理 update_existing：对端自带完整元数据（PotatoVN /
+// Playnite 等），文本字段照抄即可。
 func (c *Committer) updateImportedItemMetadata(ctx context.Context, conn *sql.Conn, items []CommitItem) (int, error) {
+	return c.applyImportedItemMetadata(ctx, conn, items, false)
+}
+
+// updateImportedItemSyncMetadata 处理 sync_merge：对端是云同步 / WebDAV 快照。
+//
+// 与 update_existing 的唯一区别是「文本字段非空才覆盖」。原因是对端的来源可能
+// 只是另一端的 games 段，压根没有 metadata_cache——那时 company / summary /
+// rating / release_date 全为空串，照抄会把桌面端刮削好的资料冲成空白。
+// 逐字段判空后，语义与手机版 importGamesJson 的 optString(key, 本地值) 一致。
+func (c *Committer) updateImportedItemSyncMetadata(ctx context.Context, conn *sql.Conn, items []CommitItem) (int, error) {
+	return c.applyImportedItemMetadata(ctx, conn, items, true)
+}
+
+func (c *Committer) applyImportedItemMetadata(ctx context.Context, conn *sql.Conn, items []CommitItem, syncSafe bool) (int, error) {
 	if len(items) == 0 {
 		return 0, nil
 	}
@@ -805,10 +833,53 @@ func (c *Committer) updateImportedItemMetadata(ctx context.Context, conn *sql.Co
 	}
 
 	nsfwSourcePlaceholders, nsfwSourceArgs := nsfwAuthoritativeSourceFilter()
+	// syncSafe 下所有文本字段都是「非空才覆盖」：对端可能只带 games 段、没有任何
+	// metadata_cache，那时这些列全是空串，照抄会把本地刮削好的资料冲成空白。
+	textOr := func(column string) string {
+		if !syncSafe {
+			return "temp_update_import_games." + column
+		}
+		return fmt.Sprintf(
+			"CASE WHEN temp_update_import_games.%s <> '' THEN temp_update_import_games.%s ELSE games.%s END",
+			column, column, column,
+		)
+	}
+	ratingExpr := "temp_update_import_games.rating"
+	if syncSafe {
+		ratingExpr = "CASE WHEN temp_update_import_games.rating > 0 THEN temp_update_import_games.rating ELSE games.rating END"
+	}
+	// 来源只在「对端确实带了元数据」时改写：convertYukiHubGame 在没有
+	// metadata_cache 时给的是 local，采信它会把桌面端已有来源抹成 local。
+	sourceGuard := "TRUE"
+	sourceExpr := func(column string) string {
+		if !syncSafe {
+			return "temp_update_import_games." + column
+		}
+		return fmt.Sprintf(
+			"CASE WHEN %s THEN temp_update_import_games.%s ELSE games.%s END",
+			sourceGuard, column, column,
+		)
+	}
+	if syncSafe {
+		sourceGuard = "temp_update_import_games.source_type NOT IN ('', 'local')"
+	}
+	// 清零时间只允许「对端更晚且非空」时前进：手机版同款规则，避免旧快照把
+	// 清零退回 0（退回会让已被有意排除的历史时长重新计入统计）。
+	resetExpr := "temp_update_import_games.playtime_reset_at"
+	if syncSafe {
+		resetExpr = `CASE
+			WHEN temp_update_import_games.playtime_reset_at IS NOT NULL
+			 AND (games.playtime_reset_at IS NULL
+			      OR temp_update_import_games.playtime_reset_at > games.playtime_reset_at)
+			THEN temp_update_import_games.playtime_reset_at
+			ELSE games.playtime_reset_at
+		END`
+	}
+
 	if _, err := conn.ExecContext(ctx, fmt.Sprintf(`
 		UPDATE games
 		SET
-			name = temp_update_import_games.name,
+			name = %s,
 			cover_url = CASE
 				WHEN temp_update_import_games.cover_url <> '' THEN temp_update_import_games.cover_url
 				ELSE games.cover_url
@@ -817,13 +888,13 @@ func (c *Committer) updateImportedItemMetadata(ctx context.Context, conn *sql.Co
 				WHEN temp_update_import_games.cover_source_url <> '' THEN temp_update_import_games.cover_source_url
 				ELSE games.cover_source_url
 			END,
-			company = temp_update_import_games.company,
-			summary = temp_update_import_games.summary,
-			rating = temp_update_import_games.rating,
-			release_date = temp_update_import_games.release_date,
-			source_type = temp_update_import_games.source_type,
-			cached_at = temp_update_import_games.cached_at,
-			source_id = temp_update_import_games.source_id,
+			company = %s,
+			summary = %s,
+			rating = %s,
+			release_date = %s,
+			source_type = %s,
+			cached_at = %s,
+			source_id = %s,
 			updated_at = temp_update_import_games.updated_at,
 			-- 只有「会给出可信 NSFW 标记」的来源才采信对端的值，名单由
 			-- gamehelper.NSFWAuthoritativeSources 生成（原先硬编码
@@ -843,11 +914,22 @@ func (c *Committer) updateImportedItemMetadata(ctx context.Context, conn *sql.Co
 				ELSE games.source_device_id
 			END,
 			-- 清零时间与隐藏标记以权威源（Android）为准。
-			playtime_reset_at = temp_update_import_games.playtime_reset_at,
+			playtime_reset_at = %s,
 			hidden = temp_update_import_games.hidden
 		FROM temp_update_import_games
 		WHERE games.id = temp_update_import_games.id
-	`, nsfwSourcePlaceholders), nsfwSourceArgs...); err != nil {
+	`,
+		textOr("name"),
+		textOr("company"),
+		textOr("summary"),
+		ratingExpr,
+		textOr("release_date"),
+		sourceExpr("source_type"),
+		sourceExpr("cached_at"),
+		sourceExpr("source_id"),
+		nsfwSourcePlaceholders,
+		resetExpr,
+	), nsfwSourceArgs...); err != nil {
 		return inserted, fmt.Errorf("update imported game metadata from staging: %w", err)
 	}
 
@@ -1408,7 +1490,7 @@ func (c *Committer) CommitItems(items []CommitItem) (int, int, error) {
 		}
 	}()
 
-	createItems, updateItems := splitCommitItemsByAction(items)
+	createItems, updateItems, syncItems := splitCommitItemsByAction(items)
 	metadataItems := commitItemsWithMetadata(items)
 
 	stepStartedAt := time.Now()
@@ -1424,6 +1506,13 @@ func (c *Committer) CommitItems(items []CommitItem) (int, int, error) {
 		return insertedGames, 0, err
 	}
 	applog.LogInfof(c.ctx, "commitImportedItems: staged and updated games=%d elapsed=%s", updatedGames, time.Since(stepStartedAt))
+
+	stepStartedAt = time.Now()
+	syncedGames, err := c.updateImportedItemSyncMetadata(c.ctx, conn, syncItems)
+	if err != nil {
+		return insertedGames + updatedGames, 0, err
+	}
+	applog.LogInfof(c.ctx, "commitImportedItems: staged and sync-merged games=%d elapsed=%s", syncedGames, time.Since(stepStartedAt))
 
 	stepStartedAt = time.Now()
 	updatedLaunchFields, err := c.updateImportedItemLocalLaunchFields(c.ctx, conn, updateItems)
@@ -1479,7 +1568,17 @@ func (c *Committer) CommitItems(items []CommitItem) (int, int, error) {
 	}
 
 	c.startImportCoverProcessing(metadataItems)
-	return insertedGames + updatedGames + len(items) - len(metadataItems), insertedSessions, nil
+	// 计数必须逐类相加：create / update_existing / sync_merge 三类各自返回写入
+	// 行数，merge_sessions 不在上面任何一类里（只并会话），单独数一遍。
+	// 早先用的是 `len(items) - len(metadataItems)` 兜住 merge_sessions，加入
+	// sync_merge 后这一项会把 sync_merge 重复计入。
+	sessionsOnly := 0
+	for _, item := range items {
+		if item.Action == ImportActionMergeSessions {
+			sessionsOnly++
+		}
+	}
+	return insertedGames + updatedGames + syncedGames + sessionsOnly, insertedSessions, nil
 }
 
 func CleanupStagingTables(ctx context.Context, conn *sql.Conn) {

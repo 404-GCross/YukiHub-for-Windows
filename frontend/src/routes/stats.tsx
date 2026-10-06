@@ -409,7 +409,15 @@ function StatsPage() {
     catch (err) {
       console.error("AI summarize failed:", err);
       setAISummary(dimension, "");
-      toast.error(t("stats.ai.summarizeFailed"));
+      // 把后端给出的具体原因带上：只在「没配 Key / 该区间没有记录 / 模型返回空内容 /
+      // 401」之间，用户要采取的行动完全不同，一句笼统的「请检查配置」等于没说。
+      // 沿用全仓统一的「XX失败：{{原因}}」格式，由 AppToaster 按显示宽度决定是否折叠。
+      const detail = err instanceof Error ? err.message.trim() : "";
+      toast.error(
+        detail
+          ? `${t("stats.ai.summarizeFailed")}：${detail}`
+          : t("stats.ai.summarizeFailed"),
+      );
     }
     finally {
       setAiLoading(false);

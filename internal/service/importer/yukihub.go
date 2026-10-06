@@ -70,7 +70,7 @@ func (y *YukiHubImporter) Preview(backupPath string) ([]PreviewGame, error) {
 		if name == "" {
 			continue
 		}
-		primary := pickYukiHubMetadata(metadataByGame[sourceGame.LocalID], backup.Settings.MetadataSource)
+		primary := pickYukiHubMetadata(metadataByGame.lookup(sourceGame.LocalID, sourceGame.Title), backup.Settings.MetadataSource)
 		sourceType, sourceID := yukiHubIdentity(primary)
 		conflict := previewConflict(existingIndex, name, "", string(sourceType), sourceID)
 		if conflict.Type == ConflictTypeNone {
@@ -125,7 +125,7 @@ func (y *YukiHubImporter) ImportSelected(backupPath string, skipNoPath bool, sam
 			continue
 		}
 
-		metadataItems := metadataByGame[sourceGame.LocalID]
+		metadataItems := metadataByGame.lookup(sourceGame.LocalID, sourceGame.Title)
 		primary := pickYukiHubMetadata(metadataItems, backup.Settings.MetadataSource)
 		sourceType, sourceID := yukiHubIdentity(primary)
 		if !selectionFilter.includes(gameName, "", string(sourceType), sourceID) {
@@ -169,13 +169,16 @@ func (y *YukiHubImporter) ImportSelected(backupPath string, skipNoPath bool, sam
 				continue
 			}
 			action = ImportActionUpdateExisting
-			if samePathAction == SamePathActionMergeSessions {
+			switch samePathAction {
+			case SamePathActionMergeSessions:
 				action = ImportActionMergeSessions
+			case SamePathActionSyncMerge:
+				action = ImportActionSyncMerge
 			}
 			existingGameID = conflict.Game.ID
 		}
 
-		game, sessions, tags := convertYukiHubGame(sourceGame, metadataItems, primary, sessionsByGame[sourceGame.LocalID], backup.CreatedAt)
+		game, sessions, tags := convertYukiHubGame(sourceGame, metadataItems, primary, sessionsByGame.lookup(sourceGame.LocalID, sourceGame.Title), backup.CreatedAt)
 		if TargetsExistingGame(action) {
 			game.ID = existingGameID
 			for i := range sessions {
@@ -257,8 +260,53 @@ func loadYukiHubBackup(backupPath string) (*yukihub.Backup, error) {
 	return &backup, nil
 }
 
-func indexYukiHubMetadata(entries []yukihub.MetadataCache) map[int64][]parsedYukiHubMetadata {
-	result := make(map[int64][]parsedYukiHubMetadata)
+// yukiHubSnapshotIndex 是快照条目的身份索引，语义对齐手机版导入侧：
+// local_id 大于 0 时按 local_id 归组，否则回退到游戏标题。
+//
+// 为什么不能只按 local_id 归组：桌面端自己扫描进来的游戏没有 Android 侧的整数 ID
+// （`games.legacy_local_id` 为空 → 快照里 `local_id` 恒为 0）。若直接以 0 为键，
+// **所有 PC 端游戏会被塞进同一个桶** —— 本地备份回导 / 云同步合并时，每个游戏都会
+// 拿到全部游戏的元数据与游玩记录，时长成倍膨胀、元数据互相串味。
+// 手机版靠「root_uri → gamehub id → 标题」三档匹配规避了这点，这里对齐它的标题兜底。
+type yukiHubSnapshotIndex[T any] struct {
+	byLocalID map[int64][]T
+	byTitle   map[string][]T
+}
+
+func newYukiHubSnapshotIndex[T any](capacity int) yukiHubSnapshotIndex[T] {
+	return yukiHubSnapshotIndex[T]{
+		byLocalID: make(map[int64][]T, capacity),
+		byTitle:   make(map[string][]T, capacity),
+	}
+}
+
+func (index yukiHubSnapshotIndex[T]) add(localID int64, title string, value T) {
+	if localID > 0 {
+		index.byLocalID[localID] = append(index.byLocalID[localID], value)
+		return
+	}
+	if key := normalizeYukiHubTitle(title); key != "" {
+		index.byTitle[key] = append(index.byTitle[key], value)
+	}
+}
+
+func (index yukiHubSnapshotIndex[T]) lookup(localID int64, title string) []T {
+	if localID > 0 {
+		return index.byLocalID[localID]
+	}
+	return index.byTitle[normalizeYukiHubTitle(title)]
+}
+
+// normalizeYukiHubTitle 是标题兜底匹配的归一化键：去首尾空白 + 转小写。
+//
+// 两端导出的标题都取自各自的 games.name / title，正常情况下逐字相同，
+// 转小写只是为了容忍大小写差异，不会把本来能匹配上的弄丢。
+func normalizeYukiHubTitle(title string) string {
+	return strings.ToLower(strings.TrimSpace(title))
+}
+
+func indexYukiHubMetadata(entries []yukihub.MetadataCache) yukiHubSnapshotIndex[parsedYukiHubMetadata] {
+	result := newYukiHubSnapshotIndex[parsedYukiHubMetadata](len(entries))
 	for _, entry := range entries {
 		parsed := parsedYukiHubMetadata{
 			cache:    entry,
@@ -269,15 +317,15 @@ func indexYukiHubMetadata(entries []yukihub.MetadataCache) map[int64][]parsedYuk
 		if parsed.sourceID == "" {
 			parsed.sourceID = strings.TrimSpace(parsed.data.ID)
 		}
-		result[entry.GameLocalID] = append(result[entry.GameLocalID], parsed)
+		result.add(entry.GameLocalID, entry.GameTitle, parsed)
 	}
 	return result
 }
 
-func indexYukiHubSessions(entries []yukihub.PlaySession) map[int64][]yukihub.PlaySession {
-	result := make(map[int64][]yukihub.PlaySession)
+func indexYukiHubSessions(entries []yukihub.PlaySession) yukiHubSnapshotIndex[yukihub.PlaySession] {
+	result := newYukiHubSnapshotIndex[yukihub.PlaySession](len(entries))
 	for _, entry := range entries {
-		result[entry.GameLocalID] = append(result[entry.GameLocalID], entry)
+		result.add(entry.GameLocalID, entry.GameTitle, entry)
 	}
 	return result
 }
@@ -449,7 +497,7 @@ func convertYukiHubSessions(gameID string, game yukihub.Game, entries []yukihub.
 		}
 		sessionID := strings.TrimSpace(entry.SessionUUID)
 		if _, err := uuid.Parse(sessionID); err != nil {
-			sessionID = uuid.NewSHA1(uuid.NameSpaceOID, []byte(fmt.Sprintf("yukihub:%d:%d:%d:%d", game.LocalID, entry.StartTime, entry.EndTime, index))).String()
+			sessionID = uuid.NewSHA1(uuid.NameSpaceOID, []byte(yukiHubSessionUUIDSeed(game, entry, index))).String()
 		}
 		sessions = append(sessions, models.PlaySession{
 			ID:        sessionID,
@@ -476,7 +524,7 @@ func convertYukiHubSessions(gameID string, game yukihub.Game, entries []yukihub.
 			endTime = createdAt
 		}
 		sessions = append(sessions, models.PlaySession{
-			ID:        uuid.NewSHA1(uuid.NameSpaceOID, []byte(fmt.Sprintf("yukihub:%d:aggregate", game.LocalID))).String(),
+			ID:        uuid.NewSHA1(uuid.NameSpaceOID, []byte(yukiHubAggregateUUIDSeed(game))).String(),
 			GameID:    gameID,
 			StartTime: endTime.Add(-time.Duration(remainder) * time.Second),
 			EndTime:   endTime,
@@ -485,6 +533,29 @@ func convertYukiHubSessions(gameID string, game yukihub.Game, entries []yukihub.
 		})
 	}
 	return sessions
+}
+
+// yukiHubSessionUUIDSeed / yukiHubAggregateUUIDSeed 为「快照里没有合法 UUID 的会话」
+// 生成确定性种子，让同一份备份重复导入时命中同一条记录。
+//
+// **local_id 大于 0 时必须与历史实现逐字一致**（`yukihub:<id>:...`），否则已导入过的
+// 备份再导一次会算出新 UUID，旧记录变孤儿、时长被重复累计。
+//
+// local_id 为 0 的是桌面端自建游戏，历史实现会算出**所有游戏完全相同**的 UUID
+// （play_sessions.id 是主键），后一个游戏会顶掉前一个，因此这里补上标题。
+func yukiHubSessionUUIDSeed(game yukihub.Game, entry yukihub.PlaySession, index int) string {
+	if game.LocalID > 0 {
+		return fmt.Sprintf("yukihub:%d:%d:%d:%d", game.LocalID, entry.StartTime, entry.EndTime, index)
+	}
+	return fmt.Sprintf("yukihub:0:%s:%d:%d:%d",
+		normalizeYukiHubTitle(game.Title), entry.StartTime, entry.EndTime, index)
+}
+
+func yukiHubAggregateUUIDSeed(game yukihub.Game) string {
+	if game.LocalID > 0 {
+		return fmt.Sprintf("yukihub:%d:aggregate", game.LocalID)
+	}
+	return fmt.Sprintf("yukihub:0:%s:aggregate", normalizeYukiHubTitle(game.Title))
 }
 
 // mapYukiHubGameStatus 把 YukiHub 备份里的 play_status 映射为桌面端状态。

@@ -1,6 +1,6 @@
 import type { enums, service } from "../../../src/bindings/models";
 import type { BetterDataTableColumn } from "../ui/better/BetterDataTable";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 import {
@@ -52,7 +52,7 @@ interface GameImportModalProps {
 }
 
 type Step = "select" | "preview" | "importing" | "result";
-type SamePathAction = "skip" | "merge_sessions" | "merge";
+type SamePathAction = "skip" | "merge_sessions" | "merge" | "sync_merge";
 
 // 配置类型
 interface ImportConfig {
@@ -249,8 +249,22 @@ export function GameImportModal({
   );
   const [isLoading, setIsLoading] = useState(false);
   const [skipNoPath, setSkipNoPath] = useState(true);
-  const [samePathAction, setSamePathAction] = useState<SamePathAction>("skip");
+  const [samePathAction, setSamePathAction] = useState<SamePathAction>(
+    source === "yukihub" ? "sync_merge" : "skip",
+  );
   const { t } = useTranslation();
+
+  // 打开弹窗（或切换导入来源）时把「同名同路径」动作恢复到该来源的默认值。
+  //
+  // YukiHub 备份（.ykbak）与云同步是同一份 schema 5 快照，手机端导入本地备份时
+  // 固定走「合并更新」。所以默认取 sync_merge：并集并入游玩记录，字段按「对端
+  // updated_at 不早于本地 + 非空才覆盖」更新。用 skip 会让导入手机备份变成
+  // 「什么都没更新」，用 merge 又会被对端空值冲掉本机已刮削的资料。
+  useEffect(() => {
+    if (isOpen) {
+      setSamePathAction(source === "yukihub" ? "sync_merge" : "skip");
+    }
+  }, [isOpen, source]);
 
   const config = getImportConfigs(t)[source];
 
@@ -353,7 +367,7 @@ export function GameImportModal({
     setSelectedPreviewKeys(new Set());
     setImportResult(null);
     setSkipNoPath(true);
-    setSamePathAction("skip");
+    setSamePathAction(source === "yukihub" ? "sync_merge" : "skip");
     onClose();
   };
 
@@ -648,7 +662,13 @@ export function GameImportModal({
                         count: samePathGamesCount,
                       })}
                     </div>
-                    <div className="grid gap-2 sm:grid-cols-3">
+                    <div
+                      className={`grid gap-2 ${
+                        source === "yukihub"
+                          ? "sm:grid-cols-2 lg:grid-cols-4"
+                          : "sm:grid-cols-3"
+                      }`}
+                    >
                       <button
                         type="button"
                         onClick={() => setSamePathAction("skip")}
@@ -700,6 +720,25 @@ export function GameImportModal({
                           {t("gameImportModal.samePathMergeHint")}
                         </div>
                       </button>
+                      {source === "yukihub" && (
+                        <button
+                          type="button"
+                          onClick={() => setSamePathAction("sync_merge")}
+                          className={`rounded-lg border px-3 py-2 text-left text-sm transition ${
+                            samePathAction === "sync_merge"
+                              ? "border-sky-500 bg-white text-sky-800 shadow-sm dark:bg-sky-950/40 dark:text-sky-100"
+                              : "border-sky-200 bg-white/60 text-sky-700 hover:bg-white dark:border-sky-800 dark:bg-sky-950/20 dark:text-sky-300"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 font-medium">
+                            <div className="i-mdi-swap-horizontal-bold text-base" />
+                            {t("gameImportModal.samePathSyncMerge")}
+                          </div>
+                          <div className="mt-1 text-xs opacity-80">
+                            {t("gameImportModal.samePathSyncMergeHint")}
+                          </div>
+                        </button>
+                      )}
                     </div>
                   </div>
                 )}
