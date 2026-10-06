@@ -76,6 +76,10 @@ type StartService struct {
 	activeSessions   map[string]*activePlaySession
 	activeSessionsMu sync.Mutex
 
+	// setProcessMuted 可注入，便于在不碰真实 COM 的情况下测试焦点状态机。
+	// Init 时若为 nil 会补上 audioutils.SetProcessMuted。
+	setProcessMuted func(processID uint32, muted bool) (matched bool, err error)
+
 	// 「回到 YukiHub」兜底 watcher：只在存在无进程会话时运行，
 	// 用 appForegroundGrace 的宽限判断用户是不是真的回来了。
 	foregroundFallbackMu     sync.Mutex
@@ -163,6 +167,9 @@ func NewStartService() *StartService {
 //wails:ignore
 func (s *StartService) Init(ctx context.Context, db *sql.DB, config *appconf.AppConfig) {
 	s.ctx = ctx
+	if s.setProcessMuted == nil {
+		s.setProcessMuted = audioutils.SetProcessMuted
+	}
 	// db 不再使用，但保留参数以保持与其他服务的接口一致性
 	s.config = config
 	// 初始化内部服务
@@ -744,6 +751,9 @@ func (s *StartService) finalizePlaySessionOnce(session *activePlaySession, reaso
 
 	close(session.done)
 	s.unregisterActiveSession(gameID, sessionID)
+	// 结束时间在「会话逻辑上已经结束」这一刻取，而不是等音频恢复完 ——
+	// stopSessionAudio 失败时会短重试（最坏 ~60s），那段等待不该算进游玩时长。
+	endTime := time.Now()
 	s.stopSessionAudio(session)
 
 	// 确保停止追踪（无论如何都要执行）
@@ -759,8 +769,6 @@ func (s *StartService) finalizePlaySessionOnce(session *activePlaySession, reaso
 		TimingMode:    s.runtimeTimingMode(session),
 		ActiveSeconds: s.runtimeActiveSeconds(session, activeSeconds),
 	})
-
-	endTime := time.Now()
 
 	// 只有真正跑过活跃追踪的会话才用活跃时长；手动计时与进程识别失败的降级会话
 	// 都没有追踪器可用，一律回退墙钟（否则会被 <60 秒规则删掉）。
@@ -1182,8 +1190,11 @@ func (s *StartService) handleFocusUpdate(update timerutils.FocusUpdate) {
 
 	shouldMute := !update.IsFocused
 	if session.audioStateKnown && session.audioPID == update.ProcessID && session.audioLastError == "" {
-		if !shouldMute {
-			// 已经在前台且没有残留错误：无事可做。
+		// 已在前台且当前并没有静音：无事可做。
+		// audioMuted 这个守卫不能丢 —— 游戏从后台回前台时 shouldMute 变 false，
+		// 但 audioMuted 还是 true，这里若直接 return 就**永远不会解除静音**，
+		// 游戏回到前台也没声音（这是加节流时必须一并保住的分支）。
+		if !shouldMute && !session.audioMuted {
 			return
 		}
 		// 已经在后台静音：仍然要隔一段时间重扫一次，因为游戏可能在不切换焦点的
@@ -1191,7 +1202,7 @@ func (s *StartService) handleFocusUpdate(update timerutils.FocusUpdate) {
 		// （见 timerutils.active_time_tracker），COM 全量枚举很贵 ——
 		// 每条会话要两次 QueryInterface + GetProcessID + GetSessionInstanceIdentifier。
 		// 不节流的话长时间挂机就是每秒压一次 COM。
-		if session.audioMuted && time.Since(session.audioLastMuteScan) < audioBackgroundRescanInterval {
+		if shouldMute && session.audioMuted && time.Since(session.audioLastMuteScan) < audioBackgroundRescanInterval {
 			return
 		}
 	}
@@ -1204,7 +1215,7 @@ func (s *StartService) handleFocusUpdate(update timerutils.FocusUpdate) {
 		}
 	}
 
-	matched, err := audioutils.SetProcessMuted(update.ProcessID, shouldMute)
+	matched, err := s.setProcessMuted(update.ProcessID, shouldMute)
 	// 枚举过程中可能先改掉了部分会话、随后才在另一条上报错；这些改动要记下来。
 	if matched {
 		session.audioPID = update.ProcessID
@@ -1264,7 +1275,7 @@ func (s *StartService) restoreSessionAudioLocked(session *activePlaySession) {
 		return
 	}
 	if session.audioMuted {
-		matched, err := audioutils.SetProcessMuted(session.audioPID, false)
+		matched, err := s.setProcessMuted(session.audioPID, false)
 		// matched 优先于 err：一次恢复里可能「这个 PID 的新会话解了、上一代遗留的
 		// 死会话解不了」。此时若因为 err 提前返回，audioStateKnown 会永远卡在
 		// 「已静音」，之后每次重试都重复同一个结果 —— 状态机彻底死锁。

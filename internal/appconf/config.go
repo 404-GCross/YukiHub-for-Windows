@@ -435,14 +435,11 @@ func LoadConfig() (*AppConfig, error) {
 	loadOutcome := configLoadPrimary
 	data, err := os.ReadFile(configPath)
 	if err != nil {
-		backupPath := configPath + configBackupSuffix
-		backupData, backupErr := os.ReadFile(backupPath)
+		backupData, backupErr := os.ReadFile(configPath + configBackupSuffix)
 		if backupErr != nil {
 			return config, err
 		}
-		log.Printf("failed to read appconf (%v), falling back to %s", err, backupPath)
-		loadOutcome = configLoadRecoveredFromBackup
-		*config = *parseConfigBytes(backupData, config)
+		loadOutcome, config = applyConfigFallback(backupData, config, err, configPath+configBackupSuffix)
 	} else {
 		var parsed *AppConfig
 		loadOutcome, parsed = parseConfigWithBackup(data, configPath, config)
@@ -575,6 +572,18 @@ const (
 	// 损坏原文已另存为 .corrupt，那是唯一的现场证据。
 	configLoadFellBackToDefaults
 )
+
+// applyConfigFallback 主文件读不了时的回退决策：快照可用就用快照；
+// 快照也解析不了只能用默认值，且**不回写** —— 主文件这次只是读不到，
+// 不代表它坏了，覆盖掉可能毁掉唯一一份可用配置。
+func applyConfigFallback(backupData []byte, defaults *AppConfig, readErr error, backupPath string) (configLoadOutcome, *AppConfig) {
+	if parsed := parseConfigBytes(backupData, defaults); parsed != nil {
+		log.Printf("failed to read appconf (%v), falling back to %s", readErr, backupPath)
+		return configLoadRecoveredFromBackup, parsed
+	}
+	log.Printf("failed to read appconf (%v) and %s is unusable; using defaults without writing back", readErr, backupPath)
+	return configLoadFellBackToDefaults, defaultAppConfig()
+}
 
 // parseConfigBytes 把一段 JSON 解析进 defaults 的副本，剥掉 UTF-8 BOM。
 //
