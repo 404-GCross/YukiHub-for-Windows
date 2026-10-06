@@ -503,6 +503,9 @@ function CategoryDetailPage() {
         : {}),
       tags: selectedTags,
       exclude_tags: tagFilterInverted && selectedTags.length > 0,
+      // 收藏视图同样排除已隐藏的游戏（手机端的分类页也走 getAll() 的 hidden=0）。
+      // 需要恢复时回游戏库打开「显示已隐藏的游戏」即可。
+      exclude_hidden: true,
       sort_by: sortBy,
       sort_order: sortOrder,
       secondary_sort_by: secondarySortBy,
