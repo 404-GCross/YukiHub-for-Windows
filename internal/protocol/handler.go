@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 )
 
@@ -39,7 +40,10 @@ func sameExecutablePath(left string, right string) bool {
 	if !leftOK || !rightOK {
 		return false
 	}
-	return strings.EqualFold(leftPath, rightPath)
+	if runtime.GOOS == "windows" {
+		return strings.EqualFold(leftPath, rightPath)
+	}
+	return leftPath == rightPath
 }
 
 func comparableExecutablePath(path string) (string, bool) {

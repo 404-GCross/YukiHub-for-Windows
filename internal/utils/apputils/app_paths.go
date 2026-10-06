@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 
@@ -170,6 +171,18 @@ func IsAppImageMode() bool {
 func GetLaunchExecutablePath() (string, error) {
 	if IsAppImageMode() {
 		return GetAppImagePath()
+	}
+
+	if IsPortableMode() && runtime.GOOS == "linux" {
+		if portableRoot := strings.TrimSpace(os.Getenv("YUKIHUB_PORTABLE_ROOT")); portableRoot != "" {
+			launcherPath, err := filepath.Abs(filepath.Join(filepath.Clean(portableRoot), appName))
+			if err != nil {
+				return "", fmt.Errorf("resolve portable launcher path: %w", err)
+			}
+			if info, err := os.Stat(launcherPath); err == nil && !info.IsDir() {
+				return launcherPath, nil
+			}
+		}
 	}
 
 	return currentExecutablePath()

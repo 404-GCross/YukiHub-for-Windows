@@ -3,6 +3,7 @@ package apputils
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 )
@@ -48,9 +49,23 @@ func FindExecutables(folderPath string, excludeKeywords []string) []string {
 }
 
 func isLaunchableEntry(entry os.DirEntry) bool {
-	lowerName := strings.ToLower(entry.Name())
-	return !entry.IsDir() &&
-		(strings.HasSuffix(lowerName, ".exe") || strings.HasSuffix(lowerName, ".bat"))
+	name := entry.Name()
+	lowerName := strings.ToLower(name)
+
+	switch runtime.GOOS {
+	case "windows":
+		return !entry.IsDir() &&
+			(strings.HasSuffix(lowerName, ".exe") || strings.HasSuffix(lowerName, ".bat"))
+	default:
+		if entry.IsDir() {
+			return false
+		}
+		if strings.HasSuffix(lowerName, ".exe") || strings.HasSuffix(lowerName, ".bat") {
+			return true
+		}
+		info, err := entry.Info()
+		return err == nil && info.Mode().Perm()&0111 != 0
+	}
 }
 
 // SelectBestExecutable 选择最佳可执行文件

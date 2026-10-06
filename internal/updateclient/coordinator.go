@@ -73,6 +73,9 @@ type Options struct {
 // Apply downloads verified update artifacts, prepares the transaction, and
 // starts the standalone updater in commit mode.
 func Apply(ctx context.Context, options Options) (*Result, error) {
+	if runtime.GOOS != "windows" {
+		return nil, fmt.Errorf("in-app updates are currently supported on Windows only")
+	}
 	if ctx == nil || options.Config == nil || options.CompareVersions == nil {
 		return nil, fmt.Errorf("update client is not initialized")
 	}

@@ -12,7 +12,7 @@ const (
 // 界面"关于"面板与合规材料统一引用这里，避免同一条信息在多个文件里各写一份。
 // 修改这些值前请同步更新 NOTICE 与 docs/AGPL-COMPLIANCE.md。
 const (
-	AppDisplayName  = "YukiHub for Windows"
+	AppDisplayName  = "YukiHub Desktop"
 	LicenseName     = "AGPL-3.0"
 	RepositoryURL   = "https://github.com/xm486/YukiHub"
 	UpstreamProject = "LunaBox"
