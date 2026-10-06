@@ -139,7 +139,11 @@ type activePlaySession struct {
 	// exitTimeNanos 记录被监控进程**真正退出**的时刻（UnixNano；0 = 非进程
 	// 退出路径）。继任者检测有数秒宽限，若等检测结束后才取「现在」当
 	// endTime，宽限会被误算进游玩时长；结算时优先用它。
-	exitTimeNanos   atomic.Int64
+	exitTimeNanos atomic.Int64
+	// uiIdleEmitted 标记已经提前对前端发过 idle（兜底监控的进程退出时，
+	// 岛屿立刻消失、宽限挪到后台）。结算时就不要再发 ending —— 那会把刚
+	// 消失的计时岛闪回来一下。
+	uiIdleEmitted   atomic.Bool
 	audioMu         sync.Mutex
 	audioPID        uint32
 	audioMuted      bool
@@ -682,8 +686,19 @@ func (s *StartService) waitForProcessExit(session *activePlaySession, processNam
 		session.exitTimeNanos.Store(time.Now().UnixNano())
 		// 先解除静音：继任者检测最多要等几秒，不能把静音状态拖到那之后。
 		s.restoreSessionAudio(session)
+		if handoff != nil && handoff.launcherFallback {
+			// 兜底监控的进程退出：UI **立刻**放行（idle → 计时岛马上消失，
+			// 退游戏零延迟），完整宽限挪到后台找自重启的接力进程，找到就把
+			// 同一场会话续上。同步等宽限会让每次退游戏凭空卡好几秒。
+			session.uiIdleEmitted.Store(true)
+			s.emitGameRuntimeIdle(session, "launcher-exit-handoff-watch")
+			s.requestHomeRefresh()
+			s.watchLauncherHandoff(session, processID, processName, handoff)
+			return
+		}
 		// 进程退出不一定是游戏结束：彩窗/启动器可能已把控制权交给了新进程
 		// （spawn 子进程后自退、同名 re-exec 等），先做一轮继任者检测。
+		// 确认过身份的游戏进程只做一次即时检查，不拖慢正常退出。
 		if successor, ok := s.detectSuccessorProcess(session, processID, processName, handoff); ok {
 			s.continueMonitoringSuccessor(session, successor, handoff)
 			return
@@ -697,6 +712,25 @@ func (s *StartService) waitForProcessExit(session *activePlaySession, processNam
 
 	// 执行统一的会话清理逻辑
 	s.finalizePlaySession(session, "process-exited")
+}
+
+// watchLauncherHandoff 在兜底监控的进程退出后，于后台宽限窗内继续找自重启的
+// 接力进程（AGES 等引擎：菜单进程退出后真身才迟迟出现）。
+//
+// UI 不等这个窗口：退出瞬间已经发过 idle，岛屿早就消失了。宽限结束时——
+//   - 找到接力且本会话仍是当前注册会话 → 续接（岛屿重新出现，计时连续）；
+//   - 否则 → 真正结算，endTime 用进程真实退出时刻，宽限不计入时长。
+func (s *StartService) watchLauncherHandoff(session *activePlaySession, exitedPID uint32, exitedName string, handoff *processHandoffState) {
+	go func() {
+		successor, ok := s.detectSuccessorProcess(session, exitedPID, exitedName, handoff)
+		if ok && s.getActiveSession(session.gameID) == session {
+			// 宽限期间用户可能重新启动了游戏（注册表已换成新会话）：
+			// 旧会话安静结算，别去抢新会话的 UI。
+			s.continueMonitoringSuccessor(session, successor, handoff)
+			return
+		}
+		s.finalizePlaySession(session, "process-exited")
+	}()
 }
 
 // detectSuccessorProcess 在被监控进程退出后，于短暂宽限期内寻找接管的游戏进程。
@@ -781,16 +815,20 @@ func (s *StartService) finalizePlaySessionOnce(session *activePlaySession, reaso
 	// 确保停止追踪（无论如何都要执行）
 	activeSeconds := s.activeTimeTracker.StopTracking(gameID)
 
-	s.emitGameRuntimeChanged(GameRuntimeChangedEvent{
-		GameID:        gameID,
-		Game:          &session.game,
-		SessionID:     sessionID,
-		StartTime:     startTime,
-		State:         GameRuntimeStateEnding,
-		Reason:        reason,
-		TimingMode:    s.runtimeTimingMode(session),
-		ActiveSeconds: s.runtimeActiveSeconds(session, activeSeconds),
-	})
+	// 兜底路径已在进程退出瞬间发过 idle（岛屿已消失），这里再发 ending 会
+	// 把岛闪回来；其余路径维持「先 ending 后 idle」的原有节奏。
+	if !session.uiIdleEmitted.Load() {
+		s.emitGameRuntimeChanged(GameRuntimeChangedEvent{
+			GameID:        gameID,
+			Game:          &session.game,
+			SessionID:     sessionID,
+			StartTime:     startTime,
+			State:         GameRuntimeStateEnding,
+			Reason:        reason,
+			TimingMode:    s.runtimeTimingMode(session),
+			ActiveSeconds: s.runtimeActiveSeconds(session, activeSeconds),
+		})
+	}
 
 	// 只有真正跑过活跃追踪的会话才用活跃时长；手动计时与进程识别失败的降级会话
 	// 都没有追踪器可用，一律回退墙钟（否则会被 <60 秒规则删掉）。
