@@ -1058,11 +1058,6 @@ func (s *GameService) updateGameRecord(game models.Game) (models.Game, error) {
 	}
 
 	game.UpdatedAt = time.Now()
-	// hidden 的唯一写入口是 SetGameHidden。UpdateGame 是整行覆盖，而调用方
-	// （详情页 500ms 防抖自动保存、元数据刷新先读后写）手上的 models.Game
-	// 可能是隐藏操作之前的快照 —— 直接写回去会让「隐藏」偶发弹回去。
-	// 这里改用同一把写锁内读到的现值。
-	game.Hidden = previousGame.Hidden
 	game.SourceType, game.SourceID = gamehelper.NormalizeDefaultMetadataSource(game.SourceType, game.SourceID)
 	game.Aliases = gamehelper.NormalizeAliases(game.Aliases)
 	aliasesJSON := gamehelper.EncodeAliases(game.Aliases)
@@ -1889,6 +1884,16 @@ func (s *GameService) applyRemoteMetadataResult(existingGame models.Game, metaRe
 		}
 	}
 
+	// UpdateGame 是整行覆盖，会把 hidden 一起写回去。existingGame 是在锁外读
+	// 的快照，而上面这次远程抓取可能耗时数秒 —— 期间用户完全可能刚在游戏库里
+	// 隐藏/取消隐藏了这款游戏。所以整行写回之前重新读一次 hidden，别把新状态
+	// 覆盖成过期值（其它字段同样以这次读到的为准，不受影响）。
+	if current, err := s.GetGameByID(existingGame.ID); err == nil {
+		existingGame.Hidden = current.Hidden
+	} else {
+		applog.LogWarningf(s.ctx, "applyRemoteMetadataResult: failed to refresh hidden for game %s: %v", existingGame.ID, err)
+	}
+
 	if err := s.UpdateGame(existingGame); err != nil {
 		return "", fmt.Errorf("failed to update game: %w", err)
 	}
@@ -2345,7 +2350,7 @@ func (s *GameService) getGameStatusSyncSnapshot(gameID string) (models.Game, err
 	var status string
 
 	err := s.db.QueryRowContext(s.ctx, `
-		SELECT id, name, COALESCE(status, 'unplayed'), COALESCE(source_type, ''), COALESCE(source_id, ''), COALESCE(hidden, FALSE)
+		SELECT id, name, COALESCE(status, 'unplayed'), COALESCE(source_type, ''), COALESCE(source_id, '')
 		FROM games
 		WHERE id = ?
 	`, gameID).Scan(
@@ -2354,7 +2359,6 @@ func (s *GameService) getGameStatusSyncSnapshot(gameID string) (models.Game, err
 		&status,
 		&sourceType,
 		&snapshot.SourceID,
-		&snapshot.Hidden,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return models.Game{}, fmt.Errorf("game not found with id: %s", gameID)
