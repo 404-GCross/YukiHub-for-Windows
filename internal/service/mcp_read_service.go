@@ -519,8 +519,9 @@ func (s *MCPReadService) enabledMetadataSources() map[string]struct{} {
 
 	for _, source := range sources {
 		normalized := strings.ToLower(strings.TrimSpace(source))
-		switch normalized {
-		case string(enums2.Bangumi), string(enums2.VNDB), string(enums2.Ymgal), string(enums2.Steam), string(enums2.DLsite), string(enums2.TouchGal), string(enums2.Hikarinagi), string(enums2.ErogameScape):
+		// 名单统一走 gamehelper，别再手抄一份：硬编码名单漏了 bangumi_mirror / nextmoe，
+		// 用户在设置里勾选的这两个来源会被 MCP 按来源筛选时静默丢掉。
+		if gamehelper.IsSupportedMetadataSource(enums2.SourceType(normalized)) {
 			result[normalized] = struct{}{}
 		}
 	}

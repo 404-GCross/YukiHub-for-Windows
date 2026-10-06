@@ -1240,7 +1240,9 @@ func mergeMetadataIntoGame(target *models.Game, metadata models.Game) bool {
 		target.ReleaseDate = releaseDate
 		changed = true
 	}
-	if (metadata.SourceType == enums2.Bangumi || metadata.SourceType == enums2.VNDB || metadata.SourceType == enums2.Hikarinagi) && target.IsNSFW != metadata.IsNSFW {
+	// 与 game_service 的远程更新同一口径：只有「会给出可信 NSFW」的来源才采信，
+	// 名单统一走 gamehelper（硬编码名单漏了 bangumi_mirror / nextmoe）。
+	if gamehelper.IsNSFWAuthoritativeSource(metadata.SourceType) && target.IsNSFW != metadata.IsNSFW {
 		target.IsNSFW = metadata.IsNSFW
 		changed = true
 	}
@@ -1264,6 +1266,13 @@ func parseMetaSource(metaSource string) (enums2.SourceType, bool) {
 	switch strings.ToLower(strings.TrimSpace(metaSource)) {
 	case string(enums2.Bangumi):
 		return enums2.Bangumi, true
+	// bangumi_mirror / nextmoe 与其它来源同级（手机端可选的 6 个刮削来源之一），
+	// 早先漏了这两项：下载任务带这两个来源时会报 “unsupported metadata source”，
+	// 并把游戏落成 Local，静默丢掉来源身份。FetchMetadataFromWeb 已支持二者。
+	case string(enums2.BangumiMirror):
+		return enums2.BangumiMirror, true
+	case string(enums2.NextMoe):
+		return enums2.NextMoe, true
 	case string(enums2.VNDB):
 		return enums2.VNDB, true
 	case string(enums2.Ymgal):
