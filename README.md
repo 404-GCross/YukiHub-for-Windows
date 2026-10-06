@@ -1,9 +1,10 @@
-# YukiHub for Windows
+# YukiHub Desktop
 
-Galgame / 视觉小说库管理、启动与游玩记录工具 —— YukiHub 的 Windows 桌面版。
+Galgame / 视觉小说库管理、启动与游玩记录工具 —— YukiHub 的桌面版（Windows / Linux）。
 
 <p align="center">
   <img src="https://img.shields.io/badge/Platform-Windows%2010%2F11-0078D6?logo=windows&logoColor=white" alt="Windows" />
+  <img src="https://img.shields.io/badge/Platform-Linux%20amd64-FCC624?logo=linux&logoColor=black" alt="Linux" />
   <img src="https://img.shields.io/badge/Go-1.27.1-00ADD8?logo=go&logoColor=white" alt="Go" />
   <img src="https://img.shields.io/badge/Wails-v3%20beta-orange" alt="Wails v3" />
   <img src="https://img.shields.io/badge/License-AGPL--3.0-blue.svg" alt="AGPL-3.0" />
@@ -24,8 +25,8 @@ YukiHub 有两个端：
 | 端 | 仓库 | 许可证 |
 | --- | --- | --- |
 | Android 手机版 | https://github.com/xm486/YukiHub | GPL-3.0 |
-| Windows 桌面版（本仓库） | https://github.com/xm486/YukiHub-for-Windows | AGPL-3.0 |
-| Windows 桌面版（GitCode 托管） | https://gitcode.com/xm486/YukiHub-for-Windows | AGPL-3.0 |
+| 桌面版（本仓库，Windows / Linux） | https://github.com/xm486/YukiHub-for-Windows | AGPL-3.0 |
+| 桌面版（GitCode 托管） | https://gitcode.com/xm486/YukiHub-for-Windows | AGPL-3.0 |
 
 桌面版同时托管在 GitHub 与 GitCode（国内代码托管平台）两个平台，两边内容一致。
 
@@ -114,15 +115,33 @@ YukiHub 有两个端：
 
 ## 从源码构建
 
-> 本项目**仅支持 Windows**。macOS / Linux 的平台代码与构建资源已移除，不要在其它平台构建。
+> 支持平台：**Windows 10/11** 与 **Linux（amd64）**。macOS / iOS 不在支持范围。
 
 环境要求：
 
 - Go（版本见 `go.mod`，当前 **1.27.1**）
-- **CGO 编译器**：DuckDB 依赖 CGO，Windows 上需要 MinGW-w64 的 gcc
+- **CGO 编译器**：DuckDB 依赖 CGO。Windows 需要 MinGW-w64 的 gcc；
+  Linux 需要 `build-essential`
 - Node.js **22 或更高** 与 **pnpm 12**（`frontend/package.json` 的 `packageManager` 已固定版本，
   用 `corepack enable` 自动获取即可）
 - Wails v3 CLI，版本必须与 `go.mod` 中的 `github.com/wailsapp/wails/v3` **完全一致**
+
+**Linux（amd64）额外依赖与补丁脚本：**
+
+```bash
+sudo apt-get install -y build-essential pkg-config desktop-file-utils \
+  libayatana-appindicator3-dev libgtk-4-dev libwebkitgtk-6.0-dev
+go install github.com/goreleaser/nfpm/v2/cmd/nfpm@latest   # deb / rpm 打包
+# AppImage 打包另需 appimagetool（见 CI / docs/fork-setup.md）
+
+# ⚠️ 直接 go build 前必须先执行 Wails 补丁（托盘 / WebKitGTK 渲染兼容）；
+#    wails3 dev、Taskfile 与 scripts/build.sh 已内置该步骤
+./scripts/patch-wails-linux-tray.sh
+
+./scripts/build.sh all <版本号> amd64   # 产出 deb / rpm / AppImage
+```
+
+通用开发流程：
 
 ```bash
 # 1. 前端依赖
@@ -143,7 +162,7 @@ wails3 build
 > 用 `go:embed` 打进去。改了前端代码却只跑 `wails3 build`，结果会是「exe 是新的、
 > 界面还是旧的」。正确顺序永远是：**改前端 → `vite build` → `wails3 build`**。
 
-完整打包（便携版 + NSIS 安装器 + 兼容工具）见 `scripts/build.bat`。
+完整打包：Windows 见 `scripts/build.bat`，Linux 见 `scripts/build.sh`。
 
 提交前自检：
 
@@ -167,8 +186,8 @@ scripts/     构建脚本
 
 ## 分叉说明与待配置项
 
-本仓库是 [LunaBox](https://github.com/LunaBox-official/LunaBox) v1.13.0 的**硬分叉**：
-不回灌上游、不跟随上游 rebase，只面向 Windows。
+本仓库是 [LunaBox](https://github.com/Saramanda9988/LunaBox) v1.13.0 的**硬分叉**：
+不回灌上游、不跟随上游 rebase，支持 Windows 与 Linux（amd64），不面向 macOS。
 
 代码层面的品牌替换与功能重建已完成，但**仓库地址、代码签名与更新服务**
 必须由 YukiHub 自行配置后才能发布，完整清单见

@@ -1,7 +1,7 @@
-# YukiHub for Windows
+# YukiHub Desktop
 
-The Windows desktop edition of YukiHub — a Galgame / visual novel library manager,
-launcher and playtime tracker.
+The desktop edition of YukiHub for Windows and Linux — a Galgame / visual novel
+library manager, launcher and playtime tracker.
 
 > **Status: usable, not yet released.** The code builds and runs day to day, while the
 > UI and behaviour are still being aligned with the Android app
@@ -15,8 +15,8 @@ YukiHub has two ends:
 | End | Repository | License |
 | --- | --- | --- |
 | Android | https://github.com/xm486/YukiHub | GPL-3.0 |
-| Windows desktop (this repository) | https://github.com/xm486/YukiHub-for-Windows | AGPL-3.0 |
-| Windows desktop (hosted on GitCode) | https://gitcode.com/xm486/YukiHub-for-Windows | AGPL-3.0 |
+| Desktop (this repository, Windows / Linux) | https://github.com/xm486/YukiHub-for-Windows | AGPL-3.0 |
+| Desktop (hosted on GitCode) | https://gitcode.com/xm486/YukiHub-for-Windows | AGPL-3.0 |
 
 The desktop edition is hosted on both GitHub and GitCode (a China-based code
 hosting platform); both copies are kept in sync.
@@ -59,13 +59,29 @@ snapshot format (schema 5) — see
 
 ## Build from source
 
+Supported platforms: **Windows 10/11** and **Linux (amd64)**. macOS / iOS are not supported.
+
 Requirements:
 
 - Go (version in `go.mod`, currently **1.27.1**)
-- A **CGO compiler** (MinGW-w64 gcc) — DuckDB needs CGO
+- A **CGO compiler** — DuckDB needs CGO (MinGW-w64 gcc on Windows, `build-essential` on Linux)
 - Node.js **22+** and **pnpm 12** (pinned via `packageManager` in `frontend/package.json`;
   `corepack enable` will fetch it)
 - Wails v3 CLI, version **exactly matching** `github.com/wailsapp/wails/v3` in `go.mod`
+
+**Linux (amd64) extras:**
+
+```bash
+sudo apt-get install -y build-essential pkg-config desktop-file-utils \
+  libayatana-appindicator3-dev libgtk-4-dev libwebkitgtk-6.0-dev
+go install github.com/goreleaser/nfpm/v2/cmd/nfpm@latest
+
+# ⚠️ Run the Wails patch before any direct `go build` (tray / WebKitGTK rendering);
+#    wails3 dev, the Taskfile and scripts/build.sh already run it for you
+./scripts/patch-wails-linux-tray.sh
+
+./scripts/build.sh all <version> amd64   # deb / rpm / AppImage
+```
 
 ```bash
 cd frontend && pnpm install && cd ..

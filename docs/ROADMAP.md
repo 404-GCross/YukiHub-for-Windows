@@ -50,7 +50,8 @@
            文本替换覆盖不到二进制资源
    - [ ] 用重新构建的安装包复测启动
    - [ ] 卸载流程，以及卸载后 `%APPDATA%\YukiHub` 与 `%LOCALAPPDATA%\YukiHub` 的处理
-5. macOS / iOS / Linux 相关代码与 CI 矩阵移除完毕。**（已完成，见下方）**
+5. macOS / iOS / Linux 相关代码与 CI 矩阵移除完毕。**（已完成，见下方；
+   Linux（amd64）部分已于 2026-10-06 恢复，见 [ADR-0004](decisions/0004-restore-linux-support.md)）**
 6. 界面上的"通用跨平台"表述与残留的上游素材占位清理完毕。**（已完成）**
    - [x] `PortableSetupPanel`（5 处三元 + 1 处条件渲染）、`GameSettingsPanel`、
          `TopBar`、`routes/__root.tsx`、`routes/game.tsx`、`routes/settings.tsx`
@@ -1450,3 +1451,34 @@ Android 版的 Three.js 离线展厅（`assets/exhibition/`，约 7200 行纯 We
 - 每次发布前执行第三方依赖许可证审计
 - `THIRD_PARTY_LICENSES.md` 与 `NOTICE` 随依赖变化更新
 - 与上游保持"硬分叉不回灌"的定位；如需变更，先写 ADR
+
+---
+
+## Linux（amd64）支持恢复（2026-10-06）
+
+范围与决策见 [ADR-0004](decisions/0004-restore-linux-support.md)。已完成：
+
+- [x] 从移除前提交取回 Linux 平台实现并适配当前共享代码：
+      进程识别（`processutils/process_linux.go`）、启动策略
+      （原生 / Wine / Proton / Steam）、退出监听、URL 协议注册、
+      Steam 集成（兼容工具 VDF / Proton prefix / 客户端重启）、
+      Wine/Proton 辅助工具（`compattools` + `protonutils` + `tricksutils`）
+- [x] 恢复 `appconf` 的 Wine / CrossOver 配置字段与迁移逻辑（旧配置零值兼容，无 DB 迁移）
+- [x] 回移上游修复：`detector_linux.go` 忽略 Steam runtime helper（f484c02）
+- [x] 恢复打包链：`scripts/build.sh`、`scripts/patch-wails-linux-tray.sh`、
+      `build/linux/*`、`lib/linuxamd64/7z/7zz`；产物为 deb / rpm / AppImage
+- [x] CI：`autobuild.yml` / `release.yml` 新增 Linux amd64 作业，
+      `internal.yml` 新增 Linux 检查作业
+- [x] 前端：恢复 Wine/Proton 启动面板与设置项、平台分支与四语言文案
+- [ ] 待办：在装有 Linux 构建依赖的机器/CI 上完成端到端核验
+      （CGO + DuckDB 的完整 `go build`、`wails3 generate bindings` 重跑、
+      真机启动 / 计时 / 托盘 / 协议唤醒 / deb·rpm·AppImage 安装）
+
+本机验证记录（无 GTK / CGO 工具链的开发机，2026-10-06）：
+
+- `gofmt -l .` 无输出；可编译包 `go vet` 干净
+- Linux + Windows 双平台：平台层 15 个包 `go test ./... -count=1` 全绿；
+  updater 模块 Linux 下 vet/test 全绿
+- 前端 `pnpm typecheck` / `pnpm build` / `pnpm i18n:check`（四语言 1625 键一致）通过
+- 受 cgo（DuckDB）与 GTK 开发库限制，`internal/service`、`internal/service/importer`
+  与主包未能本机编译，留待 CI / 构建机核验

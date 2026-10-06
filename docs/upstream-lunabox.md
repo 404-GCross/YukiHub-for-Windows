@@ -63,6 +63,17 @@ YukiHub for Windows 是 YukiHub 项目的 Windows 桌面版本。
    - 全仓库 Go 代码重新执行 `gofmt`（模块改名会影响导入排序，属于必要调整）
    - 版本号从上游的 `1.13.0` 改为 YukiHub 自己的 `0.1.0`
 
+### 2026-10-06 — 恢复 Linux（amd64）支持
+
+- 从本仓库历史（平台移除前的提交 `02158b5^`、`8a55b8c^`、`fb87c68^`）恢复
+  Linux 平台实现：进程识别（/proc）、启动策略（原生 / Wine / Proton / Steam）、
+  Steam 集成（兼容工具 VDF / Proton prefix / 客户端重启）、URL 协议注册、
+  Wine/Proton 辅助工具、7zz 捆绑与 deb / rpm / AppImage 打包链
+- 回移上游 v1.13.0 之后对 Linux 进程识别的修复（忽略 Steam runtime helper）
+- 恢复 `AppConfig` 的 Wine / CrossOver 字段与迁移逻辑；数据契约未变更
+- 移除 CLI 后的适配：Linux 打包不再包含 `yukihubcli`
+- 决策与范围见 `docs/decisions/0004-restore-linux-support.md`
+
 ### 尚未修改、计划修改
 
 - 产品界面与交互仍为上游形态，尚未替换为 YukiHub 的视觉与信息架构。
