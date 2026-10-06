@@ -103,6 +103,12 @@ type processHandoffState struct {
 	savedProcessName string
 	exitWatch        launcherpkg.ExitWatch
 	handoffs         int
+	// launcherFallback 标记被监控的进程并非「确认的游戏本体」：它可能是
+	// 检测超时后兜底监控的启动器（AGES 等引擎的自启动器正好是这种），或
+	// 用户显式声明按启动器监控的进程。这类进程把控制权交给新进程的时刻
+	// 完全取决于用户在菜单里停留多久，继任者检测不能按 60 秒启动期裁剪
+	// 宽限重试，否则会把手-off 误判成「游戏已关闭」提前结算。
+	launcherFallback bool
 }
 
 type activePlaySession struct {
@@ -129,7 +135,11 @@ type activePlaySession struct {
 	// `<60 秒` 规则删掉（真丢记录），前端计时也会冻结在 00:00:00。
 	activeTrackStarted atomic.Bool
 	// activeSeconds 由活跃窗口计时回调更新，供 15 秒心跳持久化读取。
-	activeSeconds   atomic.Int64
+	activeSeconds atomic.Int64
+	// exitTimeNanos 记录被监控进程**真正退出**的时刻（UnixNano；0 = 非进程
+	// 退出路径）。继任者检测有数秒宽限，若等检测结束后才取「现在」当
+	// endTime，宽限会被误算进游玩时长；结算时优先用它。
+	exitTimeNanos   atomic.Int64
 	audioMu         sync.Mutex
 	audioPID        uint32
 	audioMuted      bool
@@ -464,6 +474,7 @@ func (s *StartService) detectAndMonitorProcess(session *activePlaySession, launc
 	if result.CloseLauncherHandle {
 		s.closeLauncherHandle(launcher)
 	}
+	handoff.launcherFallback = result.MonitoredLauncherAsGame
 	if result.RequireProcessSelection || result.ProcessID == 0 {
 		// 进程识别失败 ≠ 用户没在玩。这里以前直接删会话（deleteShortOrCancelledSession），
 		// 于是「启动器套娃 / 进程名对不上 / 游戏秒退」这些情况全变成白玩一场 ——
@@ -518,6 +529,9 @@ func (s *StartService) monitorLauncherOnly(session *activePlaySession, launcher 
 			launchDir:        plan.DetectionDir,
 			savedProcessName: session.game.ProcessName,
 			exitWatch:        plan.ExitWatch,
+			// 显式按启动器监控 ≠ 确认了游戏本体：AGES 这类「exe 即菜单，
+			// 点开始后自重启」的引擎也会在这里发生任意时刻的接力。
+			launcherFallback: true,
 		}
 	}
 	if launcher.Handle != 0 {
@@ -663,6 +677,9 @@ func (s *StartService) waitForProcessExit(session *activePlaySession, processNam
 	select {
 	case <-exitChan:
 		applog.LogInfof(s.ctx, "Game process %s (PID %d) has exited", processName, processID)
+		// 先记下真实退出时刻：继任者检测有数秒宽限，等检测结束后再取
+		// 「现在」当 endTime 会把宽限算进游玩时长。
+		session.exitTimeNanos.Store(time.Now().UnixNano())
 		// 先解除静音：继任者检测最多要等几秒，不能把静音状态拖到那之后。
 		s.restoreSessionAudio(session)
 		// 进程退出不一定是游戏结束：彩窗/启动器可能已把控制权交给了新进程
@@ -693,13 +710,14 @@ func (s *StartService) detectSuccessorProcess(session *activePlaySession, exited
 	}
 
 	input := launcherpkg.SuccessorDetectionInput{
-		GameID:            session.gameID,
-		ExitedPID:         exitedPID,
-		ExitedProcessName: exitedName,
-		LaunchDir:         handoff.launchDir,
-		SavedProcessName:  handoff.savedProcessName,
-		SessionStart:      session.startTime,
-		SelfPID:           uint32(os.Getpid()),
+		GameID:                      session.gameID,
+		ExitedPID:                   exitedPID,
+		ExitedProcessName:           exitedName,
+		LaunchDir:                   handoff.launchDir,
+		SavedProcessName:            handoff.savedProcessName,
+		SessionStart:                session.startTime,
+		SelfPID:                     uint32(os.Getpid()),
+		MonitoredIsLauncherFallback: handoff.launcherFallback,
 	}
 	return launcherpkg.DetectSuccessorProcess(input, serviceDetectionLogger{ctx: s.ctx})
 }
@@ -751,9 +769,13 @@ func (s *StartService) finalizePlaySessionOnce(session *activePlaySession, reaso
 
 	close(session.done)
 	s.unregisterActiveSession(gameID, sessionID)
-	// 结束时间在「会话逻辑上已经结束」这一刻取，而不是等音频恢复完 ——
-	// stopSessionAudio 失败时会短重试（最坏 ~60s），那段等待不该算进游玩时长。
+	// 结束时间优先取被监控进程的真实退出时刻（进程退出路径在退出瞬间已记下，
+	// 继任者检测 / 音频恢复的耗时都不该算进游玩时长）；手动结束、前台兜底、
+	// 24h 超时没有这个时刻，退回「现在」。
 	endTime := time.Now()
+	if nanos := session.exitTimeNanos.Load(); nanos != 0 {
+		endTime = time.Unix(0, nanos)
+	}
 	s.stopSessionAudio(session)
 
 	// 确保停止追踪（无论如何都要执行）

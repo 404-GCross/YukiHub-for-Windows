@@ -34,6 +34,10 @@ type StagedProcessDetectionResult struct {
 	CloseLauncherHandle     bool
 	RequireProcessSelection bool
 	PersistProcessName      string
+	// MonitoredLauncherAsGame 为 true 表示检测超时后回退到「把启动器本体
+	// 当游戏监控」。它不是确认的游戏本体，随时可能把控制权交给新进程
+	// （AGES 等引擎：exe 即菜单，点开始后自重启拉起真身）。
+	MonitoredLauncherAsGame bool
 }
 
 // SuccessorDetectionInput describes an exited monitored process so the
@@ -50,6 +54,10 @@ type SuccessorDetectionInput struct {
 	SessionStart time.Time
 	// SelfPID excludes the host app itself from candidate processes.
 	SelfPID uint32
+	// MonitoredIsLauncherFallback 标记退出的进程并非确认的游戏本体（检测
+	// 超时兜底 / 显式按启动器监控）。这类进程的接力可能发生在会话的任意
+	// 时刻，宽限重试不受 60 秒启动期裁剪。
+	MonitoredIsLauncherFallback bool
 }
 
 // ExitWatchInput describes a monitored game process whose session may outlive
@@ -65,9 +73,10 @@ type ExitWatchInput struct {
 
 func resultForLauncher(input StagedProcessDetectionInput) StagedProcessDetectionResult {
 	result := StagedProcessDetectionResult{
-		ProcessID:         input.Launcher.PID,
-		ProcessName:       input.Launcher.Name,
-		UseLauncherHandle: true,
+		ProcessID:               input.Launcher.PID,
+		ProcessName:             input.Launcher.Name,
+		UseLauncherHandle:       true,
+		MonitoredLauncherAsGame: true,
 	}
 	if ShouldPersistLauncherProcessName(input.SavedProcessName) {
 		result.PersistProcessName = strings.TrimSpace(input.LauncherExeName)
