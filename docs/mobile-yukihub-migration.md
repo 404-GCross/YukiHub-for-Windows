@@ -71,7 +71,10 @@
 - 音乐厅数据（`music_albums` / `music_tracks`，依赖设备本地 SAF 授权）
 - 游戏本体、存档文件、二进制封面图
 
-游玩记录条数上限：同步与本地备份均为 **30 条**（按时间取尾部）。
+游玩记录条数上限：**Android 是「所有游戏合计取最新 30 条」**
+（`SyncManager.buildLocalSnapshot` 对 `exportPlaySessionsJson()` 返回的
+**单个扁平数组**整体做 `tail(sessions, 30)`），桌面端是**每个游戏各 30 条**
+（`buildYukiHubSessions`），这是有意的差异，理由见 §五。
 
 ## 三、字段映射
 
@@ -199,6 +202,31 @@ Android 侧的 `root_uri` 可能是 `content://` 形式（SAF 树 URI），需�
 
 注意：`skip`（默认）动作下命中条目仍整条跳过，记录不写入——这是用户选择，
 不算语义缺口。导入器此前丢弃 `samePathAction` 参数（无合并路径）已修复。
+
+**①.1 云同步 / WebDAV 自持同步用 `sync_merge`（2026-10-06 补）**
+
+云同步此前走 `merge_sessions`：只并会话，**完全不碰已有游戏记录**。后果是
+手机端改过的 `play_status` / `hidden` / `nsfw` / 标题同步回桌面端时被整段丢掉
+（反向的 PC → 手机方向没问题，因为手机端 `importGamesJson` 会更新已有条目）。
+
+新增 `ImportActionSyncMerge`（`SamePathActionSyncMerge` = `"sync_merge"`）专供
+同步链路，语义对齐手机版 `importGamesJson`：
+
+- 并集去重地并入对端会话（与 `merge_sessions` 相同，含聚合补偿）；
+- 更新已有游戏字段，**两个守卫同时成立才写**：
+  1. **对端 `updated_at` 不早于本地**（旧快照不得覆盖新编辑）；
+  2. **文本字段非空**——对端可能只带 `games` 段、没有任何 `metadata_cache`，
+     那时 `summary` / `company` / `release_date` 全是空串，照抄会把桌面端刮削
+     好的资料冲成空白（这是它与 `merge` / `update_existing` 的唯一区别，
+     后者面向 PotatoVN / Playnite 这类自带完整元数据的格式）。
+- 来源（`source_type` / `source_id` / `cached_at`）只在**对端来源不是 `local`**
+  时改写，避免「对端没元数据」被翻译成「把桌面端来源抹成 local」；
+- `playtime_reset_at` 只允许**更晚且非空**时前进，退不回去；
+- `is_nsfw` 仍按权威来源名单采信；桌面端本机字段（`path` 等）不受影响。
+
+测试：`TestYukiHubSyncMergeAppliesNewerFieldsOnly`。
+`.ykbak` 手动导入仍是用户在下拉里自选的 `skip` / `merge_sessions` / `merge`，
+不受影响。
 
 **② 标题匹配与预览/导入不一致——已修复**
 
@@ -350,12 +378,60 @@ Android 为权威源的状态合并是否要覆盖，待决策。
 
 **仍未对齐的部分（有意保留）**：
 
-1. 会话条数上限：见上文「条数上限」，桌面端是每游戏 30 条（Android 是合计 30 条）。
-2. 快照头字段：桌面端不写 `profile`（昵称/签名/头像）、`lightweight`、`note`、
-   `backup_type`。Android 的 `importSnapshot` 只校验 `app == "YukiHub"`，
-   因此不影响导入；代价是导入后不会更新手机端的个人资料。
-3. `settings`：桌面端只写 `metadata_source`。手机端的排序/缩放/扫描等偏好属于
+1. 会话条数上限：桌面端是每游戏 30 条，Android 是合计 30 条。
+   桌面端放宽是因为它的总时长由会话求和得出：少导出会话会让回导后的总时长缩水。
+   Android 导入时不校验条数，收到多少收多少，它自己下一次备份时再裁到 30 条。
+   代价是两端的 `play_sessions` 数组不会逐字节相同，加上两端 JSON 序列化顺序本就不同，
+   同一条云端快照在两端的 SHA-256 必然不同 —— 于是桌面端与手机端交替同步时，
+   「已是最新」几乎不会命中，每次都会各传一遍。这是哈希比对式同步的固有性质，
+   不是数据错误：导入是纯增量合并，不会丢数据。
+2. `settings`：桌面端只写 `metadata_source`。手机端的排序/缩放/扫描等偏好属于
    设备本地偏好，桌面端没有对应概念，不迁移。
+
+> 已对齐（2026-10-05 修订）：快照头字段（`profile` / `lightweight` / `note` /
+> `backup_type`）桌面端**已经**按手机版逐字写出；`metadata_cache` 元素已补齐
+> 手机版匹配所必需的 `game_root_uri` / `game_title`；`original_title` /
+> `description` / `tags` / `end_time` 已改为 `omitempty`，不再用空串把对端字段抹掉。
+> （本文档早前记成「桌面端不写快照头字段」，与代码不符，已更正。）
+
+### 空游戏库的同步语义（桌面端增量）
+
+手机版 `syncToServer` 有一条「本地库为空 + 云端有数据 + 从没同步过 → 直接下载」的分支
+（`SyncManager.java` 的 `isSnapshotEmpty`）。桌面端在 `SyncAccountNow` 里把这条**放宽**成
+「本地库为空 + 云端有数据 → 直接下载」，不再要求「从没同步过」。
+
+原因：本同步机制没有任何删除传播（导入是纯增量、没有墓碑），单条游戏的删除本来就不会
+同步出去。如果不放宽，用户「清空游戏库后再点同步」会落进
+`localChanged && !remoteChanged` → **上传**，也就是用空库把云端抹掉——一次纯粹的误伤，
+而空库恰恰是重装、换设备、手滑清库后最需要云端的时候。要显式清空云端应当另做覆盖式操作。
+
+### WebDAV 自持同步（2026-10-06 桌面端补齐）
+
+手机版有两条并列的同步通道，除 `syncToServer`（传到自建账号服务）之外，还有
+`SyncManager.sync()`——把**同一份 schema 5 快照**同步到用户自己的 WebDAV 网盘。
+桌面端此前只有前者，现已补齐（`internal/service/self_sync_service.go` + 设置页
+「数据管理 → WebDAV 同步」）。
+
+必须与手机版逐字一致的几项：
+
+| 项 | 取值 | 依据 |
+|---|---|---|
+| 云端目录 | `YukiHub/` | `SyncManager.REMOTE_DIR` |
+| 云端文件 | `YukiHub/YukiHub_sync.json` | `SyncManager.REMOTE_FILE` |
+| 文件编码 | gzip(快照 JSON) | `compressGzip` / `decompressIfGzip` |
+| 快照形态 | 云同步形态（`created_at=0`、`lightweight=true`、无 `backup_type`） | `buildLocalSnapshot()` |
+| 判定基准 | 上次同步的**快照 SHA-256**，存在 `SelfSyncLastHash` | `KEY_LAST_SYNC_HASH` |
+| 冲突解决 | 智能合并 / 使用云端 / 使用本地 / 取消 | `RESOLVE_{MERGE,USE_REMOTE,USE_LOCAL,CANCEL}` |
+| 自动同步 | 启动时一次，距上次不足 **10 分钟**跳过，冲突按「智能合并」 | `maybeAutoWebDavSync()` |
+| 地址补全 | 缺协议头补 `https://` | `validateServerUrl()` |
+
+一条桌面端**刻意放宽**的地方（与账号云同步同源）：手机版的
+`(lastHash 为空) && 云端有数据 && isSnapshotEmpty(local) → 直接下载` 在桌面端放宽为
+「本地库为空 + 云端有数据 → 直接下载」，理由见上一节。
+
+快照的构造与导入语义与账号云同步**共用同一份实现**
+（`buildYukiHubSnapshot` / `importYukiHubSnapshot`），两条通道的唯一差别是传输方式。
+因此「桌面端传给云端的必须和手机版一致」这条约束在两条通道上同时成立。
 
 ## 六、封面
 
@@ -407,3 +483,140 @@ Android 为权威源的状态合并是否要覆盖，待决策。
 - 测试矩阵中其余样例（空库、清零、聚合补偿、双端新增、时区、单位换算、
   无路径降级等）已由导入器 / 导出器的单测与集成测试覆盖（见
   `internal/service/importer/yukihub_test.go`、`internal/service/exporter/yukihub_test.go`）。
+
+## 九、2026-10-06 审计补充（第三次逐项核对）
+
+本轮把「数据层 / 刮削 / 统计 / 本地备份」四块逐字段比对了一遍，结论与处置如下。
+
+### 9.1 已修：来源名单与白名单漏项
+
+历史上「哪些来源算可信 NSFW」写死过两次，随着 `hikarinagi` / `nextmoe` /
+`bangumi_mirror` 陆续加入，这些硬编码全部落后。现已统一收敛到
+`gamehelper.NSFWAuthoritativeSources()` / `gamehelper.IsSupportedMetadataSource()`：
+
+| 位置 | 原状 | 后果 |
+| --- | --- | --- |
+| `service/game_service.go` 的远程更新 | 硬编码 `Bangumi/VNDB/Hikarinagi` | `bangumi_mirror` / `nextmoe` 的 NSFW 永不更新 |
+| `service/download_service.go` 的元数据合并 | 同上 | 同上 |
+| `service/download_service.go` 的 `parseMetaSource` | 漏 `bangumi_mirror` / `nextmoe` | 下载任务带这两个来源时报 `unsupported metadata source`，并把游戏静默落成 `Local` |
+| `service/mcp_read_service.go` 的来源白名单 | 漏 `bangumi_mirror` / `nextmoe` | MCP 按来源筛选时静默过滤掉用户勾选的来源 |
+
+**有意保留的差异**：桌面端 `NSFWAuthoritativeSources` 含 `bangumi` / `bangumi_mirror`，
+手机端实际只采信 `{vndb, hikarinagi, nextmoe}`。原因是**机制不同**：手机端靠
+`coverSexual > 0.5` 自动判定，而 Bangumi 的解析器从不填这个字段，所以它不是「不信任
+Bangumi」，而是手机端没有读取 Bangumi 的 `nsfw` 字段。桌面端各 getter 会直接产出
+`IsNSFW`（Bangumi 的 R18 标记是权威的），把它一并采信是**超集且更准**，不改。
+
+### 9.2 已修：统计不认「清零」
+
+契约写明「`playtime_reset_at` 之前的历史会话不计入统计，但记录本身保留」，
+`gamehelper.QueryGamesPlayTime`（游戏库时长/排序）与导出方向都遵守了，
+但 **`stats_service.go` / `ai_stats_builder.go` 里 0 处引用该列** ——
+同一款游戏的「游戏库时长」与「统计页时长」显示两个数。
+
+手机端之所以看不到这个矛盾，是因为它重置时**直接删掉**旧会话；
+桌面端按契约保留记录，所以必须在查询侧过滤。
+
+修法：在 `stats_service.go` 定义唯一的会话来源常量 `statsSessionSource`
+（`play_sessions` 与 `games` 内连接 + 清零判定，别名固定 `ps`），
+把 19 处统计查询的 `FROM play_sessions` / `LEFT JOIN play_sessions ps`
+统一换成它；`ai_stats_builder.go` 的 5 处同理。
+回归测试：`internal/service/stats_reset_test.go`。
+
+### 9.3 已修：`.ykbak` 导入语义与手机端不一致
+
+手机端导入本地备份**只有一个按钮**，固定走「合并更新」（`updated_at` 守卫 +
+`optString` 非空才覆盖）。桌面端 `.ykbak` 导入弹窗原本：
+
+- 默认动作是 `skip`（已存在的游戏**什么都不更新**）；
+- 三个选项里没有语义正确的 `sync_merge`（云同步内部用的就是它）。
+
+现已在 `GameImportModal` 里：`sync_merge` 加入 `SamePathAction` 类型；
+当 `source === "yukihub"` 时默认选 `sync_merge` 并多出一个按钮；
+其余格式（PotatoVN / Playnite / …）保持原有默认与选项不变。
+
+### 9.4 已验证「不是问题」的（避免重复排查）
+
+- **Appender 与 Exec 写 `TIMESTAMPTZ` 的时区解释不一致**：
+  实测（`Asia/Shanghai` 会话时区，`dbutils.AppendRows` vs `Exec`）两者写入的
+  `epoch_ms` **完全相同**，当前 `duckdb-go/v2` 驱动下不可复现。另外导入的中转表
+  （`temp_import_games` / `temp_import_play_sessions`）本身列类型就是 `TIMESTAMPTZ`，
+  最终 `INSERT ... SELECT` 是 TIMESTAMPTZ→TIMESTAMPTZ，全程没有「字符串强转成时间」，
+  因此也不受会话时区影响。
+- **游玩状态取值**：两端逐字一致（`unplayed/playing/completed/onhold/dropped`），
+  默认都是 `unplayed`，不存在「同步后状态显示不出来」。
+- **`games` 段 / `play_sessions` 段 / `metadata_cache` 段** 的段名集合两端一致，
+  本地备份与云同步是同一份负载、只差信封字段。
+
+### 9.5 仍未修（已知、有意识保留或待决策）
+
+| 项 | 状态 | 说明 |
+| --- | --- | --- |
+| 会话上限：手机全局 30 / 桌面每游戏 30 | 保留 | 桌面总时长由会话求和，少导会让回导后时长缩水；文档 §五 已说明 |
+| 会话幂等键：手机按 `session_uuid` / 桌面按 `(game_id, start_time, end_time)` | 保留 | 极端情况下同 UUID 不同时间戳会插重复，文档 §四 已记录 |
+| `metadata_cache` 中 `source_id` 为空的条目在桌面端被丢弃 | 保留 | 手机端该列可空、桌面端 `NOT NULL`；仅当来源 payload 本身没有 id 时触发，此时缓存无匹配价值 |
+| `duration` 毫秒↔秒换算的取整误差 | 保留 | 单位不同导致的固有误差，非逻辑错误 |
+| `original_title` 经桌面往返只保留第一个别名 | 保留 | 桌面 `aliases` 是数组、手机是单值列 |
+| `favorite` 只增不减（取消收藏不同步） | 保留 | 手机端布尔列 → 桌面系统分类，只增不减是刻意的 |
+| 统计页的 `heatmap` / `current_streak` / `active_days` / `all_sessions_*` 后端算了但前端未展示；`PlayHeatmap.tsx` 未被引用 | 保留 | **手机端没有热力图**，不展示反而与手机端一致；组件属备用 |
+
+## 十、2026-10-06 第四轮：参考源更新（手机版 0.3.1 / 上游 LunaBox 1.13.3）
+
+参考包：`参考文件/YukiHub-main.zip`（手机版 0.3.1，此前对齐的是 0.30p 快照）、
+`参考文件/lunabox/LunaBox-main.zip`（上游 1.13.3，本仓基线 1.13.0 硬分叉）。
+差异比对结果见 `.tmp_ref/mobile_api_diff.txt`、`start_diff.txt`、`mute_diff.txt`。
+
+### 10.1 手机版 0.30p → 0.3.1 的应用层差异（共 13 个文件）
+
+绝大多数是 Android 专有内容，与桌面端无关：品牌文案「鲲 Galgame」→「NextMoe·未萌」、
+`applyDynamicTheme` 异常兜底、BigScreen 的 PV 文件夹选择器（复用系统文件选择器）、
+WebView 焦点跳过、新增 `GalToolboxActivity` / `ActionButtonStyle`、
+`ONLINE_READY` 打开在线展厅。**登录/注册改 POST + JSON body 桌面端早已如此。**
+
+真正影响行为语义、且桌面端原先不一致的只有一处：**已隐藏游戏的可见性**（见 10.3）。
+
+### 10.2 上游 LunaBox 1.13.2 / 1.13.3 的回灌判定
+
+「抛弃」状态（`dropped`）、YukiHub 备份导入的状态/NSFW 修复、封面查看器缩放另存为、
+次级排序、元数据来源排除模式、攻略文档扫描、来源 ID 映射懒加载、定时备份三件套、
+Windows 管理员启动模式、Wails beta.24 —— **本仓全部已具备**（前两项本身就是本仓
+维护者 `@xm486` 回灌给上游的）。Playnite ZIP 导入尚未做（功能增强，非缺陷）。
+
+本轮实做两项上游修复：
+
+- **配置原子写 + `.bak` 恢复**（上游 1.13.2）。老实现 `os.WriteFile` 直接覆盖
+  `appconf.json`，中断/断电会留下半截 JSON，下次启动整份设置丢失。现在改为
+  临时文件 → fsync → 原子替换，并维护一份可解析快照用于恢复。
+  *未引入 `natefinch/atomic`*：`writeFileAtomic` 自实现（Windows 上
+  `os.Rename` 走 `MoveFileEx(MOVEFILE_REPLACE_EXISTING)`），保持零新依赖。
+- **Windows 后台静音残留**（上游 1.13.2）。根因是原实现每次都按 PID 重新枚举
+  音频会话，而游戏退出后它的流与 PID 已经消失，枚举不到就没法解除静音，
+  Windows 那层持久静音就留在系统里。现在**静音时保留 COM 会话引用**，
+  直到恢复成功才释放；并新增 `stopSessionAudio`（收尾期只解静音、3 次短重试）、
+  进程退出即恢复、多输出设备兜底恢复、恢复不到会话时报错而不静默清状态。
+  已移植上游的纯状态机单测 `TestRetainedAudioRestorationKeepsOnlyFailedSessions`
+  （不需要音频设备），另两个需真实输出设备、`YUKIHUB_AUDIO_INTEGRATION=1` 才跑。
+
+### 10.3 已修：隐藏游戏语义（对齐手机版）
+
+手机版 0.3.1 新增 `GameRepository.getHiddenGames()` 与 `setHidden()`，并把
+`getAll()` 的过滤条件固定为 `hidden=0`（除隐藏管理入口外，所有页面都看不到隐藏游戏）。
+桌面端原先**完全没有隐藏入口**，且 `GetGames` 不传 `exclude_hidden` 时会把隐藏游戏
+一起列出来 —— 表现为「手机上隐藏的游戏在电脑库里照常出现，且无法恢复」。
+
+- 新增 `GameService.SetGameHidden(gameID, hidden)`：**只**改 `hidden` 与 `updated_at`，
+  不走 `UpdateGame` 的整行覆盖（详情页手上的对象可能已过期）。`updated_at` 必须推进，
+  否则云同步的「对端不早于本地」判断会让这次隐藏永远传不过去。
+- 游戏库 / 收藏页 / 首页「最近游玩」默认排除隐藏游戏；游戏库过滤器新增
+  「显示已隐藏的游戏」开关（`localStorage` 记忆），配合批量操作里的
+  「隐藏所选 / 取消隐藏所选」构成完整的隐藏与恢复闭环。
+- 大屏模式沿用既有的 `bigscreen_show_hidden_game` 开关，语义已一致，未改。
+
+### 10.4 仍未做（留待后续）
+
+| 项 | 判断 |
+| --- | --- |
+| Playnite 导入支持 ZIP（含封面） | 上游 1.13.2 的功能增强，本仓仍只支持 JSON；工作量中 |
+| 1.13.3 抽屉定位异常 / 玻璃光晕 | 上游 1.13.2 引入的 UI 缺陷修复，本仓前端已重度分叉且未复现同类问题 |
+| 元数据来源下拉里给 NextMoe 加「推荐」字样 | 桌面端是**多选开关列表**而非单选下拉，已改为把 NextMoe 排到 VNDB 之后（对齐手机版次序），推荐语义写进来源说明文案 |
+| 手机版更新源单选（GitCode / GitHub） | 桌面端走 LunaBox 自己的 manifest 更新服务，机制不同，不适用 |
