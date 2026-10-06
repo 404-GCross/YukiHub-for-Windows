@@ -1,16 +1,32 @@
 package appconf
 
 import (
+	"bytes"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
+	"sync"
 	enums2 "yukihub/internal/common/enums"
 	"yukihub/internal/utils"
 	"yukihub/internal/utils/apputils"
 	"yukihub/internal/utils/coverutils"
 	"yukihub/internal/utils/proxyutils"
 )
+
+// configBackupSuffix 是配置文件的有效快照后缀（appconf.json.bak）。
+//
+// 主文件写坏（中断、断电、磁盘错误）时用它恢复，避免用户设置整份丢失。
+const configBackupSuffix = ".bak"
+
+// configCorruptSuffix 保存最后一次「主文件 + 快照都救不回来」时的损坏原文。
+const configCorruptSuffix = ".corrupt"
+
+// configFileMu 串行化本进程内的配置写入，避免两个 goroutine 同时替换主文件。
+// 跨进程保护由 writeFileAtomic 的「临时文件 + 原子替换」保证。
+var configFileMu sync.Mutex
 
 var defaultMetadataSources = []string{
 	string(enums2.VNDB),
@@ -154,10 +170,25 @@ type AppConfig struct {
 	// OneDrive OAuth 配置
 	OneDriveClientID     string `json:"onedrive_client_id,omitempty"`     // OneDrive Client ID
 	OneDriveRefreshToken string `json:"onedrive_refresh_token,omitempty"` // OneDrive Refresh Token（OAuth 授权后获得）
-	// WebDAV 配置
+	// WebDAV 配置（游戏存档 / 数据库备份用的云存储）
 	WebDAVURL      string `json:"webdav_url,omitempty"`      // WebDAV 服务地址（可含子路径）
 	WebDAVUsername string `json:"webdav_username,omitempty"` // WebDAV 用户名
 	WebDAVPassword string `json:"webdav_password,omitempty"` // WebDAV 密码
+
+	// 自持同步（WebDAV）：把与手机版**完全相同**的 schema 5 快照同步到用户自己的
+	// WebDAV 网盘，对应手机版 SyncManager 的 `sync()`（云端文件 YukiHub/YukiHub_sync.json）。
+	//
+	// 与上面那组 WebDAV 配置是两回事：那组是「游戏存档备份」的云存储后端（LunaBox 血统），
+	// 这组是「游戏库整体同步」的传输通道（手机版血统）。两者互不影响，可以只配一个。
+	// 密码同样明文存 appconf.json —— 与手机版存 SharedPreferences、以及本文件其它凭据一致。
+	SelfSyncURL      string `json:"self_sync_url,omitempty"`      // WebDAV 服务地址
+	SelfSyncUsername string `json:"self_sync_username,omitempty"` // WebDAV 用户名
+	SelfSyncPassword string `json:"self_sync_password,omitempty"` // WebDAV 密码 / 应用密码
+	// SelfSyncAutoSync 对应手机版的「自动同步」开关（启动时同步一次）。
+	SelfSyncAutoSync bool `json:"self_sync_auto_sync"`
+	// SelfSyncLastHash 是上次同步时本地快照的哈希，用于判断两边有没有改动。
+	SelfSyncLastHash string `json:"self_sync_last_hash,omitempty"`
+	SelfSyncLastAt   string `json:"self_sync_last_at,omitempty"`
 	// Umbra OAuth 配置（token 与设备密钥由 DPAPI 加密存储，不写入配置文件）
 	UmbraBaseURL       string `json:"umbra_base_url,omitempty"`      // Umbra 服务地址
 	UmbraAuthenticated bool   `json:"umbra_authenticated,omitempty"` // 是否已完成 OAuth 与设备注册
@@ -251,7 +282,10 @@ func getConfigPath() (string, error) {
 	return filepath.Join(configDir, "appconf.json"), nil
 }
 
-func LoadConfig() (*AppConfig, error) {
+// defaultAppConfig 构建一份全新的默认配置（不读盘、不落盘）。
+//
+// 单独抽出来是为了让配置恢复路径（主文件与 .bak 都损坏时）能拿到一份干净的默认值。
+func defaultAppConfig() *AppConfig {
 	config := &AppConfig{
 		BangumiAccessToken:            "",
 		BangumiRefreshToken:           "",
@@ -312,6 +346,12 @@ func LoadConfig() (*AppConfig, error) {
 		WebDAVURL:                     "",
 		WebDAVUsername:                "",
 		WebDAVPassword:                "",
+		SelfSyncURL:                   "",
+		SelfSyncUsername:              "",
+		SelfSyncPassword:              "",
+		SelfSyncAutoSync:              false,
+		SelfSyncLastHash:              "",
+		SelfSyncLastAt:                "",
 		UmbraBaseURL:                  DefaultUmbraBaseURL,
 		UmbraAuthenticated:            false,
 		LastDBBackupTime:              "",
@@ -373,6 +413,11 @@ func LoadConfig() (*AppConfig, error) {
 		BigScreenEffectLevel:        DefaultBigScreenEffectLevel,
 		BigScreenSoundEnabled:       true,
 	}
+	return config
+}
+
+func LoadConfig() (*AppConfig, error) {
+	config := defaultAppConfig()
 
 	// 获取配置文件路径
 	configPath, err := getConfigPath()
@@ -386,16 +431,22 @@ func LoadConfig() (*AppConfig, error) {
 		return config, err
 	}
 
-	// 读取配置文件
+	// 读取配置文件。读失败（被杀毒/索引器短暂独占等）也先试快照，别让应用起不来。
+	loadOutcome := configLoadPrimary
 	data, err := os.ReadFile(configPath)
 	if err != nil {
-		return config, err
-	}
-
-	// 解析配置
-	if err := json.Unmarshal(data, config); err != nil {
-		log.Printf("Failed to parse appconf file: %v", err)
-		return config, err
+		backupPath := configPath + configBackupSuffix
+		backupData, backupErr := os.ReadFile(backupPath)
+		if backupErr != nil {
+			return config, err
+		}
+		log.Printf("failed to read appconf (%v), falling back to %s", err, backupPath)
+		loadOutcome = configLoadRecoveredFromBackup
+		*config = *parseConfigBytes(backupData, config)
+	} else {
+		var parsed *AppConfig
+		loadOutcome, parsed = parseConfigWithBackup(data, configPath, config)
+		*config = *parsed
 	}
 	config.MetadataSources = normalizeMetadataSources(config.MetadataSources)
 	NormalizeMetadataCoverSources(config)
@@ -418,7 +469,9 @@ func LoadConfig() (*AppConfig, error) {
 	config.BigScreenEffectLevel = NormalizeBigScreenEffectLevel(config.BigScreenEffectLevel)
 	NormalizeBatchImportPreferences(config)
 
-	shouldSaveSanitizedConfig := false
+	// 只有「从快照恢复」才回写主文件（顺便修好被截断的 appconf.json）。
+	// 退到默认配置时**不**回写：那会把损坏原文顶掉，现场证据都没了。
+	shouldSaveSanitizedConfig := loadOutcome == configLoadRecoveredFromBackup
 	if normalizedRetention := NormalizeLocalDBBackupRetention(config.LocalDBBackupRetention); config.LocalDBBackupRetention != normalizedRetention {
 		config.LocalDBBackupRetention = normalizedRetention
 		shouldSaveSanitizedConfig = true
@@ -494,7 +547,164 @@ func SaveConfig(config *AppConfig) error {
 		return err
 	}
 
-	return os.WriteFile(configPath, data, 0644)
+	configFileMu.Lock()
+	defer configFileMu.Unlock()
+
+	// 保留一份有效快照用于恢复。快照有效时后续保存不再重写，只替换主文件。
+	ensureConfigBackup(configPath)
+
+	// 先写同目录临时文件并 fsync，再原子替换主文件。写入中途失败不会把
+	// appconf.json 截断成半截 JSON——这是老实现最容易丢配置的地方。
+	if err := writeFileAtomic(configPath, data, 0644); err != nil {
+		return fmt.Errorf("write app config atomically: %w", err)
+	}
+	// 全新安装或刚从备份恢复时还没有快照，主文件写好后再补一份。
+	ensureConfigBackup(configPath)
+	return nil
+}
+
+// configLoadOutcome 说明这次配置是从哪儿来的，决定要不要回写主文件。
+type configLoadOutcome int
+
+const (
+	// configLoadPrimary：主文件本身可用。
+	configLoadPrimary configLoadOutcome = iota
+	// configLoadRecoveredFromBackup：主文件坏了，用快照恢复。应当回写修好主文件。
+	configLoadRecoveredFromBackup
+	// configLoadFellBackToDefaults：主文件和快照都不可用。**不要**回写 ——
+	// 损坏原文已另存为 .corrupt，那是唯一的现场证据。
+	configLoadFellBackToDefaults
+)
+
+// parseConfigBytes 把一段 JSON 解析进 defaults 的副本，剥掉 UTF-8 BOM。
+//
+// 只认顶层是 JSON 对象的输入：`null` 会被 json.Unmarshal 静默接受且不改动任何
+// 字段，若放过去就等于「配置凭空变成默认值」。
+func parseConfigBytes(data []byte, defaults *AppConfig) *AppConfig {
+	parsed := *defaults
+	parsed.MetadataSources = cloneStringSlice(defaults.MetadataSources)
+	trimmed := bytes.TrimPrefix(data, []byte{0xEF, 0xBB, 0xBF})
+	if err := json.Unmarshal(trimmed, &parsed); err != nil {
+		return nil
+	}
+	var shape map[string]json.RawMessage
+	if err := json.Unmarshal(trimmed, &shape); err != nil || shape == nil {
+		return nil
+	}
+	return &parsed
+}
+
+// isUsableConfigJSON 判断一段内容能不能当配置快照：必须是顶层 JSON 对象。
+func isUsableConfigJSON(data []byte) bool {
+	var shape map[string]json.RawMessage
+	trimmed := bytes.TrimPrefix(data, []byte{0xEF, 0xBB, 0xBF})
+	if err := json.Unmarshal(trimmed, &shape); err != nil {
+		return false
+	}
+	return shape != nil
+}
+
+// parseConfigWithBackup 解析 appconf 主文件；失败时依次回退 .bak 快照、默认配置。
+//
+// 无论用哪条路径，损坏的原文都会先被另存为 appconf.json.corrupt —— 之前这里
+// 直接用默认值覆盖，是把用户唯一一份现场证据也一起毁掉。
+func parseConfigWithBackup(data []byte, configPath string, defaults *AppConfig) (configLoadOutcome, *AppConfig) {
+	if parsed := parseConfigBytes(data, defaults); parsed != nil {
+		// 每次启动刷新一次恢复快照；SaveConfig 在高频保存时会保持该快照稳定。
+		configFileMu.Lock()
+		writeConfigBackup(configPath, data)
+		configFileMu.Unlock()
+		return configLoadPrimary, parsed
+	}
+
+	primaryErr := errors.New("appconf is not a JSON object")
+	preserveCorruptConfig(configPath, data)
+
+	backupPath := configPath + configBackupSuffix
+	if backupData, backupReadErr := os.ReadFile(backupPath); backupReadErr == nil {
+		if parsed := parseConfigBytes(backupData, defaults); parsed != nil {
+			log.Printf("appconf is invalid (%v), recovered from %s", primaryErr, backupPath)
+			return configLoadRecoveredFromBackup, parsed
+		}
+	}
+	log.Printf("appconf is unusable (%v) and no valid %s; using defaults", primaryErr, backupPath)
+	return configLoadFellBackToDefaults, defaultAppConfig()
+}
+
+// preserveCorruptConfig 把损坏原文挪到 .corrupt，保证它不会被后续保存覆盖掉。
+func preserveCorruptConfig(configPath string, data []byte) {
+	corruptPath := configPath + configCorruptSuffix
+	if existing, err := os.ReadFile(corruptPath); err == nil && bytes.Equal(existing, data) {
+		return
+	}
+	if err := os.WriteFile(corruptPath, data, 0644); err != nil {
+		log.Printf("failed to preserve corrupt appconf: %v", err)
+	}
+}
+
+// ensureConfigBackup 保证存在一份「可解析的」配置快照。
+//
+// 快照只在缺失或损坏时从当前主文件重建，因此高频保存不会反复写 .bak，
+// 也就不会在主文件刚被写坏前把好快照覆盖掉。
+func ensureConfigBackup(configPath string) {
+	backupPath := configPath + configBackupSuffix
+	if backup, err := os.ReadFile(backupPath); err == nil && isUsableConfigJSON(backup) {
+		return
+	}
+
+	previous, err := os.ReadFile(configPath)
+	if err != nil || !isUsableConfigJSON(previous) {
+		return
+	}
+	writeConfigBackup(configPath, previous)
+}
+
+func writeConfigBackup(configPath string, data []byte) {
+	if !isUsableConfigJSON(data) {
+		return
+	}
+	if err := writeFileAtomic(configPath+configBackupSuffix, data, 0644); err != nil {
+		log.Printf("failed to create appconf backup: %v", err)
+	}
+}
+
+// writeFileAtomic 原子写入文件：同目录临时文件 → fsync → 替换目标。
+//
+// 不引入第三方依赖（上游用 natefinch/atomic）；Windows 上 os.Rename 走
+// MoveFileEx(MOVEFILE_REPLACE_EXISTING)，可以直接覆盖已存在的目标文件。
+func writeFileAtomic(path string, data []byte, perm os.FileMode) error {
+	dir := filepath.Dir(path)
+	tmp, err := os.CreateTemp(dir, ".appconf-*.tmp")
+	if err != nil {
+		return err
+	}
+	tmpName := tmp.Name()
+	discard := func() {
+		_ = tmp.Close()
+		_ = os.Remove(tmpName)
+	}
+
+	if _, err := tmp.Write(data); err != nil {
+		discard()
+		return err
+	}
+	if err := tmp.Chmod(perm); err != nil {
+		discard()
+		return err
+	}
+	if err := tmp.Sync(); err != nil {
+		discard()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		_ = os.Remove(tmpName)
+		return err
+	}
+	if err := os.Rename(tmpName, path); err != nil {
+		_ = os.Remove(tmpName)
+		return err
+	}
+	return nil
 }
 
 func IsBangumiStatusPushEnabled(config *AppConfig) bool {
