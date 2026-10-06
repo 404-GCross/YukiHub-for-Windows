@@ -102,7 +102,10 @@ jobs:
 
       - name: Patch Wails Linux tray support
         shell: bash
-        run: ./scripts/patch-wails-linux-tray.sh
+        run: |
+          set -euo pipefail
+          chmod +x scripts/*.sh
+          ./scripts/patch-wails-linux-tray.sh
 
       - name: Build Linux packages
         shell: bash
