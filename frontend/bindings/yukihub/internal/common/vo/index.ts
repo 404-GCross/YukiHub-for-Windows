@@ -63,6 +63,8 @@ export {
     RenderTemplateRequest,
     RenderTemplateResponse,
     SaveGameFilterPresetRequest,
+    SelfSyncConfig,
+    SelfSyncResult,
     StatsExportData,
     StatsGameItem,
     StatsGameTrend,

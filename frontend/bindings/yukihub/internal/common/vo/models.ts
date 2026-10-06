@@ -3007,6 +3007,116 @@ export class SaveGameFilterPresetRequest {
 }
 
 /**
+ * SelfSyncConfig 是「自持同步（WebDAV）」的配置回显。
+ * 
+ * 对应手机版 WebDavSettingsDialog 里的三个输入框 + 自动同步开关。
+ * 密码会回传给前端以支持「保存后仍显示」（手机版同样把密码填回输入框）。
+ */
+export class SelfSyncConfig {
+    "server_url": string;
+    "username": string;
+    "password": string;
+    "auto_sync": boolean;
+
+    /**
+     * Configured：URL / 用户名 / 密码三者齐全（对齐手机版 isConfigured）
+     */
+    "configured": boolean;
+
+    /**
+     * LastSyncAt / LastSyncHash：上次同步时间与快照哈希
+     */
+    "last_sync_at"?: string;
+    "last_sync_hash"?: string;
+
+    /** Creates a new SelfSyncConfig instance. */
+    constructor($$source: Partial<SelfSyncConfig> = {}) {
+        if (!("server_url" in $$source)) {
+            this["server_url"] = "";
+        }
+        if (!("username" in $$source)) {
+            this["username"] = "";
+        }
+        if (!("password" in $$source)) {
+            this["password"] = "";
+        }
+        if (!("auto_sync" in $$source)) {
+            this["auto_sync"] = false;
+        }
+        if (!("configured" in $$source)) {
+            this["configured"] = false;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new SelfSyncConfig instance from a string or object.
+     */
+    static createFrom($$source: any = {}): SelfSyncConfig {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new SelfSyncConfig($$parsedSource as Partial<SelfSyncConfig>);
+    }
+}
+
+/**
+ * SelfSyncResult 是一次自持同步的结果。
+ * 
+ * Action 取值：
+ *   - uploaded   已上传（本地更新）
+ *   - downloaded 已下载（云端更新）
+ *   - merged     已合并（两边都变了，用户选了智能合并）
+ *   - noop       已是最新
+ *   - cancelled  用户在冲突对话框里选了取消
+ *   - conflict   本地与云端都变过，需要用户决定（此时 LocalBytes / RemoteBytes 有值）
+ */
+export class SelfSyncResult {
+    "action": string;
+    "games": number;
+    "sessions": number;
+    "imported"?: number;
+    "skipped"?: number;
+    "failed"?: number;
+    "local_bytes": number;
+    "remote_bytes": number;
+    "synced_at"?: string;
+
+    /**
+     * UpdatedAt：上传方向才有，云端文件的写入时刻
+     */
+    "updated_at"?: string;
+
+    /** Creates a new SelfSyncResult instance. */
+    constructor($$source: Partial<SelfSyncResult> = {}) {
+        if (!("action" in $$source)) {
+            this["action"] = "";
+        }
+        if (!("games" in $$source)) {
+            this["games"] = 0;
+        }
+        if (!("sessions" in $$source)) {
+            this["sessions"] = 0;
+        }
+        if (!("local_bytes" in $$source)) {
+            this["local_bytes"] = 0;
+        }
+        if (!("remote_bytes" in $$source)) {
+            this["remote_bytes"] = 0;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new SelfSyncResult instance from a string or object.
+     */
+    static createFrom($$source: any = {}): SelfSyncResult {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new SelfSyncResult($$parsedSource as Partial<SelfSyncResult>);
+    }
+}
+
+/**
  * StatsExportData 统计导出数据，用于模板渲染
  */
 export class StatsExportData {
