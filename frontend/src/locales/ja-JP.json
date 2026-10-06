@@ -61,7 +61,8 @@
       "hoursAgo": "時間{{hours}}前",
       "minutesAgo": "分{{minutes}}前",
       "justNow": "たった現"
-    }
+    },
+    "pleaseSelect": "選択してください"
   },
   "library": {
     "title": "ゲームライブラリ",
@@ -72,6 +73,9 @@
     "emptyStateAction": "ゲームを追加して始めましょう",
     "notFound": "一致するゲームが見つかりません",
     "setStatus": "状態を設定",
+    "setHidden": "非表示にする",
+    "hideSelected": "選択したゲームを非表示",
+    "unhideSelected": "選択したゲームを再表示",
     "batchAddToFilter": "コレクションに一括追加",
     "batchImportToSteam": "Steam に一括インポート",
     "addGame": "ゲームを追加",
@@ -92,6 +96,11 @@
     "importSteamDesc": "このデバイスにインストール済みの Steam ゲームをスキャン",
     "toast": {
       "batchStatusUpdated": "{{count}} 件のゲーム状態を「{{status}}」に更新しました",
+      "batchHidden": "{{count}} 件のゲームを非表示にしました",
+      "batchHiddenPartial": "{{done}} 件を非表示にしました（{{count}} 件は既に存在しません）",
+      "batchUnhidden": "{{count}} 件のゲームを再表示にしました",
+      "batchHiddenFailed": "ゲームを非表示にできませんでした",
+      "batchUnhiddenFailed": "ゲームを再表示にできませんでした",
       "batchStatusFailed": "状態の一括更新に失敗しました",
       "loadFavFailed": "コレクションの読み込みに失敗しました",
       "batchAddFavSuccess": "{{count}} 件のゲームをコレクションに追加しました",
@@ -125,6 +134,8 @@
     "status": "ステータス",
     "metadataSource": "メタデータソース",
     "invertMetadataSourceFilter": "メタデータソースフィルターを反転",
+    "showHiddenGames": "非表示のゲームも表示する",
+    "showHiddenGamesHint": "非表示のゲームは通常は一覧に出ません。オンにすると再表示して元に戻せます。",
     "allMetadataSources": "すべてのソース",
     "noMetadataSource": "local",
     "invert": "反転",
@@ -410,7 +421,9 @@
       "desc": "LunaBox のバックアップファイル（.zip）を選択",
       "hint": "LunaBox の「設定 → バックアップ」から書き出すか、%APPDATA%\\LunaBox\\backups\\database の .zip を選びます。ゲーム、プレイ履歴、タグ、カバーを取り込み、プレイ状況は YukiHub の 5 状態に変換されます",
       "btn": "バックアップファイルを選択"
-    }
+    },
+    "samePathSyncMerge": "マージ（ローカル優先）",
+    "samePathSyncMergeHint": "プレイ記録を統合し、バックアップが新しい場合のみステータス・非表示・評価などを更新します。空の項目はローカルの情報を上書きしません。"
   },
   "game": {
     "notFound": "このゲームは見つかりません",
@@ -540,8 +553,8 @@
     "size": "サイズ: ",
     "cloudBackups": "クラウドバックアップ",
     "noCloudBackups": "クラウドバックアップ記録がありません",
-    "cloudNotEnabled": "クラウドバックアップが有効ではありません",
-    "cloudConfigHint": "設定ページでクラウドバックアップを構成すると、セーブをクラウド同期できます",
+    "cloudNotEnabled": "クラウドバックアップは無効です",
+    "cloudConfigHint": "このビルドにはクラウドストレージの設定画面がありません。端末間でライブラリを同期するには「設定 → データ管理 → WebDAV 同期」をご利用ください。セーブデータは「今すぐバックアップ」でローカルに保存できます。",
     "modal": {
       "restoreTitle": "セーブを復元",
       "restoreMsg": "{{time}} のバックアップに復元しますか？現在のセーブは上書きされます。",
@@ -1147,7 +1160,13 @@
       "gameCardLayout": "ライブラリカードのレイアウト",
       "gameCardLayoutHint": "横長レイアウトは横長のカバー画像に適しています。縦長では現在のカード比率を維持します。",
       "gameCardLayout_portrait": "縦型",
-      "gameCardLayout_landscape": "横長"
+      "gameCardLayout_landscape": "横長",
+      "cropTitle": "背景画像をトリミング",
+      "cropClose": "トリミング画面を閉じる",
+      "cropAspect": "アスペクト比：",
+      "cropAspectWindow": "現在のウィンドウ ({{width}}x{{height}})",
+      "cropAspectFree": "自由",
+      "cropConfirm": "トリミングを確定"
     },
     "game": {
       "recordActiveOnly": "アクティブプレイ時間のみ記録",
@@ -1186,7 +1205,7 @@
         "ymgal": "この素晴らしい文芸ジャンルを感じてください",
         "hikarinagi": "あなたと仲間のための ACGN コミュニティ",
         "bangumiMirror": "Bangumi の代替ミラーサイト。アカウントは本家と共通です",
-        "nextmoe": "ACG 作品のカタログサイト"
+        "nextmoe": "推奨 · ACG 作品のカタログサイト。未萌アカウントの接続後に利用できます（アカウントごとに配额）"
       },
       "allowDuplicateMetadataImport": "同じメタデータ ID のゲームを許可",
       "allowDuplicateMetadataImportHint": "有効にすると、一括インポートと外部インポートで source_type + source_id の重複だけではスキップしません。パス重複は引き続きブロックされます。",
@@ -1367,7 +1386,40 @@
       "about": "このアプリとライセンス",
       "appDataHint": "アプリのデータ保存先と、問題調査用のログ書き出し。",
       "backup": "バックアップ",
-      "backupHint": "自動バックアップ、手動バックアップと復元。バックアップはこの PC 内に保存されます。クラウド側はアカウント機能と合わせて後日対応します。"
+      "backupHint": "自動バックアップ、手動バックアップと復元。バックアップはこの PC 内に保存されます。クラウド側はアカウント機能と合わせて後日対応します。",
+      "selfSync": "WebDAV 同期",
+      "selfSyncHint": "ライブラリを自分の WebDAV に同期します（スマホ版と同じデータ）"
+    },
+    "selfSync": {
+      "server": "サーバーアドレス",
+      "serverPlaceholder": "https://dav.jianguoyun.com/dav",
+      "serverHint": "Jianguoyun などは先に YukiHub フォルダを作成してください。プロトコルが無い場合は https:// を補います。",
+      "username": "ユーザー名",
+      "password": "パスワード / アプリパスワード",
+      "autoSync": "自動同期",
+      "autoSyncHint": "起動時に一度同期します（前回から 10 分未満ならスキップ）",
+      "testConnection": "接続テスト",
+      "testing": "テスト中…",
+      "testSuccess": "接続に成功しました",
+      "testFailed": "接続に失敗しました：{{error}}",
+      "save": "設定を保存",
+      "saved": "設定を保存しました",
+      "saveFailed": "保存に失敗しました：{{error}}",
+      "syncNow": "今すぐ同期",
+      "syncing": "同期中…",
+      "syncFailed": "同期に失敗しました：{{error}}",
+      "resultUploaded": "クラウドへアップロードしました",
+      "resultDownloaded": "クラウドからダウンロードしました",
+      "resultMerged": "スマートマージしました",
+      "resultNoop": "最新です",
+      "resultCancelled": "同期をキャンセルしました",
+      "lastSync": "前回の同期：{{time}}",
+      "lastSyncNever": "まだ同期していません",
+      "conflictTitle": "同期の競合",
+      "conflictMessage": "ローカルとクラウドの両方が変更されています。処理方法を選んでください。ローカル約 {{local}} KB、クラウド約 {{remote}} KB。スマートマージはゲームパスとプレイ記録で重複を排除し、どちらも失いません。",
+      "merge": "スマートマージ",
+      "useRemote": "クラウドを使用",
+      "useLocal": "ローカルを使用"
     },
     "backup": {
       "autoBackup": "自動バックアップ",
@@ -1446,7 +1498,10 @@
       "toastSubmitFailed": "操作に失敗しました：{{error}}",
       "toastQuickLoginFailed": "クイックログインに失敗しました：{{error}}",
       "friendPlayNotify": "フレンドがゲームを始めたら通知",
-      "friendPlayNotifyHint": "フレンドがゲームを開始したときに通知します"
+      "friendPlayNotifyHint": "フレンドがゲームを開始したときに通知します",
+      "levelProgress": "Lv.{{level}} · {{exp}}/{{next}} EXP",
+      "levelMaxed": "Lv.{{level}} · {{exp}} EXP · 最大レベル",
+      "checkedIn": "本日チェックイン済み"
     }
   },
   "downloads": {
@@ -1863,7 +1918,16 @@
     "requestsIncoming": "受け取った申請",
     "requestsOutgoing": "送信済みの申請",
     "toastRejected": "フレンド申請を拒否しました",
-    "requestPending": "送信済み"
+    "requestPending": "送信済み",
+    "menuSetNote": "メモを設定",
+    "menuRemoveFriend": "フレンドを削除",
+    "noteHint": "{{name}} のメモを設定します（最大 {{max}} 文字）",
+    "noteTooLong": "メモは最大 {{max}} 文字です",
+    "noteSaved": "メモを保存しました",
+    "noteSaveFailed": "メモの保存に失敗しました：{{error}}",
+    "removeFriendConfirm": "フレンド「{{name}}」を削除しますか？トーク履歴は残りますが、フレンド関係は完全に解除されます。",
+    "friendRemoved": "フレンドを削除しました",
+    "friendRemoveFailed": "フレンドの削除に失敗しました：{{error}}"
   },
   "friendsOverlay": {
     "title": "フレンド",
@@ -1872,5 +1936,8 @@
     "openChat": "クリックしてチャット",
     "send": "送信",
     "noMessages": "まだメッセージがありません"
+  },
+  "protocolLaunch": {
+    "launchFailed": "クイック起動に失敗しました"
   }
 }

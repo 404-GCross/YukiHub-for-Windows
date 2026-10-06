@@ -61,7 +61,8 @@
       "hoursAgo": "{{hours}} 小時前",
       "minutesAgo": "{{minutes}} 分鐘前",
       "justNow": "剛剛"
-    }
+    },
+    "pleaseSelect": "請選擇"
   },
   "library": {
     "title": "遊戲庫",
@@ -72,6 +73,9 @@
     "emptyStateAction": "新增一些遊戲開始吧",
     "notFound": "未找到匹配的遊戲",
     "setStatus": "設為狀態",
+    "setHidden": "隱藏",
+    "hideSelected": "隱藏所選",
+    "unhideSelected": "取消隱藏所選",
     "batchAddToFilter": "批次新增到收藏",
     "batchImportToSteam": "批次匯入 Steam",
     "addGame": "新增遊戲",
@@ -92,6 +96,11 @@
     "importSteamDesc": "掃描本機已安裝的 Steam 遊戲",
     "toast": {
       "batchStatusUpdated": "已將 {{count}} 個遊戲狀態更新為「{{status}}」",
+      "batchHidden": "已隱藏 {{count}} 個遊戲",
+      "batchHiddenPartial": "已隱藏 {{done}} 個，另有 {{count}} 個已不存在",
+      "batchUnhidden": "已取消隱藏 {{count}} 個遊戲",
+      "batchHiddenFailed": "隱藏遊戲失敗",
+      "batchUnhiddenFailed": "取消隱藏失敗",
       "batchStatusFailed": "批次更新狀態失敗",
       "loadFavFailed": "載入收藏夾失敗",
       "batchAddFavSuccess": "已新增 {{count}} 個遊戲到收藏",
@@ -125,6 +134,8 @@
     "status": "狀態",
     "metadataSource": "後設資料來源",
     "invertMetadataSourceFilter": "反選資料來源篩選",
+    "showHiddenGames": "顯示已隱藏的遊戲",
+    "showHiddenGamesHint": "已隱藏的遊戲預設不顯示；開啟後可在這裡把它們恢復回來。",
     "allMetadataSources": "全部來源",
     "noMetadataSource": "local",
     "invert": "反選",
@@ -410,7 +421,9 @@
       "desc": "選擇 LunaBox 的備份檔案（.zip）",
       "hint": "在 LunaBox 的「設定 → 備份」匯出，或直接選 %APPDATA%\\LunaBox\\backups\\database 下的 .zip；會匯入遊戲、遊玩記錄、標籤與封面，遊玩狀態會自動換算成 YukiHub 的五態",
       "btn": "選擇備份檔案"
-    }
+    },
+    "samePathSyncMerge": "合併（保留本機資料）",
+    "samePathSyncMergeHint": "合併遊玩記錄，並在備份較新時更新狀態、隱藏、評分等欄位；備份中為空的欄位不會覆蓋本機資料。"
   },
   "game": {
     "notFound": "未找到該遊戲",
@@ -540,8 +553,8 @@
     "size": "大小: ",
     "cloudBackups": "雲端備份",
     "noCloudBackups": "暫無雲端備份記錄",
-    "cloudNotEnabled": "雲備份未啟用",
-    "cloudConfigHint": "前往設定頁面配置雲備份，將存檔同步到雲端",
+    "cloudNotEnabled": "雲端備份未啟用",
+    "cloudConfigHint": "桌面端暫未提供雲端儲存設定介面。跨裝置同步遊戲庫請用「設定 → 資料管理 → WebDAV 同步」；存檔可先用「立即備份」保存在本機。",
     "modal": {
       "restoreTitle": "恢復存檔",
       "restoreMsg": "確定要恢復到 {{time}} 的備份嗎？當前存檔將被覆蓋。",
@@ -1147,7 +1160,13 @@
       "toast": {
         "selectFailed": "選擇背景圖片失敗: {{error}}",
         "cropFailed": "裁剪儲存失敗: {{error}}"
-      }
+      },
+      "cropTitle": "裁剪背景圖片",
+      "cropClose": "關閉裁剪視窗",
+      "cropAspect": "寬高比：",
+      "cropAspectWindow": "目前視窗 ({{width}}x{{height}})",
+      "cropAspectFree": "自由",
+      "cropConfirm": "確認裁剪"
     },
     "game": {
       "recordActiveOnly": "僅記錄活躍遊玩時長",
@@ -1186,7 +1205,7 @@
         "ymgal": "請感受這絕妙的文藝體裁",
         "hikarinagi": "你和同好的 ACGN 社群",
         "bangumiMirror": "Bangumi 的備用鏡像站點，帳號與主站通用",
-        "nextmoe": "面向 ACG 作品的資料目錄站點"
+        "nextmoe": "推薦 · 面向 ACG 作品的資料目錄站點，需連接未萌賬號後使用（配額按賬號計算）"
       },
       "allowDuplicateMetadataImport": "允許匯入相同後設資料 ID 的遊戲",
       "allowDuplicateMetadataImportHint": "開啟後，批次匯入和外部匯入不會因為 source_type + source_id 相同而跳過，僅保留路徑重複攔截。",
@@ -1367,7 +1386,40 @@
       "about": "關於與開源授權",
       "appDataHint": "應用的資料目錄位置，以及匯出日誌以供排查問題。",
       "backup": "備份",
-      "backupHint": "自動備份、手動備份與還原。備份保存在本機，雲端備份等帳號系統上線後再另外處理。"
+      "backupHint": "自動備份、手動備份與還原。備份保存在本機，雲端備份等帳號系統上線後再另外處理。",
+      "selfSync": "WebDAV 同步",
+      "selfSyncHint": "把遊戲庫同步到你自己架的 WebDAV 網盤（與手機版同一份資料）"
+    },
+    "selfSync": {
+      "server": "伺服器位址",
+      "serverPlaceholder": "https://dav.jianguoyun.com/dav",
+      "serverHint": "堅果雲等請先手動建立 YukiHub 資料夾；缺少協定標頭會自動補上 https://",
+      "username": "使用者名稱",
+      "password": "密碼 / 應用密碼",
+      "autoSync": "自動同步",
+      "autoSyncHint": "啟動時自動同步一次（距上次不足 10 分鐘會略過）",
+      "testConnection": "測試連線",
+      "testing": "測試中…",
+      "testSuccess": "連線成功",
+      "testFailed": "連線失敗：{{error}}",
+      "save": "儲存設定",
+      "saved": "設定已儲存",
+      "saveFailed": "儲存失敗：{{error}}",
+      "syncNow": "立即同步",
+      "syncing": "同步中…",
+      "syncFailed": "同步失敗：{{error}}",
+      "resultUploaded": "已上傳到雲端",
+      "resultDownloaded": "已從雲端下載",
+      "resultMerged": "已智慧合併",
+      "resultNoop": "已是最新",
+      "resultCancelled": "已取消同步",
+      "lastSync": "上次同步：{{time}}",
+      "lastSyncNever": "尚未同步過",
+      "conflictTitle": "同步衝突",
+      "conflictMessage": "本機與雲端都有變更，請選擇處理方式。本機約 {{local}} KB，雲端約 {{remote}} KB。智慧合併會依遊戲路徑與遊玩記錄去重合併，兩邊都不會遺失。",
+      "merge": "智慧合併",
+      "useRemote": "使用雲端",
+      "useLocal": "使用本機"
     },
     "backup": {
       "autoBackup": "自動備份",
@@ -1446,7 +1498,10 @@
       "toastSubmitFailed": "操作失敗：{{error}}",
       "toastQuickLoginFailed": "快捷登入失敗：{{error}}",
       "friendPlayNotify": "好友開始玩遊戲時通知",
-      "friendPlayNotifyHint": "好友開始遊玩時彈出提示"
+      "friendPlayNotifyHint": "好友開始遊玩時彈出提示",
+      "levelProgress": "Lv.{{level}} · {{exp}}/{{next}} EXP",
+      "levelMaxed": "Lv.{{level}} · {{exp}} EXP · 已滿級",
+      "checkedIn": "已簽到"
     }
   },
   "downloads": {
@@ -1863,7 +1918,16 @@
     "requestsIncoming": "收到的請求",
     "requestsOutgoing": "已發出的請求",
     "toastRejected": "已拒絕好友請求",
-    "requestPending": "已送出請求"
+    "requestPending": "已送出請求",
+    "menuSetNote": "設定備註",
+    "menuRemoveFriend": "刪除好友",
+    "noteHint": "為 {{name}} 設定備註（最多 {{max}} 字）",
+    "noteTooLong": "備註最多 {{max}} 字",
+    "noteSaved": "備註已儲存",
+    "noteSaveFailed": "儲存備註失敗：{{error}}",
+    "removeFriendConfirm": "確定要刪除好友「{{name}}」嗎？刪除後聊天紀錄不會遺失，但好友關係將永久解除。",
+    "friendRemoved": "已刪除好友",
+    "friendRemoveFailed": "刪除好友失敗：{{error}}"
   },
   "friendsOverlay": {
     "title": "好友",
@@ -1872,5 +1936,8 @@
     "openChat": "點一下開始聊天",
     "send": "傳送",
     "noMessages": "還沒有訊息，說點什麼吧"
+  },
+  "protocolLaunch": {
+    "launchFailed": "快捷啟動失敗"
   }
 }

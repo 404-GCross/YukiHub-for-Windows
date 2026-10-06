@@ -1,6 +1,8 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { invalidateAllGameLists } from "../../cache/gameCache";
 import { useAccountStatus } from "../../hooks/useAccountStatus";
+import { useAppStore } from "../../store";
 import { AccountModal } from "../modal/AccountModal";
 
 /**
@@ -15,8 +17,26 @@ import { AccountModal } from "../modal/AccountModal";
 export function HomeUserProfile() {
   const { t } = useTranslation();
   const status = useAccountStatus();
+  const fetchConfig = useAppStore(state => state.fetchConfig);
+  const fetchHomeData = useAppStore(state => state.fetchHomeData);
   const [accountOpen, setAccountOpen] = useState(false);
   const [greeting, setGreeting] = useState("");
+
+  /**
+   * 账号面板里任何「会改变本地数据」的操作（登录 / 退出 / 云同步 / 改昵称）
+   * 完成后都会调这个回调。以前这里是 `() => Promise.resolve()` 的空实现，
+   * 于是云同步成功下载了游戏库，首页仍然停在「去游戏库选择一款游戏开始吧」，
+   * 用户只能以为同步没生效。
+   */
+  const handleConfigRefresh = useCallback(async () => {
+    await Promise.all([
+      fetchConfig(),
+      fetchHomeData({ showLoading: false, syncRuntime: false }),
+    ]);
+    // 同步可能整体换掉了游戏库，游戏库页面的缓存必须一起失效，
+    // 否则切过去还是空的。
+    invalidateAllGameLists();
+  }, [fetchConfig, fetchHomeData]);
 
   const loggedIn = Boolean(status?.logged_in);
   const displayName
@@ -90,7 +110,7 @@ export function HomeUserProfile() {
       <AccountModal
         isOpen={accountOpen}
         onClose={() => setAccountOpen(false)}
-        onConfigRefresh={() => Promise.resolve()}
+        onConfigRefresh={handleConfigRefresh}
       />
     </>
   );

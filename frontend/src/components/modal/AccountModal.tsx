@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 import {
+  GetAccountLevel,
   GetAccountStatus,
   LoginAccount,
   LogoutAccount,
@@ -52,6 +53,7 @@ export function AccountModal({
   const { t } = useTranslation();
 
   const [status, setStatus] = useState<vo.AccountStatus | null>(null);
+  const [level, setLevel] = useState<vo.AccountLevel | null>(null);
   const [mode, setMode] = useState<FormMode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -76,6 +78,26 @@ export function AccountModal({
       console.error("Failed to load YukiHub account status:", error);
     }
   };
+
+  // 等级 / 经验 / 今日签到：手机版在资料区展示「Lv.X · exp/next EXP · 已签到」，
+  // 桌面端对齐同一口径。拿不到就整行不显示，不影响登录态与同步。
+  const refreshLevel = async () => {
+    try {
+      setLevel(await GetAccountLevel());
+    }
+    catch (error) {
+      console.error("Failed to load YukiHub account level:", error);
+      setLevel(null);
+    }
+  };
+
+  useEffect(() => {
+    if (!isOpen || !status?.logged_in) {
+      setLevel(null);
+      return;
+    }
+    void refreshLevel();
+  }, [isOpen, status?.logged_in]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -386,6 +408,22 @@ export function AccountModal({
                   {status?.email && (
                     <div className="truncate text-xs text-brand-500 dark:text-brand-400">
                       {status.email}
+                    </div>
+                  )}
+                  {level && (
+                    <div className="truncate text-xs text-brand-500 dark:text-brand-400">
+                      {level.is_max_level
+                        ? t("settings.account.levelMaxed", {
+                            level: level.level,
+                            exp: level.exp,
+                          })
+                        : t("settings.account.levelProgress", {
+                            level: level.level,
+                            exp: level.exp,
+                            next: level.next_level_total_exp,
+                          })}
+                      {level.today_checked_in
+                        && ` · ${t("settings.account.checkedIn")}`}
                     </div>
                   )}
                 </div>

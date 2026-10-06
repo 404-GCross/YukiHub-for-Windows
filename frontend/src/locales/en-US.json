@@ -61,7 +61,8 @@
       "hoursAgo": "{{hours}}h ago",
       "minutesAgo": "{{minutes}}m ago",
       "justNow": "just now"
-    }
+    },
+    "pleaseSelect": "Please select"
   },
   "library": {
     "title": "Game Library",
@@ -72,6 +73,9 @@
     "emptyStateAction": "Add some games to get started",
     "notFound": "No matching games found",
     "setStatus": "Set Status",
+    "setHidden": "Hide",
+    "hideSelected": "Hide selected",
+    "unhideSelected": "Unhide selected",
     "batchAddToFilter": "Batch Add to Collection",
     "batchImportToSteam": "Batch Import to Steam",
     "addGame": "Add Game",
@@ -92,6 +96,11 @@
     "importSteamDesc": "Scan installed Steam games on this device",
     "toast": {
       "batchStatusUpdated": "Updated {{count}} games to status '{{status}}'",
+      "batchHidden": "Hid {{count}} games",
+      "batchHiddenPartial": "Hid {{done}} games; {{count}} no longer exist",
+      "batchUnhidden": "Unhid {{count}} games",
+      "batchHiddenFailed": "Failed to hide games",
+      "batchUnhiddenFailed": "Failed to unhide games",
       "batchStatusFailed": "Failed to batch update status",
       "loadFavFailed": "Failed to load collections",
       "batchAddFavSuccess": "Added {{count}} games to collection",
@@ -125,6 +134,8 @@
     "status": "Status",
     "metadataSource": "Metadata Source",
     "invertMetadataSourceFilter": "Invert metadata source filter",
+    "showHiddenGames": "Show hidden games",
+    "showHiddenGamesHint": "Hidden games are excluded by default. Turn this on to bring them back into the list.",
     "allMetadataSources": "All Sources",
     "noMetadataSource": "local",
     "invert": "Invert",
@@ -410,7 +421,9 @@
       "desc": "Select the LunaBox backup file (.zip)",
       "hint": "Export it from LunaBox under Settings -> Backup, or pick a .zip from %APPDATA%\\LunaBox\\backups\\database. Games, play sessions, tags and covers are imported; play status is converted to YukiHub's five states",
       "btn": "Select backup file"
-    }
+    },
+    "samePathSyncMerge": "Merge (keep local)",
+    "samePathSyncMergeHint": "Merge play sessions and update status, hidden, rating and similar fields only when the backup is newer. Empty fields never overwrite local metadata."
   },
   "game": {
     "notFound": "Game not found",
@@ -540,8 +553,8 @@
     "size": "Size: ",
     "cloudBackups": "Cloud Backups",
     "noCloudBackups": "No cloud backup records",
-    "cloudNotEnabled": "Cloud Backup Disabled",
-    "cloudConfigHint": "Go to settings to configure cloud backup and sync your saves",
+    "cloudNotEnabled": "Cloud backup is not enabled",
+    "cloudConfigHint": "This build has no cloud storage setup screen yet. To sync your library across devices, use Settings → Data → WebDAV sync; for saves, use “Back up now” to keep them locally.",
     "modal": {
       "restoreTitle": "Restore Save",
       "restoreMsg": "Are you sure you want to restore the backup from {{time}}? Current save will be overwritten.",
@@ -1147,7 +1160,13 @@
       "toast": {
         "selectFailed": "Failed to select background image: {{error}}",
         "cropFailed": "Failed to crop and save: {{error}}"
-      }
+      },
+      "cropTitle": "Crop background image",
+      "cropClose": "Close crop dialog",
+      "cropAspect": "Aspect ratio:",
+      "cropAspectWindow": "Current window ({{width}}x{{height}})",
+      "cropAspectFree": "Free",
+      "cropConfirm": "Confirm crop"
     },
     "game": {
       "recordActiveOnly": "Record Active Play Time Only",
@@ -1186,7 +1205,7 @@
         "ymgal": "Please experience this wonderful literary genre",
         "hikarinagi": "An ACGN community for you and fellow fans",
         "bangumiMirror": "Alternative mirror of Bangumi sharing the same account as the main site",
-        "nextmoe": "An ACG catalog site for works and metadata"
+        "nextmoe": "Recommended · An ACG catalog site; connect a NextMoe account to use it (quota is per account)"
       },
       "allowDuplicateMetadataImport": "Allow games with the same metadata ID",
       "allowDuplicateMetadataImportHint": "When enabled, batch and external imports will not skip games only because source_type + source_id already exists. Path duplicates are still blocked.",
@@ -1367,7 +1386,40 @@
       "about": "About & license",
       "appDataHint": "Where the app keeps its data, plus log export for troubleshooting.",
       "backup": "Backup",
-      "backupHint": "Automatic backup, manual backup and restore. Backups stay on this machine — cloud backup comes later with the account system."
+      "backupHint": "Automatic backup, manual backup and restore. Backups stay on this machine — cloud backup comes later with the account system.",
+      "selfSync": "WebDAV sync",
+      "selfSyncHint": "Sync your library to your own WebDAV drive (same data as the mobile app)"
+    },
+    "selfSync": {
+      "server": "Server URL",
+      "serverPlaceholder": "https://dav.jianguoyun.com/dav",
+      "serverHint": "For Jianguoyun and similar services, create a YukiHub folder first; https:// is added automatically when missing.",
+      "username": "Username",
+      "password": "Password / app password",
+      "autoSync": "Auto sync",
+      "autoSyncHint": "Sync once at startup (skipped if the last sync was less than 10 minutes ago)",
+      "testConnection": "Test connection",
+      "testing": "Testing…",
+      "testSuccess": "Connection succeeded",
+      "testFailed": "Connection failed: {{error}}",
+      "save": "Save",
+      "saved": "Configuration saved",
+      "saveFailed": "Save failed: {{error}}",
+      "syncNow": "Sync now",
+      "syncing": "Syncing…",
+      "syncFailed": "Sync failed: {{error}}",
+      "resultUploaded": "Uploaded to the cloud",
+      "resultDownloaded": "Downloaded from the cloud",
+      "resultMerged": "Merged",
+      "resultNoop": "Already up to date",
+      "resultCancelled": "Sync cancelled",
+      "lastSync": "Last sync: {{time}}",
+      "lastSyncNever": "Never synced",
+      "conflictTitle": "Sync conflict",
+      "conflictMessage": "Both the local library and the cloud changed. Local is about {{local}} KB, cloud about {{remote}} KB. Smart merge deduplicates by game path and play session so nothing is lost.",
+      "merge": "Smart merge",
+      "useRemote": "Use cloud",
+      "useLocal": "Use local"
     },
     "backup": {
       "autoBackup": "Automatic backup",
@@ -1446,7 +1498,10 @@
       "toastSubmitFailed": "Failed: {{error}}",
       "toastQuickLoginFailed": "Quick sign-in failed: {{error}}",
       "friendPlayNotify": "Notify when friends start playing",
-      "friendPlayNotifyHint": "Show a notice when a friend starts a game"
+      "friendPlayNotifyHint": "Show a notice when a friend starts a game",
+      "levelProgress": "Lv.{{level}} · {{exp}}/{{next}} EXP",
+      "levelMaxed": "Lv.{{level}} · {{exp}} EXP · Max level",
+      "checkedIn": "Checked in today"
     }
   },
   "downloads": {
@@ -1863,7 +1918,16 @@
     "requestsIncoming": "Received requests",
     "requestsOutgoing": "Sent requests",
     "toastRejected": "Friend request rejected",
-    "requestPending": "Request sent"
+    "requestPending": "Request sent",
+    "menuSetNote": "Set note",
+    "menuRemoveFriend": "Remove friend",
+    "noteHint": "Set a note for {{name}} (up to {{max}} characters)",
+    "noteTooLong": "Notes are limited to {{max}} characters",
+    "noteSaved": "Note saved",
+    "noteSaveFailed": "Failed to save note: {{error}}",
+    "removeFriendConfirm": "Remove “{{name}}” from your friends? Chat history is kept, but the friendship ends permanently.",
+    "friendRemoved": "Friend removed",
+    "friendRemoveFailed": "Failed to remove friend: {{error}}"
   },
   "friendsOverlay": {
     "title": "Friends",
@@ -1872,5 +1936,8 @@
     "openChat": "Click to chat",
     "send": "Send",
     "noMessages": "No messages yet"
+  },
+  "protocolLaunch": {
+    "launchFailed": "Quick launch failed"
   }
 }
