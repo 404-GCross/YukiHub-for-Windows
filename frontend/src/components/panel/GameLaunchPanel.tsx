@@ -135,9 +135,8 @@ export function GameLaunchPanel({
   goos,
 }: GameLaunchPanelProps) {
   const { t } = useTranslation();
-  const isDarwin = goos === "darwin";
   const isLinux = goos === "linux";
-  const supportsWineLaunch = isDarwin || isLinux;
+  const supportsWineLaunch = isLinux;
   const supportsWindowsEnhancements = goos === "windows";
   const hasLocaleEmulatorPath
     = config?.locale_emulator_path && config?.locale_emulator_path.length > 0;
@@ -145,12 +144,7 @@ export function GameLaunchPanel({
   const executableName = game.path
     ? game.path.split(/[\\/]/).pop()
     : t("gameLaunch.noPathSet");
-  const supportsSteamLaunch
-    = goos === "windows"
-      || isLinux
-      || (isDarwin
-        && game.steam_launch_kind === "native"
-        && Boolean(game.steam_launch_id));
+  const supportsSteamLaunch = goos === "windows" || isLinux;
   const launchModeOptions = [
     {
       value: enums.LaunchMode.LaunchModeNormal,
@@ -164,14 +158,6 @@ export function GameLaunchPanel({
           },
         ]
       : []),
-    ...(isDarwin
-      ? [
-          {
-            value: enums.LaunchMode.LaunchModeCompatibility,
-            label: t("gameLaunch.launchModeCompatibility"),
-          },
-        ]
-      : []),
     ...(supportsSteamLaunch
       ? [
           {
@@ -181,20 +167,21 @@ export function GameLaunchPanel({
         ]
       : []),
   ];
-  const launchMode
-    = (game.launch_mode === enums.LaunchMode.LaunchModeSteam
-      && !supportsSteamLaunch)
-    || (game.launch_mode === enums.LaunchMode.LaunchModeCompatibility
-      && !isDarwin)
-    || (game.launch_mode === enums.LaunchMode.LaunchModeAdmin
+  let launchMode: enums.LaunchMode
+    = game.launch_mode || enums.LaunchMode.LaunchModeNormal;
+  if (
+    launchMode === enums.LaunchMode.LaunchModeCompatibility
+    || (launchMode === enums.LaunchMode.LaunchModeSteam && !supportsSteamLaunch)
+    || (launchMode === enums.LaunchMode.LaunchModeAdmin
       && !supportsWindowsEnhancements)
-      ? enums.LaunchMode.LaunchModeNormal
-      : game.launch_mode || enums.LaunchMode.LaunchModeNormal;
+  ) {
+    launchMode = enums.LaunchMode.LaunchModeNormal;
+  }
   const isSteamLaunch = launchMode === enums.LaunchMode.LaunchModeSteam;
   const isCompatibilityLaunch
-    = launchMode === enums.LaunchMode.LaunchModeCompatibility;
+    = game.launch_mode === enums.LaunchMode.LaunchModeCompatibility;
   const defaultsToSystemWineRunner
-    = isDarwin || (isLinux && isWindowsExecutablePath(game.path));
+    = isLinux && isWindowsExecutablePath(game.path);
   const configuredWineRunner
     = isLinux && game.wine_runner === "crossover" ? "" : game.wine_runner;
   const selectedWineRunner
@@ -615,9 +602,6 @@ export function GameLaunchPanel({
       ? [{ value: "", label: t("gameLaunch.wineRunnerNone") }]
       : []),
     { value: "system", label: t("gameLaunch.wineRunnerSystem") },
-    ...(isDarwin
-      ? [{ value: "crossover", label: t("gameLaunch.wineRunnerCrossover") }]
-      : []),
     ...(isLinux
       ? [
           { value: "custom", label: t("gameLaunch.wineRunnerCustom") },
@@ -810,7 +794,7 @@ export function GameLaunchPanel({
               {supportsWineLaunch ? null : (
                 <BetterButton
                   variant="secondary"
-                  icon="i-mdi-application-search-outline"
+                  icon="i-mdi-magnify-scan"
                   onClick={onSelectRunningProcess}
                 >
                   {t("gameLaunch.selectRunningProcess")}
@@ -857,7 +841,7 @@ export function GameLaunchPanel({
                   <h3 className="text-lg font-semibold text-brand-900 dark:text-white">
                     {compatibilityLauncherTitle}
                   </h3>
-                  {!isDarwin && !isLinux && (
+                  {supportsWindowsEnhancements && (
                     <p className="mt-1 text-xs text-brand-500 dark:text-brand-400">
                       {compatibilityLauncherHint}
                     </p>

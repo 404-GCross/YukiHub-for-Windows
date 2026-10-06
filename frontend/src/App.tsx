@@ -74,6 +74,13 @@ function App() {
   const showTimezoneModal = Boolean(
     config && (!config.time_zone || config.time_zone === ""),
   );
+  const openGameLaunchSettings = (gameID: string) => {
+    void router.navigate({ to: "/game/$gameId", params: { gameId: gameID } });
+    window.setTimeout(() => {
+      window.location.hash = "launch";
+      window.dispatchEvent(new HashChangeEvent("hashchange"));
+    }, 0);
+  };
 
   useEffect(() => {
     fetchConfig();
@@ -106,6 +113,7 @@ function App() {
     refreshHomeData: fetchHomeData,
     setInstallRequest,
     setQuitSyncRequest,
+    openGameLaunchSettings,
   });
   useExitSyncToast({ quitSyncRequest });
   useDownloadNotifications(i18n);

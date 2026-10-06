@@ -514,6 +514,36 @@ export class AppConfig {
     "default_use_magpie": boolean;
 
     /**
+     * Linux Wine 可执行文件路径
+     */
+    "wine_runner_path"?: string;
+
+    /**
+     * Linux 默认 WINEPREFIX 或 Proton prefix
+     */
+    "wine_prefix"?: string;
+
+    /**
+     * Linux winetricks 可执行文件路径
+     */
+    "winetricks_path"?: string;
+
+    /**
+     * Linux protontricks 可执行文件路径
+     */
+    "protontricks_path"?: string;
+
+    /**
+     * 历史字段：CrossOver bundle 内的 wine 可执行文件路径
+     */
+    "crossover_runner_path"?: string;
+
+    /**
+     * 历史字段：CrossOver bottle 名
+     */
+    "crossover_bottle"?: string;
+
+    /**
      * 时区配置
      * 数据库使用的 IANA 时区名称（如 "Asia/Shanghai"）
      */
