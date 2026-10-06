@@ -413,6 +413,18 @@ func (s *StartService) startGame(gameID string, options launcherpkg.LaunchOption
 		Reason:    "launched",
 	})
 
+	// 手动计时模式（Yuki 式计时）：游戏照常拉起，但**不做任何进程监测** ——
+	// 直接进 playing，由用户回到 YukiHub 手动点停止（EndCurrentPlaySession）结算。
+	// 这是手机版的口径（Android 上本来也监控不到进程），也彻底绕开「启动器套娃 /
+	// 进程名对不上 / 游戏秒退」带来的时长识别问题。句柄不再用于等待退出，直接关掉。
+	if s.usesManualTimingMode() {
+		s.closeLauncherHandle(launcher)
+		s.emitGameRuntimePlaying(session, "manual-timing-started")
+		s.requestHomeRefresh()
+		applog.LogInfof(s.ctx, "Game %s launched under manual timing mode; process monitoring disabled", gameID)
+		return true, nil
+	}
+
 	// 启动进程检测和监控 goroutine
 	go s.detectAndMonitorProcess(session, launcher, launcherExeName, plan.DetectionDir, processName, plan)
 
@@ -1366,6 +1378,15 @@ func (s *StartService) logAudioErrorLocked(session *activePlaySession, processID
 	}
 	session.audioLastError = message
 	applog.LogWarningf(s.ctx, "Failed to update background mute for game %s (PID %d): %v", session.gameID, processID, err)
+}
+
+// usesManualTimingMode 判断当前是不是「手动计时 / Yuki 式计时」模式。
+//
+// 手动计时下启动游戏不做进程监测，会话一直挂着直到用户手动停止；只有
+// 「进程监测」模式才走 detectAndMonitorProcess 那套自动结算。
+func (s *StartService) usesManualTimingMode() bool {
+	return s.config != nil &&
+		appconf.NormalizePlayTimingMode(s.config.PlayTimingMode) == appconf.PlayTimingModeManual
 }
 
 // usesActiveTimeTracking 判断这次会话该不该用「活跃时长」结算。

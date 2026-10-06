@@ -126,6 +126,36 @@ function isSameSessionStateRegression(
   );
 }
 
+/**
+ * 维护「已收到权威 idle、游戏确实结束」的 gameId 集合。
+ *
+ * 后端的进程接力宽限是异步的：退出游戏的瞬间先发 idle（计时岛立刻消失），
+ * 几秒后才真正把 end_time 落库。这期间首页快照 `recent_played[].is_playing`
+ * 仍是 true —— 用户切回首页会重新拉一次快照，于是刚消失的计时岛被这份过期
+ * 数据又点亮了（原版 LunaBox 结算与落库是同步的，没有这个窗口）。
+ *
+ * 事件是权威且即时的，快照只是有延迟的轮询：记下「已经看到它结束」，在收到
+ * 下一次 launching/playing/ending 之前，不让快照复活它。
+ */
+function withEndedGame(
+  endedGameIds: Set<string>,
+  gameId: string,
+  ended: boolean,
+) {
+  if (endedGameIds.has(gameId) === ended) {
+    return endedGameIds;
+  }
+
+  const next = new Set(endedGameIds);
+  if (ended) {
+    next.add(gameId);
+  }
+  else {
+    next.delete(gameId);
+  }
+  return next;
+}
+
 function pickGameRuntime(
   gameRuntimes: GameRuntimeMap,
   preferredGameId: string,
@@ -167,6 +197,8 @@ type AppState = {
   backgroundProcessMuteSupported: boolean;
   isLoading: boolean;
   gameRuntimes: GameRuntimeMap;
+  /** 已收到权威 idle 的 gameId（见 withEndedGame）：阻止滞后的首页快照复活计时岛。 */
+  endedGameIds: Set<string>;
   activeGameRuntimeId: string;
   fetchHomeData: (options?: FetchHomeDataOptions) => Promise<void>;
   fetchConfig: () => Promise<void>;
@@ -219,6 +251,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   isLoading: false,
   gameRuntimes: {},
   activeGameRuntimeId: "",
+  endedGameIds: new Set<string>(),
   librarySelectedTags: [],
   fetchHomeData: async (options = {}) => {
     const showLoading = options.showLoading !== false;
@@ -308,6 +341,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
         return {
           gameRuntimes: nextGameRuntimes,
+          endedGameIds: withEndedGame(currentState.endedGameIds, gameId, true),
           ...runtimeSelectionPatch(nextGameRuntimes, preferredGameId),
         };
       });
@@ -353,16 +387,23 @@ export const useAppStore = create<AppState>((set, get) => ({
 
       return {
         gameRuntimes: nextGameRuntimes,
+        endedGameIds: withEndedGame(currentState.endedGameIds, gameId, false),
         ...runtimeSelectionPatch(nextGameRuntimes, preferredGameId),
       };
     });
   },
   setGameRuntimeFromHome: (recentPlayed: vo.LastPlayedGame[] | null) => {
-    const playingItems = (recentPlayed ?? []).filter(
+    const rawPlayingItems = (recentPlayed ?? []).filter(
       item => item.is_playing && item.game?.id,
     );
 
     set((state) => {
+      // 首页快照有延迟：刚结束的游戏在几秒内仍显示 is_playing=true，不能拿它
+      // 把已经消失的计时岛重新点亮（见 withEndedGame）。
+      const playingItems = rawPlayingItems.filter(
+        item => !state.endedGameIds.has(item.game.id),
+      );
+
       if (playingItems.length === 0) {
         if (getVisibleGameRuntimes(state.gameRuntimes).length === 0) {
           return state;

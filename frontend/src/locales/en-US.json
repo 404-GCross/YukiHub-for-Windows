@@ -473,12 +473,6 @@
       "selectFileFailed": "Failed to select file",
       "nsfwMarked": "Marked as NSFW",
       "nsfwUnmarked": "NSFW mark removed"
-    },
-    "manualTiming": {
-      "start": "Track time only",
-      "running": "Tracking",
-      "started": "Now tracking play time for {{name}}",
-      "startFailed": "Could not start tracking {{name}}"
     }
   },
   "gameReview": {
@@ -1169,6 +1163,11 @@
       "cropConfirm": "Confirm crop"
     },
     "game": {
+      "timingMode": "Timing Mode",
+      "timingModeHint": "Process tracking: timing starts and ends automatically with the game process. Fine-tune with the options below.",
+      "timingModeProcess": "Process tracking",
+      "timingModeManual": "Manual timing (Yuki style)",
+      "timingModeManualHint": "Manual timing: the clock starts as soon as you press \"Launch\", with no process tracking at all. When you are done, return to YukiHub and press the stop button on the timing island. This is how the mobile app times play and it is the most accurate.",
       "recordActiveOnly": "Record Active Play Time Only",
       "recordActiveOnlyHint": "When enabled, play time is only recorded when the game window is in the foreground focus. This provides a more accurate measure of actual play time, excluding idle and background time.",
       "warningTitle": "Note:",

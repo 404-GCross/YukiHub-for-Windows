@@ -473,12 +473,6 @@
       "selectFileFailed": "ファイルの選択に失敗しました",
       "nsfwMarked": "NSFW に設定しました",
       "nsfwUnmarked": "NSFW 設定を解除しました"
-    },
-    "manualTiming": {
-      "start": "時間だけ記録",
-      "running": "記録中",
-      "started": "《{{name}}》のプレイ時間を記録しました",
-      "startFailed": "《{{name}}》の記録を開始できませんでした"
     }
   },
   "gameReview": {
@@ -1169,6 +1163,11 @@
       "cropConfirm": "トリミングを確定"
     },
     "game": {
+      "timingMode": "計測モード",
+      "timingModeHint": "プロセス監視：ゲームプロセスに合わせて計測を自動的に開始・終了します。必要に応じて下の項目で調整できます。",
+      "timingModeProcess": "プロセス監視",
+      "timingModeManual": "手動計測（Yuki 式）",
+      "timingModeManualHint": "手動計測：「起動」を押すとすぐ計測を開始し、プロセス監視は一切行いません。遊び終えたら YukiHub に戻り、上部の計測アイランドの停止ボタンで終了してください。スマホ版と同じ方式で、最も正確です。",
       "recordActiveOnly": "アクティブプレイ時間のみ記録",
       "recordActiveOnlyHint": "有効にすると、ゲームウィンドウが前面でフォーカスされている場合のみプレイ時間を記録します。放置やバックグラウンド実行時間を除外でき、より正確に統計できます。",
       "warningTitle": "注意:",

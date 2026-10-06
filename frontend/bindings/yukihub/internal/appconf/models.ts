@@ -458,6 +458,12 @@ export class AppConfig {
     "process_detection_timeout_sec": number;
 
     /**
+     * PlayTimingMode 是全局计时模式：process（进程监测，默认）/ manual（手动计时）。
+     * 空串（老配置里没有这个字段）按默认处理，见 NormalizePlayTimingMode。
+     */
+    "play_timing_mode"?: string;
+
+    /**
      * 自动更新配置
      * 启动时自动检查更新
      */
