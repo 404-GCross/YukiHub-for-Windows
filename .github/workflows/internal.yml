@@ -49,6 +49,28 @@ jobs:
         with:
           go-version-file: go.mod
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 12.6.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      # 先构建前端：main.go 里有 //go:embed all:frontend/dist，
+      # vet/test 都需要 frontend/dist 存在。
+      - name: Install frontend dependencies
+        working-directory: ./frontend
+        run: pnpm install --frozen-lockfile
+
+      - name: Build frontend assets
+        working-directory: ./frontend
+        run: pnpm run build
+
       - name: Check Go formatting
         shell: bash
         run: |
@@ -80,28 +102,9 @@ jobs:
         working-directory: ./updater
         run: go test ./... -count=1
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 12.6.0
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: pnpm
-          cache-dependency-path: frontend/pnpm-lock.yaml
-
-      - name: Install frontend dependencies
-        working-directory: ./frontend
-        run: pnpm install --frozen-lockfile
-
-      - name: Build frontend assets
-        working-directory: ./frontend
-        run: pnpm run build
-
       - name: Build application with Wails v3
         run: wails3 build
+
 
   checks-linux:
     name: Go and frontend checks (linux)
@@ -120,6 +123,28 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential libayatana-appindicator3-dev libgtk-4-dev libwebkitgtk-6.0-dev pkg-config
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 12.6.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      # 先构建前端：main.go 里有 //go:embed all:frontend/dist，
+      # vet/test 都需要 frontend/dist 存在。
+      - name: Install frontend dependencies
+        working-directory: ./frontend
+        run: pnpm install --frozen-lockfile
+
+      - name: Build frontend assets
+        working-directory: ./frontend
+        run: pnpm run build
 
       - name: Check Go formatting
         shell: bash
@@ -153,26 +178,6 @@ jobs:
       - name: Test updater module
         working-directory: ./updater
         run: go test ./... -count=1
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 12.6.0
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: pnpm
-          cache-dependency-path: frontend/pnpm-lock.yaml
-
-      - name: Install frontend dependencies
-        working-directory: ./frontend
-        run: pnpm install --frozen-lockfile
-
-      - name: Build frontend assets
-        working-directory: ./frontend
-        run: pnpm run build
 
       - name: Build application with Wails v3
         run: wails3 build
