@@ -1040,3 +1040,20 @@ UnoCSS 遇到「色板里没有的色阶」时**不报错、不告警、构建�
   **把 `8xl` 漏掉了**，负向验证才发现，已修。
 - 负向验证：把 `"8xl": "96rem"` 从主题里删掉 → 脚本准确报出 9 处并 `exit 1`；
   还原后通过。
+
+### 16.5 一次性横审：其它主题档位是干净的（结论记录，不写进守卫）
+
+顺着「静默失效」这条线，把其余会走主题表的档位也扫了一遍（`rounded-*` / `shadow-*` /
+`blur-*` / `leading-*` / `tracking-*` / `z-*` / `ease-*` / `font-*` / `duration-*` /
+`opacity-*`），**没有发现第二处失效**。初次报告出来的 15 个"可疑"全是解析器太粗导致的误报：
+
+| 报告 | 实情 |
+| --- | --- |
+| `rounded-t-md` / `rounded-br-md` / `rounded-r-xl` … | 方向角工具类，档位由 `borderRadius` 提供，已正常生成 |
+| `shadow-black` / `shadow-primary-200` … | **彩色阴影**（`shadow-<color>`），走颜色规则，已正常生成 |
+| `font-mono` / `font-sans` | 字体族（`fontFamily`），不是 `fontWeight` |
+| `font-smoothing` | presetWind3 自带的属性类，产物里有 |
+| `font-color` | 误报：来自 CSS 变量名 `--input-font-color` |
+
+所以守卫脚本**刻意只收**色阶 / 动画名 / 尺寸档位这三类——再加前缀就必须同时处理
+方向角、彩色阴影、字体族这些别名，收益为零而误报风险明显上升。
