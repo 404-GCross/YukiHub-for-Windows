@@ -86,6 +86,32 @@ func TestLinuxProcessTrackerRetainsReparentedProcessAndRejectsPIDReuse(t *testin
 	}
 }
 
+func TestLinuxProcessTrackerReportsRootIdentityAndRejectsReuse(t *testing.T) {
+	tracker := NewLinuxProcessTracker(100)
+	initial := newLinuxProcessSnapshot([]processSnapshotEntry{
+		{Name: "game", PID: 100, ParentPID: 1, StartTicks: 10},
+	})
+	tracker.Observe(initial)
+
+	ticks, ok := tracker.RootStartTicks()
+	if !ok || ticks != 10 {
+		t.Fatalf("expected root start ticks 10, got ticks=%d ok=%v", ticks, ok)
+	}
+	if !tracker.RootPresent(initial) {
+		t.Fatal("expected the root to be present in its own snapshot")
+	}
+
+	reused := newLinuxProcessSnapshot([]processSnapshotEntry{
+		{Name: "other", PID: 100, ParentPID: 1, StartTicks: 99},
+	})
+	if tracker.RootPresent(reused) {
+		t.Fatal("expected a reused root PID to be rejected")
+	}
+	if got, ok := reused.ProcessStartTicks(100); !ok || got != 99 {
+		t.Fatalf("expected snapshot start ticks 99, got ticks=%d ok=%v", got, ok)
+	}
+}
+
 func TestLinuxProcessSnapshotMatchesExecutableThroughSymlinkedRoot(t *testing.T) {
 	realSteamRoot := filepath.Join(t.TempDir(), "Steam")
 	realGameDir := filepath.Join(realSteamRoot, "steamapps", "common", "SlayTheSpire")

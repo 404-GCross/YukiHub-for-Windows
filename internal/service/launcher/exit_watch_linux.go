@@ -3,12 +3,13 @@
 package launcher
 
 import (
-	"strings"
 	"time"
 	"yukihub/internal/utils/processutils"
 )
 
-const (
+// Timings are variables so tests can exercise the watch without waiting for
+// the production grace windows.
+var (
 	linuxExitWatchCheckInterval = 2 * time.Second
 	linuxExitWatchStartupGrace  = 2 * time.Minute
 	linuxExitWatchMissingGrace  = 8 * time.Second
@@ -54,14 +55,20 @@ func runLinuxExitWatch(input ExitWatchInput, logger DetectionLogger, result chan
 			if err != nil {
 				continue
 			}
-			processes := linuxExitWatchGameProcesses(input.RootPID, input.Config, snapshot, processTracker)
-			if len(processes) > 0 {
+			// Exit decisions are identity-based only: tracked PIDs are validated
+			// against their start time, so PID reuse and reparenting cannot keep
+			// a dead game alive. Install-dir matching is deliberately not used
+			// here because Proton/Wine games expose Windows-style paths that
+			// never match the Linux install directory.
+			tracked := processTracker.Observe(snapshot)
+			if len(linuxExitWatchGameProcesses(input.RootPID, input.Config, tracked)) > 0 {
 				observedGameProcess = true
 				missingSince = time.Time{}
 				continue
 			}
 
 			if !processTracker.RootPresent(snapshot) {
+				logLinuxExitWatchRootGone(logger, input, processTracker, snapshot)
 				triggered = true
 				return
 			}
@@ -79,10 +86,9 @@ func runLinuxExitWatch(input ExitWatchInput, logger DetectionLogger, result chan
 
 			logInfo(
 				logger,
-				"Linux exit watch detected no game process for %s (PID %d) under %s; ending session %s",
+				"Linux exit watch: no tracked game process remains for %s (root PID %d); ending session %s",
 				input.ProcessName,
 				input.RootPID,
-				input.Config.DetectionDir,
 				input.SessionID,
 			)
 			triggered = true
@@ -91,43 +97,44 @@ func runLinuxExitWatch(input ExitWatchInput, logger DetectionLogger, result chan
 	}
 }
 
-func linuxExitWatchGameProcesses(rootPID uint32, config ExitWatch, snapshot *processutils.LinuxProcessSnapshot, processTracker *processutils.LinuxProcessTracker) []processutils.ProcessInfo {
-	seen := make(map[uint32]bool)
-	processes := make([]processutils.ProcessInfo, 0)
+// logLinuxExitWatchRootGone distinguishes a genuine process exit from PID
+// reuse so the recorded runtime reason stays diagnosable.
+func logLinuxExitWatchRootGone(logger DetectionLogger, input ExitWatchInput, processTracker *processutils.LinuxProcessTracker, snapshot *processutils.LinuxProcessSnapshot) {
+	rootTicks, observed := processTracker.RootStartTicks()
+	if !observed {
+		logInfo(logger, "Linux exit watch: process %s (PID %d) exited before it could be observed; ending session %s", input.ProcessName, input.RootPID, input.SessionID)
+		return
+	}
+	if ticks, ok := snapshot.ProcessStartTicks(input.RootPID); ok && ticks != rootTicks {
+		logInfo(logger, "Linux exit watch: PID %d was reused by another process; ending session %s", input.RootPID, input.SessionID)
+		return
+	}
+	logInfo(logger, "Linux exit watch: process %s (PID %d) exited; ending session %s", input.ProcessName, input.RootPID, input.SessionID)
+}
 
-	add := func(proc processutils.ProcessInfo) bool {
+// linuxExitWatchGameProcesses keeps the processes that count as the running
+// game for the exit watch. The monitored root process is authoritative: while
+// its PID (with the recorded start time) is alive the session must not end,
+// even when its /proc paths do not match the configured install directory --
+// the normal Proton/Wine case. It never filters the root by name for the same
+// reason. Tracked descendants still count so a launcher hand-off keeps the
+// session alive.
+func linuxExitWatchGameProcesses(rootPID uint32, config ExitWatch, tracked []processutils.ProcessInfo) []processutils.ProcessInfo {
+	processes := make([]processutils.ProcessInfo, 0, len(tracked))
+	seen := make(map[uint32]bool, len(tracked))
+	for _, proc := range tracked {
 		if proc.PID == 0 || seen[proc.PID] {
-			return false
+			continue
 		}
-		if config.IgnoreRootProcess && proc.PID == rootPID {
-			return false
-		}
-		if IsLikelyHelperProcess(proc.Name) || !snapshot.ContainsPID(proc.PID) {
-			return false
+		if proc.PID == rootPID {
+			if config.IgnoreRootProcess {
+				continue
+			}
+		} else if IsLikelyHelperProcess(proc.Name) {
+			continue
 		}
 		seen[proc.PID] = true
 		processes = append(processes, proc)
-		return true
 	}
-
-	for _, proc := range processTracker.Observe(snapshot) {
-		if proc.PID == rootPID {
-			continue
-		}
-		add(proc)
-	}
-
-	if strings.TrimSpace(config.DetectionDir) != "" {
-		if dirProcesses, err := snapshot.ProcessesByExecutableDir(config.DetectionDir); err == nil {
-			accepted := make([]processutils.ProcessInfo, 0, len(dirProcesses))
-			for _, proc := range dirProcesses {
-				if add(proc) {
-					accepted = append(accepted, proc)
-				}
-			}
-			processTracker.Remember(snapshot, accepted)
-		}
-	}
-
 	return processes
 }

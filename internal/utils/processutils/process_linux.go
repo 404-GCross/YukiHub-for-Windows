@@ -245,6 +245,20 @@ func (s *LinuxProcessSnapshot) ContainsPID(pid uint32) bool {
 	return ok
 }
 
+// ProcessStartTicks returns the start-time identity token recorded for a
+// running process. The token distinguishes a reused PID from the original
+// process; it reports false when the snapshot has no live process with that PID.
+func (s *LinuxProcessSnapshot) ProcessStartTicks(pid uint32) (uint64, bool) {
+	if s == nil || pid == 0 {
+		return 0, false
+	}
+	entry, ok := s.byPID[pid]
+	if !ok {
+		return 0, false
+	}
+	return entry.StartTicks, true
+}
+
 func NewLinuxProcessTracker(rootPID uint32) *LinuxProcessTracker {
 	return &LinuxProcessTracker{
 		rootPID: rootPID,
@@ -316,6 +330,15 @@ func (t *LinuxProcessTracker) RootPresent(snapshot *LinuxProcessSnapshot) bool {
 	}
 	entry, ok := snapshot.byPID[t.rootPID]
 	return ok && entry.StartTicks == t.rootStartTicks
+}
+
+// RootStartTicks returns the start-time identity token recorded for the tracked
+// root process. It reports false when the root has not been observed yet.
+func (t *LinuxProcessTracker) RootStartTicks() (uint64, bool) {
+	if t == nil || !t.rootObserved {
+		return 0, false
+	}
+	return t.rootStartTicks, true
 }
 
 func (s *LinuxProcessSnapshot) processesForIdentities(identities map[uint32]uint64) []ProcessInfo {

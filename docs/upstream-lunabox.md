@@ -74,6 +74,16 @@ YukiHub for Windows 是 YukiHub 项目的 Windows 桌面版本。
 - 移除 CLI 后的适配：Linux 打包不再包含 `yukihubcli`
 - 决策与范围见 `docs/decisions/0004-restore-linux-support.md`
 
+### 2026-10-07 — 修复 Linux 退出监控误判
+
+- Linux 游玩会话退出监控改为只依据被监控进程的 PID 与启动时间（`/proc/<pid>/stat`）：
+  被监控进程存活期间不再因安装目录 / 进程路径不匹配而结束会话。
+- 修复 Proton/Wine 游戏（Linux 安装目录与 `S:\...` 路径不一致）在启动宽限期
+  （约 2 分钟）后被误判进程退出、游玩时长被错误截断的问题。
+- 退出日志区分「进程退出」「PID 复用」与「进程退出前未能观测到」，便于排查。
+- 新增回归测试 `internal/service/launcher/exit_watch_linux_test.go` 与
+  `processutils.LinuxProcessTracker` 根进程身份断言。
+
 ### 尚未修改、计划修改
 
 - 产品界面与交互仍为上游形态，尚未替换为 YukiHub 的视觉与信息架构。
