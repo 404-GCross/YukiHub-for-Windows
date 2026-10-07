@@ -660,6 +660,11 @@ export class AppConfig {
     "bigscreen_intro_enabled": boolean;
 
     /**
+     * 自选入场视频（/local/intro/...）；空 = 内置动画（对齐手机端 M18-2）
+     */
+    "bigscreen_intro_video"?: string;
+
+    /**
      * 卡片上再显示游戏名（默认 false，名字已在信息浮层）
      */
     "bigscreen_show_titles": boolean;

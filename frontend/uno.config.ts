@@ -313,6 +313,8 @@ export default defineConfig({
         "bigscreen-enter": "1",
         "bigscreen-panel-in": "1",
         "bigscreen-scrim-in": "1",
+        // 入场动画的收尾：主界面圆形揭示 + 轻微回缩（对齐手机端 createCircularReveal）
+        "bigscreen-reveal": "1",
       },
       durations: {
         "app-toast-enter": "450ms",
@@ -330,6 +332,7 @@ export default defineConfig({
         "bigscreen-enter": "320ms",
         "bigscreen-panel-in": "220ms",
         "bigscreen-scrim-in": "180ms",
+        "bigscreen-reveal": "620ms",
       },
       keyframes: {
         "app-toast-enter":
@@ -363,6 +366,11 @@ export default defineConfig({
         "bigscreen-panel-in":
           "{0%{opacity:0;transform:translate3d(22px,0,0)}100%{opacity:1;transform:translate3d(0,0,0)}}",
         "bigscreen-scrim-in": "{0%{opacity:0}100%{opacity:1}}",
+        // 主界面揭示：圆心由 0 扩到覆盖四角（手机端 radius = hypot(w,h)/2），
+        // 同时 1.06 → 1.0 回缩。clip-path 的百分比参考值是 hypot(w,h)/√2，
+        // 所以 75% ≈ 0.53×hypot > 0.5×hypot，四角一定被盖住。
+        "bigscreen-reveal":
+          "{0%{clip-path:circle(0% at 50% 50%);transform:scale(1.06)}100%{clip-path:circle(75% at 50% 50%);transform:scale(1)}}",
       },
       properties: {
         "app-toast-enter": {
@@ -412,6 +420,10 @@ export default defineConfig({
         "bigscreen-scrim-in": {
           "animation-fill-mode": "both",
         },
+        "bigscreen-reveal": {
+          "animation-fill-mode": "both",
+          "transform-origin": "center",
+        },
       },
       timingFns: {
         "app-toast-enter": "cubic-bezier(.22,1,.36,1)",
@@ -428,6 +440,7 @@ export default defineConfig({
         "bigscreen-enter": "cubic-bezier(.2,.9,.18,1)",
         "bigscreen-panel-in": "cubic-bezier(.2,.9,.18,1)",
         "bigscreen-scrim-in": "ease-out",
+        "bigscreen-reveal": "cubic-bezier(.2,.9,.18,1)",
       },
     },
     colors: {

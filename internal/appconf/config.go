@@ -304,6 +304,7 @@ type AppConfig struct {
 	BigScreenSoundVolume     int    `json:"bigscreen_sound_volume"`               // 大屏界面音效音量（0-100），默认 65
 	BigScreenFocusTicks      bool   `json:"bigscreen_focus_ticks"`                // 焦点移动音，默认 true
 	BigScreenIntroEnabled    bool   `json:"bigscreen_intro_enabled"`              // 入场动画，默认 true
+	BigScreenIntroVideo      string `json:"bigscreen_intro_video,omitempty"`      // 自选入场视频（/local/intro/...）；空 = 内置动画（对齐手机端 M18-2）
 	BigScreenShowTitles      bool   `json:"bigscreen_show_titles"`                // 卡片上再显示游戏名（默认 false，名字已在信息浮层）
 	BigScreenCardScale       int    `json:"bigscreen_card_scale"`                 // 卡片大小倍率（×100），默认 112
 	BigScreenFocusScale      int    `json:"bigscreen_focus_scale"`                // 焦点缩放幅度（%），0 表示只描边，默认 100

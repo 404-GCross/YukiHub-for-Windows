@@ -3,6 +3,7 @@ import type { BigScreenBannerMessage } from "../bigscreen/BigScreenBanner";
 import type { BigScreenDetailAction } from "../bigscreen/BigScreenDetailsLayer";
 import type { BigScreenHintMode } from "../bigscreen/BigScreenHintBar";
 import type { BigScreenAction } from "../bigscreen/BigScreenInfoBar";
+import type { BigScreenIntroHandle } from "../bigscreen/BigScreenIntro";
 import type { BigScreenPanelItem } from "../bigscreen/BigScreenPanel";
 import type { BigScreenSettingsLayerHandle } from "../bigscreen/BigScreenSettingsLayer";
 import type { BigScreenSound } from "../bigscreen/bigScreenSound";
@@ -32,6 +33,10 @@ import {
   GetCategoryGames,
   RemoveGameFromCategory,
 } from "../../bindings/yukihub/internal/service/categoryservice";
+import {
+  ClearBigScreenIntroVideo,
+  SelectBigScreenIntroVideo,
+} from "../../bindings/yukihub/internal/service/configservice";
 import {
   BatchUpdateStatus,
   DeleteGame,
@@ -176,6 +181,8 @@ function BigScreenPage() {
     = config?.bigscreen_sound_volume ?? CONFIG_FALLBACK.soundVolume;
   const focusTicks = config?.bigscreen_focus_ticks ?? true;
   const introEnabled = config?.bigscreen_intro_enabled ?? true;
+  /** 自选入场视频（/local/intro/...）；空 = 内置动画 */
+  const introVideo = config?.bigscreen_intro_video ?? "";
   const showTitles = config?.bigscreen_show_titles ?? false;
   const cardScale = config?.bigscreen_card_scale ?? CONFIG_FALLBACK.cardScale;
   const focusScale
@@ -233,6 +240,13 @@ function BigScreenPage() {
   );
   const [entryAnimation, setEntryAnimation] = useState(false);
   const [introPlaying, setIntroPlaying] = useState(introEnabled);
+  /**
+   * 主界面揭示（圆形扩散 + 1.06→1.0 回缩）：由入场动画在 1120ms 时通知，
+   * 620ms 后自行摘掉。挂在内容层上而不是入场层里 —— 入场层盖着内容，
+   * 没法给自己"下面"的元素做 clip-path。
+   */
+  const [contentRevealing, setContentRevealing] = useState(false);
+  const introRef = useRef<BigScreenIntroHandle | null>(null);
   const [panelKind, setPanelKind] = useState<PanelKind | null>(null);
   const [panelGame, setPanelGame] = useState<models.Game | null>(null);
   const [panelIndex, setPanelIndex] = useState(0);
@@ -285,8 +299,13 @@ function BigScreenPage() {
     return () => window.clearTimeout(timer);
   }, [introPlaying]);
 
-  const excludeHidden = !showHiddenGame;
+  /** 入场动画走到"揭示"阶段：给内容层挂上圆形扩散动画，动画跑完摘掉 */
+  const handleIntroReveal = useCallback(() => {
+    setContentRevealing(true);
+    window.setTimeout(() => setContentRevealing(false), 700);
+  }, []);
 
+  const excludeHidden = !showHiddenGame;
   // 进入时决定初始分类：配置是异步读进来的，首帧可能还没有值，读到再应用一次。
   // 「记住筛选」打开时优先恢复上次的分类（对齐手机端 prefs.lastFilter），
   // 否则退回「默认分类」设置项。
@@ -485,6 +504,48 @@ function BigScreenPage() {
     showBanner(t("bigScreen.filterMemoryCleared"));
   }, [patchLiveConfig, showBanner, t]);
 
+  // ===== 入场动画来源（对齐手机端 M18-2：可选自己的视频当开场） =====
+
+  /** 右列文案：内置动画 / 已选视频的文件名 */
+  const introSourceLabel = useMemo(() => {
+    if (!introVideo) {
+      return t("bigScreen.introBuiltin");
+    }
+    const name = introVideo.split("/").filter(Boolean).pop() ?? "";
+    return name || t("bigScreen.introBuiltin");
+  }, [introVideo, t]);
+
+  const pickIntroVideo = useCallback(() => {
+    void (async () => {
+      try {
+        // Go 侧已把文件复制进受管目录并写进配置，这里同步 store 即可
+        const path = await SelectBigScreenIntroVideo();
+        if (!path) {
+          return; // 用户取消
+        }
+        await patchLiveConfig({ bigscreen_intro_video: path });
+        showBanner(t("bigScreen.introVideoSet"));
+      }
+      catch (error) {
+        console.error("Failed to pick intro video:", error);
+        showBanner(t("bigScreen.introVideoFailed"), "mdi:alert-circle-outline");
+      }
+    })();
+  }, [patchLiveConfig, showBanner, t]);
+
+  const clearIntroVideo = useCallback(() => {
+    void (async () => {
+      try {
+        await ClearBigScreenIntroVideo();
+        await patchLiveConfig({ bigscreen_intro_video: "" });
+        showBanner(t("bigScreen.introVideoCleared"));
+      }
+      catch (error) {
+        console.error("Failed to clear intro video:", error);
+      }
+    })();
+  }, [patchLiveConfig, showBanner, t]);
+
   const activeCategoryIndex = BIG_SCREEN_CATEGORIES.findIndex(
     category => category.id === activeCategory,
   );
@@ -499,11 +560,24 @@ function BigScreenPage() {
     () =>
       createBigScreenSettingSections(t, {
         clearFilterMemory,
+        // 只在真的选了视频时才出现「恢复内置动画」
+        clearIntroVideo: introVideo ? clearIntroVideo : undefined,
         filterMemoryLabel: activeCategoryLabel,
+        introSourceLabel,
+        pickIntroVideo,
         // 恢复默认是破坏性操作，先走二次确认面板（对齐手机端的 AlertDialog）
         resetDefaults: () => openPanel("confirm-reset"),
       }),
-    [activeCategoryLabel, clearFilterMemory, openPanel, t],
+    [
+      activeCategoryLabel,
+      clearFilterMemory,
+      clearIntroVideo,
+      introSourceLabel,
+      introVideo,
+      openPanel,
+      pickIntroVideo,
+      t,
+    ],
   );
 
   const panelItems = useMemo<BigScreenPanelItem[]>(() => {
@@ -1619,7 +1693,8 @@ function BigScreenPage() {
     (intent: BigScreenIntent) => {
       // 入场动画：任意输入 = 跳过（对齐手机端 consumeIfIntroPlaying）
       if (introPlaying) {
-        setIntroPlaying(false);
+        // 交给入场层自己走完 240ms 淡出，而不是直接卸载（硬切会闪一下）
+        introRef.current?.skip();
         playSound("confirm");
         return;
       }
@@ -1854,7 +1929,7 @@ function BigScreenPage() {
       <div
         className={`relative z-10 flex h-full w-full flex-col transition-opacity duration-200 ${
           contentHidden ? "pointer-events-none opacity-0" : "opacity-100"
-        }`}
+        } ${contentRevealing ? "animate-bigscreen-reveal" : ""}`}
       >
         <BigScreenTopBar
           gamepadConnected={gamepadConnected}
@@ -2036,7 +2111,13 @@ function BigScreenPage() {
       )}
 
       {introPlaying && (
-        <BigScreenIntro onFinished={() => setIntroPlaying(false)} />
+        <BigScreenIntro
+          ref={introRef}
+          onFinished={() => setIntroPlaying(false)}
+          onRevealStart={handleIntroReveal}
+          richEffects={effectLevel !== "off"}
+          videoUrl={introVideo}
+        />
       )}
 
       {/* 顶部提示条：操作反馈 + 手柄连接状态（入场动画期间抑制） */}

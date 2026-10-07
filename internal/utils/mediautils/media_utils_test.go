@@ -151,3 +151,80 @@ func TestRemoveTrailerRemovesAllKnownExtensions(t *testing.T) {
 		t.Errorf("删除不存在的预告片应静默成功: %v", err)
 	}
 }
+
+func TestSaveIntroVideoUsesDedicatedDirAndReplacesPrevious(t *testing.T) {
+	dir := t.TempDir()
+	restore := SetTrailersDirForTest(dir)
+	defer restore()
+
+	got, err := SaveIntroVideo(writeTempTrailer(t, "opening.mp4"))
+	if err != nil {
+		t.Fatalf("SaveIntroVideo 失败: %v", err)
+	}
+	if got != "/local/intro/intro.mp4" {
+		t.Fatalf("返回路径不匹配: %s", got)
+	}
+
+	// 入场视频放在独立目录里，不能污染 trailers 目录（那里是按 gameID 命名的）
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatalf("读取预告片目录失败: %v", err)
+	}
+	if len(entries) != 0 {
+		t.Errorf("trailers 目录不应被写入: %v", entries)
+	}
+
+	// 换格式重选：旧文件清掉，同时只保留一个入场视频
+	got, err = SaveIntroVideo(writeTempTrailer(t, "opening.webm"))
+	if err != nil {
+		t.Fatalf("二次 SaveIntroVideo 失败: %v", err)
+	}
+	if got != "/local/intro/intro.webm" {
+		t.Fatalf("返回路径不匹配: %s", got)
+	}
+	introDir, err := IntroVideoDir()
+	if err != nil {
+		t.Fatalf("IntroVideoDir 失败: %v", err)
+	}
+	introEntries, err := os.ReadDir(introDir)
+	if err != nil {
+		t.Fatalf("读取入场视频目录失败: %v", err)
+	}
+	if len(introEntries) != 1 || introEntries[0].Name() != "intro.webm" {
+		t.Errorf("入场视频目录应只剩一个新文件: %v", introEntries)
+	}
+}
+
+func TestSaveIntroVideoRejectsUnsupportedAndRemoveIsIdempotent(t *testing.T) {
+	dir := t.TempDir()
+	restore := SetTrailersDirForTest(dir)
+	defer restore()
+
+	if _, err := SaveIntroVideo(writeTempTrailer(t, "opening.txt")); err == nil {
+		t.Error("不支持的扩展名应报错")
+	}
+	if _, err := SaveIntroVideo(""); err == nil {
+		t.Error("空路径应报错")
+	}
+
+	if _, err := SaveIntroVideo(writeTempTrailer(t, "opening.mp4")); err != nil {
+		t.Fatalf("SaveIntroVideo 失败: %v", err)
+	}
+	if err := RemoveIntroVideo(); err != nil {
+		t.Fatalf("RemoveIntroVideo 失败: %v", err)
+	}
+	introDir, err := IntroVideoDir()
+	if err != nil {
+		t.Fatalf("IntroVideoDir 失败: %v", err)
+	}
+	introEntries, err := os.ReadDir(introDir)
+	if err != nil {
+		t.Fatalf("读取入场视频目录失败: %v", err)
+	}
+	if len(introEntries) != 0 {
+		t.Errorf("删除后目录应为空: %v", introEntries)
+	}
+	if err := RemoveIntroVideo(); err != nil {
+		t.Errorf("删除不存在的入场视频应静默成功: %v", err)
+	}
+}

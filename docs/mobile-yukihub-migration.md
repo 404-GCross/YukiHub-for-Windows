@@ -860,3 +860,68 @@ schema 新增 `action` 类条目（右侧按钮 + 状态文案）。「恢复默
 | 游戏操作菜单的「标题图 / 背景图」（`BigScreenArt`） | 手机端有 `logo_path` / `bg_path` 两列与私有目录，桌面端需要 schema 变更 |
 | 入场动画自选视频、PV 占用与清理面板 | 依赖 SAF / 受管视频目录的等价能力 |
 | 触摸模式（`touchUi`）分支 | 桌面端以鼠标 + 手柄为主，不需要「不预选焦点」的触摸分支 |
+
+## 十四、2026-10-07 第八轮：菜单溢出（真 bug）+ 入场动画重做 + 自选开场视频
+
+用户反馈三件事：①游戏操作菜单「超出去了」；②大屏启动动画「太敷衍，还不如手机」；
+③各方面功能仍有欠缺，继续对齐。前两项都是真问题，本轮从根因上修掉。
+
+### 14.1 游戏操作菜单溢出屏幕（根因：动画的 transform 盖掉了居中）
+
+**症状**：菜单面板的顶部从屏幕中线开始往下铺，最后两项（在库中隐藏 / 从库中移除）
+和底部提示整块掉到窗口外，滚也滚不到（截图里最后一项被切掉一半）。
+
+**根因**（可复现的 CSS 优先级问题）：面板同时写了 `top-1/2` + `-translate-y-1/2`
+（垂直居中）和 `animate-bigscreen-panel-in`，而后者的关键帧结尾是
+`transform: translate3d(0,0,0)`，且 `animation-fill-mode: both`。
+**CSS 动画产生的 transform 会覆盖普通声明**，于是 `-translate-y-1/2` 被静默吃掉，
+面板变成「从 50% 高度开始 + 最多 86vh 高」→ 底部溢出 36%。
+
+**修复**：容器改成 `flex items-center justify-end px-10`，面板作为普通 flex 子项
+被居中，与 transform 彻底解耦（动画只负责滑入）。同时把条目的 `truncate` 换成
+`line-clamp-2` / `line-clamp-3` —— 对齐手机端 label maxLines=2 / sub maxLines=3，
+「不删除游戏，可在主菜单 → 隐藏游戏管理里恢复」这类长说明不再被砍掉半句。
+
+### 14.2 入场动画重做（对齐手机端 `BigScreenIntro` 全时间轴）
+
+旧实现只有「logo 淡入 + 光带扫过」两步，缺了手机端一半的序列，所以「一闪就过去了」。
+现在逐帧对齐手机端（毫秒）：
+
+| 时刻 | 手机端行为 | 修复前 | 现在 |
+| --- | --- | --- | --- |
+| 80 | logo 淡入 + 上浮 28dp（520ms，Decelerate） | ✓ | ✓ |
+| 300 | 光带 420×180 自 x=-220 扫到 +280（780ms），峰值 alpha .55 | 近似 | ✓ |
+| 980 | logo 上浮淡出 -14dp（240ms） | ✗ | ✓ |
+| 1120 | 入场层淡出 260ms + **主界面圆形揭示（0→全屏半径，560ms）+ 1.06→1.0 回缩** | ✗ | ✓ |
+| 1680 | 交回主界面 | ✗ | ✓ |
+
+- logo 规格也对齐了：`YukiHub` 46sp / 字距 0.22em，副标题「大　屏　模　式」13sp /
+  字距 0.30em / 焦点色（桌面端按视口高度 clamp，PC 上比手机端小一档）。
+- 揭示动画落在**内容层**上（`animate-bigscreen-reveal`，`clip-path: circle()` 0%→75%），
+  由入场层在 1120ms 时通过 `onRevealStart` 通知宿主 —— 入场层盖着内容，
+  没法给自己"下面"的元素做裁剪。
+- 跳过改为 `ref.skip()`：手机端是 `intro.skip()`（走一次 240ms 淡出再交回），
+  不再像以前那样直接卸载组件（硬切会闪一下）。
+- 低性能档（`bigscreen_effect_level = off`）与手机端 `lowEndDevice()` 一致：不做动画，120ms 直通。
+
+### 14.3 新增：自选开场视频（对齐手机端 M18-2 `bigscreen_intro_video`）
+
+| 层 | 手机端 | 桌面端实现 |
+| --- | --- | --- |
+| 存储 | `bigscreen_intro_video`（SAF URI） | `bigscreen_intro_video`（`/local/intro/<name><ext>`） |
+| 选文件 | `ACTION_OPEN_DOCUMENT` video/* | `ConfigService.SelectBigScreenIntroVideo`（wails 文件对话框） |
+| 文件管理 | 应用私有目录 `files/bigscreen/` | 受管目录 `<数据目录>/intro/`（换文件先清旧，对齐预告片做法） |
+| 设置入口 | 设置 →「入场动画」→ 选择视频… / 清除 | 设置 → 通用 →「开场视频」/「恢复内置动画」（选了才出现） |
+| 播放 | 铺满播放，播完/跳过进主界面 | 同；**播不出来自动回退内置动画**（只回退一次，防死循环） |
+
+顺带补齐：`mediautils.SaveIntroVideo / RemoveIntroVideo / IntroVideoDir`，两条单测覆盖
+「换格式重选只剩一个文件」「trailers 目录不被污染」「删除幂等」。
+
+### 14.4 本轮仍未对齐（性质同上轮，都需要 schema 变更或平台能力）
+
+| 项 | 原因 |
+| --- | --- |
+| 游戏操作菜单的「标题图 / 背景图」（`BigScreenArt`） | 手机端有 `logo_path` / `bg_path` 两列 + 私有 art 目录；桌面端 `games` 表没有这两列，属于 schema 变更（会影响与手机端的同步契约），需要单独一轮评估 |
+| 详情层的 INTRODUCTION 截图画带 | 需要元数据的截图列表，桌面端 `models.Game` 无对应字段 |
+| PV 占用与清理面板 | 桌面端 PV 是用户本地文件路径，没有受管目录可统计 |
+| 触摸模式（`touchUi`） | 桌面端以鼠标 + 手柄为主，不需要「不预选焦点」的触摸分支（鼠标点击/悬停已全覆盖） |

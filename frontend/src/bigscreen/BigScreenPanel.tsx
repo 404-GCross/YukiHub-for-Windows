@@ -95,7 +95,15 @@ export const BigScreenPanel = memo(
     }, [focusedIndex]);
 
     return (
-      <div className="absolute inset-0 z-40">
+      /*
+        容器用 **flex 居中**而不是 `top-1/2 -translate-y-1/2`：
+        面板带着 `animate-bigscreen-panel-in`，它的关键帧结尾是
+        `transform: translate3d(0,0,0)` 且 `animation-fill-mode: both` —— 动画的
+        transform 会盖掉工具类的 `-translate-y-1/2`，面板于是从 50% 高度往下铺，
+        底部条目直接掉出窗口（用户实测截图：最后一项被切掉、底部提示也没了）。
+        用 flex 定位就和 transform 完全解耦，动画只负责"滑入"。
+      */
+      <div className="absolute inset-0 z-40 flex items-center justify-end px-10">
         {/* 遮罩：点空白 = 关闭，同时拦住落到下层的点击 */}
         <div
           className="absolute inset-0 animate-bigscreen-scrim-in bg-black/60"
@@ -106,7 +114,7 @@ export const BigScreenPanel = memo(
         <div
           role="menu"
           aria-label={title}
-          className="absolute right-10 top-1/2 flex max-h-[86vh] w-[min(360px,30vw)] -translate-y-1/2 animate-bigscreen-panel-in flex-col overflow-hidden rounded-2xl border border-white/12 bg-brand-900/94 shadow-2xl backdrop-blur-xl"
+          className="relative flex max-h-[86vh] w-[min(360px,30vw)] shrink-0 animate-bigscreen-panel-in flex-col overflow-hidden rounded-2xl border border-white/12 bg-brand-900/94 shadow-2xl backdrop-blur-xl"
         >
           <div className="px-6 pb-2 pt-5 text-[11px] font-medium uppercase tracking-[0.18em] text-brand-500">
             {title}
@@ -150,8 +158,13 @@ export const BigScreenPanel = memo(
                     />
                   )}
                   <span className="min-w-0 flex-1">
+                    {/*
+                      手机端条目是 label maxLines=2 / sub maxLines=3 的**换行截断**
+                      （BigScreenPanel.rebuildList）。这里以前用 truncate 单行省略，
+                      「不删除游戏，可在主菜单 → 隐藏游戏管理里恢复」这类长说明会被砍掉一半。
+                    */}
                     <span
-                      className={`block truncate text-sm font-medium ${
+                      className={`line-clamp-2 text-sm font-medium ${
                         isFocused ? "text-white" : "text-brand-200"
                       }`}
                     >
@@ -159,7 +172,7 @@ export const BigScreenPanel = memo(
                     </span>
                     {item.sub && (
                       <span
-                        className={`mt-0.5 block truncate text-xs ${
+                        className={`mt-0.5 line-clamp-3 text-xs leading-relaxed ${
                           isFocused ? "text-brand-300" : "text-brand-500"
                         }`}
                       >

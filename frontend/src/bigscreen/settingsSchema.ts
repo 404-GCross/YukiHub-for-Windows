@@ -50,8 +50,14 @@ export type BigScreenTranslator = (key: string) => string;
 export type BigScreenSettingHandlers = {
   /** 清除「记住筛选」与每个分类各自的焦点记忆 */
   clearFilterMemory?: () => void;
+  /** 清除自选入场视频、恢复内置动画；**不传**表示当前没选视频，条目直接不渲染 */
+  clearIntroVideo?: () => void;
   /** 当前记住的分类文案，显示在「清除筛选记忆」右侧 */
   filterMemoryLabel?: string;
+  /** 当前入场动画来源文案（「内置动画」或视频文件名） */
+  introSourceLabel?: string;
+  /** 选择自选入场视频（打开系统文件选择器） */
+  pickIntroVideo?: () => void;
   /** 恢复大屏的全部默认设置 */
   resetDefaults?: () => void;
 };
@@ -188,6 +194,24 @@ export function createBigScreenSettingSections(
           "bigscreen_intro_enabled",
           t,
         ),
+        // 入场动画来源（对齐手机端 M18-2 的「入场动画 → 选择视频… / 清除」）：
+        // 标题仍是「入场动画」，右列显示当前来源，动作是换一个视频。
+        actionSetting(
+          "intro_video",
+          t("bigScreen.introVideo"),
+          handlers.introSourceLabel ?? t("bigScreen.introBuiltin"),
+          handlers.pickIntroVideo,
+        ),
+        ...(handlers.clearIntroVideo
+          ? [
+              actionSetting(
+                "intro_video_clear",
+                t("bigScreen.introVideoClear"),
+                t("bigScreen.introVideoBuiltinHint"),
+                handlers.clearIntroVideo,
+              ),
+            ]
+          : []),
         enumSetting(
           "default_category",
           t("settings.bigScreen.defaultCategory"),

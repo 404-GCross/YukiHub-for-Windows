@@ -20,6 +20,13 @@ export function ApplyGameLibraryPathChange(newPath: string, syncPaths: boolean):
 }
 
 /**
+ * ClearBigScreenIntroVideo 恢复内置入场动画：删掉受管视频文件并清空配置字段。
+ */
+export function ClearBigScreenIntroVideo(): $CancellablePromise<void> {
+    return $Call.ByID(1070385261);
+}
+
+/**
  * ExportLogsZip 将 logs 目录导出为 ZIP 压缩包。
  */
 export function ExportLogsZip(): $CancellablePromise<string> {
@@ -72,6 +79,15 @@ export function SelectAndCropBackgroundImage(): $CancellablePromise<string> {
  */
 export function SelectBackgroundImage(): $CancellablePromise<string> {
     return $Call.ByID(2037683390);
+}
+
+/**
+ * SelectBigScreenIntroVideo 选择大屏入场视频：复制进受管目录并写入
+ * `bigscreen_intro_video`（对齐手机端 M18-2 的 bigscreen_intro_video）。
+ * 返回 /local/intro/... 地址；用户取消时返回空串且不报错。
+ */
+export function SelectBigScreenIntroVideo(): $CancellablePromise<string> {
+    return $Call.ByID(2911546604);
 }
 
 /**

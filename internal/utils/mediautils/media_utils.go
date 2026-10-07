@@ -108,3 +108,67 @@ func removeTrailersWithBaseName(dir, baseName string) {
 		_ = os.Remove(filepath.Join(dir, baseName+ext))
 	}
 }
+
+// introVideoBaseName 是入场视频在受管目录里的固定文件名。
+// 大屏同时只用一个入场视频（对齐手机端 bigscreen_intro_video 单值），
+// 换文件时先清旧的，避免数据目录里堆一堆没人用的视频。
+const introVideoBaseName = "intro"
+
+// IntroVideoDir 返回受管的入场视频目录（数据目录下的 intro/），并确保其存在。
+func IntroVideoDir() (string, error) {
+	if trailerDirOverride != "" {
+		// 测试里覆盖了 trailers 目录时就近复用它的兄弟目录
+		dir := trailerDirOverride + "-intro"
+		if err := os.MkdirAll(dir, os.ModePerm); err != nil {
+			return "", err
+		}
+		return dir, nil
+	}
+
+	appDir, err := apputils.GetDataDir()
+	if err != nil {
+		return "", err
+	}
+
+	dir := filepath.Join(appDir, "intro")
+	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
+		return "", err
+	}
+	return dir, nil
+}
+
+// SaveIntroVideo 把用户选中的视频复制进受管目录，返回 /local/intro/<name><ext>。
+func SaveIntroVideo(srcPath string) (string, error) {
+	srcPath = strings.TrimSpace(srcPath)
+	if srcPath == "" {
+		return "", fmt.Errorf("source path is required")
+	}
+
+	ext := strings.ToLower(filepath.Ext(srcPath))
+	if !IsSupportedTrailerExt(ext) {
+		return "", fmt.Errorf("unsupported intro video format: %s", ext)
+	}
+
+	dir, err := IntroVideoDir()
+	if err != nil {
+		return "", err
+	}
+
+	removeTrailersWithBaseName(dir, introVideoBaseName)
+
+	destFileName := introVideoBaseName + ext
+	if err := apputils.CopyFile(srcPath, filepath.Join(dir, destFileName)); err != nil {
+		return "", err
+	}
+	return "/local/intro/" + destFileName, nil
+}
+
+// RemoveIntroVideo 删掉已保存的入场视频（不存在时静默成功）。
+func RemoveIntroVideo() error {
+	dir, err := IntroVideoDir()
+	if err != nil {
+		return err
+	}
+	removeTrailersWithBaseName(dir, introVideoBaseName)
+	return nil
+}
