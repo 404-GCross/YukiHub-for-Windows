@@ -157,6 +157,16 @@ export class Game {
      */
     "trailer_path": string;
 
+    /**
+     * 大屏自定义标题图（Steam 式 logo），/local/bigscreen/art/... 或空；同样不入同步快照
+     */
+    "logo_path": string;
+
+    /**
+     * 大屏自定义背景图，替代封面做背景；同样不入同步快照
+     */
+    "bg_path": string;
+
     /** Creates a new Game instance. */
     constructor($$source: Partial<Game> = {}) {
         if (!("id" in $$source)) {
@@ -266,6 +276,12 @@ export class Game {
         }
         if (!("trailer_path" in $$source)) {
             this["trailer_path"] = "";
+        }
+        if (!("logo_path" in $$source)) {
+            this["logo_path"] = "";
+        }
+        if (!("bg_path" in $$source)) {
+            this["bg_path"] = "";
         }
 
         Object.assign(this, $$source);

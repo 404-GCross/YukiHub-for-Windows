@@ -926,6 +926,28 @@ func migration180(tx *sql.Tx) error {
 	return nil
 }
 
+// migration181 为 games 表新增大屏自定义标题图 / 背景图路径列（对齐手机版 M10 logo_path/bg_path）
+//
+// 两列与 trailer_path 一样只在本地使用：手机版 exportGamesJson 的导出字段清单里
+// 本来就没有 logo_path/bg_path（本地图不入快照，避免路径污染别的设备），
+// 因此加列不影响同步契约，导出/导入白名单也不动。
+func migration181(tx *sql.Tx) error {
+	// DuckDB 支持 IF NOT EXISTS，列已存在时会静默成功
+	if _, err := tx.Exec(`
+		ALTER TABLE games
+		ADD COLUMN IF NOT EXISTS logo_path TEXT DEFAULT ''
+	`); err != nil {
+		return fmt.Errorf("failed to add logo_path column: %w", err)
+	}
+	if _, err := tx.Exec(`
+		ALTER TABLE games
+		ADD COLUMN IF NOT EXISTS bg_path TEXT DEFAULT ''
+	`); err != nil {
+		return fmt.Errorf("failed to add bg_path column: %w", err)
+	}
+	return nil
+}
+
 // 所有迁移按版本号顺序排列
 var migrations = []Migration{
 	{
@@ -1087,6 +1109,11 @@ var migrations = []Migration{
 		Version:     180,
 		Description: "Add trailer_path column to games for local big-screen PV playback",
 		Up:          migration180,
+	},
+	{
+		Version:     181,
+		Description: "Add logo_path/bg_path columns to games for big-screen custom title art and background art",
+		Up:          migration181,
 	},
 	// {
 	// 	Version:     114,

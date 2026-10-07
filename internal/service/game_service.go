@@ -292,6 +292,160 @@ func trailerFileFilterPattern() string {
 	return strings.Join(patterns, ";")
 }
 
+// gameArtFileFilterPattern 由图片扩展名列表拼出文件对话框过滤串。
+func gameArtFileFilterPattern() string {
+	return "*.png;*.jpg;*.jpeg;*.webp"
+}
+
+// gameArtColumn 把 kind 映射到 games 表的列名（白名单，杜绝把 kind 拼进 SQL）。
+func gameArtColumn(kind string) (string, bool) {
+	switch kind {
+	case mediautils.GameArtKindLogo:
+		return "logo_path", true
+	case mediautils.GameArtKindBg:
+		return "bg_path", true
+	}
+	return "", false
+}
+
+// SelectGameArt 选择并保存大屏自定义标题图 / 背景图（对齐手机版 M10 logo_path/bg_path）。
+// kind 取 mediautils.GameArtKindLogo / GameArtKindBg，返回写入库的 /local/bigscreen/art/... 地址。
+// 流程对齐手机端 onArtPicked：先复制新文件成功，再删旧文件，最后落列，任一步失败旧图都还在。
+func (s *GameService) SelectGameArt(gameID, kind, currentPath string) (string, error) {
+	gameID = strings.TrimSpace(gameID)
+	if gameID == "" {
+		return "", fmt.Errorf("game id is required")
+	}
+	if _, ok := gameArtColumn(kind); !ok {
+		return "", fmt.Errorf("invalid art kind: %s", kind)
+	}
+
+	selection, err := s.runtime.OpenFile(wailsruntime.OpenDialogOptions{
+		Title:     gameArtDialogTitle(kind),
+		Directory: gamehelper.ExecutableDialogDirectory(currentPath),
+		Filters: []wailsruntime.FileFilter{
+			{
+				DisplayName: "Image Files",
+				Pattern:     gameArtFileFilterPattern(),
+			},
+			{
+				DisplayName: "All Files",
+				Pattern:     "*.*",
+			},
+		},
+	})
+	if err != nil {
+		applog.LogErrorf(s.ctx, "failed to open %s art dialog: %v", kind, err)
+		return "", err
+	}
+	if selection == "" {
+		return "", nil
+	}
+
+	artPath, err := mediautils.SaveGameArt(selection, gameID, kind)
+	if err != nil {
+		applog.LogErrorf(s.ctx, "failed to save %s art for game %s: %v", kind, gameID, err)
+		return "", err
+	}
+
+	// 换图：新文件已就位，删掉旧图，避免 art 目录里堆没人引用的文件
+	column, _ := gameArtColumn(kind)
+	if previous, err := s.gameArtPath(gameID, column); err != nil {
+		// 读不到旧值不阻塞：只是多留一个孤儿文件
+		applog.LogErrorf(s.ctx, "failed to read previous %s art for game %s: %v", kind, gameID, err)
+	} else if previous != "" && previous != artPath {
+		if err := mediautils.RemoveGameArt(previous); err != nil {
+			applog.LogErrorf(s.ctx, "failed to remove previous %s art for game %s: %v", kind, gameID, err)
+		}
+	}
+
+	if err := s.updateGameArtPath(gameID, kind, artPath); err != nil {
+		applog.LogErrorf(s.ctx, "failed to persist %s art path for game %s: %v", kind, gameID, err)
+		return "", err
+	}
+
+	s.emitGameArtChangedEvent(gameID, kind, artPath)
+	return artPath, nil
+}
+
+// ClearGameArt 清除自定义图：先删受管目录里的文件，再清空列（对齐手机端 clearArt）。
+func (s *GameService) ClearGameArt(gameID, kind string) error {
+	gameID = strings.TrimSpace(gameID)
+	if gameID == "" {
+		return fmt.Errorf("game id is required")
+	}
+	column, ok := gameArtColumn(kind)
+	if !ok {
+		return fmt.Errorf("invalid art kind: %s", kind)
+	}
+
+	current, err := s.gameArtPath(gameID, column)
+	if err != nil {
+		applog.LogErrorf(s.ctx, "failed to read %s art path for game %s: %v", kind, gameID, err)
+		return err
+	}
+	if current != "" {
+		if err := mediautils.RemoveGameArt(current); err != nil {
+			applog.LogErrorf(s.ctx, "failed to remove %s art file for game %s: %v", kind, gameID, err)
+			return err
+		}
+	}
+	if err := s.updateGameArtPath(gameID, kind, ""); err != nil {
+		applog.LogErrorf(s.ctx, "failed to clear %s art path for game %s: %v", kind, gameID, err)
+		return err
+	}
+
+	s.emitGameArtChangedEvent(gameID, kind, "")
+	return nil
+}
+
+func (s *GameService) emitGameArtChangedEvent(gameID, kind, artPath string) {
+	if s.ctx == nil || s.emitEvent == nil {
+		return
+	}
+	s.emitEvent("game-art:changed", map[string]string{
+		"game_id": gameID,
+		"kind":    kind,
+		"path":    artPath,
+	})
+}
+
+// gameArtPath 读取某列当前的 /local/... 地址（列不存在行时返回空串）。
+func (s *GameService) gameArtPath(gameID, column string) (string, error) {
+	var value string
+	query := fmt.Sprintf(`SELECT COALESCE(%s, '') FROM games WHERE id = ?`, column)
+	err := s.db.QueryRowContext(s.ctx, query, gameID).Scan(&value)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", nil
+	}
+	return value, err
+}
+
+// updateGameArtPath 更新游戏的标题图/背景图地址。
+// 与 updateGameTrailerPath 同款：只写自己这一列，不并入 UpdateGame 的 SET 列表，
+// 避免编辑其他字段时误写或清空该列。
+func (s *GameService) updateGameArtPath(gameID, kind, artPath string) error {
+	column, ok := gameArtColumn(kind)
+	if !ok {
+		return fmt.Errorf("invalid art kind: %s", kind)
+	}
+	return dbutils.WithDuckDBWriteLock(s.db, func() error {
+		return dbutils.RetryDuckDBWriteConflict(s.ctx, func() error {
+			query := fmt.Sprintf(`UPDATE games SET %s = ?, updated_at = ? WHERE id = ?`, column)
+			_, err := s.db.ExecContext(s.ctx, query, artPath, time.Now(), gameID)
+			return err
+		})
+	})
+}
+
+// gameArtDialogTitle 文件对话框标题（桌面端没有 toast 前奏，标题里说明用途）。
+func gameArtDialogTitle(kind string) string {
+	if kind == mediautils.GameArtKindBg {
+		return "选择背景图"
+	}
+	return "选择标题图"
+}
+
 // AddGameFromWebMetadata 用于接收前端/导入流程中的完整刮削结果（含 tags）并一次性入库。
 func (s *GameService) AddGameFromWebMetadata(meta vo.GameMetadataFromWebVO) error {
 	game := meta.Game
@@ -808,6 +962,8 @@ func (s *GameService) GetGameByID(id string) (models.Game, error) {
 		COALESCE(g.cover_url, '') as cover_url,
 		COALESCE(g.cover_source_url, '') as cover_source_url,
 		COALESCE(g.trailer_path, '') as trailer_path,
+		COALESCE(g.logo_path, '') as logo_path,
+		COALESCE(g.bg_path, '') as bg_path,
 		COALESCE(g.company, '') as company, 
 		COALESCE(g.summary, '') as summary, 
 		COALESCE(g.rating, 0) as rating,
@@ -862,6 +1018,8 @@ func (s *GameService) GetGameByID(id string) (models.Game, error) {
 		&game.CoverURL,
 		&game.CoverSourceURL,
 		&game.TrailerPath,
+		&game.LogoPath,
+		&game.BgPath,
 		&game.Company,
 		&game.Summary,
 		&game.Rating,

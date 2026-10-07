@@ -39,10 +39,12 @@ import {
 } from "../../bindings/yukihub/internal/service/configservice";
 import {
   BatchUpdateStatus,
+  ClearGameArt,
   DeleteGame,
   GetGames,
   OpenLocalPath,
   RemoveGameTrailer,
+  SelectGameArt,
   SelectGameTrailer,
   SetGameHidden,
 } from "../../bindings/yukihub/internal/service/gameservice";
@@ -612,6 +614,51 @@ function BigScreenPage() {
             key: "status",
             label: t("bigScreen.menuStatus", { status: t(statusLabelKey) }),
           },
+          // 自定义标题图/背景图（对齐手机端 M10：Steam 式 logo + 自定义背景）
+          ...(game.logo_path
+            ? [
+                {
+                  icon: "i-mdi-image-outline",
+                  key: "logo-set",
+                  label: t("bigScreen.changeLogoArt"),
+                  sub: t("bigScreen.artSetHint"),
+                },
+                {
+                  icon: "i-mdi-image-off-outline",
+                  key: "logo-remove",
+                  label: t("bigScreen.clearLogoArt"),
+                },
+              ]
+            : [
+                {
+                  icon: "i-mdi-image-outline",
+                  key: "logo-set",
+                  label: t("bigScreen.setLogoArt"),
+                  sub: t("bigScreen.logoArtHint"),
+                },
+              ]),
+          ...(game.bg_path
+            ? [
+                {
+                  icon: "i-mdi-wallpaper",
+                  key: "bg-set",
+                  label: t("bigScreen.changeBgArt"),
+                  sub: t("bigScreen.artSetHint"),
+                },
+                {
+                  icon: "i-mdi-close-circle-outline",
+                  key: "bg-remove",
+                  label: t("bigScreen.clearBgArt"),
+                },
+              ]
+            : [
+                {
+                  icon: "i-mdi-wallpaper",
+                  key: "bg-set",
+                  label: t("bigScreen.setBgArt"),
+                  sub: t("bigScreen.bgArtHint"),
+                },
+              ]),
           {
             icon: "i-mdi-movie-open-outline",
             key: "trailer-set",
@@ -1142,6 +1189,51 @@ function BigScreenPage() {
     [refreshAfterMutation, t],
   );
 
+  // 大屏自定义标题图/背景图（对齐手机端 M10 requestArtPick / clearArt）
+  const handleSetArt = useCallback(
+    async (game: models.Game | null | undefined, kind: string) => {
+      if (!game?.id) {
+        return;
+      }
+      try {
+        const current
+          = kind === "bg" ? (game.bg_path ?? "") : (game.logo_path ?? "");
+        const result = await SelectGameArt(game.id, kind, current);
+        if (result) {
+          refreshAfterMutation();
+          toast.success(
+            t(
+              kind === "bg" ? "bigScreen.bgArtBound" : "bigScreen.logoArtBound",
+            ),
+          );
+        }
+      }
+      catch (error) {
+        console.error("Failed to set big screen art:", error);
+        toast.error(t("bigScreen.artImportFailed"));
+      }
+    },
+    [refreshAfterMutation, t],
+  );
+
+  const handleClearArt = useCallback(
+    async (game: models.Game | null | undefined, kind: string) => {
+      if (!game?.id) {
+        return;
+      }
+      try {
+        await ClearGameArt(game.id, kind);
+        refreshAfterMutation();
+        toast.success(t("bigScreen.artCleared"));
+      }
+      catch (error) {
+        console.error("Failed to clear big screen art:", error);
+        toast.error(t("bigScreen.artImportFailed"));
+      }
+    },
+    [refreshAfterMutation, t],
+  );
+
   const handleOpenDirectory = useCallback(
     async (game: models.Game | null | undefined) => {
       if (!game) {
@@ -1340,6 +1432,30 @@ function BigScreenPage() {
           void handleSetTrailer(game ?? undefined);
           return;
         }
+        case "logo-set": {
+          const game = panelGame;
+          closePanel();
+          void handleSetArt(game ?? undefined, "logo");
+          return;
+        }
+        case "logo-remove": {
+          const game = panelGame;
+          closePanel();
+          void handleClearArt(game ?? undefined, "logo");
+          return;
+        }
+        case "bg-set": {
+          const game = panelGame;
+          closePanel();
+          void handleSetArt(game ?? undefined, "bg");
+          return;
+        }
+        case "bg-remove": {
+          const game = panelGame;
+          closePanel();
+          void handleClearArt(game ?? undefined, "bg");
+          return;
+        }
         case "trailer-remove": {
           const game = panelGame;
           closePanel();
@@ -1411,12 +1527,14 @@ function BigScreenPage() {
       closePanel,
       config,
       exitBigScreen,
+      handleClearArt,
       handleCycleStatus,
       handleDeleteGame,
       handleEditGame,
       handleOpenDirectory,
       handleRandomGame,
       handleRemoveTrailer,
+      handleSetArt,
       handleSetHidden,
       handleSetTrailer,
       handleStartGame,
@@ -1898,6 +2016,12 @@ function BigScreenPage() {
   const isShelfFocused = position.zoneId === BIG_SCREEN_SHELF_ZONE;
   const coverUrl
     = focusedGame?.cover_url || focusedGame?.cover_source_url || "";
+  // 对齐手机端 bgUriOf：自定义背景图优先，否则退回封面；
+  // 用了背景图时不再叠高清封面层（自定义图本身就是原始分辨率）
+  const backgroundUrl = focusedGame?.bg_path || coverUrl;
+  const backgroundSourceUrl = focusedGame?.bg_path
+    ? ""
+    : focusedGame?.cover_source_url || "";
   // 用户还没用过任何输入设备时，按手柄是否接入决定提示条形态
   const hintDevice: BigScreenInputDevice
     = inputDevice ?? (gamepadConnected ? "gamepad" : "keyboard");
@@ -1909,8 +2033,8 @@ function BigScreenPage() {
     // 而复用的组件是主题相关的。不加这一层，亮色主题下会很突兀。
     <div className="dark relative flex h-screen w-screen select-none overflow-hidden bg-brand-900 text-white">
       <BigScreenBackground
-        coverUrl={coverUrl}
-        coverSourceUrl={focusedGame?.cover_source_url || ""}
+        coverUrl={backgroundUrl}
+        coverSourceUrl={backgroundSourceUrl}
         isNSFW={Boolean(focusedGame?.is_nsfw)}
         trailerFit={pvFit}
         trailerMuted={trailerMuted}

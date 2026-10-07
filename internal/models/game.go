@@ -44,6 +44,8 @@ type Game struct {
 	Hidden             bool                 `json:"hidden"`                      // 手机版 YukiHub 的隐藏标记
 	LastPlayedAt       *time.Time           `json:"last_played_at,omitempty"`    // 最近一次游玩开始时间（由 play_sessions 聚合）
 	TrailerPath        string               `json:"trailer_path"`                // 本地预告片视频，/local/trailers/... 或空；依 mobile-yukihub-migration.md 不入同步快照
+	LogoPath           string               `json:"logo_path"`                   // 大屏自定义标题图（Steam 式 logo），/local/bigscreen/art/... 或空；同样不入同步快照
+	BgPath             string               `json:"bg_path"`                     // 大屏自定义背景图，替代封面做背景；同样不入同步快照
 }
 
 // GameBackup 游戏存档备份记录（基于文件系统，不使用数据库）

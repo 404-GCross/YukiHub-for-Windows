@@ -53,7 +53,9 @@ func InitSchema(db *sql.DB) error {
 			source_device_id TEXT DEFAULT '',
 			playtime_reset_at TIMESTAMPTZ,
 			hidden BOOLEAN DEFAULT FALSE,
-			trailer_path TEXT DEFAULT ''
+			trailer_path TEXT DEFAULT '',
+			logo_path TEXT DEFAULT '',
+			bg_path TEXT DEFAULT ''
 		)`,
 		`CREATE TABLE IF NOT EXISTS game_metadata_sources (
 			game_id TEXT NOT NULL,

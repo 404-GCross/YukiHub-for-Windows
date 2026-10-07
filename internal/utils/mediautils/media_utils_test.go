@@ -3,6 +3,7 @@ package mediautils
 import (
 	"os"
 	"path/filepath"
+	"regexp"
 	"testing"
 )
 
@@ -226,5 +227,106 @@ func TestSaveIntroVideoRejectsUnsupportedAndRemoveIsIdempotent(t *testing.T) {
 	}
 	if err := RemoveIntroVideo(); err != nil {
 		t.Errorf("删除不存在的入场视频应静默成功: %v", err)
+	}
+}
+
+// writeTempImage 在临时目录里造一个假图片文件，供复制逻辑使用。
+func writeTempImage(t *testing.T, name string) string {
+	t.Helper()
+
+	path := filepath.Join(t.TempDir(), name)
+	if err := os.WriteFile(path, []byte("fake image bytes"), 0644); err != nil {
+		t.Fatalf("创建源文件失败: %v", err)
+	}
+	return path
+}
+
+func TestSaveGameArtCopiesIntoManagedDir(t *testing.T) {
+	dir := t.TempDir()
+	restore := SetGameArtDirForTest(dir)
+	defer restore()
+
+	got, err := SaveGameArt(writeTempImage(t, "cover.png"), "game-001", GameArtKindLogo)
+	if err != nil {
+		t.Fatalf("SaveGameArt 失败: %v", err)
+	}
+	// 文件名形如 logo_game-001_<毫秒时间戳>.png，换图后地址必然变化
+	if !regexp.MustCompile(`^/local/bigscreen/art/logo_game-001_\d+\.png$`).MatchString(got) {
+		t.Fatalf("返回路径不符合约定: %s", got)
+	}
+
+	content, err := os.ReadFile(filepath.Join(dir, filepath.Base(got)))
+	if err != nil {
+		t.Fatalf("复制后的文件不存在: %v", err)
+	}
+	if string(content) != "fake image bytes" {
+		t.Errorf("文件内容不匹配: %s", string(content))
+	}
+
+	bgURL, err := SaveGameArt(writeTempImage(t, "bg.webp"), "game-001", GameArtKindBg)
+	if err != nil {
+		t.Fatalf("SaveGameArt(bg) 失败: %v", err)
+	}
+	if !regexp.MustCompile(`^/local/bigscreen/art/bg_game-001_\d+\.webp$`).MatchString(bgURL) {
+		t.Fatalf("背景图返回路径不符合约定: %s", bgURL)
+	}
+}
+
+func TestSaveGameArtRejectsUnsupportedOrIncompleteInput(t *testing.T) {
+	restore := SetGameArtDirForTest(t.TempDir())
+	defer restore()
+
+	if _, err := SaveGameArt(writeTempImage(t, "a.png"), "", GameArtKindLogo); err == nil {
+		t.Error("缺少 gameID 应报错")
+	}
+	if _, err := SaveGameArt(writeTempImage(t, "a.png"), "game-001", "cover"); err == nil {
+		t.Error("非法 kind 应报错")
+	}
+	if _, err := SaveGameArt(writeTempImage(t, "a.gif"), "game-001", GameArtKindLogo); err == nil {
+		t.Error("不支持的图片格式应报错")
+	}
+	if IsSupportedImageExt(".GIF") {
+		t.Error("gif 不应被视为受支持的图片格式")
+	}
+	if IsGameArtKind("cover") {
+		t.Error("非法 kind 不应被接受")
+	}
+}
+
+func TestRemoveGameArtOnlyTouchesManagedDir(t *testing.T) {
+	dir := t.TempDir()
+	restore := SetGameArtDirForTest(dir)
+	defer restore()
+
+	url, err := SaveGameArt(writeTempImage(t, "a.jpg"), "game-002", GameArtKindBg)
+	if err != nil {
+		t.Fatalf("SaveGameArt 失败: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, filepath.Base(url))); err != nil {
+		t.Fatalf("新文件应存在: %v", err)
+	}
+
+	// 只删 art 目录内的文件；外部路径 / 穿越 / 空值一律静默忽略
+	if err := RemoveGameArt("/local/covers/game-002.png"); err != nil {
+		t.Errorf("非 art 地址应静默忽略: %v", err)
+	}
+	if err := RemoveGameArt("/local/bigscreen/art/../../trailers/game-002.mp4"); err != nil {
+		t.Errorf("路径穿越应被拦截且不报错: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, filepath.Base(url))); err != nil {
+		t.Fatalf("无关忽略操作后文件不应被动: %v", err)
+	}
+
+	if err := RemoveGameArt(url); err != nil {
+		t.Fatalf("RemoveGameArt 失败: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, filepath.Base(url))); !os.IsNotExist(err) {
+		t.Error("清除后文件应被删除")
+	}
+	if err := RemoveGameArt(""); err != nil {
+		t.Errorf("空地址应幂等成功: %v", err)
+	}
+	if err := RemoveGameArt(url); err != nil {
+		t.Errorf("重复清除应幂等成功: %v", err)
 	}
 }

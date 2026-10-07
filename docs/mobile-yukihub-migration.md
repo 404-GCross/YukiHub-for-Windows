@@ -1057,3 +1057,45 @@ UnoCSS 遇到「色板里没有的色阶」时**不报错、不告警、构建�
 
 所以守卫脚本**刻意只收**色阶 / 动画名 / 尺寸档位这三类——再加前缀就必须同时处理
 方向角、彩色阴影、字体族这些别名，收益为零而误报风险明显上升。
+
+## 十七、2026-10-07 第十一轮：大屏自定义标题图 / 背景图（对齐手机版 M10）
+
+用户：「标题图和背景图肯定也要加的，怎么会动到同步契约呢，没搞懂，这玩意又不同步。」
+
+### 17.1 先回答疑问：确实不动同步契约，上一轮的担心是多余的
+
+去手机版源码里验证了：`GameRepository.exportGamesJson()`（同步与备份共用的游戏导出）
+是**显式字段清单**，里面本来就没有 `logo_path` / `bg_path` —— 手机版把这两列设计成
+**纯本地字段**，图复制进应用私有目录、路径只写本地库，换设备后由用户重新设置。
+桌面版的导出器注释里同样早写着「刻意不导出：… trailer/logo/bg 路径」。
+所以加两列对快照**零影响**，导出/导入白名单一行都不用动。
+
+### 17.2 手机端行为（BigScreenArt.java + BigScreenActivity.java:840-935/2310-2350）
+
+| 方面 | 手机端 |
+| --- | --- |
+| 存储 | 图片复制进应用私有目录 `files/bigscreen/art/`，文件名 `<kind>_<gameId>_<毫秒时间戳><ext>`；路径写 games 表 `logo_path` / `bg_path` |
+| 格式 | png / jpg / jpeg / webp（`guessExt`） |
+| S4 菜单 | 未设：「设置标题图(用图片替代游戏名)」/「设置背景图(替代封面做背景)」；已设：「更换…(已设置)」+「清除…」 |
+| 标题图渲染 | 信息浮层大标题：图片替代文字（Steam 式 logo），解码失败回退文字 |
+| 背景图渲染 | `bgUriOf(game)`：bg_path 存在则用它，否则退回封面；NSFW 模糊照常叠加 |
+| 删除保护 | 只删自己 art 目录里的文件，防误删 |
+
+### 17.3 桌面端实现
+
+| 层 | 实现 |
+| --- | --- |
+| schema | 迁移 181：games 表 `logo_path` / `bg_path` TEXT DEFAULT ''（幂等，IF NOT EXISTS） |
+| 查询 | `list_query.go` 与 `GetGameByID` 的 SELECT/Scan 补列；`UpdateGame` 是显式 SET 清单，不含新列 → 编辑游戏不会误清图（与 trailer_path 同款约定） |
+| 媒体工具 | `mediautils.SaveGameArt / RemoveGameArt / GameArtDir`（`<数据目录>/bigscreen/art/`）。文件名带毫秒时间戳——换图后地址必然变化，`/local/` 处理器的 `max-age=1y` 强缓存不会端出旧图，前端无需 cache-bust 参数 |
+| 服务 | `GameService.SelectGameArt(gameID, kind, currentPath)` / `ClearGameArt(gameID, kind)`，kind 走白名单映射列名（杜绝拼接 SQL）；换图流程对齐手机端：新文件落盘成功 → 删旧 → 落列，任一步失败旧图仍在；发 `game-art:changed` 事件 |
+| 前端菜单 | S4 游戏操作菜单按手机端顺序插在「游玩状态」与「设置PV视频」之间，未设/已设两种形态 |
+| 渲染 | `BigScreenInfoBar` 标题：`logo_path` 有效时 `<img>` 替代 `<h1>`，onError 回退文字（`key` 换游戏/换图时重置错误态）；背景：调用点按 `bgUriOf` 优先级换源（bg_path 优先，用了背景图就不叠高清封面层），NSFW 模糊由 ProxyImage 照常处理 |
+
+单测：迁移 181（加列 + 幂等 + 默认值）；mediautils 三条（复制与命名约定 / 非法输入
+拒绝 / RemoveGameArt 只删 art 目录内文件且路径穿越被 Base 拦掉、幂等）。
+
+### 17.4 与手机端的差异
+
+- 手机端选图走 `ACTION_OPEN_DOCUMENT`，桌面端走系统文件对话框（与预告片同款）；
+- 手机端 logo 图是满宽显示，桌面端信息层更小一档（max-h-20、左对齐），延续「比手机版小」的约定。
