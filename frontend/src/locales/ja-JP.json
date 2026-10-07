@@ -1277,17 +1277,6 @@
       "currentSource": "現在の資料ソース",
       "currentSourceHint": "どのサイトの資料を優先して使うか。スマホ版の「右側の資料ソース」に相当します。ソース情報を持たないゲームの新規作成・取り込みで使われ、手動検索と一括再取得でも優先されます。ゲームごとの変更はライブラリ右側の詳細から行えます。"
     },
-    "cloudBackup": {
-      "syncStatusIdle": "未同期",
-      "syncStatusSyncing": "同期中",
-      "syncStatusSuccess": "前回の同期は成功",
-      "syncStatusFailed": "前回の同期は失敗",
-      "syncingNow": "同期中...",
-      "toast": {
-        "syncSuccess": "クラウド同期が完了しました",
-        "syncFailed": "クラウド同期に失敗しました: {{error}}"
-      }
-    },
     "autoBackup": {
       "scheduledDbBackupStarted": "定期データベースバックアップを作成しています…",
       "scheduledDbBackupCompleted": "定期データベースバックアップが完了しました",
@@ -1364,18 +1353,6 @@
       "newVersion": "新しいバージョンが見つかりました",
       "upToDate": "最新バージョンです",
       "skipFailed": "変更に失敗しました: {{error}}"
-    },
-    "passwordModal": {
-      "title": "バックアップパスワードを設定",
-      "desc1": "バックアップパスワードは、固有ユーザーIDの生成とクラウドデータ暗号化に使用されます。",
-      "desc2": "パスワードは一度しか設定できず、設定後は変更できません！",
-      "desc3": "必ずパスワードを記憶してください。忘れるとクラウドバックアップを復元できません。",
-      "passwordLabel": "パスワードを入力",
-      "passwordPlaceholder": "6文字以上",
-      "passwordTooShort": "パスワードは6文字以上必要です",
-      "confirmLabel": "パスワードを確認",
-      "confirmPlaceholder": "パスワードを再入力",
-      "passwordMismatch": "2回入力したパスワードが一致しません"
     },
     "subSections": {
       "about": "このアプリとライセンス",
@@ -1611,9 +1588,6 @@
     "heatmap": {
       "empty": "この期間内のプレイ記録はありません",
       "noPlay": "未プレイ",
-      "less": "少",
-      "more": "多",
-      "summary": "過去 1 年の活動日数 {{days}} 日",
       "weekdays": {
         "sun": "日",
         "mon": "月",

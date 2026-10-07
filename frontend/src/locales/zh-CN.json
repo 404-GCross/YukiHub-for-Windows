@@ -1277,17 +1277,6 @@
       "currentSource": "当前资料源",
       "currentSourceHint": "当前优先使用哪个站点的资料，对齐手机版的「右侧资料源」。新建或导入时没带来源信息的游戏会用它；手动搜资料与批量重扫也优先它。单个游戏可以在游戏库右侧详情里单独切换。"
     },
-    "cloudBackup": {
-      "syncStatusIdle": "未同步",
-      "syncStatusSyncing": "同步中",
-      "syncStatusSuccess": "最近一次成功",
-      "syncStatusFailed": "最近一次失败",
-      "syncingNow": "同步中...",
-      "toast": {
-        "syncSuccess": "云同步完成",
-        "syncFailed": "云同步失败: {{error}}"
-      }
-    },
     "autoBackup": {
       "scheduledDbBackupStarted": "正在创建定时数据库备份…",
       "scheduledDbBackupCompleted": "定时数据库备份已完成",
@@ -1364,18 +1353,6 @@
       "newVersion": "发现新版本",
       "upToDate": "已是最新版本",
       "skipFailed": "修改失败：{{error}}"
-    },
-    "passwordModal": {
-      "title": "设置备份密码",
-      "desc1": "备份密码用于生成您的唯一用户ID和加密云端数据。",
-      "desc2": "密码只能设置一次，设置后无法修改！",
-      "desc3": "请务必牢记您的密码，遗忘将无法恢复云端备份。",
-      "passwordLabel": "输入密码",
-      "passwordPlaceholder": "至少6位字符",
-      "passwordTooShort": "密码长度至少为6位",
-      "confirmLabel": "确认密码",
-      "confirmPlaceholder": "再次输入密码",
-      "passwordMismatch": "两次输入的密码不一致"
     },
     "subSections": {
       "about": "关于与开源许可",
@@ -1611,9 +1588,6 @@
     "heatmap": {
       "empty": "本期间内无游玩记录",
       "noPlay": "未游玩",
-      "less": "少",
-      "more": "多",
-      "summary": "过去一年活跃 {{days}} 天",
       "weekdays": {
         "sun": "日",
         "mon": "一",

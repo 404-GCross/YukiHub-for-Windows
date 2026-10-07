@@ -1277,17 +1277,6 @@
       "currentSource": "Current metadata source",
       "currentSourceHint": "Which site's data to prefer. Matches the mobile app's \"Side panel source\". Used for games that arrive without source info, and preferred for manual searches and bulk rescans. Switch an individual game from the library side panel."
     },
-    "cloudBackup": {
-      "syncStatusIdle": "Not synced yet",
-      "syncStatusSyncing": "Syncing",
-      "syncStatusSuccess": "Last sync succeeded",
-      "syncStatusFailed": "Last sync failed",
-      "syncingNow": "Syncing...",
-      "toast": {
-        "syncSuccess": "Cloud sync completed",
-        "syncFailed": "Cloud sync failed: {{error}}"
-      }
-    },
     "autoBackup": {
       "scheduledDbBackupStarted": "Creating scheduled database backup…",
       "scheduledDbBackupCompleted": "Scheduled database backup completed",
@@ -1364,18 +1353,6 @@
       "newVersion": "New version available",
       "upToDate": "You are up to date",
       "skipFailed": "Failed to skip: {{error}}"
-    },
-    "passwordModal": {
-      "title": "Set Backup Password",
-      "desc1": "The backup password is used to generate your unique user ID and encrypt cloud data.",
-      "desc2": "The password can only be set once and cannot be changed!",
-      "desc3": "Please remember your password. Forgetting it will make it impossible to restore cloud backups.",
-      "passwordLabel": "Enter Password",
-      "passwordPlaceholder": "At least 6 characters",
-      "passwordTooShort": "Password must be at least 6 characters",
-      "confirmLabel": "Confirm Password",
-      "confirmPlaceholder": "Re-enter password",
-      "passwordMismatch": "Passwords do not match"
     },
     "subSections": {
       "about": "About & license",
@@ -1611,9 +1588,6 @@
     "heatmap": {
       "empty": "No play activity in this period",
       "noPlay": "No play",
-      "less": "Less",
-      "more": "More",
-      "summary": "{{days}} contributions in the last year",
       "weekdays": {
         "sun": "Sun",
         "mon": "Mon",

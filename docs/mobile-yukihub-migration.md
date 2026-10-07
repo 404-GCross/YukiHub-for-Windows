@@ -980,3 +980,63 @@ UnoCSS 遇到「色板里没有的色阶」时**不报错、不告警、构建�
 | --- | --- |
 | `max-w-8xl`（9 个文件，含 library/settings/downloads/game 主页面） | 上游就没有这一档，`mx-auto` 一直是空转 → 主页面**没有宽度上限**。要不要补 `maxWidth['8xl']` 是产品决定（补上会让 1920 窗口下的内容变窄 20%），留给用户拍板 |
 | `src/utils/cloudSync.ts` 的 `ring-*`、`src/components/chart/PlayHeatmap.tsx`、`skeleton/GameStatsSkeleton.tsx`、`modal/PasswordInputModal.tsx` | 这些文件**没有任何地方 import**（连同 `hooks/useCloudSync.ts`），属于死代码，所以它们的类不会进产物。要不要删由用户决定 |
+
+## 十六、2026-10-07 第十轮：清死代码 + 补回被静默吞掉的 `max-w-8xl`
+
+用户：「可以按你的想法来，死文件也可以删了。」—— 即批准 §十五.5 里挂账的两件事。
+
+### 16.1 `max-w-8xl` 补上（与 §十五 完全同一类问题）
+
+§十五 修的是色板缺档，这次是**尺寸档位缺档**：9 处 `max-w-8xl mx-auto` 写在
+`routes/{library,game,stats,settings,downloads}.tsx` 与 4 个 `*Skeleton.tsx` 里，
+而 presetWind3 的 `theme.maxWidth` 只到 `7xl`（80rem）→ **`mx-auto` 一直是空转**，
+页面在超宽屏上被拉满，骨架与真实页面的宽度也永远对不齐。
+
+| 取值 | 1920 窗口下的效果 | 结论 |
+| --- | --- | --- |
+| 不做 | 内容随窗口无限拉长，4K 上长行难读 | ✗ |
+| 88rem（1408px） | 左右各留约 96px，观感变化明显 | 偏紧 |
+| **96rem（1536px）** | **左右各留约 32px，几乎无感；2560 以上才真正收住** | ✓ 采用 |
+
+侧栏展开 16rem、页面 `p-8`，所以 1920 下可用宽度约 1600px —— 96rem 是"温和约束"。
+落点是 `theme.maxWidth`（`presetWind3` 之外的补充），产物里已确认生成
+`.max-w-8xl{max-width:96rem}`。
+
+### 16.2 死代码清理：7 个文件 / 895 行
+
+方法：写了一个**可达性审计**脚本（从 `src/main.tsx` 出发沿相对 import 图 BFS，
+只认静态 import 与字面量 `import()`）。本仓库没有路径别名，所以这一步是可靠的。
+审计结果 8 个不可达，人工复核后删 7 个，`src/vite-env.d.ts` 是类型声明（本来就不需要
+被 import），保留。
+
+| 文件 | 行数 | 情况 |
+| --- | --- | --- |
+| `components/chart/PlayHeatmap.tsx` | 360 | 旧的「小时×星期」热力图，已被 `HourWeekDistribution.tsx` 取代 |
+| `hooks/useCloudSync.ts` | 159 | 只被自己引用：全仓无 import |
+| `components/modal/PasswordInputModal.tsx` | 145 | 备份密码弹窗，没有任何入口调用 |
+| `utils/cloudSync.ts` | 97 | 云同步状态样式/文案，只被 `useCloudSync` 引用 |
+| `components/ui/better/BetterTimeWheelInput.tsx` | 93 | 被 `BetterWheelPicker` 取代；注意 `BetterWheelPicker` 本身仍在使用 |
+| `components/skeleton/GameStatsSkeleton.tsx` | 22 | 无引用 |
+| `utils/sort.ts` | 19 | `compareNullableDateLike`，无引用，且用的是已被我们淘汰的 `localeCompare` 口径 |
+
+删除后 `tsc` / `vite build` 全绿，反向确认了"确实没人用"。
+
+### 16.3 i18n 孤儿键：脚本自动清掉 20 个
+
+删掉文件后跑 `i18n:clean`（不是 `--check`）会自动移除失去字面量引用的键，四个语言各删
+20 个，**+0 新增、无保护内容冲突**：`settings.cloudBackup.*`（7）、
+`settings.passwordModal.*`（10）、`stats.heatmap.less/more/summary`（3）。
+`stats.heatmap.weekdays.* / empty / noPlay` 因为 `HourWeekDistribution` 还在用而保留。
+
+### 16.4 守卫脚本扩到「尺寸档位」
+
+`frontend/scripts/check-uno-classes.mjs` 增加第三条**零误报**检查：
+`(max-w|min-w|max-h|min-h)-<名字>` 的名字必须来自 presetWind3 的尺寸主题、本仓库
+`theme` 的补充（正则读 `maxWidth` / `minWidth` / `maxHeight` / `minHeight` 四块），
+或 CSS 尺寸关键字（`auto/full/screen/min/max/fit/none/px/...`）；纯数字与任意值
+（`max-w-16`、`max-h-[86vh]`）交给 spacing / bracket，不参与判断。
+
+- 名字允许以数字开头（`2xl` / `8xl`）——第一版正则写成 `[a-z]…` 开头，
+  **把 `8xl` 漏掉了**，负向验证才发现，已修。
+- 负向验证：把 `"8xl": "96rem"` 从主题里删掉 → 脚本准确报出 9 处并 `exit 1`；
+  还原后通过。

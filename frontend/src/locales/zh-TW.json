@@ -1277,17 +1277,6 @@
       "currentSource": "目前資料來源",
       "currentSourceHint": "目前優先採用哪個網站的資料，對齊手機版的「右側資料來源」。新建或匯入時未帶來源資訊的遊戲會使用它；手動搜尋資料與批次重掃也優先使用。單一遊戲可在遊戲庫右側詳情中個別切換。"
     },
-    "cloudBackup": {
-      "syncStatusIdle": "未同步",
-      "syncStatusSyncing": "同步中",
-      "syncStatusSuccess": "最近一次成功",
-      "syncStatusFailed": "最近一次失敗",
-      "syncingNow": "同步中...",
-      "toast": {
-        "syncSuccess": "雲同步完成",
-        "syncFailed": "雲同步失敗: {{error}}"
-      }
-    },
     "autoBackup": {
       "scheduledDbBackupStarted": "正在建立定時資料庫備份…",
       "scheduledDbBackupCompleted": "定時資料庫備份已完成",
@@ -1364,18 +1353,6 @@
       "newVersion": "發現新版本",
       "upToDate": "已是最新版本",
       "skipFailed": "修改失敗：{{error}}"
-    },
-    "passwordModal": {
-      "title": "設定備份密碼",
-      "desc1": "備份密碼用於生成您的唯一使用者ID和加密雲端資料。",
-      "desc2": "密碼只能設定一次，設定後無法修改！",
-      "desc3": "請務必牢記您的密碼，遺忘將無法恢復雲端備份。",
-      "passwordLabel": "輸入密碼",
-      "passwordPlaceholder": "至少6位字元",
-      "passwordTooShort": "密碼長度至少為6位",
-      "confirmLabel": "確認密碼",
-      "confirmPlaceholder": "再次輸入密碼",
-      "passwordMismatch": "兩次輸入的密碼不一致"
     },
     "subSections": {
       "about": "關於與開源授權",
@@ -1611,9 +1588,6 @@
     "heatmap": {
       "empty": "本期間內無遊玩記錄",
       "noPlay": "未遊玩",
-      "less": "少",
-      "more": "多",
-      "summary": "過去一年活躍 {{days}} 天",
       "weekdays": {
         "sun": "日",
         "mon": "一",

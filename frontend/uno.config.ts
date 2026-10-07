@@ -595,5 +595,16 @@ export default defineConfig({
         900: "#0C181D",
       },
     },
+
+    // 主内容区的宽度上限。`max-w-8xl mx-auto` 写在 9 个页面/骨架里
+    // （library / game / stats / settings / downloads + 4 个 Skeleton），
+    // 但 presetWind3 只到 7xl（80rem），`8xl` 一直是**静默失效的死引用** ——
+    // 页面在超宽屏上被拉满、骨架与真实页面也永远对不齐。
+    //
+    // 取 96rem（1536px）：1920 窗口（侧栏展开 16rem + p-8）下可用宽度约 1600px，
+    // 只收 32px 左右，观感几乎不变；2560 / 3440 / 4K 上则把长行与过宽的网格收住。
+    maxWidth: {
+      "8xl": "96rem",
+    },
   },
 });
