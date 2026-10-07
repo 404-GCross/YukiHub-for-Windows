@@ -620,3 +620,70 @@ Windows 管理员启动模式、Wails beta.24 —— **本仓全部已具备**�
 | 1.13.3 抽屉定位异常 / 玻璃光晕 | 上游 1.13.2 引入的 UI 缺陷修复，本仓前端已重度分叉且未复现同类问题 |
 | 元数据来源下拉里给 NextMoe 加「推荐」字样 | 桌面端是**多选开关列表**而非单选下拉，已改为把 NextMoe 排到 VNDB 之后（对齐手机版次序），推荐语义写进来源说明文案 |
 | 手机版更新源单选（GitCode / GitHub） | 桌面端走 LunaBox 自己的 manifest 更新服务，机制不同，不适用 |
+
+## 十一、2026-10-07 第五轮：三条通道（账号云同步 / WebDAV / 本地备份）一致性复核
+
+用户诉求：确认「WebDAV 自持同步、账号服务器同步、本地 `.ykbak` 备份」导出与导入的
+是同一份东西，并继续跟进手机端。
+
+### 11.1 复核结论：导出侧三通道已经等价（本轮补上回归测试）
+
+三条通道共用同一份负载构造：账号云同步与 WebDAV 都走
+`buildYukiHubSnapshot` → `exporter.Build()`（云同步形态），本地 `.ykbak` 走
+`ExportToYukiHub` → `exporter.BuildLocalBackup()`（本地形态）。两者最终都调用
+`exporter.build(kind)`，**负载完全一致，只有信封字段不同**：
+
+| 字段 | 云同步 / WebDAV | 本地 `.ykbak` | 手机版依据 |
+| --- | --- | --- | --- |
+| `created_at` | `0` | 当前毫秒 | `SyncManager.buildLocalSnapshot` vs `MainActivity.exportLocalBackup` |
+| `note` | 云同步文案 | 本地备份文案 | 同上 |
+| `backup_type` | 省略 | `local_full` | 仅 `exportLocalBackup` 追加 |
+| 其余全部 | 相同 | 相同 | 同一个 `buildLocalSnapshot(30)` |
+
+三处也都注入了 `profile`（昵称 / 头像）与 `settings.metadata_source`，不存在
+「某条通道少带一段」的情况。
+
+**新增回归测试**：`internal/service/test/yukihub_export_test.go` 的
+`TestYukiHubThreeChannelsExportIdenticalPayload` —— 用真实库构造带别名 / 清零 /
+收藏 / 标签 / 元数据缓存 / 本地封面 / 无标题条目的数据，把两份快照的信封归一化后
+断言**逐字节相等**，并断言云同步形态不含 `backup_type`。以后谁在某条通道上单独加
+字段，这个测试会直接失败。
+
+### 11.2 已修：封面候选只取「首个非空」
+
+`firstNetworkURL(CoverSourceURL, CoverURL)` 的实现与自身文档不符：文档写「返回第一个
+http(s) 地址」，实现却返回**第一个非空**。若 `cover_source_url` 是本地路径
+（历史数据 / `content://`），后面那个有效的网络 `cover_url` 会被直接挤掉，导致封面
+明明有网络地址却不同步。现改为逐个候选做 `networkCoverURI` 校验，返回首个可跨设备
+的地址（`TestFirstNetworkURLPrefersUsableRemoteCover`）。
+
+### 11.3 已修：导入侧采纳快照里的全局资料源（对齐手机版）
+
+手机版 `SyncManager.importSnapshot` 读到 `settings.metadata_source` 会
+`putString(KEY_METADATA_SOURCE, source)`，即**导入侧采纳对端的全局资料源**；
+桌面端此前只导出不回写，于是：
+
+- 手机端把资料源改成 nextmoe → 同步到桌面端**不变**；
+- 桌面端下一次上传带上自己的旧值（如 vndb）→ **把手机端的设置顶回去**，来回翻。
+
+现在三条导入通道（账号同步 / WebDAV / 本地 `.ykbak`）都会采纳它：
+
+- 导入器 `YukiHubImporter` 新增 `MetadataSource()`，把快照声明的值原样透出（不碰配置）；
+- service 层 `resolveImportedMetadataSource()` 做决策：**白名单外 / 缺失 / 与当前一致
+  一律不动**。白名单 = `appconf.IsSelectableMetadataSource`，正好是手机版 importSnapshot
+  接受的那六个值（vndb / bangumi / bangumi_mirror / ymgal / hikarinagi / nextmoe）——
+  桌面端自己的 `IsSupportedMetadataSource` 更宽（含 steam / dlsite 等），不能直接用，
+  否则会把手机端不认识的来源当成跨端偏好写过去；
+- 变化时落盘 `appconf.SaveConfig` 并广播 `yukihub-sync:applied`，让前端刷新配置
+  （否则设置页草稿还是旧值，用户接着点「保存」会把它写回去）。
+
+测试：`importer/yukihub_test.go`（资料源透出、缺失时不造值）、
+`service/import_metadata_source_test.go`（白名单 + 采纳决策）。
+
+### 11.4 仍保留的差异（本轮复核后确认有意）
+
+| 项 | 说明 |
+| --- | --- |
+| 会话条数上限：手机全库 30 / 桌面每游戏 30 | 桌面总时长由会话求和，少导会让回导后时长缩水（§五） |
+| `settings` 段只写 `metadata_source` | 手机端的排序 / 缩放 / 扫描等属设备本地偏好，桌面端无对应概念；手机端用 `has()` 守卫，缺失即保留其原值，因此不写是安全的 |
+| 手机端 `buildLocalSnapshot` 会把 `settings` 写满十几个键 | 桌面端没有这些概念，写过去只会用桌面值覆盖手机偏好 |

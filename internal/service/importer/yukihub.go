@@ -31,6 +31,12 @@ var (
 
 type YukiHubImporter struct {
 	deps Dependencies
+	// metadataSource 是本次加载的快照里声明的 settings.metadata_source。
+	//
+	// 快照的 settings 段属于「跨端全局偏好」：手机版 importSnapshot 在导入时会
+	// 把它落回本地设置（`if (settings.has("metadata_source")) putString(...)`）。
+	// 导入器本身不碰配置，只把原样透出，由 service 层决定是否采纳。
+	metadataSource string
 }
 
 type parsedYukiHubMetadata struct {
@@ -44,12 +50,19 @@ func NewYukiHubImporter(deps Dependencies) *YukiHubImporter {
 	return &YukiHubImporter{deps: deps}
 }
 
+// MetadataSource 返回本次加载的快照声明的全局资料源（settings.metadata_source）。
+// 未加载 / 未声明时为空串。调用方应在 Import / ImportSelected 之后读取。
+func (y *YukiHubImporter) MetadataSource() string {
+	return y.metadataSource
+}
+
 func (y *YukiHubImporter) Preview(backupPath string) ([]PreviewGame, error) {
 	backup, err := loadYukiHubBackup(backupPath)
 	if err != nil {
 		applog.LogErrorf(y.deps.Ctx, "PreviewYukiHubImport: failed to load backup: %v", err)
 		return nil, err
 	}
+	y.metadataSource = backup.Settings.MetadataSource
 
 	existingGames, _, _, err := y.deps.existingGames("PreviewYukiHubImport")
 	if err != nil {
@@ -110,6 +123,7 @@ func (y *YukiHubImporter) ImportSelected(backupPath string, skipNoPath bool, sam
 		applog.LogErrorf(y.deps.Ctx, "ImportFromYukiHub: failed to load backup: %v", err)
 		return result, err
 	}
+	y.metadataSource = backup.Settings.MetadataSource
 
 	existingGames, existingNames, existingPaths, err := y.deps.existingGames("ImportFromYukiHub")
 	if err != nil {

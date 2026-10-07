@@ -469,7 +469,7 @@ func buildYukiHubGame(game models.Game, tags []string, sessions []models.PlaySes
 		// 优先用元数据来源的原始网络地址：本地封面可能只是桌面端的缓存文件，
 		// 对端拿不到；两者都不是 http(s) 时留空（omitempty 会省略该字段），
 		// 手机端便会保留自己已有的封面。
-		CoverUri:        networkCoverURI(firstNetworkURL(game.CoverSourceURL, game.CoverURL)),
+		CoverUri:        firstNetworkURL(game.CoverSourceURL, game.CoverURL),
 		CoverPersistUri: "",
 		CoverSourceType: 0,
 		Description:     game.Summary,
@@ -563,17 +563,22 @@ func mapGameStatusToYukiHub(status enums.GameStatus) string {
 	}
 }
 
-// networkCoverURI 只导出网络封面，本地封面文件跨设备无效（契约明确不迁移）。
-// firstNetworkURL 返回第一个 http(s) 地址，都没有则返回空串。
+// firstNetworkURL 返回首个**可跨设备使用**的网络封面地址（http/https），
+// 都没有则返回空串。调用方通常传 (cover_source_url, cover_url) 两个候选。
+//
+// 是「首个 http(s)」而不是「首个非空」：cover_source_url 在历史数据里可能落成
+// 本地路径（本地封面缓存 / content:// 之类），先取非空会把后面那个有效的网络
+// cover_url 直接挤掉，结果是封面明明有网络地址却被同步丢了。
 func firstNetworkURL(candidates ...string) string {
 	for _, candidate := range candidates {
-		if candidate = strings.TrimSpace(candidate); candidate != "" {
-			return candidate
+		if coverURL := networkCoverURI(candidate); coverURL != "" {
+			return coverURL
 		}
 	}
 	return ""
 }
 
+// networkCoverURI 只导出网络封面，本地封面文件跨设备无效（契约明确不迁移）。
 func networkCoverURI(coverURL string) string {
 	coverURL = strings.TrimSpace(coverURL)
 	if !strings.HasPrefix(coverURL, "http://") && !strings.HasPrefix(coverURL, "https://") {

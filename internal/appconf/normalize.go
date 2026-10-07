@@ -229,6 +229,18 @@ func NormalizeMetadataCoverSources(config *AppConfig) {
 // NormalizeCurrentMetadataSource 校验「当前资料源」，非法取值回落到默认 VNDB。
 //
 // 只认「可作为资料源开启」的那几个（allowedMetadataSourceSet，与设置页下拉一致）。
+// IsSelectableMetadataSource 判断某个资料源是否属于「当前资料源」的白名单。
+//
+// 这张表既是设置页给用户的可选项，也正好等于手机版 importSnapshot 落回
+// settings.metadata_source 时接受的那六个值（vndb / bangumi / bangumi_mirror /
+// ymgal / hikarinagi / nextmoe）。导入同步快照时用它校验，避免把桌面端独有的
+// 来源（steam / dlsite / touchgal / erogamescape）当成跨端全局偏好写进配置 ——
+// 那些值手机端根本不认识，写过去会被它忽略。
+func IsSelectableMetadataSource(source string) bool {
+	_, ok := allowedMetadataSourceSet[strings.ToLower(strings.TrimSpace(source))]
+	return ok
+}
+
 func NormalizeCurrentMetadataSource(config *AppConfig) bool {
 	if config == nil {
 		return false

@@ -483,3 +483,29 @@ func TestMetadataCacheCarriesMatchKeys(t *testing.T) {
 		}
 	}
 }
+
+// TestFirstNetworkURLPrefersUsableRemoteCover 钉住「首个 http(s)」而不是「首个非空」。
+//
+// 调用方传 (cover_source_url, cover_url)：cover_source_url 在历史数据里可能落成
+// 本地路径，若按「首个非空」取值，后面那个有效的网络地址就被挤掉，封面同步会丢。
+func TestFirstNetworkURLPrefersUsableRemoteCover(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name string
+		in   []string
+		want string
+	}{
+		{"两个都是网络地址取第一个", []string{"https://a/1.jpg", "https://b/2.jpg"}, "https://a/1.jpg"},
+		{"第一个为空时回退第二个", []string{"", "https://b/2.jpg"}, "https://b/2.jpg"},
+		{"本地路径不能挤掉网络地址", []string{`D:\covers\local.jpg`, "https://b/2.jpg"}, "https://b/2.jpg"},
+		{"content URI 同样跳过", []string{"content://media/1", "http://b/2.jpg"}, "http://b/2.jpg"},
+		{"都不可跨设备则留空", []string{"content://media/1", `D:\covers\local.jpg`}, ""},
+		{"全空", []string{"", ""}, ""},
+	}
+	for _, tc := range cases {
+		if got := firstNetworkURL(tc.in...); got != tc.want {
+			t.Errorf("%s: firstNetworkURL(%q) = %q, want %q", tc.name, tc.in, got, tc.want)
+		}
+	}
+}

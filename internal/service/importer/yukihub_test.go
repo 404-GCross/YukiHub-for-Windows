@@ -341,3 +341,57 @@ func writeYukiHubTestBackup(t *testing.T, backup yukihub.Backup, compressed bool
 	}
 	return path
 }
+
+// TestYukiHubImporterReportsSnapshotMetadataSource 快照里的 settings.metadata_source
+// 必须能被调用方读到。
+//
+// 手机版 SyncManager.importSnapshot 读到这个键会落回本地设置；桌面端 service 层
+// 同样要采纳（否则「手机端改了资料源」会被桌面端下次上传顶回去）。导入器本身不碰
+// 配置，只负责原样透出。
+func TestYukiHubImporterReportsSnapshotMetadataSource(t *testing.T) {
+	t.Parallel()
+
+	backup := yukihub.Backup{
+		App:      "YukiHub",
+		Schema:   5,
+		Settings: yukihub.BackupSettings{MetadataSource: "nextmoe"},
+	}
+	backupPath := writeYukiHubTestBackup(t, backup, true)
+
+	service := NewYukiHubImporter(Dependencies{
+		ListGames: func() ([]models.Game, error) { return nil, nil },
+		AddItems: func(items []ImportItem) (ImportResult, error) {
+			return ImportResult{Success: len(items)}, nil
+		},
+	})
+
+	if got := service.MetadataSource(); got != "" {
+		t.Errorf("加载前的 MetadataSource() = %q, want 空串", got)
+	}
+	if _, err := service.Import(backupPath, false, SamePathActionSyncMerge); err != nil {
+		t.Fatalf("Import: %v", err)
+	}
+	if got := service.MetadataSource(); got != "nextmoe" {
+		t.Errorf("MetadataSource() = %q, want nextmoe", got)
+	}
+}
+
+// TestYukiHubImporterReportsEmptyMetadataSource 快照没写 settings 段时不能凭空造值。
+func TestYukiHubImporterReportsEmptyMetadataSource(t *testing.T) {
+	t.Parallel()
+
+	backupPath := writeYukiHubTestBackup(t, yukihub.Backup{App: "YukiHub", Schema: 5}, false)
+
+	service := NewYukiHubImporter(Dependencies{
+		ListGames: func() ([]models.Game, error) { return nil, nil },
+		AddItems: func(items []ImportItem) (ImportResult, error) {
+			return ImportResult{Success: len(items)}, nil
+		},
+	})
+	if _, err := service.Import(backupPath, false, SamePathActionSyncMerge); err != nil {
+		t.Fatalf("Import: %v", err)
+	}
+	if got := service.MetadataSource(); got != "" {
+		t.Errorf("MetadataSource() = %q, want 空串", got)
+	}
+}
