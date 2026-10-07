@@ -77,6 +77,9 @@ const (
 	MinBigScreenTrailerDelayMs     = 300
 	MaxBigScreenTrailerDelayMs     = 5000
 	DefaultBigScreenPVScrimPercent = 45
+	DefaultBigScreenBannerHoldMs   = 2000
+	MinBigScreenBannerHoldMs       = 800
+	MaxBigScreenBannerHoldMs       = 6000
 )
 const DefaultUmbraBaseURL = "https://umbrae.cc"
 const ScheduledDBBackupModeInterval = "interval"
@@ -313,6 +316,12 @@ type AppConfig struct {
 	BigScreenPVFit           bool   `json:"bigscreen_pv_fit"`                     // 预告片显示方式：false=铺满裁切 / true=原比例留黑边，默认 false
 	BigScreenPVScrim         bool   `json:"bigscreen_pv_scrim"`                   // 预告片遮罩，默认 true
 	BigScreenPVScrimPercent  int    `json:"bigscreen_pv_scrim_percent"`           // 预告片遮罩强度（0-100），默认 45
+	BigScreenBannerHoldMs    int    `json:"bigscreen_banner_hold_ms"`             // 顶部提示条停留时长（毫秒），默认 2000
+	BigScreenSnowEnabled     bool   `json:"bigscreen_snow_enabled"`               // 背景氛围层（雪花 / 极光），默认 true
+	// 只在详情层播放预告片（对齐手机端 bigscreen_trailer_details_only，中性能档默认行为）
+	BigScreenTrailerDetailsOnly bool   `json:"bigscreen_trailer_details_only"`
+	BigScreenRememberFilter     bool   `json:"bigscreen_remember_filter"`         // 记住上次的分类筛选，默认 true
+	BigScreenLastCategory       string `json:"bigscreen_last_category,omitempty"` // 上次停留的分类（仅在记住筛选打开时写入）
 
 	// OverlayShortcut 是「呼出游戏内好友栏」的全局快捷键，accelerator 形式
 	// （如 "shift+`"）。空字符串表示用默认值（service.DefaultOverlayShortcut）；
@@ -475,6 +484,10 @@ func defaultAppConfig() *AppConfig {
 		BigScreenPVFit:              false,
 		BigScreenPVScrim:            true,
 		BigScreenPVScrimPercent:     DefaultBigScreenPVScrimPercent,
+		BigScreenBannerHoldMs:       DefaultBigScreenBannerHoldMs,
+		BigScreenSnowEnabled:        true,
+		BigScreenTrailerDetailsOnly: false,
+		BigScreenRememberFilter:     true,
 	}
 	return config
 }

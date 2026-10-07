@@ -113,7 +113,7 @@ export const BigScreenDetailsLayer = memo(
         onClick={onClose}
       >
         <div
-          className="grid w-full max-w-6xl grid-cols-[minmax(0,320px)_minmax(0,1fr)] items-start gap-10"
+          className="grid w-full max-w-5xl grid-cols-[minmax(0,260px)_minmax(0,1fr)] items-start gap-8"
           onClick={event => event.stopPropagation()}
         >
           <div className="relative aspect-[3/3.6] overflow-hidden rounded-2xl bg-brand-800 shadow-2xl">
@@ -132,7 +132,7 @@ export const BigScreenDetailsLayer = memo(
           </div>
 
           <div className="flex max-h-[70vh] min-h-0 flex-col">
-            <h2 className="text-5xl font-bold leading-tight text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.55)]">
+            <h2 className="text-4xl font-bold leading-tight text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.55)]">
               {game.name}
             </h2>
 
@@ -165,7 +165,7 @@ export const BigScreenDetailsLayer = memo(
             )}
 
             <div
-              className="mt-6 grid gap-4"
+              className="mt-5 grid gap-3"
               style={{
                 gridTemplateColumns: `repeat(${stats.length}, minmax(0, 1fr))`,
               }}

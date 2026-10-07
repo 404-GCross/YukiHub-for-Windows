@@ -189,14 +189,26 @@ func NormalizeGameCardLayout(layout string) string {
 	}
 }
 
+// bigScreenCategoryIDs 是大屏侧栏分类的白名单，与前端 `BIG_SCREEN_CATEGORIES` 对应。
+var bigScreenCategoryIDs = []string{
+	"all", "favorites", "recent", "playing", "completed", "unplayed",
+}
+
+func isKnownBigScreenCategory(category string) bool {
+	for _, known := range bigScreenCategoryIDs {
+		if category == known {
+			return true
+		}
+	}
+	return false
+}
+
 func NormalizeBigScreenDefaultCategory(category string) string {
 	trimmed := strings.TrimSpace(category)
-	switch trimmed {
-	case "all", "favorites", "recent", "playing", "completed", "unplayed":
+	if isKnownBigScreenCategory(trimmed) {
 		return trimmed
-	default:
-		return DefaultBigScreenDefaultCategory
 	}
+	return DefaultBigScreenDefaultCategory
 }
 
 func NormalizeBigScreenEffectLevel(level string) string {
@@ -252,6 +264,25 @@ func NormalizeBigScreenPVScrimPercent(percent int) int {
 	return clampInt(percent, 0, 100)
 }
 
+func NormalizeBigScreenBannerHoldMs(hold int) int {
+	return clampInt(hold, MinBigScreenBannerHoldMs, MaxBigScreenBannerHoldMs)
+}
+
+// NormalizeBigScreenLastCategory 收敛「上次停留的分类」。
+//
+// 与默认分类不同，这里**空串是合法值**（表示还没记住过），只有非空才走白名单；
+// 认不出来的值直接清空，免得大屏启动时按一个不存在的分类去查询。
+func NormalizeBigScreenLastCategory(category string) string {
+	trimmed := strings.TrimSpace(category)
+	if trimmed == "" {
+		return ""
+	}
+	if isKnownBigScreenCategory(trimmed) {
+		return trimmed
+	}
+	return ""
+}
+
 // NormalizeBigScreenPreferences 一次性收敛大屏模式的全部偏好。
 //
 // 数值项用夹取、枚举项用白名单：老配置缺字段时反序列化会保留默认值，
@@ -270,6 +301,8 @@ func NormalizeBigScreenPreferences(config *AppConfig) {
 	config.BigScreenSoundVolume = NormalizeBigScreenSoundVolume(config.BigScreenSoundVolume)
 	config.BigScreenTrailerDelayMs = NormalizeBigScreenTrailerDelayMs(config.BigScreenTrailerDelayMs)
 	config.BigScreenPVScrimPercent = NormalizeBigScreenPVScrimPercent(config.BigScreenPVScrimPercent)
+	config.BigScreenBannerHoldMs = NormalizeBigScreenBannerHoldMs(config.BigScreenBannerHoldMs)
+	config.BigScreenLastCategory = NormalizeBigScreenLastCategory(config.BigScreenLastCategory)
 }
 
 func clampInt(value, low, high int) int {

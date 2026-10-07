@@ -163,3 +163,45 @@ func TestNormalizeBigScreenPreferences(t *testing.T) {
 func TestNormalizeBigScreenPreferencesNilSafe(t *testing.T) {
 	NormalizeBigScreenPreferences(nil)
 }
+
+// 本轮新增的四项偏好：默认值必须与手机端 BigScreenPrefs 对齐，
+// 归一化要能夹住越界数值、清掉认不出的「上次分类」。
+func TestNormalizeBigScreenExtras(t *testing.T) {
+	config := defaultAppConfig()
+	if config.BigScreenBannerHoldMs != DefaultBigScreenBannerHoldMs {
+		t.Errorf("banner_hold_ms 默认值 = %d, want %d", config.BigScreenBannerHoldMs, DefaultBigScreenBannerHoldMs)
+	}
+	if !config.BigScreenSnowEnabled {
+		t.Error("snow_enabled 默认应为 true")
+	}
+	if config.BigScreenTrailerDetailsOnly {
+		t.Error("trailer_details_only 默认应为 false")
+	}
+	if !config.BigScreenRememberFilter {
+		t.Error("remember_filter 默认应为 true")
+	}
+
+	config.BigScreenBannerHoldMs = 99999
+	config.BigScreenLastCategory = "not-a-category"
+	NormalizeBigScreenPreferences(config)
+	if config.BigScreenBannerHoldMs != MaxBigScreenBannerHoldMs {
+		t.Errorf("banner_hold_ms 夹取 = %d, want %d", config.BigScreenBannerHoldMs, MaxBigScreenBannerHoldMs)
+	}
+	if config.BigScreenLastCategory != "" {
+		t.Errorf("认不出的 last_category 应被清空，得到 %q", config.BigScreenLastCategory)
+	}
+
+	// 合法分类原样保留
+	for _, category := range []string{"all", "favorites", "recent", "playing", "completed", "unplayed"} {
+		if got := NormalizeBigScreenLastCategory(category); got != category {
+			t.Errorf("NormalizeBigScreenLastCategory(%q) = %q, want 原值", category, got)
+		}
+	}
+	// 空串是合法值（表示"还没记住过"），不能回落成默认分类
+	if got := NormalizeBigScreenLastCategory("   "); got != "" {
+		t.Errorf("空白 last_category 应为空串，得到 %q", got)
+	}
+	if got := NormalizeBigScreenLastCategory("Recent"); got != "" {
+		t.Errorf("大小写不符的 last_category 应清空，得到 %q", got)
+	}
+}

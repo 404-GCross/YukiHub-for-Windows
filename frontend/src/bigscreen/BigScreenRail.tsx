@@ -42,7 +42,7 @@ export const BigScreenRail = memo(
       // 对齐手机端 `bsRail`（固定 72dp + `elevation=10dp`，展开靠叠放层实现），
       // 这样焦点进出侧栏、鼠标划过侧栏都不会让整排卡片左右跳。
       <nav
-        className="absolute inset-y-0 left-0 z-30 flex flex-col gap-1.5 overflow-hidden border-r border-white/8 bg-brand-900/60 py-6 backdrop-blur-sm transition-[width] duration-[220ms] ease-out"
+        className="absolute inset-y-0 left-0 z-30 flex flex-col gap-1 overflow-hidden border-r border-white/8 bg-brand-900/60 py-5 backdrop-blur-sm transition-[width] duration-[220ms] ease-out"
         style={{
           width: expanded
             ? BIG_SCREEN_RAIL_EXPANDED_WIDTH
@@ -61,7 +61,7 @@ export const BigScreenRail = memo(
               type="button"
               title={label}
               aria-current={isActive ? "true" : undefined}
-              className={`mx-2 flex h-11 shrink-0 items-center gap-3 rounded-xl px-3 text-left transition-colors duration-150 ${
+              className={`mx-1.5 flex h-10 shrink-0 items-center gap-2.5 rounded-lg px-2.5 text-left transition-colors duration-150 ${
                 entryAnimation ? "animate-bigscreen-enter" : ""
               } ${
                 isActive
@@ -81,7 +81,7 @@ export const BigScreenRail = memo(
               onMouseEnter={() => onFocusIndexChange(index)}
             >
               <span
-                className={`${category.icon} shrink-0 text-xl`}
+                className={`${category.icon} shrink-0 text-lg`}
                 aria-hidden="true"
               />
               {expanded && (

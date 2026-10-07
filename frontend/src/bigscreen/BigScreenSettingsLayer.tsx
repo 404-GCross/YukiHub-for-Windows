@@ -69,10 +69,21 @@ export const BigScreenSettingsLayer = forwardRef<
     if (!setting) {
       return;
     }
+    if (setting.kind === "action") {
+      // 动作类（清除筛选记忆 / 恢复默认设置）直接执行，回调里自己保证安全性
+      setting.run?.();
+      return;
+    }
     if (setting.kind === "switch") {
       // 布尔项就地翻转，不必再开一层浮层
-      const current = setting.read(config);
-      onChange(setting.write(config, current === "true" ? "false" : "true"));
+      const current = setting.read?.(config) ?? "false";
+      const next = setting.write?.(
+        config,
+        current === "true" ? "false" : "true",
+      );
+      if (next) {
+        onChange(next);
+      }
       return;
     }
     onOpenChoices(sectionIndex, itemIndex);
@@ -118,14 +129,14 @@ export const BigScreenSettingsLayer = forwardRef<
     <div className="absolute inset-0 z-50 flex flex-col bg-brand-950/92 backdrop-blur-xl">
       <div className="pointer-events-none absolute inset-0" onClick={onClose} />
 
-      <div className="relative mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col px-10 pt-12">
-        <h2 className="mb-6 shrink-0 text-3xl font-bold text-white">
+      <div className="relative mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col px-8 pt-10">
+        <h2 className="mb-5 shrink-0 text-2xl font-bold text-white">
           {t("bigScreen.settingsTitle")}
         </h2>
 
-        <div className="flex min-h-0 flex-1 gap-8">
+        <div className="flex min-h-0 flex-1 gap-6">
           {/* 左列：分区 */}
-          <div className="w-56 shrink-0 space-y-1">
+          <div className="w-48 shrink-0 space-y-1">
             {sections.map((entry, index) => {
               const isActive = index === sectionIndex;
               const isFocused = column === "section" && isActive;
@@ -142,7 +153,7 @@ export const BigScreenSettingsLayer = forwardRef<
                     setColumn("section");
                     setSectionIndex(index);
                   }}
-                  className={`w-full rounded-xl px-4 py-3 text-left text-sm font-medium transition-all duration-150 ${
+                  className={`w-full rounded-xl px-3.5 py-2.5 text-left text-sm font-medium transition-all duration-150 ${
                     isFocused
                       ? "translate-x-1 bg-white/12 text-white ring-2 ring-secondary-500"
                       : isActive
@@ -179,7 +190,7 @@ export const BigScreenSettingsLayer = forwardRef<
                     setColumn("item");
                     setItemIndex(index);
                   }}
-                  className={`mb-1 flex w-full items-center justify-between gap-6 rounded-xl px-4 py-3 text-left transition-all duration-150 ${
+                  className={`mb-1 flex w-full items-center justify-between gap-6 rounded-xl px-3.5 py-2.5 text-left transition-all duration-150 ${
                     isFocused
                       ? "bg-white/12 ring-2 ring-secondary-500"
                       : "hover:bg-white/6"
@@ -206,7 +217,7 @@ export const BigScreenSettingsLayer = forwardRef<
         </div>
       </div>
 
-      <div className="relative shrink-0 px-10 pb-6 pt-3 text-xs text-brand-500">
+      <div className="relative shrink-0 px-8 pb-5 pt-3 text-xs text-brand-500">
         {t("bigScreen.settingsHint")}
       </div>
     </div>

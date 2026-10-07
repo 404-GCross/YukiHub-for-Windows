@@ -106,7 +106,7 @@ export const BigScreenPanel = memo(
         <div
           role="menu"
           aria-label={title}
-          className="absolute right-14 top-1/2 flex max-h-[86vh] w-[min(420px,34vw)] -translate-y-1/2 animate-bigscreen-panel-in flex-col overflow-hidden rounded-2xl border border-white/12 bg-brand-900/94 shadow-2xl backdrop-blur-xl"
+          className="absolute right-10 top-1/2 flex max-h-[86vh] w-[min(360px,30vw)] -translate-y-1/2 animate-bigscreen-panel-in flex-col overflow-hidden rounded-2xl border border-white/12 bg-brand-900/94 shadow-2xl backdrop-blur-xl"
         >
           <div className="px-6 pb-2 pt-5 text-[11px] font-medium uppercase tracking-[0.18em] text-brand-500">
             {title}
@@ -133,7 +133,7 @@ export const BigScreenPanel = memo(
                   }}
                   type="button"
                   role="menuitem"
-                  className={`mx-1 my-0.5 flex min-h-13 w-[calc(100%-0.5rem)] items-center gap-3 rounded-xl px-3.5 py-2 text-left transition-all duration-150 ${
+                  className={`mx-1 my-0.5 flex min-h-11 w-[calc(100%-0.5rem)] items-center gap-2.5 rounded-lg px-3 py-2 text-left transition-all duration-150 ${
                     isFocused
                       ? "scale-[1.02] bg-white/12 ring-2 ring-secondary-500"
                       : "hover:bg-white/6"

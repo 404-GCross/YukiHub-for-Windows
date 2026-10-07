@@ -1,6 +1,8 @@
 import type { appconf } from "../../../src/bindings/models";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { BIG_SCREEN_CATEGORIES } from "../../bigscreen/categories";
+import { BIG_SCREEN_DEFAULT_CONFIG } from "../../bigscreen/constants";
 import { createBigScreenSettingSections } from "../../bigscreen/settingsSchema";
 import { BetterSelect } from "../ui/better/BetterSelect";
 import { BetterSwitch } from "../ui/better/BetterSwitch";
@@ -16,13 +18,33 @@ interface BigScreenSettingsProps {
  * 条目来自 `bigscreen/settingsSchema` —— 与**大屏内的设置面板**（按 ☰ → 设置，
  * 对齐手机端 `BigScreenSettings`）共用同一份 schema，所以两处的可调项永远一致，
  * 新增一项不会只改了一边。这里用设置页惯用的 BetterSelect / BetterSwitch 渲染。
+ *
+ * 设置页是**草稿模式**：动作类条目（清除筛选记忆 / 恢复默认设置）就地改 `formData`，
+ * 由用户点「保存」才真正落盘；大屏内面板则是即时生效。
  */
 export function BigScreenSettingsPanel({
   formData,
   onChange,
 }: BigScreenSettingsProps) {
   const { t } = useTranslation();
-  const sections = useMemo(() => createBigScreenSettingSections(t), [t]);
+  const sections = useMemo(
+    () =>
+      createBigScreenSettingSections(t, {
+        clearFilterMemory: () =>
+          onChange({ ...formData, bigscreen_last_category: "" }),
+        filterMemoryLabel: (() => {
+          const id = formData.bigscreen_last_category;
+          if (!id) {
+            return "";
+          }
+          const category = BIG_SCREEN_CATEGORIES.find(item => item.id === id);
+          return category ? t(category.labelKey) : "";
+        })(),
+        resetDefaults: () =>
+          onChange({ ...formData, ...BIG_SCREEN_DEFAULT_CONFIG }),
+      }),
+    [formData, onChange, t],
+  );
 
   return (
     <div className="space-y-6">
@@ -33,7 +55,27 @@ export function BigScreenSettingsPanel({
           </h4>
 
           {section.settings.map((setting) => {
-            const current = setting.read(formData);
+            const current = setting.read?.(formData) ?? "";
+
+            if (setting.kind === "action") {
+              return (
+                <div
+                  key={setting.id}
+                  className="flex items-center justify-between gap-4"
+                >
+                  <span className="flex-1 text-sm font-medium text-brand-700 dark:text-brand-300">
+                    {setting.label}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setting.run?.()}
+                    className="shrink-0 rounded-lg border border-brand-300 px-3 py-1.5 text-sm font-medium text-brand-700 transition-colors hover:border-brand-400 hover:text-brand-900 dark:border-brand-600 dark:text-brand-200 dark:hover:border-brand-500 dark:hover:text-white"
+                  >
+                    {setting.valueText || setting.label}
+                  </button>
+                </div>
+              );
+            }
 
             if (setting.kind === "switch") {
               return (
@@ -52,7 +94,8 @@ export function BigScreenSettingsPanel({
                     checked={current === "true"}
                     onCheckedChange={checked =>
                       onChange(
-                        setting.write(formData, checked ? "true" : "false"),
+                        setting.write?.(formData, checked ? "true" : "false")
+                        ?? formData,
                       )}
                   />
                 </div>
@@ -66,7 +109,8 @@ export function BigScreenSettingsPanel({
                 </label>
                 <BetterSelect
                   value={current}
-                  onChange={value => onChange(setting.write(formData, value))}
+                  onChange={value =>
+                    onChange(setting.write?.(formData, value) ?? formData)}
                   options={(setting.choices ?? []).map(choice => ({
                     label: choice.label,
                     value: choice.value,

@@ -1,4 +1,5 @@
 import type { models } from "../../src/bindings/models";
+import type { BigScreenBannerMessage } from "../bigscreen/BigScreenBanner";
 import type { BigScreenDetailAction } from "../bigscreen/BigScreenDetailsLayer";
 import type { BigScreenHintMode } from "../bigscreen/BigScreenHintBar";
 import type { BigScreenAction } from "../bigscreen/BigScreenInfoBar";
@@ -43,6 +44,7 @@ import {
 import { enums } from "../../src/bindings/models";
 import { BigScreenAtmosphere } from "../bigscreen/BigScreenAtmosphere";
 import { BigScreenBackground } from "../bigscreen/BigScreenBackground";
+import { BigScreenBanner } from "../bigscreen/BigScreenBanner";
 import { BigScreenDetailsLayer } from "../bigscreen/BigScreenDetailsLayer";
 import { BigScreenHintBar } from "../bigscreen/BigScreenHintBar";
 import { BigScreenInfoBar } from "../bigscreen/BigScreenInfoBar";
@@ -67,6 +69,7 @@ import {
 } from "../bigscreen/categories";
 import {
   BIG_SCREEN_ACTIONS_ZONE,
+  BIG_SCREEN_DEFAULT_CONFIG,
   BIG_SCREEN_DETAILS_ZONE,
   BIG_SCREEN_EXIT_PATH,
   BIG_SCREEN_FOCUS_ORDER,
@@ -118,6 +121,7 @@ const STATUS_CYCLE: enums.GameStatus[] = [
 
 /** 与 Go 侧默认值保持一致：config 还没加载出来时用它们兜底 */
 const CONFIG_FALLBACK = {
+  bannerHoldMs: 2000,
   cardScale: 112,
   focusScale: 100,
   pvScrimPercent: 45,
@@ -129,6 +133,7 @@ const CONFIG_FALLBACK = {
 type PanelKind
   = | "confirm-delete"
     | "confirm-hide"
+    | "confirm-reset"
     | "game"
     | "hidden"
     | "main"
@@ -191,9 +196,18 @@ function BigScreenPage() {
   const pvScrim = config?.bigscreen_pv_scrim ?? true;
   const pvScrimPercent
     = config?.bigscreen_pv_scrim_percent ?? CONFIG_FALLBACK.pvScrimPercent;
+  const bannerHoldMs
+    = config?.bigscreen_banner_hold_ms ?? CONFIG_FALLBACK.bannerHoldMs;
+  const snowEnabled = config?.bigscreen_snow_enabled ?? true;
+  const trailerDetailsOnly = config?.bigscreen_trailer_details_only ?? false;
+  const rememberFilter = config?.bigscreen_remember_filter ?? true;
 
   const defaults = useAppStore(
     state => state.config?.bigscreen_default_category,
+  );
+  /** 上次退出大屏时停留的分类（仅在「记住筛选」打开时写入） */
+  const lastCategory = useAppStore(
+    state => state.config?.bigscreen_last_category,
   );
 
   const [activeCategory, setActiveCategory] = useState<BigScreenCategoryId>(
@@ -227,9 +241,19 @@ function BigScreenPage() {
     itemIndex: number;
     sectionIndex: number;
   } | null>(null);
+  /** 顶部提示条：message.id 变化即视为新消息（动画重播） */
+  const [banner, setBanner] = useState<BigScreenBannerMessage | null>(null);
 
   const shelfAreaRef = useRef<HTMLDivElement | null>(null);
   const restoredCategoryRef = useRef<BigScreenCategoryId | null>(null);
+  /** 当前货架下标的实时镜像：切分类时要把它记进该分类的记忆里 */
+  const shelfIndexRef = useRef(0);
+  /**
+   * 每个分类各自记住上次选中的卡片（对齐手机端 `FocusEngine.setMemoryKey` ——
+   * 以筛选 id 为记忆键）。桌面端比手机端更依赖它：一屏能放好几张卡，
+   * 来回切分类后又要从第一张重新找非常烦。
+   */
+  const shelfMemoryRef = useRef<Map<BigScreenCategoryId, number>>(new Map());
   // 「默认分类」只在配置真正可读之后应用一次，避免配置异步到达时被忽略
   const appliedDefaultCategoryRef = useRef(false);
   const settingsRef = useRef<BigScreenSettingsLayerHandle | null>(null);
@@ -239,11 +263,6 @@ function BigScreenPage() {
   >(() => false);
 
   useBigScreenFullscreen();
-
-  const settingsSections = useMemo(
-    () => createBigScreenSettingSections(t),
-    [t],
-  );
 
   /** 当前排序方式的显示文案（写成字面量 t() 调用，i18n 提取器才看得到） */
   const sortLabel
@@ -268,15 +287,21 @@ function BigScreenPage() {
 
   const excludeHidden = !showHiddenGame;
 
-  // 默认分类：配置是异步读进来的，首帧可能还没有值，读到了再应用一次
+  // 进入时决定初始分类：配置是异步读进来的，首帧可能还没有值，读到再应用一次。
+  // 「记住筛选」打开时优先恢复上次的分类（对齐手机端 prefs.lastFilter），
+  // 否则退回「默认分类」设置项。
   useEffect(() => {
-    if (appliedDefaultCategoryRef.current || !defaults) {
+    if (appliedDefaultCategoryRef.current) {
+      return;
+    }
+    const target = (rememberFilter ? lastCategory : "") || defaults;
+    if (!target) {
       return;
     }
     appliedDefaultCategoryRef.current = true;
     // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
-    setActiveCategory(normalizeCategoryId(defaults));
-  }, [defaults]);
+    setActiveCategory(normalizeCategoryId(target));
+  }, [defaults, lastCategory, rememberFilter]);
 
   useEffect(() => {
     let active = true;
@@ -433,6 +458,54 @@ function BigScreenPage() {
   const panelOpen = panelKind !== null;
   const overlayOpen = panelOpen || settingsOpen;
 
+  const closePanel = useCallback(() => {
+    setPanelKind(null);
+    setPanelGame(null);
+    setSettingTarget(null);
+  }, []);
+
+  const openPanel = useCallback((kind: PanelKind, game?: models.Game) => {
+    setPanelGame(game ?? null);
+    setPanelKind(kind);
+    setPanelIndex(0);
+  }, []);
+
+  /** 顶部提示条的递增 id：每换一条消息都换一个，动画才会重播 */
+  const bannerIdRef = useRef(0);
+  const showBanner = useCallback((text: string, icon?: string) => {
+    bannerIdRef.current += 1;
+    // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
+    setBanner({ icon, id: bannerIdRef.current, text });
+  }, []);
+
+  /** 清除「记住筛选」的残留：内存里的分类焦点记忆 + 配置里的上次分类 */
+  const clearFilterMemory = useCallback(() => {
+    shelfMemoryRef.current.clear();
+    void patchLiveConfig({ bigscreen_last_category: "" });
+    showBanner(t("bigScreen.filterMemoryCleared"));
+  }, [patchLiveConfig, showBanner, t]);
+
+  const activeCategoryIndex = BIG_SCREEN_CATEGORIES.findIndex(
+    category => category.id === activeCategory,
+  );
+  const activeCategoryLabelKey
+    = activeCategoryIndex >= 0
+      ? BIG_SCREEN_CATEGORIES[activeCategoryIndex].labelKey
+      : "";
+  const activeCategoryLabel = t(activeCategoryLabelKey);
+
+  // 设置项 schema 由设置页与大屏内面板共用；动作类条目把宿主回调注进去
+  const settingsSections = useMemo(
+    () =>
+      createBigScreenSettingSections(t, {
+        clearFilterMemory,
+        filterMemoryLabel: activeCategoryLabel,
+        // 恢复默认是破坏性操作，先走二次确认面板（对齐手机端的 AlertDialog）
+        resetDefaults: () => openPanel("confirm-reset"),
+      }),
+    [activeCategoryLabel, clearFilterMemory, openPanel, t],
+  );
+
   const panelItems = useMemo<BigScreenPanelItem[]>(() => {
     switch (panelKind) {
       case "game": {
@@ -584,6 +657,17 @@ function BigScreenPage() {
           },
         ];
       }
+      case "confirm-reset": {
+        return [
+          { key: "cancel", label: t("common.cancel") },
+          {
+            icon: "i-mdi-restore",
+            key: "confirm",
+            label: t("bigScreen.confirmResetDefaults"),
+            sub: t("bigScreen.resetDefaultsHint"),
+          },
+        ];
+      }
       case "setting-choices": {
         const setting = settingTarget
           ? settingsSections[settingTarget.sectionIndex]?.settings[
@@ -593,7 +677,7 @@ function BigScreenPage() {
         if (!setting?.choices || !config) {
           return [];
         }
-        const current = setting.read(config);
+        const current = setting.read?.(config) ?? "";
         return setting.choices.map(choice => ({
           key: `choice:${choice.value}`,
           label: `${choice.value === current ? "✓ " : "　"}${choice.label}`,
@@ -629,7 +713,8 @@ function BigScreenPage() {
         return t("bigScreen.hiddenGames");
       }
       case "confirm-hide":
-      case "confirm-delete": {
+      case "confirm-delete":
+      case "confirm-reset": {
         return t("bigScreen.confirmTitle");
       }
       case "setting-choices": {
@@ -655,13 +740,6 @@ function BigScreenPage() {
     });
   }, [keyStyle, t]);
 
-  const activeCategoryIndex = BIG_SCREEN_CATEGORIES.findIndex(
-    category => category.id === activeCategory,
-  );
-  const activeCategoryLabelKey
-    = activeCategoryIndex >= 0
-      ? BIG_SCREEN_CATEGORIES[activeCategoryIndex].labelKey
-      : "";
   const safeShelfIndex = Math.min(shelfIndex, Math.max(0, games.length - 1));
   const focusedGame = games[safeShelfIndex];
   const { isFavorite, setFavorite } = useGameFavorite(focusedGame?.id);
@@ -695,12 +773,13 @@ function BigScreenPage() {
     [detailActionCount, detailsOpen, games.length],
   );
 
-  // 背景预告片：偏好关掉 / 低档 / 浮层打开时都不起播
+  // 背景预告片：偏好关掉 / 低档 / 仅详情层 / 浮层打开时都不起播
   const backgroundTrailerActive = useTrailerHover(
     focusedGame?.id,
     focusedGame?.trailer_path,
     trailerEnabled
     && effectLevel !== "off"
+    && !trailerDetailsOnly
     && !overlayOpen
     && !detailsOpen
     && !trailerOpen,
@@ -718,18 +797,6 @@ function BigScreenPage() {
   const refreshAfterMutation = useCallback(() => {
     invalidateAllGameLists();
     setReloadToken(token => token + 1);
-  }, []);
-
-  const closePanel = useCallback(() => {
-    setPanelKind(null);
-    setPanelGame(null);
-    setSettingTarget(null);
-  }, []);
-
-  const openPanel = useCallback((kind: PanelKind, game?: models.Game) => {
-    setPanelGame(game ?? null);
-    setPanelKind(kind);
-    setPanelIndex(0);
   }, []);
 
   // 面板换种类时把焦点拉回第一个可选项（避免沿用上一份列表的下标）
@@ -756,6 +823,8 @@ function BigScreenPage() {
       if (next === activeCategory) {
         return;
       }
+      // 离开当前分类前，把它选中的卡片位置记下来（切回来时复原）
+      shelfMemoryRef.current.set(activeCategory, shelfIndexRef.current);
       setActiveCategory(next);
       setShelfIndex(0);
     },
@@ -774,27 +843,24 @@ function BigScreenPage() {
   const handleBoundary = useCallback(
     (zoneId: string, direction: FocusDirection) => {
       if (zoneId === BIG_SCREEN_RAIL_ZONE) {
-        if (direction === "left" || direction === "right") {
-          stepCategory(direction === "right" ? 1 : -1);
-          return true;
-        }
-        if (direction === "down") {
+        // 侧栏里 ↑↓ 由引擎在分类之间移动焦点（每行 1 项），这里只管边界：
+        // → 回货架、← 吞掉。**不再用 ←/→ 切分类** —— 那会只改 activeCategory
+        // 而焦点下标不动，两者脱节（手机端侧栏也是 ← 不处理、→ 回内容区）。
+        if (direction === "right" && games.length > 0) {
           focus(BIG_SCREEN_SHELF_ZONE, safeShelfIndex);
-          return true;
         }
         return true;
       }
 
-      if (zoneId === BIG_SCREEN_SHELF_ZONE) {
-        if (direction === "left" || direction === "up") {
-          focus(BIG_SCREEN_RAIL_ZONE, activeCategoryIndex);
-          return true;
-        }
+      if (zoneId === BIG_SCREEN_SHELF_ZONE && direction === "left") {
+        // 卡片排最左边再往左 = 进分类栏（对齐手机端 DIR_LEFT 且 col==0）
+        focus(BIG_SCREEN_RAIL_ZONE, activeCategoryIndex);
+        return true;
       }
 
       return false;
     },
-    [activeCategoryIndex, focus, safeShelfIndex, stepCategory],
+    [activeCategoryIndex, focus, games.length, safeShelfIndex],
   );
 
   useEffect(() => {
@@ -816,15 +882,17 @@ function BigScreenPage() {
     );
   }, [detailsOpen, focus, safeShelfIndex]);
 
-  // 分类切换后回到该分类的第一张（对齐手机端：筛选变化即重置焦点）
+  // 新分类的数据到位后，恢复该分类上次选中的卡片（没有记忆就回第一张）
   useEffect(() => {
     if (games.length === 0 || restoredCategoryRef.current === activeCategory) {
       return;
     }
     restoredCategoryRef.current = activeCategory;
+    const saved = shelfMemoryRef.current.get(activeCategory) ?? 0;
+    const next = Math.min(Math.max(saved, 0), Math.max(0, games.length - 1));
     // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
-    setShelfIndex(0);
-    focus(BIG_SCREEN_SHELF_ZONE, 0);
+    setShelfIndex(next);
+    focus(BIG_SCREEN_SHELF_ZONE, next);
   }, [activeCategory, focus, games.length]);
 
   // 焦点进入侧栏后仍要保留「当前选中的游戏」，所以单独记一份货架下标。
@@ -834,6 +902,12 @@ function BigScreenPage() {
       setShelfIndex(position.index);
     }
   }, [position]);
+
+  // 给「切分类时保存记忆」提供实时下标（不能在 selectCategory 里直接依赖 shelfIndex，
+  // 否则每次焦点移动都会重建那个回调）。
+  useEffect(() => {
+    shelfIndexRef.current = shelfIndex;
+  }, [shelfIndex]);
 
   // ===== 动作 =====
   const handleStartGame = useCallback(
@@ -906,6 +980,7 @@ function BigScreenPage() {
             setFavorite(false);
           }
           toast.success(t("bigScreen.favoriteRemoved"));
+          showBanner(t("bigScreen.favoriteRemoved"), "i-mdi-heart-outline");
           // 在「收藏」分类里取消收藏需要即时刷新列表
           if (activeCategory === "favorites") {
             refreshAfterMutation();
@@ -919,6 +994,7 @@ function BigScreenPage() {
           setFavorite(true);
         }
         toast.success(t("bigScreen.favoriteAdded"));
+        showBanner(t("bigScreen.favoriteAdded"), "i-mdi-heart");
       }
       catch (error) {
         console.error("Failed to toggle big screen favorite:", error);
@@ -931,6 +1007,7 @@ function BigScreenPage() {
       focusedGame,
       refreshAfterMutation,
       setFavorite,
+      showBanner,
       t,
     ],
   );
@@ -1063,13 +1140,25 @@ function BigScreenPage() {
     const nextIndex
       = (BIG_SCREEN_SORT_MODES.indexOf(sortMode) + 1)
         % BIG_SCREEN_SORT_MODES.length;
-    setSortMode(BIG_SCREEN_SORT_MODES[nextIndex]);
+    const next = BIG_SCREEN_SORT_MODES[nextIndex];
+    setSortMode(next);
     setShelfIndex(0);
-  }, [sortMode]);
+    const label
+      = next === "name"
+        ? t("bigScreen.sortName")
+        : next === "newest"
+          ? t("bigScreen.sortNewest")
+          : t("bigScreen.sortRecent");
+    showBanner(t("bigScreen.sortChanged", { sort: label }), "i-mdi-sort");
+  }, [showBanner, sortMode, t]);
 
   const exitBigScreen = useCallback(() => {
+    // 「记住筛选」打开时把当前分类存下来，下次进大屏直接回到这里
+    if (rememberFilter) {
+      void patchLiveConfig({ bigscreen_last_category: activeCategory });
+    }
     void navigate({ to: BIG_SCREEN_EXIT_PATH });
-  }, [navigate]);
+  }, [activeCategory, navigate, patchLiveConfig, rememberFilter]);
 
   const playSound = useCallback(
     (kind: BigScreenSound) => {
@@ -1077,7 +1166,7 @@ function BigScreenPage() {
         return;
       }
       // 焦点移动音可以单独关掉（手机端的「焦点音」开关）
-      if (kind === "move" && !focusTicks) {
+      if (kind === "focus" && !focusTicks) {
         return;
       }
       playBigScreenSound(kind, soundVolume / 100);
@@ -1115,6 +1204,19 @@ function BigScreenPage() {
         }
         if (kind === "confirm-delete") {
           void handleDeleteGame(panelGame);
+          return;
+        }
+        if (kind === "confirm-reset") {
+          // 恢复大屏默认设置：只重置 bigscreen_* 自身，主库设置不受影响
+          void patchLiveConfig(BIG_SCREEN_DEFAULT_CONFIG);
+          setSortMode("recent");
+          setActiveCategory(
+            normalizeCategoryId(
+              BIG_SCREEN_DEFAULT_CONFIG.bigscreen_default_category,
+            ),
+          );
+          shelfMemoryRef.current.clear();
+          showBanner(t("bigScreen.defaultsRestored"));
         }
         return;
       }
@@ -1133,7 +1235,7 @@ function BigScreenPage() {
           ]
           : undefined;
         closePanel();
-        if (setting && config) {
+        if (setting && config && setting.write) {
           void patchLiveConfig(
             setting.write(config, value) as Partial<NonNullable<typeof config>>,
           );
@@ -1254,6 +1356,7 @@ function BigScreenPage() {
       patchLiveConfig,
       settingTarget,
       settingsSections,
+      showBanner,
       t,
     ],
   );
@@ -1289,6 +1392,7 @@ function BigScreenPage() {
           if (
             panelKind === "confirm-hide"
             || panelKind === "confirm-delete"
+            || panelKind === "confirm-reset"
             || panelKind === "setting-choices"
           ) {
             closePanel();
@@ -1453,7 +1557,15 @@ function BigScreenPage() {
         }
         case "confirm": {
           if (position.zoneId === BIG_SCREEN_RAIL_ZONE) {
-            focus(BIG_SCREEN_SHELF_ZONE, safeShelfIndex);
+            // 侧栏里 Ⓐ = 应用当前聚焦的分类，然后回货架（对齐手机端 setRailZone(false)）。
+            // 之前这里只是回货架，分类根本没切 —— 键盘/手柄用户选不了分类。
+            const next = BIG_SCREEN_CATEGORIES[position.index];
+            if (next) {
+              selectCategory(next.id);
+            }
+            if (games.length > 0) {
+              focus(BIG_SCREEN_SHELF_ZONE, 0);
+            }
             return;
           }
           if (position.zoneId === BIG_SCREEN_ACTIONS_ZONE) {
@@ -1477,6 +1589,10 @@ function BigScreenPage() {
         }
         case "details": {
           handleOpenDetails(focusedGame);
+          return;
+        }
+        case "menu": {
+          openPanel("main");
         }
       }
     },
@@ -1485,13 +1601,15 @@ function BigScreenPage() {
       exitBigScreen,
       focus,
       focusedGame,
+      games.length,
       handleOpenDetails,
       handleStartGame,
       handleToggleFavorite,
       move,
+      openPanel,
       position.index,
       position.zoneId,
-      safeShelfIndex,
+      selectCategory,
       stepCategory,
     ],
   );
@@ -1513,9 +1631,9 @@ function BigScreenPage() {
       if (panelOpen) {
         playSound(
           intent.type === "back"
-            ? "back"
+            ? "open"
             : intent.type === "move"
-              ? "move"
+              ? "focus"
               : "confirm",
         );
         handlePanelIntent(intent);
@@ -1523,7 +1641,7 @@ function BigScreenPage() {
       }
 
       if (settingsOpen) {
-        playSound(intent.type === "move" ? "move" : "confirm");
+        playSound(intent.type === "move" ? "focus" : "confirm");
         const consumed = settingsRef.current?.handleIntent(intent) ?? false;
         if (!consumed && intent.type === "move") {
           move(intent.direction);
@@ -1533,7 +1651,7 @@ function BigScreenPage() {
 
       if (trailerOpen) {
         if (intent.type === "back") {
-          playSound("back");
+          playSound("open");
           setTrailerOpen(false);
         }
         return;
@@ -1542,9 +1660,9 @@ function BigScreenPage() {
       if (detailsOpen) {
         playSound(
           intent.type === "back"
-            ? "back"
+            ? "open"
             : intent.type === "move"
-              ? "move"
+              ? "focus"
               : "confirm",
         );
         handleDetailsIntent(intent);
@@ -1553,12 +1671,12 @@ function BigScreenPage() {
 
       switch (intent.type) {
         case "back": {
-          playSound("back");
+          playSound("open");
           handleMainIntent(intent);
           return;
         }
         case "category": {
-          playSound("move");
+          playSound("focus");
           handleMainIntent(intent);
           return;
         }
@@ -1568,17 +1686,23 @@ function BigScreenPage() {
           return;
         }
         case "details": {
-          playSound("confirm");
+          // 手机端 DETAILS 归到 OPEN 音（打开详情层/菜单都是"打开"这一类）
+          playSound("open");
           handleMainIntent(intent);
           return;
         }
         case "favorite": {
-          playSound("toggle");
+          playSound("confirm");
+          handleMainIntent(intent);
+          return;
+        }
+        case "menu": {
+          playSound("open");
           handleMainIntent(intent);
           return;
         }
         default: {
-          playSound("move");
+          playSound("focus");
           handleMainIntent(intent);
         }
       }
@@ -1609,6 +1733,28 @@ function BigScreenPage() {
     onIntent: handleGamepadIntent,
   });
 
+  /**
+   * 手柄连接状态变化时提示一次（对齐手机端 M18-2）。
+   *
+   * 手机端是在**入场动画结束后**才允许提示 —— 手柄多半在启动前就插着了，
+   * 只看插拔事件会什么都看不到；这里同样等 introPlaying 结束再判一次。
+   */
+  const gamepadBannerRef = useRef<boolean | null>(null);
+  useEffect(() => {
+    if (introPlaying || gamepadBannerRef.current === gamepadConnected) {
+      return;
+    }
+    gamepadBannerRef.current = gamepadConnected;
+    showBanner(
+      t(
+        gamepadConnected
+          ? "bigScreen.gamepadConnected"
+          : "bigScreen.gamepadDisconnected",
+      ),
+      gamepadConnected ? "i-mdi-gamepad-variant" : undefined,
+    );
+  }, [gamepadConnected, introPlaying, showBanner, t]);
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       const direction = KEY_DIRECTIONS[event.key];
@@ -1629,7 +1775,8 @@ function BigScreenPage() {
       if (event.key === "Tab") {
         event.preventDefault();
         markInputDevice("keyboard");
-        openPanel("main");
+        // Tab = 手柄 Start = ☰，统一走 MENU 意图（浮层里会被各自吞掉）
+        dispatchIntent({ type: "menu" });
         return;
       }
 
@@ -1700,7 +1847,7 @@ function BigScreenPage() {
       />
       <BigScreenAtmosphere
         coverUrl={coverUrl}
-        level={effectLevel}
+        level={snowEnabled ? effectLevel : "off"}
         seed={focusedGame?.id ?? ""}
       />
 
@@ -1777,7 +1924,7 @@ function BigScreenPage() {
 
               {activeCategoryLabelKey && (
                 <h2
-                  className="flex shrink-0 items-end gap-3 pb-1 text-2xl font-bold text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.5)]"
+                  className="flex shrink-0 items-end gap-3 pb-1 text-xl font-bold text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.5)]"
                   style={{ height: shelfMetrics.headerHeight }}
                 >
                   {t(activeCategoryLabelKey)}
@@ -1891,6 +2038,13 @@ function BigScreenPage() {
       {introPlaying && (
         <BigScreenIntro onFinished={() => setIntroPlaying(false)} />
       )}
+
+      {/* 顶部提示条：操作反馈 + 手柄连接状态（入场动画期间抑制） */}
+      <BigScreenBanner
+        holdMs={bannerHoldMs}
+        message={banner}
+        suppressed={introPlaying}
+      />
     </div>
   );
 }

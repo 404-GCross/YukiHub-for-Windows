@@ -7,7 +7,11 @@
  * suspended 状态。
  */
 
-export type BigScreenSound = "back" | "confirm" | "move" | "toggle";
+/**
+ * 音效种类，对齐手机端 `BigScreenSound.Sfx` 的三分类：
+ * 焦点移动 / 确认（含收藏）/ 打开浮层（菜单、详情、返回）。
+ */
+export type BigScreenSound = "confirm" | "focus" | "open";
 
 type SoundPreset = {
   duration: number;
@@ -16,10 +20,9 @@ type SoundPreset = {
 };
 
 const SOUND_PRESETS: Record<BigScreenSound, SoundPreset> = {
-  back: { duration: 0.1, frequency: 320, type: "sine" },
   confirm: { duration: 0.12, frequency: 720, type: "triangle" },
-  move: { duration: 0.06, frequency: 480, type: "sine" },
-  toggle: { duration: 0.08, frequency: 880, type: "square" },
+  focus: { duration: 0.06, frequency: 480, type: "sine" },
+  open: { duration: 0.1, frequency: 380, type: "sine" },
 };
 
 /**
@@ -27,6 +30,15 @@ const SOUND_PRESETS: Record<BigScreenSound, SoundPreset> = {
  * 不该盖过游戏本身的声音（`BigScreenSound` L64-70）。
  */
 const MAX_VOLUME = 0.8;
+
+/**
+ * 焦点音的最小间隔，对齐手机端 `FOCUS_MIN_INTERVAL_MS = 55ms`。
+ *
+ * 摇杆/长按连发时（80ms 一次）如果每次都发声，会连成一片"嘟嘟嘟"；
+ * 手机端用 55ms 节流滤掉这种密集重放，只保留手感的"点"。
+ */
+const FOCUS_MIN_INTERVAL_MS = 55;
+let lastFocusSoundAt = 0;
 
 let audioContext: AudioContext | null = null;
 function getAudioContext(): AudioContext | null {
@@ -61,6 +73,14 @@ export function playBigScreenSound(kind: BigScreenSound, volume = 1) {
   const context = getAudioContext();
   if (!context) {
     return;
+  }
+
+  if (kind === "focus") {
+    const now = performance.now();
+    if (now - lastFocusSoundAt < FOCUS_MIN_INTERVAL_MS) {
+      return;
+    }
+    lastFocusSoundAt = now;
   }
 
   const preset = SOUND_PRESETS[kind];

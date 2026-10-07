@@ -37,7 +37,7 @@ export const BigScreenTopBar = memo(
     }, []);
 
     return (
-      <div className="pointer-events-none flex shrink-0 items-center justify-between px-10 pt-5 text-xs text-brand-400">
+      <div className="pointer-events-none flex shrink-0 items-center justify-between px-8 pt-4 text-xs text-brand-400">
         <div className="flex items-center gap-4">
           <span className="font-medium tabular-nums text-brand-200">
             {clock}

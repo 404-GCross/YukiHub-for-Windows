@@ -720,6 +720,31 @@ export class AppConfig {
     "bigscreen_pv_scrim_percent": number;
 
     /**
+     * 顶部提示条停留时长（毫秒），默认 2000
+     */
+    "bigscreen_banner_hold_ms": number;
+
+    /**
+     * 背景氛围层（雪花 / 极光），默认 true
+     */
+    "bigscreen_snow_enabled": boolean;
+
+    /**
+     * 只在详情层播放预告片（对齐手机端 bigscreen_trailer_details_only，中性能档默认行为）
+     */
+    "bigscreen_trailer_details_only": boolean;
+
+    /**
+     * 记住上次的分类筛选，默认 true
+     */
+    "bigscreen_remember_filter": boolean;
+
+    /**
+     * 上次停留的分类（仅在记住筛选打开时写入）
+     */
+    "bigscreen_last_category"?: string;
+
+    /**
      * OverlayShortcut 是「呼出游戏内好友栏」的全局快捷键，accelerator 形式
      * （如 "shift+`"）。空字符串表示用默认值（service.DefaultOverlayShortcut）；
      * 界面展示成 “Shift + ~”，转换在 service.FormatOverlayShortcut。
@@ -916,6 +941,18 @@ export class AppConfig {
         }
         if (!("bigscreen_pv_scrim_percent" in $$source)) {
             this["bigscreen_pv_scrim_percent"] = 0;
+        }
+        if (!("bigscreen_banner_hold_ms" in $$source)) {
+            this["bigscreen_banner_hold_ms"] = 0;
+        }
+        if (!("bigscreen_snow_enabled" in $$source)) {
+            this["bigscreen_snow_enabled"] = false;
+        }
+        if (!("bigscreen_trailer_details_only" in $$source)) {
+            this["bigscreen_trailer_details_only"] = false;
+        }
+        if (!("bigscreen_remember_filter" in $$source)) {
+            this["bigscreen_remember_filter"] = false;
         }
 
         Object.assign(this, $$source);

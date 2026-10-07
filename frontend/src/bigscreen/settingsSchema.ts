@@ -13,7 +13,7 @@ import { BIG_SCREEN_CATEGORIES } from "./categories";
  * `pnpm i18n:clean` 会把它们删掉并直接报错。
  */
 
-export type BigScreenSettingKind = "select" | "switch";
+export type BigScreenSettingKind = "action" | "select" | "switch";
 
 export type BigScreenSettingChoice = {
   /** 已翻译的显示文案 */
@@ -27,10 +27,14 @@ export type BigScreenSetting = {
   id: string;
   kind: BigScreenSettingKind;
   label: string;
-  /** 读当前值，统一以字符串返回 */
-  read: (config: appconf.AppConfig) => string;
-  /** 写回，返回新的 config 对象（调用方负责落盘） */
-  write: (config: appconf.AppConfig, value: string) => appconf.AppConfig;
+  /** select / switch：读当前值，统一以字符串返回 */
+  read?: (config: appconf.AppConfig) => string;
+  /** action：执行体（清除筛选记忆 / 恢复默认设置） */
+  run?: () => void;
+  /** action：右列显示的说明文案（如"最近游玩"） */
+  valueText?: string;
+  /** select / switch：写回，返回新的 config 对象（调用方负责落盘） */
+  write?: (config: appconf.AppConfig, value: string) => appconf.AppConfig;
 };
 
 export type BigScreenSettingSection = {
@@ -42,20 +46,35 @@ export type BigScreenSettingSection = {
 /** 翻译函数的最小签名（i18next 的 `t` 兼容） */
 export type BigScreenTranslator = (key: string) => string;
 
+/** action 类条目需要的回调（由宿主注入，schema 本身保持纯数据） */
+export type BigScreenSettingHandlers = {
+  /** 清除「记住筛选」与每个分类各自的焦点记忆 */
+  clearFilterMemory?: () => void;
+  /** 当前记住的分类文案，显示在「清除筛选记忆」右侧 */
+  filterMemoryLabel?: string;
+  /** 恢复大屏的全部默认设置 */
+  resetDefaults?: () => void;
+};
+
 type BoolField
   = | "bigscreen_focus_ticks"
     | "bigscreen_intro_enabled"
     | "bigscreen_pv_fit"
     | "bigscreen_pv_scrim"
     | "bigscreen_rail_expanded"
+    | "bigscreen_remember_filter"
     | "bigscreen_show_hidden_game"
     | "bigscreen_show_titles"
+    | "bigscreen_snow_enabled"
     | "bigscreen_sound_enabled"
+    | "bigscreen_trailer_details_only"
     | "bigscreen_trailer_enabled"
-    | "bigscreen_trailer_muted";
+    | "bigscreen_trailer_muted"
+    | "blur_nsfw_game_covers";
 
 type NumField
-  = | "bigscreen_card_scale"
+  = | "bigscreen_banner_hold_ms"
+    | "bigscreen_card_scale"
     | "bigscreen_focus_scale"
     | "bigscreen_pv_scrim_percent"
     | "bigscreen_sound_volume"
@@ -127,12 +146,26 @@ function numSetting(
   };
 }
 
+/** action 类条目：只执行一件事，右列可以显示一句状态文案。 */
+function actionSetting(
+  id: string,
+  label: string,
+  valueText: string,
+  run: (() => void) | undefined,
+): BigScreenSetting {
+  return { id, kind: "action", label, run, valueText };
+}
+
 /**
  * 大屏偏好的分区结构（对齐手机端六个分区，去掉桌面端无对应概念的项）。
  * 顺序即界面顺序。
+ *
+ * 相比手机端：去掉「兼容」（KR 存档兜底是安卓专有）、「PV 占用与清理」
+ * （桌面端的 PV 是本地文件路径，没有受管目录要做占用统计）。
  */
 export function createBigScreenSettingSections(
   t: BigScreenTranslator,
+  handlers: BigScreenSettingHandlers = {},
 ): BigScreenSettingSection[] {
   return [
     {
@@ -155,12 +188,6 @@ export function createBigScreenSettingSections(
           "bigscreen_intro_enabled",
           t,
         ),
-        boolSetting(
-          "show_hidden_game",
-          t("settings.bigScreen.showHiddenGame"),
-          "bigscreen_show_hidden_game",
-          t,
-        ),
         enumSetting(
           "default_category",
           t("settings.bigScreen.defaultCategory"),
@@ -169,6 +196,18 @@ export function createBigScreenSettingSections(
             label: t(category.labelKey),
             value: category.id,
           })),
+        ),
+        boolSetting(
+          "show_hidden_game",
+          t("settings.bigScreen.showHiddenGame"),
+          "bigscreen_show_hidden_game",
+          t,
+        ),
+        boolSetting(
+          "remember_filter",
+          t("bigScreen.rememberFilter"),
+          "bigscreen_remember_filter",
+          t,
         ),
       ],
     },
@@ -202,6 +241,18 @@ export function createBigScreenSettingSections(
             { label: t("bigScreen.focusScaleStandard"), value: "100" },
             { label: t("bigScreen.focusScaleStrong"), value: "150" },
           ],
+        ),
+        boolSetting(
+          "snow_enabled",
+          t("bigScreen.snowEnabled"),
+          "bigscreen_snow_enabled",
+          t,
+        ),
+        boolSetting(
+          "nsfw_blur",
+          t("bigScreen.nsfwBlur"),
+          "blur_nsfw_game_covers",
+          t,
         ),
         boolSetting(
           "rail_expanded",
@@ -267,9 +318,20 @@ export function createBigScreenSettingSections(
       ],
     },
     {
-      id: "trailer",
-      label: t("bigScreen.sectionTrailer"),
+      id: "layout",
+      label: t("bigScreen.sectionLayout"),
       settings: [
+        numSetting(
+          "banner_hold",
+          t("bigScreen.bannerHold"),
+          "bigscreen_banner_hold_ms",
+          [
+            { label: t("bigScreen.bannerHoldShort"), value: "1200" },
+            { label: t("bigScreen.bannerHoldStandard"), value: "2000" },
+            { label: t("bigScreen.bannerHoldLong"), value: "3000" },
+            { label: t("bigScreen.bannerHoldLongest"), value: "4500" },
+          ],
+        ),
         boolSetting(
           "trailer_enabled",
           t("bigScreen.trailerEnabled"),
@@ -286,6 +348,12 @@ export function createBigScreenSettingSections(
             { label: t("bigScreen.delayLong"), value: "2000" },
             { label: t("bigScreen.delayLongest"), value: "3000" },
           ],
+        ),
+        boolSetting(
+          "trailer_details_only",
+          t("bigScreen.trailerDetailsOnly"),
+          "bigscreen_trailer_details_only",
+          t,
         ),
         boolSetting("pv_fit", t("bigScreen.pvFit"), "bigscreen_pv_fit", t),
         boolSetting(
@@ -309,6 +377,24 @@ export function createBigScreenSettingSections(
         ),
       ],
     },
+    {
+      id: "menu",
+      label: t("bigScreen.sectionMenu"),
+      settings: [
+        actionSetting(
+          "clear_filter_memory",
+          t("bigScreen.clearFilterMemory"),
+          handlers.filterMemoryLabel ?? "",
+          handlers.clearFilterMemory,
+        ),
+        actionSetting(
+          "reset_defaults",
+          t("bigScreen.resetDefaults"),
+          "",
+          handlers.resetDefaults,
+        ),
+      ],
+    },
   ];
 }
 
@@ -319,7 +405,10 @@ export function formatBigScreenSettingValue(
   setting: BigScreenSetting,
   config: appconf.AppConfig,
 ): string {
-  const current = setting.read(config);
+  if (setting.kind === "action") {
+    return setting.valueText ?? "";
+  }
+  const current = setting.read?.(config) ?? "";
   const choice = setting.choices?.find(item => item.value === current);
   return choice ? choice.label : current;
 }

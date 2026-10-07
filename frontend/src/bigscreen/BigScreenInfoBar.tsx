@@ -61,9 +61,9 @@ export const BigScreenInfoBar = memo(
         标题 → 标签 chips → 副行（开发商 · 年份…）→ 操作按钮排。
         它压在背景大图上，卡片排在最底部（见 routes/bigscreen.tsx 的布局）。
       */
-      <div className="pointer-events-none flex max-w-3xl flex-col items-start gap-3">
-        <div className="min-w-0 max-w-3xl">
-          <h1 className="truncate text-4xl font-bold leading-tight text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.55)]">
+      <div className="pointer-events-none flex max-w-2xl flex-col items-start gap-2.5">
+        <div className="min-w-0 max-w-2xl">
+          <h1 className="truncate text-3xl font-bold leading-tight text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.55)]">
             {game.name}
           </h1>
         </div>
@@ -78,8 +78,8 @@ export const BigScreenInfoBar = memo(
           </div>
         )}
 
-        <div className="min-w-0 max-w-3xl">
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-brand-400">
+        <div className="min-w-0 max-w-2xl">
+          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-sm text-brand-400">
             <span className="truncate">{company}</span>
             {game.release_date && (
               <>
@@ -120,7 +120,7 @@ export const BigScreenInfoBar = memo(
           </div>
         </div>
 
-        <div className="pointer-events-auto flex shrink-0 items-center gap-3">
+        <div className="pointer-events-auto flex shrink-0 items-center gap-2">
           {actions.map((action, index) => {
             const isFocused = actionsFocused && index === focusedActionIndex;
             const isFavoriteAction = action.key === "favorite";
@@ -131,7 +131,7 @@ export const BigScreenInfoBar = memo(
                 type="button"
                 aria-label={action.label}
                 aria-pressed={isFavoriteAction ? isFavorite : undefined}
-                className={`inline-flex items-center gap-2 rounded-full border px-6 py-3 text-sm font-medium transition-all duration-150 ${
+                className={`inline-flex items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-medium transition-all duration-150 ${
                   isFocused
                     ? "scale-105 border-secondary-500 bg-brand-750 text-white"
                     : "border-brand-700 bg-brand-800/70 text-brand-400 hover:border-brand-600 hover:text-white"
