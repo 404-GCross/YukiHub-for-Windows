@@ -9,6 +9,7 @@
     "build": "pnpm build:desktop && pnpm typecheck && vite build",
     "i18n:check": "node scripts/i18n-clean.mjs --check",
     "i18n:clean": "node scripts/i18n-clean.mjs",
+    "uno:check": "node scripts/check-uno-classes.mjs",
     "preview": "vite preview",
     "typecheck": "node ./node_modules/@typescript/native/bin/tsc",
     "prepare": "cd .. && husky frontend/.husky"

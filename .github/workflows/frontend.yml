@@ -48,6 +48,12 @@ jobs:
         working-directory: ./frontend
         run: pnpm run i18n:check
 
+      # UnoCSS 对「色板缺档 / 动画名不存在」不报错也不生成 CSS，
+      # 遮罩变透明这种线上问题就是这么来的（见 bg-brand-950）
+      - name: Check UnoCSS tokens
+        working-directory: ./frontend
+        run: pnpm run uno:check
+
       - name: Build frontend
         working-directory: ./frontend
         run: pnpm run build

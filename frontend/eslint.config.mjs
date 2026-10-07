@@ -75,4 +75,13 @@ export default antfu(
       "unicorn/filename-case": ["off"],
     },
   },
+  {
+    // 语言文件里的「全角空格 U+3000」是刻意的分隔符（对齐手机版文案，
+    // 如「方向鍵 移動　Enter 啟動　Esc 返回」），不是代码里的杂散空白。
+    // 这类文案又不能换成普通空格：普通空格在渲染时会被折叠掉，分隔符就没了。
+    files: ["src/locales/*.json"],
+    rules: {
+      "no-irregular-whitespace": "off",
+    },
+  },
 );

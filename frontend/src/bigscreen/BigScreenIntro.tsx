@@ -162,13 +162,21 @@ export const BigScreenIntro = forwardRef<
     transition: `transform ${D_BAND}ms cubic-bezier(.4,0,.2,1), opacity ${
       bandFaded ? 380 : 160
     }ms ease-out`,
+    // 手机端那条约 420×180 的光带只有**横向**渐变，上下两条边是硬边：
+    // 静止截图里会看到"文字后面有个灰盒子"。再叠一层纵向蒙版把上下也淡掉。
+    maskImage:
+      "linear-gradient(to bottom, transparent 0%, black 38%, black 62%, transparent 100%)",
+    WebkitMaskImage:
+      "linear-gradient(to bottom, transparent 0%, black 38%, black 62%, transparent 100%)",
   };
 
   return (
     <div
-      className={`absolute inset-0 z-60 flex items-center justify-center bg-brand-950 ${
-        fadingOut ? "" : "opacity-100"
-      }`}
+      // 底色用 brand-900（= 手机端 bs_bg #0B1020，也是应用根背景）：
+      // 与主界面同色，圆形揭示时才像"内容从同一片底色里长出来"。
+      // 这里必须是**不透明**的 —— 之前写的是色板里不存在的 brand-950，
+      // UnoCSS 直接不生成背景色，导致入场层透明、背后的游戏列表一览无余。
+      className="absolute inset-0 z-60 flex items-center justify-center bg-brand-900"
       style={{
         opacity: fadingOut ? 0 : 1,
         transition: `opacity ${D_FADE_OUT}ms ease-out`,
@@ -206,7 +214,7 @@ export const BigScreenIntro = forwardRef<
               YukiHub
             </span>
             <span
-              className="mt-2 text-[clamp(0.7rem,1.2vh,0.9rem)] font-semibold text-secondary-500"
+              className="mt-2.5 text-[clamp(0.75rem,1.45vh,1rem)] font-semibold text-secondary-500"
               style={{ letterSpacing: "0.30em" }}
             >
               {t("bigScreen.introSubtitle")}

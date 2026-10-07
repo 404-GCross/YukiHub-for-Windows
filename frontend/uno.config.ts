@@ -315,6 +315,8 @@ export default defineConfig({
         "bigscreen-scrim-in": "1",
         // 入场动画的收尾：主界面圆形揭示 + 轻微回缩（对齐手机端 createCircularReveal）
         "bigscreen-reveal": "1",
+        // 设置页加载中的齿轮（原来写的是 animate-spin-slow，主题里没有 → 齿轮是不转的）
+        "spin-slow": "infinite",
       },
       durations: {
         "app-toast-enter": "450ms",
@@ -333,6 +335,7 @@ export default defineConfig({
         "bigscreen-panel-in": "220ms",
         "bigscreen-scrim-in": "180ms",
         "bigscreen-reveal": "620ms",
+        "spin-slow": "2800ms",
       },
       keyframes: {
         "app-toast-enter":
@@ -371,6 +374,8 @@ export default defineConfig({
         // 所以 75% ≈ 0.53×hypot > 0.5×hypot，四角一定被盖住。
         "bigscreen-reveal":
           "{0%{clip-path:circle(0% at 50% 50%);transform:scale(1.06)}100%{clip-path:circle(75% at 50% 50%);transform:scale(1)}}",
+        "spin-slow":
+          "{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}",
       },
       properties: {
         "app-toast-enter": {
@@ -441,6 +446,7 @@ export default defineConfig({
         "bigscreen-panel-in": "cubic-bezier(.2,.9,.18,1)",
         "bigscreen-scrim-in": "ease-out",
         "bigscreen-reveal": "cubic-bezier(.2,.9,.18,1)",
+        "spin-slow": "linear",
       },
     },
     colors: {
@@ -452,6 +458,7 @@ export default defineConfig({
         100: "#F1F3F9",
         150: "#E7EAF4",
         200: "#DDE2F0",
+        250: "#D2D9EA", // 200 与 300 之间，供细描边使用（之前只剩 200/300 可选）
         300: "#C7CFE3",
         400: "#9AA4BF", // = yh_text_muted
         500: "#6E7A9B",
@@ -460,6 +467,10 @@ export default defineConfig({
         750: "#222B49", // = yh_card_2
         800: "#171E33", // = yh_card
         900: "#0B1020", // = yh_bg
+        // **950 必须存在**：大屏的遮罩全部用它（入场层、详情层、设置层、卡片压暗）。
+        // 少了这一档，`bg-brand-950` / `bg-brand-950/85` 这类类名会被 UnoCSS 静默丢弃 ——
+        // 表现就是「入场动画没有遮罩，背后的游戏列表直接可见」。
+        950: "#060A15",
       },
       // 主色调 (primary) - YukiHub 柔和蓝。
       // 300 是手机版 yh_primary(#8AB4FF) 本身，供暗色模式的前景/强调文字使用；
@@ -529,6 +540,7 @@ export default defineConfig({
         700: "#334155",
         800: "#1E293B",
         900: "#0F172A",
+        950: "#020617", // 与 50~900 同源的 slate 步进（缺它会让 text-neutral-950 静默失效）
       },
       // 成功色 (Success) - 极光绿
       success: {

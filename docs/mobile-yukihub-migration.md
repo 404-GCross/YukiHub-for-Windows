@@ -925,3 +925,58 @@ schema 新增 `action` 类条目（右侧按钮 + 状态文案）。「恢复默
 | 详情层的 INTRODUCTION 截图画带 | 需要元数据的截图列表，桌面端 `models.Game` 无对应字段 |
 | PV 占用与清理面板 | 桌面端 PV 是用户本地文件路径，没有受管目录可统计 |
 | 触摸模式（`touchUi`） | 桌面端以鼠标 + 手柄为主，不需要「不预选焦点」的触摸分支（鼠标点击/悬停已全覆盖） |
+
+## 十五、2026-10-07 第九轮：修「入场动画没有遮罩」的根因（色板缺档）+ 加守卫脚本
+
+用户：**「大屏模式启动没有遮罩呀，直接就看到后面的游戏列表了。」**
+
+### 15.1 根因：`bg-brand-950` 引用了一个**不存在的色阶**
+
+UnoCSS 遇到「色板里没有的色阶」时**不报错、不告警、构建照样成功，只是不生成任何 CSS**。
+`uno.config.ts` 的 brand 色板只到 900（`#0B1020`），而大屏的遮罩层全都写的是 `bg-brand-950`：
+
+| 位置 | 原本的意图 | 实际效果（修复前） |
+| --- | --- | --- |
+| `BigScreenIntro`（入场层） | 整屏不透明底 | **完全透明** → 背后的游戏列表一览无余（用户看到的） |
+| `BigScreenDetailsLayer`（详情层） | `bg-brand-950/85` + 背景模糊 | 只剩模糊，背景没有压暗 |
+| `BigScreenSettingsLayer`（设置层） | `bg-brand-950/92` | 同上，设置页是"透明"的 |
+| `BigScreenCard`（未聚焦卡片） | 34% 深色遮罩压暗封面 | 完全没有压暗 |
+| `AddGameModal` / `GameTags`（暗色态） | `dark:bg-brand-950/20` | 无效果 |
+
+**修复**：给 brand 补 `950: "#060A15"`、`250: "#D2D9EA"`，给 neutral 补 `950: "#020617"`
+（`border-brand-250`、`text-neutral-950` 同样是静默失效的引用）。入场层底色改用
+`brand-900`（= 手机端 `bs_bg #0B1020`，与应用根背景同色），这样圆形揭示看起来
+是"内容从同一片底色里长出来"，与手机端一致。
+
+### 15.2 顺带修掉两个同类静默失效
+
+- `animate-spin-slow`：主题里没有这个动画名 → 设置页加载中的齿轮**根本不转**。
+  补 `spin-slow`（2800ms linear infinite）。
+- 入场光带（420×180）只有横向渐变，上下两条边是硬边，静止画面里像"文字后面有个灰盒子"。
+  叠一层纵向 `mask-image` 把上下淡掉，现在是一条干净的光带。
+
+### 15.3 新增守卫：`frontend/scripts/check-uno-classes.mjs`
+
+这类 bug 的特点是**没有任何反馈**，所以补一个零误报的检查（`pnpm uno:check`，已接进
+`.github/workflows/frontend.yml`）：
+
+1. `(前缀)-(自定义色板)-(色阶)` 的色阶必须在 `uno.config.ts` 的 `theme.colors` 里存在；
+2. `animate-<名字>` 必须是主题里声明过的动画，或 presetWind 自带的（spin/ping/pulse/bounce）。
+
+两条都只判断"引用了不存在的令牌"，与文件是否打进产物无关，所以不会误伤死代码。
+扫描范围包含 `uno.config.ts` 自己（shortcut 里的类名写错同样会静默失效）。
+
+### 15.4 没有 GUI 也能验收：产物 CSS + 无头 Edge 截图
+
+大屏的问题几乎都在"渲染出来是什么样"，而本机不能交互式截图。做法：
+把真实 DOM 结构（从组件里抄）+ `frontend/dist/assets/index-*.css` 拼成一个静态 html，
+用 `msedge.exe --headless=new --screenshot --virtual-time-budget=4000 --window-size=1920,1080`
+出图。本轮用它确认了：入场层完全不透明、菜单面板完整落在窗口内（含底部提示行）。
+`--virtual-time-budget` 是必须的 —— 否则 CSS 动画（面板滑入等）还没跑完就截图了。
+
+### 15.5 另有一批"死引用"（本轮只记录，未动）
+
+| 项 | 情况 |
+| --- | --- |
+| `max-w-8xl`（9 个文件，含 library/settings/downloads/game 主页面） | 上游就没有这一档，`mx-auto` 一直是空转 → 主页面**没有宽度上限**。要不要补 `maxWidth['8xl']` 是产品决定（补上会让 1920 窗口下的内容变窄 20%），留给用户拍板 |
+| `src/utils/cloudSync.ts` 的 `ring-*`、`src/components/chart/PlayHeatmap.tsx`、`skeleton/GameStatsSkeleton.tsx`、`modal/PasswordInputModal.tsx` | 这些文件**没有任何地方 import**（连同 `hooks/useCloudSync.ts`），属于死代码，所以它们的类不会进产物。要不要删由用户决定 |
