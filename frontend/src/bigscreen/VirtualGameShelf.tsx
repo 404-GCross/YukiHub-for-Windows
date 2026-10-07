@@ -2,42 +2,54 @@ import type { models } from "../../src/bindings/models";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { memo, useEffect, useRef } from "react";
 
-import { GameCard } from "../components/card/GameCard";
+import { BigScreenCard } from "./BigScreenCard";
 import { BIG_SCREEN_CARD_GAP, resolveBigScreenEnterDelay } from "./constants";
 
 interface VirtualGameShelfProps {
   /** 卡片宽度（px），由 `resolveBigScreenShelfMetrics` 统一算好传入 */
   cardWidth: number;
+  /** 封面高度（px） */
+  coverHeight: number;
   /** 入场错峰动画：只在首次进入大屏时开启，滚动新挂载的卡片不再重放 */
   entryAnimation?: boolean;
+  /** 焦点缩放幅度（%），0 表示只描边 */
+  focusScale: number;
   /** 焦点是否落在这个区域（用于决定要不要画焦点环） */
   focused: boolean;
   focusedIndex: number;
+  /** 已收藏的游戏 id，用来给卡片画收藏角标 */
+  favoriteIds: Set<string>;
   games: models.Game[];
   onActivate: (game: models.Game) => void;
+  onDetails: (game: models.Game) => void;
   onFocusIndexChange: (index: number) => void;
-  onViewDetails: (game: models.Game) => void;
   /** 卡片行高度（px，含焦点缩放的上下余量），卡片在其中垂直居中 */
   rowHeight: number;
+  /** 卡片下方是否再显示游戏名 */
+  showTitles: boolean;
 }
 
 /**
  * 大屏模式的横向单排货架。
  *
  * 现有的 `VirtualGameGrid` 是纵向虚拟化，横向货架在 `@tanstack/react-virtual`
- * 上不共用同一套行列计算，所以单独实现；卡片本体仍复用 `GameCard`。
+ * 上不共用同一套行列计算，所以单独实现；卡片本体用大屏专用的 `BigScreenCard`。
  */
 export const VirtualGameShelf = memo(
   ({
     cardWidth,
+    coverHeight,
     entryAnimation = false,
+    focusScale,
     focused,
     focusedIndex,
+    favoriteIds,
     games,
     onActivate,
+    onDetails,
     onFocusIndexChange,
-    onViewDetails,
     rowHeight,
+    showTitles,
   }: VirtualGameShelfProps) => {
     const scrollRef = useRef<HTMLDivElement | null>(null);
 
@@ -68,9 +80,11 @@ export const VirtualGameShelf = memo(
       // px-2 是给焦点缩放留的余量：容器是 overflow-x-auto，第一张卡放大后
       // 会往左溢出几像素，没有这段内边距就会被裁掉（表现为「卡片左边看不见」）。
       // 外层用 -mx-2 抵消，保证卡片左沿与标题左沿仍然对齐。
+      //
+      // pt-4 是垂直方向的同款余量（overflow-y 必然退化成 hidden）。
       <div
         ref={scrollRef}
-        className="scrollbar-hide w-full overflow-x-auto overflow-y-hidden px-2"
+        className="scrollbar-hide w-full overflow-x-auto overflow-y-hidden px-2 pt-4"
         style={{ height: rowHeight }}
       >
         <div
@@ -87,7 +101,7 @@ export const VirtualGameShelf = memo(
             return (
               <div
                 key={virtualItem.key}
-                className="absolute left-0 top-0 flex items-center"
+                className="absolute left-0 top-0 flex items-start"
                 style={{
                   height: rowHeight,
                   // 横向虚拟化：偏移必须由 virtualItem.start 给出，
@@ -109,27 +123,17 @@ export const VirtualGameShelf = memo(
                       : undefined,
                   }}
                 >
-                  <div
-                    className="relative transition-transform duration-[140ms] ease-out"
-                    style={{
-                      transform: isFocused ? "scale(1.045)" : undefined,
-                      zIndex: isFocused ? 10 : undefined,
-                    }}
-                    onMouseEnter={() => onFocusIndexChange(virtualItem.index)}
-                  >
-                    <GameCard
-                      game={game}
-                      cardLayout="portrait"
-                      onActivate={onActivate}
-                      onViewDetails={onViewDetails}
-                    />
-                    {isFocused && (
-                      <div
-                        className="pointer-events-none absolute inset-0 z-20 rounded-xl ring-3 ring-secondary-500"
-                        aria-hidden="true"
-                      />
-                    )}
-                  </div>
+                  <BigScreenCard
+                    coverHeight={coverHeight}
+                    focused={isFocused}
+                    focusScale={focusScale}
+                    game={game}
+                    isFavorite={favoriteIds.has(game.id)}
+                    onActivate={() => onActivate(game)}
+                    onDetails={() => onDetails(game)}
+                    onFocus={() => onFocusIndexChange(virtualItem.index)}
+                    showTitle={showTitles}
+                  />
                 </div>
               </div>
             );

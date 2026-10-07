@@ -687,3 +687,86 @@ http(s) 地址」，实现却返回**第一个非空**。若 `cover_source_url` 
 | 会话条数上限：手机全库 30 / 桌面每游戏 30 | 桌面总时长由会话求和，少导会让回导后时长缩水（§五） |
 | `settings` 段只写 `metadata_source` | 手机端的排序 / 缩放 / 扫描等属设备本地偏好，桌面端无对应概念；手机端用 `has()` 守卫，缺失即保留其原值，因此不写是安全的 |
 | 手机端 `buildLocalSnapshot` 会把 `settings` 写满十几个键 | 桌面端没有这些概念，写过去只会用桌面值覆盖手机偏好 |
+
+## 十二、2026-10-07 第六轮：大屏模式全面对齐（S4/S5/S6 补齐）
+
+用户反馈「大屏模式随便看一眼全是问题，详情甚至直接跳转到游戏库」。对照手机端
+`com.yuki.yukihub.bigscreen`（20 个类）逐项复核后，本轮补齐了**浮层菜单体系**与
+**大屏内设置**，并把卡片/侧栏/提示条对齐手机端的视觉与键位。
+
+### 12.1 修掉的核心问题：「详细」会跳出大屏
+
+手机端详情层按钮是「游玩 / 观看 PV（有预告片才显示）/ 详细」，其中「详细」调的是
+`onRequestGameMenu` —— **打开大屏内的游戏操作菜单**，不是跳去别处。桌面端此前把它接到
+`navigate(/game/:id)`，等于把用户从大屏踢回普通界面（用户看到的「跳转到游戏库」）。
+
+现在三层分工明确：
+
+| 入口 | 行为 |
+| --- | --- |
+| 货架卡片 Ⓐ / 点击 | 启动游戏 |
+| 货架 Ⓨ / 卡片右键 | 打开**详情层**（`BigScreenDetailsLayer`） |
+| 详情层「详细」、信息浮层「更多」 | 打开**游戏操作菜单**（S4） |
+| 游戏操作菜单「编辑信息」 | 才跳出大屏去完整详情页（手机端的 `jumpToTouchMode`） |
+
+### 12.2 新增：通用浮层菜单（`BigScreenPanel.tsx`）
+
+对齐手机端 `BigScreenPanel`：右侧滑入、遮罩**消费点击**（手机端 M16 用户投诉过
+「你不就做了层透明布」）、条目支持图标 + 主文案 + 副文案 + 分隔线、标题、底部提示。
+面板打开时吞掉除上下/确认/返回之外的输入。
+
+- **S4 游戏操作菜单**：启动游戏 / 收藏 / 游玩状态循环 / 设置·更换·移除预告片 /
+  编辑信息 / 打开游戏目录 / 在库中隐藏（二次确认）/ 从库中移除（二次确认）。
+- **S5 主菜单**（顶栏 ☰、`Tab`）：设置 / 隐藏游戏管理 / 随机选一款 / 切换排序方式 /
+  快捷键说明 / 退出大屏。
+- **隐藏游戏管理**：后端没有「只看隐藏」的过滤，取一份含隐藏的列表再本地筛
+  （手机端同样是内存里筛）。
+
+### 12.3 新增：大屏内设置面板（`BigScreenSettingsLayer.tsx`）
+
+对齐手机端 `BigScreenSettings` 的**左列分区 + 右列条目**两列焦点模型，四个分区：
+常规 / 视觉 / 音频 / 预告片。`select` 类条目复用通用浮层选值，`switch` 就地翻转。
+
+设置项的**单一事实来源**是 `bigscreen/settingsSchema.ts`，设置页的「大屏模式」分区
+（`components/panel/BigScreenSettingsPanel.tsx`）与大屏内面板共用它，保证两处可调项
+永远一致。文案在 schema 里就翻译好：项目的 i18n 提取器只认字面量翻译调用，如果存
+labelKey 再由渲染层动态查表，`pnpm i18n:clean` 会把这些键当"未引用"删掉并报错。
+
+### 12.4 新增：顶栏与入场动画
+
+- `BigScreenTopBar.tsx`：时间 + 手柄连接状态 + ☰ 菜单入口。桌面端没有电量/网络/
+  触摸模式的概念，只保留对客厅大屏有意义的两项。
+- `BigScreenIntro.tsx`：内置入场动画（logo 淡入上浮 + 光带扫过 + 整层淡出），
+  任意输入可跳过；由 `bigscreen_intro_enabled` 控制。手机端的自选入场视频不迁移
+  （需要视频选择器与 SAF，桌面端无对应入口）。
+
+### 12.5 卡片 / 侧栏 / 底栏对齐
+
+- 新增大屏专用卡片 `BigScreenCard.tsx`，**不再复用** `GameCard`：游戏库那张卡带状态文字
+  徽标、评分芯片、排序字段覆盖条与悬浮位移，是给鼠标精读用的；大屏卡片只要
+  「封面 + 可选标题 + 状态点/收藏/R18 角标 + 未聚焦压暗」。
+- 侧栏补**条目计数**（`limit=1` 逐分类取 `total`，只跑 COUNT）、支持「侧栏常驻展开」。
+- 底栏提示改用手机端 `BigScreenKeys` 的按键字形（Xbox ⒶⓍⒷⓎ / PS ✕□○△ 可切换），
+  并补上「← 进筛选栏」「☰ 菜单」；`bigscreen_hint_mode` 支持自动淡出 / 常显 / 隐藏。
+- 排序不再是每个分类写死：主菜单可在「最近游玩 / 最近加入 / 按名称」之间切换。
+
+### 12.6 新增配置项（`appconf`）
+
+`bigscreen_show_titles` / `bigscreen_card_scale` / `bigscreen_focus_scale` /
+`bigscreen_key_style` / `bigscreen_hint_mode` / `bigscreen_rail_expanded` /
+`bigscreen_sound_volume` / `bigscreen_focus_ticks` / `bigscreen_intro_enabled` /
+`bigscreen_trailer_enabled` / `bigscreen_trailer_muted` / `bigscreen_trailer_delay_ms` /
+`bigscreen_pv_fit` / `bigscreen_pv_scrim` / `bigscreen_pv_scrim_percent`。
+
+`NormalizeBigScreenPreferences` 统一收敛：枚举白名单 + 数值夹取（`card_scale=0` 会把
+卡片宽度算成 0、整个货架消失，必须夹住）。默认值与手机端 `BigScreenPrefs` 对齐，
+**其中 `trailer_muted` 默认 false**（手机端 M18 修过「PV 没声音」的坑）。
+
+### 12.7 仍未对齐（记入 ROADMAP）
+
+| 项 | 原因 |
+| --- | --- |
+| 详情层的 INTRODUCTION 截图画带 | 需要元数据截图列表，桌面端 `models.Game` 暂无对应字段 |
+| 游戏操作菜单的「标题图 / 背景图」 | 手机端有 `logo_path` / `bg_path` 两列与私有目录，桌面端需要 schema 变更 |
+| 入场动画自选视频、PV 占用与清理面板 | 依赖 SAF / 受管视频目录的等价能力 |
+| 触摸模式（`touchUi`） | 桌面端以鼠标 + 手柄为主，不需要"不预选焦点"的触摸分支 |

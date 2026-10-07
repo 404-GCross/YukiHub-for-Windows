@@ -209,6 +209,79 @@ func NormalizeBigScreenEffectLevel(level string) string {
 	}
 }
 
+// NormalizeBigScreenKeyStyle 白名单收敛按键图标风格，识别不了的一律回 Xbox。
+func NormalizeBigScreenKeyStyle(style string) string {
+	switch strings.ToLower(strings.TrimSpace(style)) {
+	case "ps":
+		return "ps"
+	default:
+		return DefaultBigScreenKeyStyle
+	}
+}
+
+// NormalizeBigScreenHintMode 收敛按键提示条模式：auto（自动淡出）/ always / off。
+func NormalizeBigScreenHintMode(mode string) string {
+	normalized := strings.ToLower(strings.TrimSpace(mode))
+	switch normalized {
+	case "always", "off":
+		return normalized
+	default:
+		return DefaultBigScreenHintMode
+	}
+}
+
+// NormalizeBigScreenCardScale 把卡片大小倍率（×100）夹进可辨识区间。
+func NormalizeBigScreenCardScale(scale int) int {
+	return clampInt(scale, MinBigScreenCardScale, MaxBigScreenCardScale)
+}
+
+// NormalizeBigScreenFocusScale 把焦点缩放幅度夹进 0–150（0 = 只描边不缩放）。
+func NormalizeBigScreenFocusScale(scale int) int {
+	return clampInt(scale, 0, MaxBigScreenFocusScale)
+}
+
+func NormalizeBigScreenSoundVolume(volume int) int {
+	return clampInt(volume, 0, 100)
+}
+
+func NormalizeBigScreenTrailerDelayMs(delay int) int {
+	return clampInt(delay, MinBigScreenTrailerDelayMs, MaxBigScreenTrailerDelayMs)
+}
+
+func NormalizeBigScreenPVScrimPercent(percent int) int {
+	return clampInt(percent, 0, 100)
+}
+
+// NormalizeBigScreenPreferences 一次性收敛大屏模式的全部偏好。
+//
+// 数值项用夹取、枚举项用白名单：老配置缺字段时反序列化会保留默认值，
+// 真正需要修的只有人为改坏或历史遗留的越界值。用户改坏配置文件后
+// 大屏不会因此进不去（例如 card_scale=0 会让卡片宽度算成 0）。
+func NormalizeBigScreenPreferences(config *AppConfig) {
+	if config == nil {
+		return
+	}
+	config.BigScreenDefaultCategory = NormalizeBigScreenDefaultCategory(config.BigScreenDefaultCategory)
+	config.BigScreenEffectLevel = NormalizeBigScreenEffectLevel(config.BigScreenEffectLevel)
+	config.BigScreenKeyStyle = NormalizeBigScreenKeyStyle(config.BigScreenKeyStyle)
+	config.BigScreenHintMode = NormalizeBigScreenHintMode(config.BigScreenHintMode)
+	config.BigScreenCardScale = NormalizeBigScreenCardScale(config.BigScreenCardScale)
+	config.BigScreenFocusScale = NormalizeBigScreenFocusScale(config.BigScreenFocusScale)
+	config.BigScreenSoundVolume = NormalizeBigScreenSoundVolume(config.BigScreenSoundVolume)
+	config.BigScreenTrailerDelayMs = NormalizeBigScreenTrailerDelayMs(config.BigScreenTrailerDelayMs)
+	config.BigScreenPVScrimPercent = NormalizeBigScreenPVScrimPercent(config.BigScreenPVScrimPercent)
+}
+
+func clampInt(value, low, high int) int {
+	if value < low {
+		return low
+	}
+	if value > high {
+		return high
+	}
+	return value
+}
+
 func NormalizeMetadataCoverSource(source enums2.MetadataCoverSource) enums2.MetadataCoverSource {
 	switch strings.ToLower(strings.TrimSpace(string(source))) {
 	case string(enums2.MetadataCoverSourceOriginal):

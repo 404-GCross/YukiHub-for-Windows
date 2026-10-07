@@ -59,44 +59,40 @@ export const BIG_SCREEN_CATEGORIES: BigScreenCategory[] = [
   },
 ];
 
-type CategoryQueryPlan = {
-  sortBy: enums.GameListSortBy;
-  sortOrder: enums.SortOrder;
-  status?: enums.GameStatus;
-};
+/** 排序方式，对应手机端主菜单「切换排序方式」的三种（recent / newest / name） */
+export type BigScreenSortMode = "name" | "newest" | "recent";
 
-/**
- * 分类 → 后端查询参数的映射。
- * 「全部」按名称正序便于浏览，「最近」按最近游玩时间倒序（未玩过的排在末尾）。
- */
-const CATEGORY_QUERY_PLANS: Record<BigScreenCategoryId, CategoryQueryPlan> = {
-  all: {
+export const BIG_SCREEN_SORT_MODES: BigScreenSortMode[] = [
+  "recent",
+  "newest",
+  "name",
+];
+
+const SORT_PLANS: Record<
+  BigScreenSortMode,
+  { sortBy: enums.GameListSortBy; sortOrder: enums.SortOrder }
+> = {
+  name: {
     sortBy: enums.GameListSortBy.GameListSortByName,
     sortOrder: enums.SortOrder.SortOrderAsc,
   },
-  favorites: {
-    sortBy: enums.GameListSortBy.GameListSortByLastPlayedAt,
+  newest: {
+    sortBy: enums.GameListSortBy.GameListSortByCreatedAt,
     sortOrder: enums.SortOrder.SortOrderDesc,
   },
   recent: {
     sortBy: enums.GameListSortBy.GameListSortByLastPlayedAt,
     sortOrder: enums.SortOrder.SortOrderDesc,
   },
-  playing: {
-    status: enums.GameStatus.StatusPlaying,
-    sortBy: enums.GameListSortBy.GameListSortByLastPlayedAt,
-    sortOrder: enums.SortOrder.SortOrderDesc,
-  },
-  completed: {
-    status: enums.GameStatus.StatusCompleted,
-    sortBy: enums.GameListSortBy.GameListSortByLastPlayedAt,
-    sortOrder: enums.SortOrder.SortOrderDesc,
-  },
-  unplayed: {
-    status: enums.GameStatus.StatusUnplayed,
-    sortBy: enums.GameListSortBy.GameListSortByName,
-    sortOrder: enums.SortOrder.SortOrderAsc,
-  },
+};
+
+/** 分类的状态过滤条件（排序交给用户选的排序方式统一决定） */
+const CATEGORY_STATUS_FILTER: Partial<
+  Record<BigScreenCategoryId, enums.GameStatus>
+> = {
+  completed: enums.GameStatus.StatusCompleted,
+  playing: enums.GameStatus.StatusPlaying,
+  unplayed: enums.GameStatus.StatusUnplayed,
 };
 
 /** 收藏分类的 id 由后端按 `is_system` 标记返回，前端不硬编码。 */
@@ -115,20 +111,22 @@ export function resolveFavoritesCategoryId(): Promise<string> {
 }
 
 function buildRequest(
-  plan: CategoryQueryPlan,
+  categoryId: BigScreenCategoryId,
+  sortMode: BigScreenSortMode,
   excludeHidden: boolean,
   limit: number,
   offset: number,
 ): vo.GameListRequest {
+  const sort = SORT_PLANS[sortMode];
   return {
     limit,
     offset,
     search_query: "",
-    status: plan.status ?? null,
+    status: CATEGORY_STATUS_FILTER[categoryId] ?? null,
     exclude_hidden: excludeHidden,
     tags: [],
-    sort_by: plan.sortBy,
-    sort_order: plan.sortOrder,
+    sort_by: sort.sortBy,
+    sort_order: sort.sortOrder,
     secondary_sort_by: enums.GameListSortBy.$zero,
     secondary_sort_order: enums.SortOrder.$zero,
     // 信息浮层与详情层都要显示时长，一次批量带回胜过每次切卡单查。
@@ -144,9 +142,9 @@ function buildRequest(
  */
 export async function fetchBigScreenGames(
   categoryId: BigScreenCategoryId,
+  sortMode: BigScreenSortMode,
   excludeHidden: boolean,
 ): Promise<models.Game[]> {
-  const plan = CATEGORY_QUERY_PLANS[categoryId];
   const categoryFilter = categoryId === "favorites";
   const favoritesId = categoryFilter ? await resolveFavoritesCategoryId() : "";
   if (categoryFilter && !favoritesId) {
@@ -159,7 +157,13 @@ export async function fetchBigScreenGames(
       BIG_SCREEN_PAGE_LIMIT,
       BIG_SCREEN_SHELF_LIMIT - games.length,
     );
-    const request = buildRequest(plan, excludeHidden, limit, games.length);
+    const request = buildRequest(
+      categoryId,
+      sortMode,
+      excludeHidden,
+      limit,
+      games.length,
+    );
     const response = categoryFilter
       ? await GetCategoryGames({
           ...request,
@@ -175,4 +179,49 @@ export async function fetchBigScreenGames(
     }
   }
   return games;
+}
+
+/**
+ * 取各分类的条目数（侧栏展开时显示）。
+ *
+ * 手机端是「一次性把整库读进内存再各自 filter」，桌面端每次只取当前分类，
+ * 所以这里用 `limit=1` 逐分类取总数 —— 只跑 COUNT，不搬数据。
+ */
+export async function fetchBigScreenCategoryCounts(
+  sortMode: BigScreenSortMode,
+  excludeHidden: boolean,
+): Promise<Partial<Record<BigScreenCategoryId, number>>> {
+  const counts: Partial<Record<BigScreenCategoryId, number>> = {};
+  await Promise.all(
+    BIG_SCREEN_CATEGORIES.map(async (category) => {
+      const categoryFilter = category.id === "favorites";
+      const favoritesId = categoryFilter
+        ? await resolveFavoritesCategoryId()
+        : "";
+      if (categoryFilter && !favoritesId) {
+        counts[category.id] = 0;
+        return;
+      }
+      try {
+        const request = buildRequest(
+          category.id,
+          sortMode,
+          excludeHidden,
+          1,
+          0,
+        );
+        const response = categoryFilter
+          ? await GetCategoryGames({
+              ...request,
+              category_id: favoritesId,
+            } as vo.CategoryGameListRequest)
+          : await GetGames(request);
+        counts[category.id] = response.total ?? 0;
+      }
+      catch {
+        // 单个分类计数失败不该影响侧栏其它项
+      }
+    }),
+  );
+  return counts;
 }

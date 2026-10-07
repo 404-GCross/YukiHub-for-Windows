@@ -1,4 +1,6 @@
 import type { models } from "../../src/bindings/models";
+import type { BigScreenHintMode } from "./BigScreenHintBar";
+import type { BigScreenKeyStyle } from "./keyStyles";
 import type { BigScreenInputDevice } from "./useGamepad";
 import { memo } from "react";
 
@@ -15,7 +17,10 @@ export interface BigScreenDetailAction {
   key: string;
   label: string;
   run: () => void;
-  /** 不可用（例如游戏没有本地预告片）时禁用而非隐藏，以保持焦点索引稳定 */
+  /**
+   * 保留给"条件不满足但需要占位"的条目；当前调用方对「观看 PV」改为整条隐藏
+   * （手机端 M15 的做法），所以正常路径上不会出现禁用按钮。
+   */
   disabled?: boolean;
 }
 
@@ -24,8 +29,12 @@ interface BigScreenDetailsLayerProps {
   actionsFocused: boolean;
   focusedActionIndex: number;
   game: models.Game;
+  /** 提示条模式（auto / always / off） */
+  hintMode?: BigScreenHintMode;
   /** 最近一次使用的输入设备，决定底部提示显示手柄图标还是键盘按键 */
   inputDevice: BigScreenInputDevice;
+  /** 按键图标风格（Xbox / PlayStation） */
+  keyStyle?: BigScreenKeyStyle;
   onActionActivate: (index: number) => void;
   onActionFocus: (index: number) => void;
   /** 关闭详情层回到货架 */
@@ -37,8 +46,12 @@ interface BigScreenDetailsLayerProps {
  * 大屏详情层，对齐手机端 `BigScreenDetailsLayer`：
  * 标题 / 副行（原文名·开发商·发行日期）/ 标签 chips（≤3 + R18）/ 统计块 / 简介 / 封面。
  *
- * 与手机端的差异（截图画带需要先补桌面端截图能力，本轮降级为封面大图）记在
- * `docs/ROADMAP.md`；「观看 PV」已在 M3 补齐，无本地预告片时按钮禁用而非隐藏。
+ * 操作按钮排由调用方给出，对齐手机端的「游玩 / 观看 PV（有才显示）/ 详细」——
+ * 其中「详细」打开的是**大屏内的游戏操作菜单**，不是跳去游戏详情页（手机端
+ * `onRequestGameMenu`），所以详情层本身不知道菜单长什么样。
+ *
+ * 仍未对齐的一项：手机端的 INTRODUCTION 截图画带（需要元数据截图列表，桌面端
+ * 暂无对应字段），记在 `docs/ROADMAP.md`。
  */
 export const BigScreenDetailsLayer = memo(
   ({
@@ -46,7 +59,9 @@ export const BigScreenDetailsLayer = memo(
     actionsFocused,
     focusedActionIndex,
     game,
+    hintMode = "auto",
     inputDevice,
+    keyStyle = "xbox",
     onActionActivate,
     onActionFocus,
     onClose,
@@ -65,6 +80,8 @@ export const BigScreenDetailsLayer = memo(
     )?.label;
     const visibleTags = tags.slice(0, 3);
 
+    // 统计块（对齐手机端 M9/M10 的重排）：时长 / 上次游玩 / 状态恒有，
+    // 「评分」只在真有数据时补一格 —— 一排"暂无"的方块比不显示更难看。
     const stats = [
       {
         label: t("bigScreen.playTime"),
@@ -78,14 +95,15 @@ export const BigScreenDetailsLayer = memo(
       },
       {
         label: t("common.status"),
-        value: statusLabel ? t(statusLabel) : t("common.unknownDate"),
-      },
-      {
-        label: t("common.rating"),
-        value:
-          game.rating > 0 ? game.rating.toFixed(1) : t("common.unknownDate"),
+        value: statusLabel ? t(statusLabel) : t("common.unplayed"),
       },
     ];
+    if (game.rating > 0) {
+      stats.push({
+        label: t("common.rating"),
+        value: game.rating.toFixed(1),
+      });
+    }
 
     const coverUrl = game.cover_url || game.cover_source_url;
 
@@ -146,7 +164,12 @@ export const BigScreenDetailsLayer = memo(
               </div>
             )}
 
-            <div className="mt-6 grid grid-cols-4 gap-4">
+            <div
+              className="mt-6 grid gap-4"
+              style={{
+                gridTemplateColumns: `repeat(${stats.length}, minmax(0, 1fr))`,
+              }}
+            >
               {stats.map(item => (
                 <div
                   key={item.label}
@@ -160,9 +183,15 @@ export const BigScreenDetailsLayer = memo(
               ))}
             </div>
 
-            <div className="mt-6 min-h-0 flex-1 overflow-y-auto pr-2 text-sm leading-relaxed text-brand-300">
-              {game.summary || t("common.unknownDate")}
-            </div>
+            {/* 简介为空时整块收起（对齐手机端 M10），不留一块「暂无简介」的空框 */}
+            {game.summary && (
+              <div
+                data-bigscreen-details-scroll
+                className="mt-6 min-h-0 flex-1 overflow-y-auto pr-2 text-sm leading-relaxed text-brand-300"
+              >
+                {game.summary}
+              </div>
+            )}
 
             <div className="mt-8 flex shrink-0 flex-wrap items-center gap-3">
               {actions.map((action, index) => {
@@ -202,7 +231,9 @@ export const BigScreenDetailsLayer = memo(
 
             <BigScreenHintBar
               className="mt-4 shrink-0"
+              hintMode={hintMode}
               inputDevice={inputDevice}
+              keyStyle={keyStyle}
               variant="details"
             />
           </div>

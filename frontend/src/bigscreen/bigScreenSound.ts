@@ -22,10 +22,13 @@ const SOUND_PRESETS: Record<BigScreenSound, SoundPreset> = {
   toggle: { duration: 0.08, frequency: 880, type: "square" },
 };
 
-const PEAK_GAIN = 0.08;
+/**
+ * 音量上限：手机端把用户音量换算后压到 0.8 —— 按键音只是反馈，
+ * 不该盖过游戏本身的声音（`BigScreenSound` L64-70）。
+ */
+const MAX_VOLUME = 0.8;
 
 let audioContext: AudioContext | null = null;
-
 function getAudioContext(): AudioContext | null {
   if (
     typeof window === "undefined"
@@ -49,13 +52,23 @@ function getAudioContext(): AudioContext | null {
   return audioContext;
 }
 
-export function playBigScreenSound(kind: BigScreenSound) {
+/**
+ * @param kind 音效种类
+ * @param volume 0–1 的相对音量（来自 `bigscreen_sound_volume`，默认 65%）。
+ *   与手机端一致地把上限压到 0.8：按键音只是反馈，不该盖过游戏本身的声音。
+ */
+export function playBigScreenSound(kind: BigScreenSound, volume = 1) {
   const context = getAudioContext();
   if (!context) {
     return;
   }
 
   const preset = SOUND_PRESETS[kind];
+  const peak = MAX_VOLUME * clamp01(volume);
+  if (peak <= 0) {
+    return;
+  }
+
   const startAt = context.currentTime;
   const oscillator = context.createOscillator();
   const gain = context.createGain();
@@ -63,11 +76,18 @@ export function playBigScreenSound(kind: BigScreenSound) {
   oscillator.type = preset.type;
   oscillator.frequency.setValueAtTime(preset.frequency, startAt);
   gain.gain.setValueAtTime(0.0001, startAt);
-  gain.gain.exponentialRampToValueAtTime(PEAK_GAIN, startAt + 0.01);
+  gain.gain.exponentialRampToValueAtTime(peak, startAt + 0.01);
   gain.gain.exponentialRampToValueAtTime(0.0001, startAt + preset.duration);
 
   oscillator.connect(gain);
   gain.connect(context.destination);
   oscillator.start(startAt);
   oscillator.stop(startAt + preset.duration + 0.02);
+}
+
+function clamp01(value: number) {
+  if (!Number.isFinite(value)) {
+    return 0;
+  }
+  return Math.min(1, Math.max(0, value));
 }

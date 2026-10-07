@@ -11,6 +11,8 @@ import {
 
 interface BigScreenRailProps {
   activeCategory: BigScreenCategoryId;
+  /** 各分类条目数（展开时显示，对齐手机端侧栏的计数徽标） */
+  counts?: Partial<Record<BigScreenCategoryId, number>>;
   /** 入场错峰动画：只在首次进入大屏时开启 */
   entryAnimation?: boolean;
   /** 焦点或鼠标进入侧栏时展开，离开后收回到图标条 */
@@ -21,10 +23,11 @@ interface BigScreenRailProps {
   onSelect: (category: BigScreenCategoryId) => void;
 }
 
-/** 大屏左侧分类栏，对齐手机端 `bsRail`（收起只留图标，展开显示名称）。 */
+/** 大屏左侧分类栏，对齐手机端 `bsRail`（收起只留图标，展开显示名称与计数）。 */
 export const BigScreenRail = memo(
   ({
     activeCategory,
+    counts,
     entryAnimation = false,
     expanded,
     focused,
@@ -50,6 +53,7 @@ export const BigScreenRail = memo(
           const isActive = category.id === activeCategory;
           const isFocused = focused && index === focusedIndex;
           const label = t(category.labelKey);
+          const count = counts?.[category.id] ?? 0;
 
           return (
             <button
@@ -81,7 +85,16 @@ export const BigScreenRail = memo(
                 aria-hidden="true"
               />
               {expanded && (
-                <span className="truncate text-sm font-medium">{label}</span>
+                <>
+                  <span className="min-w-0 flex-1 truncate text-sm font-medium">
+                    {label}
+                  </span>
+                  {count > 0 && (
+                    <span className="shrink-0 text-xs tabular-nums text-brand-500">
+                      {count}
+                    </span>
+                  )}
+                </>
               )}
             </button>
           );

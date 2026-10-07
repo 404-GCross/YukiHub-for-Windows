@@ -46,8 +46,8 @@ const COVER_ASPECT_RATIO = 3.6 / 3;
 /** 卡片之间的横向间距（px） */
 export const BIG_SCREEN_CARD_GAP = 14;
 
-/** GameCard 底部标题 + 厂商区的高度（px） */
-const CARD_META_HEIGHT = 52;
+/** 卡片标题区高度（仅在 `bigscreen_show_titles` 打开时占位） */
+const CARD_TITLE_HEIGHT = 28;
 
 /** 行标题高度占内容区的比例（对齐手机端 `headerH = rowTotal × 0.20`） */
 const HEADER_HEIGHT_RATIO = 0.2;
@@ -79,26 +79,40 @@ const MAX_INFO_RESERVE_HEIGHT = 190;
 /**
  * 一张卡在行里要留出的上下余量（px）。
  *
- * 焦点卡会 `scale(1.045)`，而货架容器是 `overflow-x-auto`（`overflow-y` 必然
- * 退化成 hidden），没有余量就会被裁掉——这就是「选中后被挤出来」的观感来源之一。
+ * 焦点卡会按用户档位放大（默认 1.045），而货架容器是 `overflow-x-auto`
+ * （`overflow-y` 必然退化成 hidden），没有余量就会被裁掉 —— 这就是
+ * 「选中后被挤出来」的观感来源之一。
  */
 const CARD_SCALE_HEADROOM = 16;
 
 /** 卡片宽度占内容区宽度的上限（对齐手机端 `cardW ≤ wDp × 0.17`，保证一屏好几张） */
 const CARD_WIDTH_RATIO_OF_AREA = 0.12;
 
+/** 卡片缩放的夹取区间（与 Go 侧 NormalizeBigScreenCardScale 一致） */
+export const MIN_BIG_SCREEN_CARD_SCALE = 80;
+export const MAX_BIG_SCREEN_CARD_SCALE = 140;
+
 export type BigScreenShelfMetrics = {
   cardWidth: number;
+  /** 封面高度（px），卡片本体按它撑开 */
+  coverHeight: number;
   /** 行标题区高度 */
   headerHeight: number;
   /** 信息浮层预留的高度（卡片排上方的空白） */
   infoReserveHeight: number;
-  /** 卡片行的实际高度（含缩放余量），卡片在其中垂直居中 */
+  /** 卡片行的实际高度（含缩放余量与标题），卡片在其中垂直居中 */
   rowHeight: number;
 };
 
+export type BigScreenShelfMetricsOptions = {
+  /** 卡片大小倍率（×100，80–140），来自 `bigscreen_card_scale` */
+  cardScale: number;
+  /** 是否在卡片下方显示游戏名，来自 `bigscreen_show_titles` */
+  showTitles: boolean;
+};
+
 /**
- * 大屏货架的尺寸预算，照搬手机端 `BigScreenSizes`：
+ * 大屏货架的尺寸预算，照搬手机端 `BigScreenSizes` 的思路：
  *
  * ```
  * rowTotal = 内容区 / 1.35      // 手机用来露出下一行的一角
@@ -109,20 +123,32 @@ export type BigScreenShelfMetrics = {
  *
  * 桌面端是**单排**（不换行），所以把内容区高度整块留给这一行：
  * 行标题 + 卡片 + 缩放余量必须塞得下，因此先按高度算出封面高，再用宽度上限
- * 收一次——两个约束取小，卡片就一定不会溢出。
+ * 收一次 —— 两个约束取小，卡片就一定不会溢出。
+ *
+ * 用户的「卡片大小」档位作用在**封面高度**上（再据此推宽度），
+ * 这样三档之间是等比放大，而不是只把某一边拉长。
  */
-export function resolveBigScreenShelfMetrics(area: {
-  height: number;
-  width: number;
-}): BigScreenShelfMetrics {
+export function resolveBigScreenShelfMetrics(
+  area: { height: number; width: number },
+  options: BigScreenShelfMetricsOptions = { cardScale: 112, showTitles: false },
+): BigScreenShelfMetrics {
+  const empty: BigScreenShelfMetrics = {
+    cardWidth: 0,
+    coverHeight: 0,
+    headerHeight: 0,
+    infoReserveHeight: 0,
+    rowHeight: 0,
+  };
   if (area.height <= 0 || area.width <= 0) {
-    return {
-      cardWidth: 0,
-      headerHeight: 0,
-      infoReserveHeight: 0,
-      rowHeight: 0,
-    };
+    return empty;
   }
+
+  const scale
+    = Math.min(
+      Math.max(options.cardScale, MIN_BIG_SCREEN_CARD_SCALE),
+      MAX_BIG_SCREEN_CARD_SCALE,
+    ) / 100;
+  const metaHeight = options.showTitles ? CARD_TITLE_HEIGHT : 0;
 
   // 卡片排在最底部，它上方依次是行标题与信息浮层
   const infoReserveHeight = Math.round(
@@ -142,28 +168,27 @@ export function resolveBigScreenShelfMetrics(area: {
     = rowBudget
       - headerHeight
       - BIG_SCREEN_CARD_GAP * 2
-      - CARD_META_HEIGHT
+      - metaHeight
       - CARD_SCALE_HEADROOM * 2;
-  const byHeight = Math.min(
+  const baseCoverHeight = Math.min(
     Math.max(available, MIN_CARD_COVER_HEIGHT),
     resolveMaxCardCoverHeight(area.height),
   );
+  const coverHeight = Math.round(baseCoverHeight * scale);
   const cardWidth = Math.max(
-    96,
+    72,
     Math.min(
-      Math.round(byHeight / COVER_ASPECT_RATIO),
+      Math.round(coverHeight / COVER_ASPECT_RATIO),
       Math.round(area.width * CARD_WIDTH_RATIO_OF_AREA),
     ),
   );
 
   return {
     cardWidth,
+    coverHeight,
     headerHeight,
     infoReserveHeight,
-    rowHeight:
-      Math.round(cardWidth * COVER_ASPECT_RATIO)
-      + CARD_META_HEIGHT
-      + CARD_SCALE_HEADROOM * 2,
+    rowHeight: coverHeight + metaHeight + CARD_SCALE_HEADROOM * 2,
   };
 }
 
