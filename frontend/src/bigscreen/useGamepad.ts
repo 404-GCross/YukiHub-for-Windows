@@ -9,7 +9,8 @@ export type BigScreenIntent
     | { type: "back" }
     | { type: "confirm" }
     | { type: "details" }
-    | { type: "favorite" };
+    | { type: "favorite" }
+    | { type: "menu" };
 
 /** 最近一次使用的输入设备，决定提示条显示手柄图标还是键盘按键 */
 export type BigScreenInputDevice = "gamepad" | "keyboard";
@@ -20,8 +21,12 @@ type PadAction
     | "down"
     | "lb"
     | "left"
+    | "lt"
     | "rb"
+    | "back"
     | "right"
+    | "rt"
+    | "start"
     | "up"
     | "x"
     | "y";
@@ -40,7 +45,12 @@ const REPEAT_INTERVAL_MS = 80;
 /** 左摇杆判定阈值 */
 const AXIS_THRESHOLD = 0.5;
 
-/** 标准映射（Standard Gamepad）的按钮下标 → 动作 */
+/**
+ * 标准映射（Standard Gamepad）的按钮下标 → 动作。
+ *
+ * 对齐手机端 `InputRouter.mapKey`：A/B/X/Y、LB/RB 与扳机 L2/R2（都算翻页）、
+ * Start=MENU、Select/Back 与 Mode 都当返回。
+ */
 const BUTTON_ACTIONS: Record<number, PadAction> = {
   0: "a",
   1: "b",
@@ -48,44 +58,50 @@ const BUTTON_ACTIONS: Record<number, PadAction> = {
   3: "y",
   4: "lb",
   5: "rb",
+  6: "lt",
+  7: "rt",
+  8: "back",
+  9: "start",
   12: "up",
   13: "down",
   14: "left",
   15: "right",
 };
 
-/** 只有方向与切分类需要长按连发；确认/返回/收藏/详情连发会误触 */
-const REPEATABLE_ACTIONS = new Set<PadAction>([
-  "down",
-  "lb",
-  "left",
-  "rb",
-  "right",
-  "up",
-]);
+/**
+ * 只有**方向**需要长按连发；确认/返回/收藏/详情连发会误触。
+ * 手机端 `InputRouter` 的 `isDirection` 只覆盖上下左右，翻页与菜单都不连发。
+ */
+const REPEATABLE_ACTIONS = new Set<PadAction>(["down", "left", "right", "up"]);
 
 function actionToIntent(action: PadAction): BigScreenIntent {
   switch (action) {
     case "a": {
       return { type: "confirm" };
     }
+    case "back":
     case "b": {
       return { type: "back" };
     }
     case "down": {
       return { direction: "down", type: "move" };
     }
-    case "lb": {
+    case "lb":
+    case "lt": {
       return { delta: -1, type: "category" };
     }
     case "left": {
       return { direction: "left", type: "move" };
     }
-    case "rb": {
+    case "rb":
+    case "rt": {
       return { delta: 1, type: "category" };
     }
     case "right": {
       return { direction: "right", type: "move" };
+    }
+    case "start": {
+      return { type: "menu" };
     }
     case "up": {
       return { direction: "up", type: "move" };

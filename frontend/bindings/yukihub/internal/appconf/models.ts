@@ -654,7 +654,7 @@ export class AppConfig {
     "blur_nsfw_game_covers": boolean;
 
     /**
-     * 大屏模式配置
+     * 大屏模式配置（对齐手机端 BigScreenPrefs 的 bigscreen_* 键）
      * 大屏模式是否展示已隐藏的游戏，默认 false
      */
     "bigscreen_show_hidden_game": boolean;
@@ -673,6 +673,111 @@ export class AppConfig {
      * 大屏界面音效开关，默认 true
      */
     "bigscreen_sound_enabled": boolean;
+
+    /**
+     * 大屏界面音效音量（0-100），默认 65
+     */
+    "bigscreen_sound_volume": number;
+
+    /**
+     * 焦点移动音，默认 true
+     */
+    "bigscreen_focus_ticks": boolean;
+
+    /**
+     * 入场动画，默认 true
+     */
+    "bigscreen_intro_enabled": boolean;
+
+    /**
+     * 自选入场视频（/local/intro/...）；空 = 内置动画（对齐手机端 M18-2）
+     */
+    "bigscreen_intro_video"?: string;
+
+    /**
+     * 卡片上再显示游戏名（默认 false，名字已在信息浮层）
+     */
+    "bigscreen_show_titles": boolean;
+
+    /**
+     * 卡片大小倍率（×100），默认 112
+     */
+    "bigscreen_card_scale": number;
+
+    /**
+     * 焦点缩放幅度（%），0 表示只描边，默认 100
+     */
+    "bigscreen_focus_scale": number;
+
+    /**
+     * 按键图标风格：xbox / ps，默认 xbox
+     */
+    "bigscreen_key_style"?: string;
+
+    /**
+     * 按键提示条：auto（4s 后淡出）/ always / off，默认 auto
+     */
+    "bigscreen_hint_mode"?: string;
+
+    /**
+     * 侧栏钉住展开，默认 false
+     */
+    "bigscreen_rail_expanded": boolean;
+
+    /**
+     * 背景预告片总开关，默认 true
+     */
+    "bigscreen_trailer_enabled": boolean;
+
+    /**
+     * 预告片静音，默认 false
+     */
+    "bigscreen_trailer_muted": boolean;
+
+    /**
+     * 焦点停留多久后起播预告片（毫秒），默认 2000
+     */
+    "bigscreen_trailer_delay_ms": number;
+
+    /**
+     * 预告片显示方式：false=铺满裁切 / true=原比例留黑边，默认 false
+     */
+    "bigscreen_pv_fit": boolean;
+
+    /**
+     * 预告片遮罩，默认 true
+     */
+    "bigscreen_pv_scrim": boolean;
+
+    /**
+     * 预告片遮罩强度（0-100），默认 45
+     */
+    "bigscreen_pv_scrim_percent": number;
+
+    /**
+     * 顶部提示条停留时长（毫秒），默认 2000
+     */
+    "bigscreen_banner_hold_ms": number;
+
+    /**
+     * 背景氛围层（雪花 / 极光），默认 true
+     */
+    "bigscreen_snow_enabled": boolean;
+
+    /**
+     * 只在详情层播放预告片（对齐手机端 bigscreen_trailer_details_only，中性能档默认行为）
+     */
+    "bigscreen_trailer_details_only": boolean;
+
+    /**
+     * 记住上次的分类筛选，默认 true
+     */
+    "bigscreen_remember_filter": boolean;
+
+    /**
+     * 上次停留的分类（仅在记住筛选打开时写入）
+     */
+    "bigscreen_last_category"?: string;
 
     /**
      * OverlayShortcut 是「呼出游戏内好友栏」的全局快捷键，accelerator 形式
@@ -832,6 +937,57 @@ export class AppConfig {
         }
         if (!("bigscreen_sound_enabled" in $$source)) {
             this["bigscreen_sound_enabled"] = false;
+        }
+        if (!("bigscreen_sound_volume" in $$source)) {
+            this["bigscreen_sound_volume"] = 0;
+        }
+        if (!("bigscreen_focus_ticks" in $$source)) {
+            this["bigscreen_focus_ticks"] = false;
+        }
+        if (!("bigscreen_intro_enabled" in $$source)) {
+            this["bigscreen_intro_enabled"] = false;
+        }
+        if (!("bigscreen_show_titles" in $$source)) {
+            this["bigscreen_show_titles"] = false;
+        }
+        if (!("bigscreen_card_scale" in $$source)) {
+            this["bigscreen_card_scale"] = 0;
+        }
+        if (!("bigscreen_focus_scale" in $$source)) {
+            this["bigscreen_focus_scale"] = 0;
+        }
+        if (!("bigscreen_rail_expanded" in $$source)) {
+            this["bigscreen_rail_expanded"] = false;
+        }
+        if (!("bigscreen_trailer_enabled" in $$source)) {
+            this["bigscreen_trailer_enabled"] = false;
+        }
+        if (!("bigscreen_trailer_muted" in $$source)) {
+            this["bigscreen_trailer_muted"] = false;
+        }
+        if (!("bigscreen_trailer_delay_ms" in $$source)) {
+            this["bigscreen_trailer_delay_ms"] = 0;
+        }
+        if (!("bigscreen_pv_fit" in $$source)) {
+            this["bigscreen_pv_fit"] = false;
+        }
+        if (!("bigscreen_pv_scrim" in $$source)) {
+            this["bigscreen_pv_scrim"] = false;
+        }
+        if (!("bigscreen_pv_scrim_percent" in $$source)) {
+            this["bigscreen_pv_scrim_percent"] = 0;
+        }
+        if (!("bigscreen_banner_hold_ms" in $$source)) {
+            this["bigscreen_banner_hold_ms"] = 0;
+        }
+        if (!("bigscreen_snow_enabled" in $$source)) {
+            this["bigscreen_snow_enabled"] = false;
+        }
+        if (!("bigscreen_trailer_details_only" in $$source)) {
+            this["bigscreen_trailer_details_only"] = false;
+        }
+        if (!("bigscreen_remember_filter" in $$source)) {
+            this["bigscreen_remember_filter"] = false;
         }
 
         Object.assign(this, $$source);

@@ -620,3 +620,482 @@ Windows 管理员启动模式、Wails beta.24 —— **本仓全部已具备**�
 | 1.13.3 抽屉定位异常 / 玻璃光晕 | 上游 1.13.2 引入的 UI 缺陷修复，本仓前端已重度分叉且未复现同类问题 |
 | 元数据来源下拉里给 NextMoe 加「推荐」字样 | 桌面端是**多选开关列表**而非单选下拉，已改为把 NextMoe 排到 VNDB 之后（对齐手机版次序），推荐语义写进来源说明文案 |
 | 手机版更新源单选（GitCode / GitHub） | 桌面端走 LunaBox 自己的 manifest 更新服务，机制不同，不适用 |
+
+## 十一、2026-10-07 第五轮：三条通道（账号云同步 / WebDAV / 本地备份）一致性复核
+
+用户诉求：确认「WebDAV 自持同步、账号服务器同步、本地 `.ykbak` 备份」导出与导入的
+是同一份东西，并继续跟进手机端。
+
+### 11.1 复核结论：导出侧三通道已经等价（本轮补上回归测试）
+
+三条通道共用同一份负载构造：账号云同步与 WebDAV 都走
+`buildYukiHubSnapshot` → `exporter.Build()`（云同步形态），本地 `.ykbak` 走
+`ExportToYukiHub` → `exporter.BuildLocalBackup()`（本地形态）。两者最终都调用
+`exporter.build(kind)`，**负载完全一致，只有信封字段不同**：
+
+| 字段 | 云同步 / WebDAV | 本地 `.ykbak` | 手机版依据 |
+| --- | --- | --- | --- |
+| `created_at` | `0` | 当前毫秒 | `SyncManager.buildLocalSnapshot` vs `MainActivity.exportLocalBackup` |
+| `note` | 云同步文案 | 本地备份文案 | 同上 |
+| `backup_type` | 省略 | `local_full` | 仅 `exportLocalBackup` 追加 |
+| 其余全部 | 相同 | 相同 | 同一个 `buildLocalSnapshot(30)` |
+
+三处也都注入了 `profile`（昵称 / 头像）与 `settings.metadata_source`，不存在
+「某条通道少带一段」的情况。
+
+**新增回归测试**：`internal/service/test/yukihub_export_test.go` 的
+`TestYukiHubThreeChannelsExportIdenticalPayload` —— 用真实库构造带别名 / 清零 /
+收藏 / 标签 / 元数据缓存 / 本地封面 / 无标题条目的数据，把两份快照的信封归一化后
+断言**逐字节相等**，并断言云同步形态不含 `backup_type`。以后谁在某条通道上单独加
+字段，这个测试会直接失败。
+
+### 11.2 已修：封面候选只取「首个非空」
+
+`firstNetworkURL(CoverSourceURL, CoverURL)` 的实现与自身文档不符：文档写「返回第一个
+http(s) 地址」，实现却返回**第一个非空**。若 `cover_source_url` 是本地路径
+（历史数据 / `content://`），后面那个有效的网络 `cover_url` 会被直接挤掉，导致封面
+明明有网络地址却不同步。现改为逐个候选做 `networkCoverURI` 校验，返回首个可跨设备
+的地址（`TestFirstNetworkURLPrefersUsableRemoteCover`）。
+
+### 11.3 已修：导入侧采纳快照里的全局资料源（对齐手机版）
+
+手机版 `SyncManager.importSnapshot` 读到 `settings.metadata_source` 会
+`putString(KEY_METADATA_SOURCE, source)`，即**导入侧采纳对端的全局资料源**；
+桌面端此前只导出不回写，于是：
+
+- 手机端把资料源改成 nextmoe → 同步到桌面端**不变**；
+- 桌面端下一次上传带上自己的旧值（如 vndb）→ **把手机端的设置顶回去**，来回翻。
+
+现在三条导入通道（账号同步 / WebDAV / 本地 `.ykbak`）都会采纳它：
+
+- 导入器 `YukiHubImporter` 新增 `MetadataSource()`，把快照声明的值原样透出（不碰配置）；
+- service 层 `resolveImportedMetadataSource()` 做决策：**白名单外 / 缺失 / 与当前一致
+  一律不动**。白名单 = `appconf.IsSelectableMetadataSource`，正好是手机版 importSnapshot
+  接受的那六个值（vndb / bangumi / bangumi_mirror / ymgal / hikarinagi / nextmoe）——
+  桌面端自己的 `IsSupportedMetadataSource` 更宽（含 steam / dlsite 等），不能直接用，
+  否则会把手机端不认识的来源当成跨端偏好写过去；
+- 变化时落盘 `appconf.SaveConfig` 并广播 `yukihub-sync:applied`，让前端刷新配置
+  （否则设置页草稿还是旧值，用户接着点「保存」会把它写回去）。
+
+测试：`importer/yukihub_test.go`（资料源透出、缺失时不造值）、
+`service/import_metadata_source_test.go`（白名单 + 采纳决策）。
+
+### 11.4 仍保留的差异（本轮复核后确认有意）
+
+| 项 | 说明 |
+| --- | --- |
+| 会话条数上限：手机全库 30 / 桌面每游戏 30 | 桌面总时长由会话求和，少导会让回导后时长缩水（§五） |
+| `settings` 段只写 `metadata_source` | 手机端的排序 / 缩放 / 扫描等属设备本地偏好，桌面端无对应概念；手机端用 `has()` 守卫，缺失即保留其原值，因此不写是安全的 |
+| 手机端 `buildLocalSnapshot` 会把 `settings` 写满十几个键 | 桌面端没有这些概念，写过去只会用桌面值覆盖手机偏好 |
+
+## 十二、2026-10-07 第六轮：大屏模式全面对齐（S4/S5/S6 补齐）
+
+用户反馈「大屏模式随便看一眼全是问题，详情甚至直接跳转到游戏库」。对照手机端
+`com.yuki.yukihub.bigscreen`（20 个类）逐项复核后，本轮补齐了**浮层菜单体系**与
+**大屏内设置**，并把卡片/侧栏/提示条对齐手机端的视觉与键位。
+
+### 12.1 修掉的核心问题：「详细」会跳出大屏
+
+手机端详情层按钮是「游玩 / 观看 PV（有预告片才显示）/ 详细」，其中「详细」调的是
+`onRequestGameMenu` —— **打开大屏内的游戏操作菜单**，不是跳去别处。桌面端此前把它接到
+`navigate(/game/:id)`，等于把用户从大屏踢回普通界面（用户看到的「跳转到游戏库」）。
+
+现在三层分工明确：
+
+| 入口 | 行为 |
+| --- | --- |
+| 货架卡片 Ⓐ / 点击 | 启动游戏 |
+| 货架 Ⓨ / 卡片右键 | 打开**详情层**（`BigScreenDetailsLayer`） |
+| 详情层「详细」、信息浮层「更多」 | 打开**游戏操作菜单**（S4） |
+| 游戏操作菜单「编辑信息」 | 才跳出大屏去完整详情页（手机端的 `jumpToTouchMode`） |
+
+### 12.2 新增：通用浮层菜单（`BigScreenPanel.tsx`）
+
+对齐手机端 `BigScreenPanel`：右侧滑入、遮罩**消费点击**（手机端 M16 用户投诉过
+「你不就做了层透明布」）、条目支持图标 + 主文案 + 副文案 + 分隔线、标题、底部提示。
+面板打开时吞掉除上下/确认/返回之外的输入。
+
+- **S4 游戏操作菜单**：启动游戏 / 收藏 / 游玩状态循环 / 设置·更换·移除预告片 /
+  编辑信息 / 打开游戏目录 / 在库中隐藏（二次确认）/ 从库中移除（二次确认）。
+- **S5 主菜单**（顶栏 ☰、`Tab`）：设置 / 隐藏游戏管理 / 随机选一款 / 切换排序方式 /
+  快捷键说明 / 退出大屏。
+- **隐藏游戏管理**：后端没有「只看隐藏」的过滤，取一份含隐藏的列表再本地筛
+  （手机端同样是内存里筛）。
+
+### 12.3 新增：大屏内设置面板（`BigScreenSettingsLayer.tsx`）
+
+对齐手机端 `BigScreenSettings` 的**左列分区 + 右列条目**两列焦点模型，四个分区：
+常规 / 视觉 / 音频 / 预告片。`select` 类条目复用通用浮层选值，`switch` 就地翻转。
+
+设置项的**单一事实来源**是 `bigscreen/settingsSchema.ts`，设置页的「大屏模式」分区
+（`components/panel/BigScreenSettingsPanel.tsx`）与大屏内面板共用它，保证两处可调项
+永远一致。文案在 schema 里就翻译好：项目的 i18n 提取器只认字面量翻译调用，如果存
+labelKey 再由渲染层动态查表，`pnpm i18n:clean` 会把这些键当"未引用"删掉并报错。
+
+### 12.4 新增：顶栏与入场动画
+
+- `BigScreenTopBar.tsx`：时间 + 手柄连接状态 + ☰ 菜单入口。桌面端没有电量/网络/
+  触摸模式的概念，只保留对客厅大屏有意义的两项。
+- `BigScreenIntro.tsx`：内置入场动画（logo 淡入上浮 + 光带扫过 + 整层淡出），
+  任意输入可跳过；由 `bigscreen_intro_enabled` 控制。手机端的自选入场视频不迁移
+  （需要视频选择器与 SAF，桌面端无对应入口）。
+
+### 12.5 卡片 / 侧栏 / 底栏对齐
+
+- 新增大屏专用卡片 `BigScreenCard.tsx`，**不再复用** `GameCard`：游戏库那张卡带状态文字
+  徽标、评分芯片、排序字段覆盖条与悬浮位移，是给鼠标精读用的；大屏卡片只要
+  「封面 + 可选标题 + 状态点/收藏/R18 角标 + 未聚焦压暗」。
+- 侧栏补**条目计数**（`limit=1` 逐分类取 `total`，只跑 COUNT）、支持「侧栏常驻展开」。
+- 底栏提示改用手机端 `BigScreenKeys` 的按键字形（Xbox ⒶⓍⒷⓎ / PS ✕□○△ 可切换），
+  并补上「← 进筛选栏」「☰ 菜单」；`bigscreen_hint_mode` 支持自动淡出 / 常显 / 隐藏。
+- 排序不再是每个分类写死：主菜单可在「最近游玩 / 最近加入 / 按名称」之间切换。
+
+### 12.6 新增配置项（`appconf`）
+
+`bigscreen_show_titles` / `bigscreen_card_scale` / `bigscreen_focus_scale` /
+`bigscreen_key_style` / `bigscreen_hint_mode` / `bigscreen_rail_expanded` /
+`bigscreen_sound_volume` / `bigscreen_focus_ticks` / `bigscreen_intro_enabled` /
+`bigscreen_trailer_enabled` / `bigscreen_trailer_muted` / `bigscreen_trailer_delay_ms` /
+`bigscreen_pv_fit` / `bigscreen_pv_scrim` / `bigscreen_pv_scrim_percent`。
+
+`NormalizeBigScreenPreferences` 统一收敛：枚举白名单 + 数值夹取（`card_scale=0` 会把
+卡片宽度算成 0、整个货架消失，必须夹住）。默认值与手机端 `BigScreenPrefs` 对齐，
+**其中 `trailer_muted` 默认 false**（手机端 M18 修过「PV 没声音」的坑）。
+
+### 12.7 仍未对齐（记入 ROADMAP）
+
+| 项 | 原因 |
+| --- | --- |
+| 详情层的 INTRODUCTION 截图画带 | 需要元数据截图列表，桌面端 `models.Game` 暂无对应字段 |
+| 游戏操作菜单的「标题图 / 背景图」 | 手机端有 `logo_path` / `bg_path` 两列与私有目录，桌面端需要 schema 变更 |
+| 入场动画自选视频、PV 占用与清理面板 | 依赖 SAF / 受管视频目录的等价能力 |
+| 触摸模式（`touchUi`） | 桌面端以鼠标 + 手柄为主，不需要"不预选焦点"的触摸分支 |
+
+## 十三、2026-10-07 第七轮：大屏交互与设置继续对齐（PC 化收紧）
+
+用户要求「继续对齐、继续审计，以手机版为准，但 UI 要更 PC 一些（比手机版小）」。
+对照手机端 `com.yuki.yukihub.bigscreen` 的 FocusEngine / InputRouter / BigScreenSizes /
+BigScreenSettings / BigScreenPrefs / BigScreenBanner 逐项复核后，本轮修掉了一批
+**交互语义错误**，补齐了设置分区与提示条，并把整体尺寸收紧一档。
+
+### 13.1 修掉的焦点穿梭错误（真 bug）
+
+| 症状 | 手机端行为 | 修复前 | 修复后 |
+| --- | --- | --- | --- |
+| 卡片排按 ↑ | 进**信息浮层按钮排**（`setInfoZone(true)`） | 进侧栏 | 进按钮排 |
+| 卡片排按 ↓ | 到边界即停 | 进按钮排（按钮排在下方） | 到边界即停 |
+| 卡片排按 ← | `col==0` 时进侧栏 | 进侧栏 ✓ | 不变 |
+| 侧栏按 ←/→ | ← 不处理、→ 回内容区 | 被拦成「切分类」，焦点下标不动 → **焦点与当前分类脱节** | ← 吞掉、→ 回货架 |
+| 侧栏按 Ⓐ | 应用当前聚焦的分类后回内容区 | 只回货架，**分类根本没切** | 应用分类再回货架 |
+
+根因是 `BigScreenSizes` 的层级关系被搞反了：信息浮层（含按钮排）压在货架**上方**，
+所以「上=按钮排、下=回货架」；而旧实现把 `FOCUS_ORDER` 写成 `[SHELF, ACTIONS]`。
+另外 `focusEngine.verticalNeighbor` 会把**未登记在 `verticalOrder` 里的区域追加到末尾**，
+于是「货架按 ↓」被引擎丢进侧栏 —— 现在只在该顺序内相邻穿梭（侧栏/详情层不参与）。
+
+### 13.2 补 MENU 意图与手柄按键映射
+
+- `BigScreenIntent` 新增 `menu`：键盘 `Tab`、手柄 `Start` 都走它，浮层里会被各自吞掉
+  （对齐手机端「☰ 打开主菜单」；浮层打开时不再能穿透去开菜单）。
+- 手柄映射补齐：按钮 8（Select/Back）与 Mode → back，按钮 9（Start）→ menu，
+  扳机 6/7（L2/R2）与 4/5（LB/RB）同为翻分类。
+- **连发只保留方向键**：手机端 `InputRouter.isDirection` 只覆盖上下左右，
+  LB/RB 按住不连发（之前 PC 给 LB/RB 开了连发，按住会疯狂切分类）。
+
+### 13.3 实现按分类的焦点记忆
+
+`FocusEngine` 早有 `saveMemory/restoreMemory` 但从未被调用。现在：
+切分类前把当前货架下标存进 `shelfMemoryRef`，新分类数据到位后恢复该分类上次的位置
+（没有记忆才回第一张）。对齐手机端 `setMemoryKey(filter)` —— 以筛选 id 为记忆键。
+
+### 13.4 新增大屏顶部提示条（`BigScreenBanner`）
+
+对齐手机端 `BigScreenBanner`（spec §S7）：顶部滑入 + 淡入，停留后自动滑出，
+`message.id` 变化即重播动画。手机端 M14-3 两轮反馈后回退到「只要一次干净的淡入」，
+这里保持一致。接入点：**手柄连接/断开**（M18-2：入场动画结束后也提示一次）、
+收藏、切换排序、清除筛选记忆、恢复默认设置。停留时长由 `bigscreen_banner_hold_ms`
+控制（默认 2000ms，可配 1.2/2/3/4.5 秒），入场动画期间抑制。
+
+### 13.5 设置分区补齐（4 → 5 个）
+
+对齐手机端的分区结构（去掉桌面端无对应概念的「兼容」= KR 存档兜底）：
+
+| 分区 | 条目 |
+| --- | --- |
+| 常规 | 性能档 / 入场动画 / 默认分类 / 显示已隐藏游戏 / **记住筛选** |
+| 视觉 | 卡片大小 / 显示标题 / 焦点缩放 / **背景氛围** / **NSFW 封面模糊** / 侧栏常驻展开 / 按键提示条 / 按键图标风格 |
+| 音频 | 界面音效 / 音效音量 / 焦点音 / PV 静音 |
+| 布局 | **提示条时长** / 背景预告片 / PV 播放延迟 / **仅在详情层播放 PV** / PV 显示方式 / PV 遮罩 / PV 遮罩强度 |
+| 菜单 | **清除筛选记忆** / **恢复默认设置**（二次确认） |
+
+schema 新增 `action` 类条目（右侧按钮 + 状态文案）。「恢复默认设置」写回
+`BIG_SCREEN_DEFAULT_CONFIG`（与 Go 侧 `defaultAppConfig()` 的大屏段一一对应），
+**不碰主库设置**；「NSFW 封面模糊」直接读写主库共用的 `blur_nsfw_game_covers`。
+
+### 13.6 UI 尺寸 PC 化收紧
+
+用户要求「比手机版小」。手机端所有尺寸都由屏幕短边驱动，桌面端沿用同一套比例但
+把系数压一档，让整体密度更高：
+
+| 项 | 手机端锚点 | 修复前 | 现在 |
+| --- | --- | --- | --- |
+| 封面占内容区高度 | ~27% | 28%（夹 220–400） | **22%（夹 180–320）** |
+| 封面高度下限 | 96dp | 130 | **110** |
+| 信息浮层预留 | 34%（夹 100–150） | 30%（夹 120–190） | **24%（夹 96–150）** |
+| 行标题高度 | 20%（夹 20–34） | 20%（夹 24–44） | **18%（夹 22–36）** |
+| 卡片横向间距 | 9dp | 14 | **12** |
+| 卡片宽上限 | 屏宽 17% | 12% | **10.5%** |
+| 侧栏宽度 | 50–78 / 168–260 | 76 / 216 | **68 / 200** |
+| 信息浮层标题 | 18.7sp | text-4xl (36px) | **text-3xl (30px)** |
+| 详情层标题 | — | text-5xl (48px) | **text-4xl (36px)** |
+| 面板宽度 | — | min(420px, 34vw) | **min(360px, 30vw)** |
+
+字号、按钮内边距、面板/设置层的左列宽度也同步收了一档。
+
+### 13.7 仍未对齐
+
+| 项 | 原因 |
+| --- | --- |
+| 详情层的 INTRODUCTION 截图画带 | 需要元数据截图列表，桌面端 `models.Game` 尚无对应字段 |
+| 游戏操作菜单的「标题图 / 背景图」（`BigScreenArt`） | 手机端有 `logo_path` / `bg_path` 两列与私有目录，桌面端需要 schema 变更 |
+| 入场动画自选视频、PV 占用与清理面板 | 依赖 SAF / 受管视频目录的等价能力 |
+| 触摸模式（`touchUi`）分支 | 桌面端以鼠标 + 手柄为主，不需要「不预选焦点」的触摸分支 |
+
+## 十四、2026-10-07 第八轮：菜单溢出（真 bug）+ 入场动画重做 + 自选开场视频
+
+用户反馈三件事：①游戏操作菜单「超出去了」；②大屏启动动画「太敷衍，还不如手机」；
+③各方面功能仍有欠缺，继续对齐。前两项都是真问题，本轮从根因上修掉。
+
+### 14.1 游戏操作菜单溢出屏幕（根因：动画的 transform 盖掉了居中）
+
+**症状**：菜单面板的顶部从屏幕中线开始往下铺，最后两项（在库中隐藏 / 从库中移除）
+和底部提示整块掉到窗口外，滚也滚不到（截图里最后一项被切掉一半）。
+
+**根因**（可复现的 CSS 优先级问题）：面板同时写了 `top-1/2` + `-translate-y-1/2`
+（垂直居中）和 `animate-bigscreen-panel-in`，而后者的关键帧结尾是
+`transform: translate3d(0,0,0)`，且 `animation-fill-mode: both`。
+**CSS 动画产生的 transform 会覆盖普通声明**，于是 `-translate-y-1/2` 被静默吃掉，
+面板变成「从 50% 高度开始 + 最多 86vh 高」→ 底部溢出 36%。
+
+**修复**：容器改成 `flex items-center justify-end px-10`，面板作为普通 flex 子项
+被居中，与 transform 彻底解耦（动画只负责滑入）。同时把条目的 `truncate` 换成
+`line-clamp-2` / `line-clamp-3` —— 对齐手机端 label maxLines=2 / sub maxLines=3，
+「不删除游戏，可在主菜单 → 隐藏游戏管理里恢复」这类长说明不再被砍掉半句。
+
+### 14.2 入场动画重做（对齐手机端 `BigScreenIntro` 全时间轴）
+
+旧实现只有「logo 淡入 + 光带扫过」两步，缺了手机端一半的序列，所以「一闪就过去了」。
+现在逐帧对齐手机端（毫秒）：
+
+| 时刻 | 手机端行为 | 修复前 | 现在 |
+| --- | --- | --- | --- |
+| 80 | logo 淡入 + 上浮 28dp（520ms，Decelerate） | ✓ | ✓ |
+| 300 | 光带 420×180 自 x=-220 扫到 +280（780ms），峰值 alpha .55 | 近似 | ✓ |
+| 980 | logo 上浮淡出 -14dp（240ms） | ✗ | ✓ |
+| 1120 | 入场层淡出 260ms + **主界面圆形揭示（0→全屏半径，560ms）+ 1.06→1.0 回缩** | ✗ | ✓ |
+| 1680 | 交回主界面 | ✗ | ✓ |
+
+- logo 规格也对齐了：`YukiHub` 46sp / 字距 0.22em，副标题「大　屏　模　式」13sp /
+  字距 0.30em / 焦点色（桌面端按视口高度 clamp，PC 上比手机端小一档）。
+- 揭示动画落在**内容层**上（`animate-bigscreen-reveal`，`clip-path: circle()` 0%→75%），
+  由入场层在 1120ms 时通过 `onRevealStart` 通知宿主 —— 入场层盖着内容，
+  没法给自己"下面"的元素做裁剪。
+- 跳过改为 `ref.skip()`：手机端是 `intro.skip()`（走一次 240ms 淡出再交回），
+  不再像以前那样直接卸载组件（硬切会闪一下）。
+- 低性能档（`bigscreen_effect_level = off`）与手机端 `lowEndDevice()` 一致：不做动画，120ms 直通。
+
+### 14.3 新增：自选开场视频（对齐手机端 M18-2 `bigscreen_intro_video`）
+
+| 层 | 手机端 | 桌面端实现 |
+| --- | --- | --- |
+| 存储 | `bigscreen_intro_video`（SAF URI） | `bigscreen_intro_video`（`/local/intro/<name><ext>`） |
+| 选文件 | `ACTION_OPEN_DOCUMENT` video/* | `ConfigService.SelectBigScreenIntroVideo`（wails 文件对话框） |
+| 文件管理 | 应用私有目录 `files/bigscreen/` | 受管目录 `<数据目录>/intro/`（换文件先清旧，对齐预告片做法） |
+| 设置入口 | 设置 →「入场动画」→ 选择视频… / 清除 | 设置 → 通用 →「开场视频」/「恢复内置动画」（选了才出现） |
+| 播放 | 铺满播放，播完/跳过进主界面 | 同；**播不出来自动回退内置动画**（只回退一次，防死循环） |
+
+顺带补齐：`mediautils.SaveIntroVideo / RemoveIntroVideo / IntroVideoDir`，两条单测覆盖
+「换格式重选只剩一个文件」「trailers 目录不被污染」「删除幂等」。
+
+### 14.4 本轮仍未对齐（性质同上轮，都需要 schema 变更或平台能力）
+
+| 项 | 原因 |
+| --- | --- |
+| 游戏操作菜单的「标题图 / 背景图」（`BigScreenArt`） | 手机端有 `logo_path` / `bg_path` 两列 + 私有 art 目录；桌面端 `games` 表没有这两列，属于 schema 变更（会影响与手机端的同步契约），需要单独一轮评估 |
+| 详情层的 INTRODUCTION 截图画带 | 需要元数据的截图列表，桌面端 `models.Game` 无对应字段 |
+| PV 占用与清理面板 | 桌面端 PV 是用户本地文件路径，没有受管目录可统计 |
+| 触摸模式（`touchUi`） | 桌面端以鼠标 + 手柄为主，不需要「不预选焦点」的触摸分支（鼠标点击/悬停已全覆盖） |
+
+## 十五、2026-10-07 第九轮：修「入场动画没有遮罩」的根因（色板缺档）+ 加守卫脚本
+
+用户：**「大屏模式启动没有遮罩呀，直接就看到后面的游戏列表了。」**
+
+### 15.1 根因：`bg-brand-950` 引用了一个**不存在的色阶**
+
+UnoCSS 遇到「色板里没有的色阶」时**不报错、不告警、构建照样成功，只是不生成任何 CSS**。
+`uno.config.ts` 的 brand 色板只到 900（`#0B1020`），而大屏的遮罩层全都写的是 `bg-brand-950`：
+
+| 位置 | 原本的意图 | 实际效果（修复前） |
+| --- | --- | --- |
+| `BigScreenIntro`（入场层） | 整屏不透明底 | **完全透明** → 背后的游戏列表一览无余（用户看到的） |
+| `BigScreenDetailsLayer`（详情层） | `bg-brand-950/85` + 背景模糊 | 只剩模糊，背景没有压暗 |
+| `BigScreenSettingsLayer`（设置层） | `bg-brand-950/92` | 同上，设置页是"透明"的 |
+| `BigScreenCard`（未聚焦卡片） | 34% 深色遮罩压暗封面 | 完全没有压暗 |
+| `AddGameModal` / `GameTags`（暗色态） | `dark:bg-brand-950/20` | 无效果 |
+
+**修复**：给 brand 补 `950: "#060A15"`、`250: "#D2D9EA"`，给 neutral 补 `950: "#020617"`
+（`border-brand-250`、`text-neutral-950` 同样是静默失效的引用）。入场层底色改用
+`brand-900`（= 手机端 `bs_bg #0B1020`，与应用根背景同色），这样圆形揭示看起来
+是"内容从同一片底色里长出来"，与手机端一致。
+
+### 15.2 顺带修掉两个同类静默失效
+
+- `animate-spin-slow`：主题里没有这个动画名 → 设置页加载中的齿轮**根本不转**。
+  补 `spin-slow`（2800ms linear infinite）。
+- 入场光带（420×180）只有横向渐变，上下两条边是硬边，静止画面里像"文字后面有个灰盒子"。
+  叠一层纵向 `mask-image` 把上下淡掉，现在是一条干净的光带。
+
+### 15.3 新增守卫：`frontend/scripts/check-uno-classes.mjs`
+
+这类 bug 的特点是**没有任何反馈**，所以补一个零误报的检查（`pnpm uno:check`，已接进
+`.github/workflows/frontend.yml`）：
+
+1. `(前缀)-(自定义色板)-(色阶)` 的色阶必须在 `uno.config.ts` 的 `theme.colors` 里存在；
+2. `animate-<名字>` 必须是主题里声明过的动画，或 presetWind 自带的（spin/ping/pulse/bounce）。
+
+两条都只判断"引用了不存在的令牌"，与文件是否打进产物无关，所以不会误伤死代码。
+扫描范围包含 `uno.config.ts` 自己（shortcut 里的类名写错同样会静默失效）。
+
+### 15.4 没有 GUI 也能验收：产物 CSS + 无头 Edge 截图
+
+大屏的问题几乎都在"渲染出来是什么样"，而本机不能交互式截图。做法：
+把真实 DOM 结构（从组件里抄）+ `frontend/dist/assets/index-*.css` 拼成一个静态 html，
+用 `msedge.exe --headless=new --screenshot --virtual-time-budget=4000 --window-size=1920,1080`
+出图。本轮用它确认了：入场层完全不透明、菜单面板完整落在窗口内（含底部提示行）。
+`--virtual-time-budget` 是必须的 —— 否则 CSS 动画（面板滑入等）还没跑完就截图了。
+
+### 15.5 另有一批"死引用"（本轮只记录，未动）
+
+| 项 | 情况 |
+| --- | --- |
+| `max-w-8xl`（9 个文件，含 library/settings/downloads/game 主页面） | 上游就没有这一档，`mx-auto` 一直是空转 → 主页面**没有宽度上限**。要不要补 `maxWidth['8xl']` 是产品决定（补上会让 1920 窗口下的内容变窄 20%），留给用户拍板 |
+| `src/utils/cloudSync.ts` 的 `ring-*`、`src/components/chart/PlayHeatmap.tsx`、`skeleton/GameStatsSkeleton.tsx`、`modal/PasswordInputModal.tsx` | 这些文件**没有任何地方 import**（连同 `hooks/useCloudSync.ts`），属于死代码，所以它们的类不会进产物。要不要删由用户决定 |
+
+## 十六、2026-10-07 第十轮：清死代码 + 补回被静默吞掉的 `max-w-8xl`
+
+用户：「可以按你的想法来，死文件也可以删了。」—— 即批准 §十五.5 里挂账的两件事。
+
+### 16.1 `max-w-8xl` 补上（与 §十五 完全同一类问题）
+
+§十五 修的是色板缺档，这次是**尺寸档位缺档**：9 处 `max-w-8xl mx-auto` 写在
+`routes/{library,game,stats,settings,downloads}.tsx` 与 4 个 `*Skeleton.tsx` 里，
+而 presetWind3 的 `theme.maxWidth` 只到 `7xl`（80rem）→ **`mx-auto` 一直是空转**，
+页面在超宽屏上被拉满，骨架与真实页面的宽度也永远对不齐。
+
+| 取值 | 1920 窗口下的效果 | 结论 |
+| --- | --- | --- |
+| 不做 | 内容随窗口无限拉长，4K 上长行难读 | ✗ |
+| 88rem（1408px） | 左右各留约 96px，观感变化明显 | 偏紧 |
+| **96rem（1536px）** | **左右各留约 32px，几乎无感；2560 以上才真正收住** | ✓ 采用 |
+
+侧栏展开 16rem、页面 `p-8`，所以 1920 下可用宽度约 1600px —— 96rem 是"温和约束"。
+落点是 `theme.maxWidth`（`presetWind3` 之外的补充），产物里已确认生成
+`.max-w-8xl{max-width:96rem}`。
+
+### 16.2 死代码清理：7 个文件 / 895 行
+
+方法：写了一个**可达性审计**脚本（从 `src/main.tsx` 出发沿相对 import 图 BFS，
+只认静态 import 与字面量 `import()`）。本仓库没有路径别名，所以这一步是可靠的。
+审计结果 8 个不可达，人工复核后删 7 个，`src/vite-env.d.ts` 是类型声明（本来就不需要
+被 import），保留。
+
+| 文件 | 行数 | 情况 |
+| --- | --- | --- |
+| `components/chart/PlayHeatmap.tsx` | 360 | 旧的「小时×星期」热力图，已被 `HourWeekDistribution.tsx` 取代 |
+| `hooks/useCloudSync.ts` | 159 | 只被自己引用：全仓无 import |
+| `components/modal/PasswordInputModal.tsx` | 145 | 备份密码弹窗，没有任何入口调用 |
+| `utils/cloudSync.ts` | 97 | 云同步状态样式/文案，只被 `useCloudSync` 引用 |
+| `components/ui/better/BetterTimeWheelInput.tsx` | 93 | 被 `BetterWheelPicker` 取代；注意 `BetterWheelPicker` 本身仍在使用 |
+| `components/skeleton/GameStatsSkeleton.tsx` | 22 | 无引用 |
+| `utils/sort.ts` | 19 | `compareNullableDateLike`，无引用，且用的是已被我们淘汰的 `localeCompare` 口径 |
+
+删除后 `tsc` / `vite build` 全绿，反向确认了"确实没人用"。
+
+### 16.3 i18n 孤儿键：脚本自动清掉 20 个
+
+删掉文件后跑 `i18n:clean`（不是 `--check`）会自动移除失去字面量引用的键，四个语言各删
+20 个，**+0 新增、无保护内容冲突**：`settings.cloudBackup.*`（7）、
+`settings.passwordModal.*`（10）、`stats.heatmap.less/more/summary`（3）。
+`stats.heatmap.weekdays.* / empty / noPlay` 因为 `HourWeekDistribution` 还在用而保留。
+
+### 16.4 守卫脚本扩到「尺寸档位」
+
+`frontend/scripts/check-uno-classes.mjs` 增加第三条**零误报**检查：
+`(max-w|min-w|max-h|min-h)-<名字>` 的名字必须来自 presetWind3 的尺寸主题、本仓库
+`theme` 的补充（正则读 `maxWidth` / `minWidth` / `maxHeight` / `minHeight` 四块），
+或 CSS 尺寸关键字（`auto/full/screen/min/max/fit/none/px/...`）；纯数字与任意值
+（`max-w-16`、`max-h-[86vh]`）交给 spacing / bracket，不参与判断。
+
+- 名字允许以数字开头（`2xl` / `8xl`）——第一版正则写成 `[a-z]…` 开头，
+  **把 `8xl` 漏掉了**，负向验证才发现，已修。
+- 负向验证：把 `"8xl": "96rem"` 从主题里删掉 → 脚本准确报出 9 处并 `exit 1`；
+  还原后通过。
+
+### 16.5 一次性横审：其它主题档位是干净的（结论记录，不写进守卫）
+
+顺着「静默失效」这条线，把其余会走主题表的档位也扫了一遍（`rounded-*` / `shadow-*` /
+`blur-*` / `leading-*` / `tracking-*` / `z-*` / `ease-*` / `font-*` / `duration-*` /
+`opacity-*`），**没有发现第二处失效**。初次报告出来的 15 个"可疑"全是解析器太粗导致的误报：
+
+| 报告 | 实情 |
+| --- | --- |
+| `rounded-t-md` / `rounded-br-md` / `rounded-r-xl` … | 方向角工具类，档位由 `borderRadius` 提供，已正常生成 |
+| `shadow-black` / `shadow-primary-200` … | **彩色阴影**（`shadow-<color>`），走颜色规则，已正常生成 |
+| `font-mono` / `font-sans` | 字体族（`fontFamily`），不是 `fontWeight` |
+| `font-smoothing` | presetWind3 自带的属性类，产物里有 |
+| `font-color` | 误报：来自 CSS 变量名 `--input-font-color` |
+
+所以守卫脚本**刻意只收**色阶 / 动画名 / 尺寸档位这三类——再加前缀就必须同时处理
+方向角、彩色阴影、字体族这些别名，收益为零而误报风险明显上升。
+
+## 十七、2026-10-07 第十一轮：大屏自定义标题图 / 背景图（对齐手机版 M10）
+
+用户：「标题图和背景图肯定也要加的，怎么会动到同步契约呢，没搞懂，这玩意又不同步。」
+
+### 17.1 先回答疑问：确实不动同步契约，上一轮的担心是多余的
+
+去手机版源码里验证了：`GameRepository.exportGamesJson()`（同步与备份共用的游戏导出）
+是**显式字段清单**，里面本来就没有 `logo_path` / `bg_path` —— 手机版把这两列设计成
+**纯本地字段**，图复制进应用私有目录、路径只写本地库，换设备后由用户重新设置。
+桌面版的导出器注释里同样早写着「刻意不导出：… trailer/logo/bg 路径」。
+所以加两列对快照**零影响**，导出/导入白名单一行都不用动。
+
+### 17.2 手机端行为（BigScreenArt.java + BigScreenActivity.java:840-935/2310-2350）
+
+| 方面 | 手机端 |
+| --- | --- |
+| 存储 | 图片复制进应用私有目录 `files/bigscreen/art/`，文件名 `<kind>_<gameId>_<毫秒时间戳><ext>`；路径写 games 表 `logo_path` / `bg_path` |
+| 格式 | png / jpg / jpeg / webp（`guessExt`） |
+| S4 菜单 | 未设：「设置标题图(用图片替代游戏名)」/「设置背景图(替代封面做背景)」；已设：「更换…(已设置)」+「清除…」 |
+| 标题图渲染 | 信息浮层大标题：图片替代文字（Steam 式 logo），解码失败回退文字 |
+| 背景图渲染 | `bgUriOf(game)`：bg_path 存在则用它，否则退回封面；NSFW 模糊照常叠加 |
+| 删除保护 | 只删自己 art 目录里的文件，防误删 |
+
+### 17.3 桌面端实现
+
+| 层 | 实现 |
+| --- | --- |
+| schema | 迁移 181：games 表 `logo_path` / `bg_path` TEXT DEFAULT ''（幂等，IF NOT EXISTS） |
+| 查询 | `list_query.go` 与 `GetGameByID` 的 SELECT/Scan 补列；`UpdateGame` 是显式 SET 清单，不含新列 → 编辑游戏不会误清图（与 trailer_path 同款约定） |
+| 媒体工具 | `mediautils.SaveGameArt / RemoveGameArt / GameArtDir`（`<数据目录>/bigscreen/art/`）。文件名带毫秒时间戳——换图后地址必然变化，`/local/` 处理器的 `max-age=1y` 强缓存不会端出旧图，前端无需 cache-bust 参数 |
+| 服务 | `GameService.SelectGameArt(gameID, kind, currentPath)` / `ClearGameArt(gameID, kind)`，kind 走白名单映射列名（杜绝拼接 SQL）；换图流程对齐手机端：新文件落盘成功 → 删旧 → 落列，任一步失败旧图仍在；发 `game-art:changed` 事件 |
+| 前端菜单 | S4 游戏操作菜单按手机端顺序插在「游玩状态」与「设置PV视频」之间，未设/已设两种形态 |
+| 渲染 | `BigScreenInfoBar` 标题：`logo_path` 有效时 `<img>` 替代 `<h1>`，onError 回退文字（`key` 换游戏/换图时重置错误态）；背景：调用点按 `bgUriOf` 优先级换源（bg_path 优先，用了背景图就不叠高清封面层），NSFW 模糊由 ProxyImage 照常处理 |
+
+单测：迁移 181（加列 + 幂等 + 默认值）；mediautils 三条（复制与命名约定 / 非法输入
+拒绝 / RemoveGameArt 只删 art 目录内文件且路径穿越被 Base 拦掉、幂等）。
+
+### 17.4 与手机端的差异
+
+- 手机端选图走 `ACTION_OPEN_DOCUMENT`，桌面端走系统文件对话框（与预告片同款）；
+- 手机端 logo 图是满宽显示，桌面端信息层更小一档（max-h-20、左对齐），延续「比手机版小」的约定。

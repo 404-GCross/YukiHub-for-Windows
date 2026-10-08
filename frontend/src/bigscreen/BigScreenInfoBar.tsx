@@ -1,5 +1,5 @@
 import type { models } from "../../src/bindings/models";
-import { memo } from "react";
+import { memo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { statusOptions } from "../consts/options";
@@ -7,6 +7,36 @@ import { useGamePlaytime } from "../hooks/useGamePlaytime";
 import { useAppStore } from "../store";
 import { getTagDisplayName } from "../utils/tagTranslation";
 import { formatDuration } from "../utils/time";
+
+/**
+ * 信息浮层大标题，对齐手机端 `applyInfoLogo`：设了自定义标题图（logo_path）
+ * 就用图片替代文字标题（Steam 式 logo）；图片加载失败自动回退文字，不会留空白。
+ */
+function InfoBarTitle({ game }: { game: models.Game }) {
+  const [logoBroken, setLogoBroken] = useState(false);
+  const logo = game.logo_path;
+
+  if (logo && !logoBroken) {
+    return (
+      <div className="min-w-0 max-w-2xl">
+        <img
+          src={logo}
+          alt={game.name}
+          className="max-h-20 w-auto max-w-full object-contain object-left drop-shadow-[0_2px_12px_rgba(0,0,0,0.55)]"
+          onError={() => setLogoBroken(true)}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-w-0 max-w-2xl">
+      <h1 className="truncate text-3xl font-bold leading-tight text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.55)]">
+        {game.name}
+      </h1>
+    </div>
+  );
+}
 
 export interface BigScreenAction {
   icon: string;
@@ -61,12 +91,13 @@ export const BigScreenInfoBar = memo(
         标题 → 标签 chips → 副行（开发商 · 年份…）→ 操作按钮排。
         它压在背景大图上，卡片排在最底部（见 routes/bigscreen.tsx 的布局）。
       */
-      <div className="pointer-events-none flex max-w-3xl flex-col items-start gap-3">
-        <div className="min-w-0 max-w-3xl">
-          <h1 className="truncate text-4xl font-bold leading-tight text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.55)]">
-            {game.name}
-          </h1>
-        </div>
+      <div className="pointer-events-none flex max-w-2xl flex-col items-start gap-2.5">
+        {/* 对齐手机端 applyInfoLogo：设了自定义标题图就用图片替代文字（Steam 式 logo）。
+            key 在换游戏 / 换图 / 清图时重置内部错误态 */}
+        <InfoBarTitle
+          key={`${game.id}:${game.logo_path || "text"}`}
+          game={game}
+        />
 
         {visibleTags.length > 0 && (
           <div className="flex flex-wrap items-center gap-2">
@@ -78,8 +109,8 @@ export const BigScreenInfoBar = memo(
           </div>
         )}
 
-        <div className="min-w-0 max-w-3xl">
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-brand-400">
+        <div className="min-w-0 max-w-2xl">
+          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-sm text-brand-400">
             <span className="truncate">{company}</span>
             {game.release_date && (
               <>
@@ -120,7 +151,7 @@ export const BigScreenInfoBar = memo(
           </div>
         </div>
 
-        <div className="pointer-events-auto flex shrink-0 items-center gap-3">
+        <div className="pointer-events-auto flex shrink-0 items-center gap-2">
           {actions.map((action, index) => {
             const isFocused = actionsFocused && index === focusedActionIndex;
             const isFavoriteAction = action.key === "favorite";
@@ -131,7 +162,7 @@ export const BigScreenInfoBar = memo(
                 type="button"
                 aria-label={action.label}
                 aria-pressed={isFavoriteAction ? isFavorite : undefined}
-                className={`inline-flex items-center gap-2 rounded-full border px-6 py-3 text-sm font-medium transition-all duration-150 ${
+                className={`inline-flex items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-medium transition-all duration-150 ${
                   isFocused
                     ? "scale-105 border-secondary-500 bg-brand-750 text-white"
                     : "border-brand-700 bg-brand-800/70 text-brand-400 hover:border-brand-600 hover:text-white"

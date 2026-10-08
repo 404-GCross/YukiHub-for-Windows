@@ -189,14 +189,26 @@ func NormalizeGameCardLayout(layout string) string {
 	}
 }
 
+// bigScreenCategoryIDs 是大屏侧栏分类的白名单，与前端 `BIG_SCREEN_CATEGORIES` 对应。
+var bigScreenCategoryIDs = []string{
+	"all", "favorites", "recent", "playing", "completed", "unplayed",
+}
+
+func isKnownBigScreenCategory(category string) bool {
+	for _, known := range bigScreenCategoryIDs {
+		if category == known {
+			return true
+		}
+	}
+	return false
+}
+
 func NormalizeBigScreenDefaultCategory(category string) string {
 	trimmed := strings.TrimSpace(category)
-	switch trimmed {
-	case "all", "favorites", "recent", "playing", "completed", "unplayed":
+	if isKnownBigScreenCategory(trimmed) {
 		return trimmed
-	default:
-		return DefaultBigScreenDefaultCategory
 	}
+	return DefaultBigScreenDefaultCategory
 }
 
 func NormalizeBigScreenEffectLevel(level string) string {
@@ -207,6 +219,100 @@ func NormalizeBigScreenEffectLevel(level string) string {
 	default:
 		return DefaultBigScreenEffectLevel
 	}
+}
+
+// NormalizeBigScreenKeyStyle 白名单收敛按键图标风格，识别不了的一律回 Xbox。
+func NormalizeBigScreenKeyStyle(style string) string {
+	switch strings.ToLower(strings.TrimSpace(style)) {
+	case "ps":
+		return "ps"
+	default:
+		return DefaultBigScreenKeyStyle
+	}
+}
+
+// NormalizeBigScreenHintMode 收敛按键提示条模式：auto（自动淡出）/ always / off。
+func NormalizeBigScreenHintMode(mode string) string {
+	normalized := strings.ToLower(strings.TrimSpace(mode))
+	switch normalized {
+	case "always", "off":
+		return normalized
+	default:
+		return DefaultBigScreenHintMode
+	}
+}
+
+// NormalizeBigScreenCardScale 把卡片大小倍率（×100）夹进可辨识区间。
+func NormalizeBigScreenCardScale(scale int) int {
+	return clampInt(scale, MinBigScreenCardScale, MaxBigScreenCardScale)
+}
+
+// NormalizeBigScreenFocusScale 把焦点缩放幅度夹进 0–150（0 = 只描边不缩放）。
+func NormalizeBigScreenFocusScale(scale int) int {
+	return clampInt(scale, 0, MaxBigScreenFocusScale)
+}
+
+func NormalizeBigScreenSoundVolume(volume int) int {
+	return clampInt(volume, 0, 100)
+}
+
+func NormalizeBigScreenTrailerDelayMs(delay int) int {
+	return clampInt(delay, MinBigScreenTrailerDelayMs, MaxBigScreenTrailerDelayMs)
+}
+
+func NormalizeBigScreenPVScrimPercent(percent int) int {
+	return clampInt(percent, 0, 100)
+}
+
+func NormalizeBigScreenBannerHoldMs(hold int) int {
+	return clampInt(hold, MinBigScreenBannerHoldMs, MaxBigScreenBannerHoldMs)
+}
+
+// NormalizeBigScreenLastCategory 收敛「上次停留的分类」。
+//
+// 与默认分类不同，这里**空串是合法值**（表示还没记住过），只有非空才走白名单；
+// 认不出来的值直接清空，免得大屏启动时按一个不存在的分类去查询。
+func NormalizeBigScreenLastCategory(category string) string {
+	trimmed := strings.TrimSpace(category)
+	if trimmed == "" {
+		return ""
+	}
+	if isKnownBigScreenCategory(trimmed) {
+		return trimmed
+	}
+	return ""
+}
+
+// NormalizeBigScreenPreferences 一次性收敛大屏模式的全部偏好。
+//
+// 数值项用夹取、枚举项用白名单：老配置缺字段时反序列化会保留默认值，
+// 真正需要修的只有人为改坏或历史遗留的越界值。用户改坏配置文件后
+// 大屏不会因此进不去（例如 card_scale=0 会让卡片宽度算成 0）。
+func NormalizeBigScreenPreferences(config *AppConfig) {
+	if config == nil {
+		return
+	}
+	config.BigScreenDefaultCategory = NormalizeBigScreenDefaultCategory(config.BigScreenDefaultCategory)
+	config.BigScreenEffectLevel = NormalizeBigScreenEffectLevel(config.BigScreenEffectLevel)
+	config.BigScreenKeyStyle = NormalizeBigScreenKeyStyle(config.BigScreenKeyStyle)
+	config.BigScreenHintMode = NormalizeBigScreenHintMode(config.BigScreenHintMode)
+	config.BigScreenCardScale = NormalizeBigScreenCardScale(config.BigScreenCardScale)
+	config.BigScreenFocusScale = NormalizeBigScreenFocusScale(config.BigScreenFocusScale)
+	config.BigScreenSoundVolume = NormalizeBigScreenSoundVolume(config.BigScreenSoundVolume)
+	config.BigScreenTrailerDelayMs = NormalizeBigScreenTrailerDelayMs(config.BigScreenTrailerDelayMs)
+	config.BigScreenPVScrimPercent = NormalizeBigScreenPVScrimPercent(config.BigScreenPVScrimPercent)
+	config.BigScreenBannerHoldMs = NormalizeBigScreenBannerHoldMs(config.BigScreenBannerHoldMs)
+	config.BigScreenLastCategory = NormalizeBigScreenLastCategory(config.BigScreenLastCategory)
+}
+
+func clampInt(value, low, high int) int {
+	if value < low {
+		return low
+	}
+	if value > high {
+		return high
+	}
+	return value
 }
 
 func NormalizeMetadataCoverSource(source enums2.MetadataCoverSource) enums2.MetadataCoverSource {
@@ -229,6 +335,18 @@ func NormalizeMetadataCoverSources(config *AppConfig) {
 // NormalizeCurrentMetadataSource 校验「当前资料源」，非法取值回落到默认 VNDB。
 //
 // 只认「可作为资料源开启」的那几个（allowedMetadataSourceSet，与设置页下拉一致）。
+// IsSelectableMetadataSource 判断某个资料源是否属于「当前资料源」的白名单。
+//
+// 这张表既是设置页给用户的可选项，也正好等于手机版 importSnapshot 落回
+// settings.metadata_source 时接受的那六个值（vndb / bangumi / bangumi_mirror /
+// ymgal / hikarinagi / nextmoe）。导入同步快照时用它校验，避免把桌面端独有的
+// 来源（steam / dlsite / touchgal / erogamescape）当成跨端全局偏好写进配置 ——
+// 那些值手机端根本不认识，写过去会被它忽略。
+func IsSelectableMetadataSource(source string) bool {
+	_, ok := allowedMetadataSourceSet[strings.ToLower(strings.TrimSpace(source))]
+	return ok
+}
+
 func NormalizeCurrentMetadataSource(config *AppConfig) bool {
 	if config == nil {
 		return false

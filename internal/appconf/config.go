@@ -63,6 +63,25 @@ const MaxBatchImportHierarchyDepth = 5
 const DefaultGameCardLayout = "portrait"
 const DefaultBigScreenDefaultCategory = "recent"
 const DefaultBigScreenEffectLevel = "low"
+
+// 大屏模式的偏好取值范围，与手机端 BigScreenPrefs 的 clamp 区间保持一致。
+const (
+	DefaultBigScreenSoundVolume    = 65
+	DefaultBigScreenCardScale      = 112
+	MinBigScreenCardScale          = 80
+	MaxBigScreenCardScale          = 140
+	DefaultBigScreenFocusScale     = 100
+	MaxBigScreenFocusScale         = 150
+	DefaultBigScreenKeyStyle       = "xbox"
+	DefaultBigScreenHintMode       = "auto"
+	DefaultBigScreenTrailerDelayMs = 2000
+	MinBigScreenTrailerDelayMs     = 300
+	MaxBigScreenTrailerDelayMs     = 5000
+	DefaultBigScreenPVScrimPercent = 45
+	DefaultBigScreenBannerHoldMs   = 2000
+	MinBigScreenBannerHoldMs       = 800
+	MaxBigScreenBannerHoldMs       = 6000
+)
 const DefaultUmbraBaseURL = "https://umbrae.cc"
 const ScheduledDBBackupModeInterval = "interval"
 const ScheduledDBBackupModeDaily = "daily"
@@ -284,11 +303,33 @@ type AppConfig struct {
 	GameCardLayout       string `json:"game_card_layout,omitempty"` // 游戏库卡片布局：portrait / landscape
 	ShowSortFieldOnCover bool   `json:"show_sort_field_on_cover"`   // 是否在游戏卡片封面底部展示当前排序字段对应的值
 	BlurNSFWGameCovers   bool   `json:"blur_nsfw_game_covers"`      // 是否模糊 NSFW 游戏封面
-	// 大屏模式配置
+	// 大屏模式配置（对齐手机端 BigScreenPrefs 的 bigscreen_* 键）
 	BigScreenShowHiddenGame  bool   `json:"bigscreen_show_hidden_game"`           // 大屏模式是否展示已隐藏的游戏，默认 false
 	BigScreenDefaultCategory string `json:"bigscreen_default_category,omitempty"` // 大屏模式默认分类，默认 recent
 	BigScreenEffectLevel     string `json:"bigscreen_effect_level,omitempty"`     // 大屏氛围特效档位：off / low / high，默认 low
 	BigScreenSoundEnabled    bool   `json:"bigscreen_sound_enabled"`              // 大屏界面音效开关，默认 true
+	BigScreenSoundVolume     int    `json:"bigscreen_sound_volume"`               // 大屏界面音效音量（0-100），默认 65
+	BigScreenFocusTicks      bool   `json:"bigscreen_focus_ticks"`                // 焦点移动音，默认 true
+	BigScreenIntroEnabled    bool   `json:"bigscreen_intro_enabled"`              // 入场动画，默认 true
+	BigScreenIntroVideo      string `json:"bigscreen_intro_video,omitempty"`      // 自选入场视频（/local/intro/...）；空 = 内置动画（对齐手机端 M18-2）
+	BigScreenShowTitles      bool   `json:"bigscreen_show_titles"`                // 卡片上再显示游戏名（默认 false，名字已在信息浮层）
+	BigScreenCardScale       int    `json:"bigscreen_card_scale"`                 // 卡片大小倍率（×100），默认 112
+	BigScreenFocusScale      int    `json:"bigscreen_focus_scale"`                // 焦点缩放幅度（%），0 表示只描边，默认 100
+	BigScreenKeyStyle        string `json:"bigscreen_key_style,omitempty"`        // 按键图标风格：xbox / ps，默认 xbox
+	BigScreenHintMode        string `json:"bigscreen_hint_mode,omitempty"`        // 按键提示条：auto（4s 后淡出）/ always / off，默认 auto
+	BigScreenRailExpanded    bool   `json:"bigscreen_rail_expanded"`              // 侧栏钉住展开，默认 false
+	BigScreenTrailerEnabled  bool   `json:"bigscreen_trailer_enabled"`            // 背景预告片总开关，默认 true
+	BigScreenTrailerMuted    bool   `json:"bigscreen_trailer_muted"`              // 预告片静音，默认 false
+	BigScreenTrailerDelayMs  int    `json:"bigscreen_trailer_delay_ms"`           // 焦点停留多久后起播预告片（毫秒），默认 2000
+	BigScreenPVFit           bool   `json:"bigscreen_pv_fit"`                     // 预告片显示方式：false=铺满裁切 / true=原比例留黑边，默认 false
+	BigScreenPVScrim         bool   `json:"bigscreen_pv_scrim"`                   // 预告片遮罩，默认 true
+	BigScreenPVScrimPercent  int    `json:"bigscreen_pv_scrim_percent"`           // 预告片遮罩强度（0-100），默认 45
+	BigScreenBannerHoldMs    int    `json:"bigscreen_banner_hold_ms"`             // 顶部提示条停留时长（毫秒），默认 2000
+	BigScreenSnowEnabled     bool   `json:"bigscreen_snow_enabled"`               // 背景氛围层（雪花 / 极光），默认 true
+	// 只在详情层播放预告片（对齐手机端 bigscreen_trailer_details_only，中性能档默认行为）
+	BigScreenTrailerDetailsOnly bool   `json:"bigscreen_trailer_details_only"`
+	BigScreenRememberFilter     bool   `json:"bigscreen_remember_filter"`         // 记住上次的分类筛选，默认 true
+	BigScreenLastCategory       string `json:"bigscreen_last_category,omitempty"` // 上次停留的分类（仅在记住筛选打开时写入）
 
 	// OverlayShortcut 是「呼出游戏内好友栏」的全局快捷键，accelerator 形式
 	// （如 "shift+`"）。空字符串表示用默认值（service.DefaultOverlayShortcut）；
@@ -442,6 +483,25 @@ func defaultAppConfig() *AppConfig {
 		BigScreenDefaultCategory:    DefaultBigScreenDefaultCategory,
 		BigScreenEffectLevel:        DefaultBigScreenEffectLevel,
 		BigScreenSoundEnabled:       true,
+		BigScreenSoundVolume:        DefaultBigScreenSoundVolume,
+		BigScreenFocusTicks:         true,
+		BigScreenIntroEnabled:       true,
+		BigScreenShowTitles:         false,
+		BigScreenCardScale:          DefaultBigScreenCardScale,
+		BigScreenFocusScale:         DefaultBigScreenFocusScale,
+		BigScreenKeyStyle:           DefaultBigScreenKeyStyle,
+		BigScreenHintMode:           DefaultBigScreenHintMode,
+		BigScreenRailExpanded:       false,
+		BigScreenTrailerEnabled:     true,
+		BigScreenTrailerMuted:       false,
+		BigScreenTrailerDelayMs:     DefaultBigScreenTrailerDelayMs,
+		BigScreenPVFit:              false,
+		BigScreenPVScrim:            true,
+		BigScreenPVScrimPercent:     DefaultBigScreenPVScrimPercent,
+		BigScreenBannerHoldMs:       DefaultBigScreenBannerHoldMs,
+		BigScreenSnowEnabled:        true,
+		BigScreenTrailerDetailsOnly: false,
+		BigScreenRememberFilter:     true,
 	}
 	return config
 }
@@ -493,8 +553,7 @@ func LoadConfig() (*AppConfig, error) {
 	config.ProcessDetectionTimeoutSec = NormalizeProcessDetectionTimeoutSec(config.ProcessDetectionTimeoutSec)
 	config.PlayTimingMode = NormalizePlayTimingMode(config.PlayTimingMode)
 	config.GameCardLayout = NormalizeGameCardLayout(config.GameCardLayout)
-	config.BigScreenDefaultCategory = NormalizeBigScreenDefaultCategory(config.BigScreenDefaultCategory)
-	config.BigScreenEffectLevel = NormalizeBigScreenEffectLevel(config.BigScreenEffectLevel)
+	NormalizeBigScreenPreferences(config)
 	NormalizeBatchImportPreferences(config)
 
 	// 只有「从快照恢复」才回写主文件（顺便修好被截断的 appconf.json）。
@@ -598,8 +657,7 @@ func SaveConfig(config *AppConfig) error {
 	config.ProcessDetectionTimeoutSec = NormalizeProcessDetectionTimeoutSec(config.ProcessDetectionTimeoutSec)
 	config.PlayTimingMode = NormalizePlayTimingMode(config.PlayTimingMode)
 	config.GameCardLayout = NormalizeGameCardLayout(config.GameCardLayout)
-	config.BigScreenDefaultCategory = NormalizeBigScreenDefaultCategory(config.BigScreenDefaultCategory)
-	config.BigScreenEffectLevel = NormalizeBigScreenEffectLevel(config.BigScreenEffectLevel)
+	NormalizeBigScreenPreferences(config)
 	NormalizeBatchImportPreferences(config)
 	config.LocalDBBackupRetention = NormalizeLocalDBBackupRetention(config.LocalDBBackupRetention)
 	NormalizeScheduledDBBackup(config)

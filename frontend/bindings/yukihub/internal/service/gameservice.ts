@@ -47,6 +47,13 @@ export function BatchUpdateStatus(ids: string[], status: string): $CancellablePr
     return $Call.ByID(1939642532, ids, status);
 }
 
+/**
+ * ClearGameArt 清除自定义图：先删受管目录里的文件，再清空列（对齐手机端 clearArt）。
+ */
+export function ClearGameArt(gameID: string, kind: string): $CancellablePromise<void> {
+    return $Call.ByID(1048445941, gameID, kind);
+}
+
 export function DeleteGame(id: string): $CancellablePromise<void> {
     return $Call.ByID(2461646920, id);
 }
@@ -236,6 +243,15 @@ export function SelectCoverImage(gameID: string): $CancellablePromise<string> {
  */
 export function SelectCoverImageWithTempID(): $CancellablePromise<string> {
     return $Call.ByID(3880830030);
+}
+
+/**
+ * SelectGameArt 选择并保存大屏自定义标题图 / 背景图（对齐手机版 M10 logo_path/bg_path）。
+ * kind 取 mediautils.GameArtKindLogo / GameArtKindBg，返回写入库的 /local/bigscreen/art/... 地址。
+ * 流程对齐手机端 onArtPicked：先复制新文件成功，再删旧文件，最后落列，任一步失败旧图都还在。
+ */
+export function SelectGameArt(gameID: string, kind: string, currentPath: string): $CancellablePromise<string> {
+    return $Call.ByID(2995269956, gameID, kind, currentPath);
 }
 
 export function SelectGameDirectory(currentPath: string): $CancellablePromise<string> {

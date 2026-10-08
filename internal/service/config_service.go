@@ -14,6 +14,7 @@ import (
 	"yukihub/internal/utils/apputils"
 	"yukihub/internal/utils/archiveutils"
 	"yukihub/internal/utils/imageutils"
+	"yukihub/internal/utils/mediautils"
 
 	"yukihub/internal/wailsruntime"
 )
@@ -221,6 +222,58 @@ func (s *ConfigService) SaveCroppedBackgroundImage(srcPath string, x, y, width, 
 	}
 
 	return localPath, nil
+}
+
+// SelectBigScreenIntroVideo 选择大屏入场视频：复制进受管目录并写入
+// `bigscreen_intro_video`（对齐手机端 M18-2 的 bigscreen_intro_video）。
+// 返回 /local/intro/... 地址；用户取消时返回空串且不报错。
+func (s *ConfigService) SelectBigScreenIntroVideo() (string, error) {
+	selection, err := s.runtime.OpenFile(wailsruntime.OpenDialogOptions{
+		Title: "选择大屏入场视频",
+		Filters: []wailsruntime.FileFilter{
+			{DisplayName: "Video Files", Pattern: trailerFileFilterPattern()},
+			{DisplayName: "All Files", Pattern: "*.*"},
+		},
+	})
+	if err != nil {
+		applog.LogErrorf(s.ctx, "failed to open intro video dialog: %v", err)
+		return "", err
+	}
+	if selection == "" {
+		return "", nil // 用户取消选择
+	}
+
+	localPath, err := mediautils.SaveIntroVideo(selection)
+	if err != nil {
+		applog.LogErrorf(s.ctx, "failed to save intro video: %v", err)
+		return "", err
+	}
+	if err := s.setBigScreenIntroVideo(localPath); err != nil {
+		return "", err
+	}
+	return localPath, nil
+}
+
+// ClearBigScreenIntroVideo 恢复内置入场动画：删掉受管视频文件并清空配置字段。
+func (s *ConfigService) ClearBigScreenIntroVideo() error {
+	if err := mediautils.RemoveIntroVideo(); err != nil {
+		applog.LogErrorf(s.ctx, "failed to remove intro video file: %v", err)
+		return err
+	}
+	return s.setBigScreenIntroVideo("")
+}
+
+// setBigScreenIntroVideo 只改 `bigscreen_intro_video` 一个字段后落盘。
+func (s *ConfigService) setBigScreenIntroVideo(path string) error {
+	current, err := s.GetAppConfig()
+	if err != nil {
+		return err
+	}
+	if current.BigScreenIntroVideo == path {
+		return nil
+	}
+	current.BigScreenIntroVideo = path
+	return s.UpdateAppConfig(current)
 }
 
 func (s *ConfigService) UpdateAppConfig(newConfig appconf.AppConfig) error {

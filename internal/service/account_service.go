@@ -626,10 +626,14 @@ func importYukiHubSnapshot(ctx context.Context, imports *ImportService, snapshot
 	// sync_merge：并集去重地并入对端会话，同时按手机版 importGamesJson 的规则
 	// （非空 + 对端 updated_at 不早于本地）更新已有游戏字段。用 merge_sessions
 	// 的话，手机端改过的状态/隐藏/NSFW 同步回桌面端会被整段丢掉。
-	result, err := importer.NewYukiHubImporter(deps).Import(tempPath, false, importer.SamePathActionSyncMerge)
+	yukiHubImporter := importer.NewYukiHubImporter(deps)
+	result, err := yukiHubImporter.Import(tempPath, false, importer.SamePathActionSyncMerge)
 	if err != nil {
 		return importer.ImportResult{}, fmt.Errorf("导入快照失败: %w", err)
 	}
+	// 快照里的 settings.metadata_source 属于跨端全局偏好，手机版导入时会落回
+	// 本地设置；桌面端同样采纳，否则「手机端改了资料源」会被桌面端下次上传顶回去。
+	imports.applyImportedMetadataSource(yukiHubImporter.MetadataSource())
 	applog.LogInfof(ctx, "YukiHub 同步：快照导入完成 success=%d skipped=%d failed=%d sessions=%d",
 		result.Success, result.Skipped, result.Failed, result.SessionsImported)
 	return result, nil

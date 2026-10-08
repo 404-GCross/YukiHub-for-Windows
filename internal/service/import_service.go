@@ -289,7 +289,9 @@ func (s *ImportService) ImportFromYukiHub(backupPath string, skipNoPath bool) (I
 }
 
 func (s *ImportService) ImportFromYukiHubWithOptions(backupPath string, skipNoPath bool, samePathAction string) (ImportResult, error) {
-	result, err := importer.NewYukiHubImporter(s.importerDependencies()).Import(backupPath, skipNoPath, samePathAction)
+	yukiHubImporter := importer.NewYukiHubImporter(s.importerDependencies())
+	result, err := yukiHubImporter.Import(backupPath, skipNoPath, samePathAction)
+	s.applyImportedMetadataSource(yukiHubImporter.MetadataSource())
 	return ImportResult(result), err
 }
 
@@ -297,8 +299,59 @@ func (s *ImportService) ImportFromYukiHubWithSelection(backupPath string, skipNo
 	if len(selections) == 0 {
 		return emptyServiceImportResult(), nil
 	}
-	result, err := importer.NewYukiHubImporter(s.importerDependencies()).ImportSelected(backupPath, skipNoPath, samePathAction, selections)
+	yukiHubImporter := importer.NewYukiHubImporter(s.importerDependencies())
+	result, err := yukiHubImporter.ImportSelected(backupPath, skipNoPath, samePathAction, selections)
+	s.applyImportedMetadataSource(yukiHubImporter.MetadataSource())
 	return ImportResult(result), err
+}
+
+// applyImportedMetadataSource 把快照声明的 settings.metadata_source 落回本地配置。
+//
+// 对齐手机版 SyncManager.importSnapshot：它读到 settings.metadata_source 时会
+// `putString(KEY_METADATA_SOURCE, source)`，即**导入侧采纳对端的全局资料源**。
+// 桌面端此前只导出不回写，于是「手机端改了资料源 → 同步到桌面端不变 → 桌面端再
+// 上传把手机端的设置顶回去」，偏好会来回翻。
+//
+// 三条导入通道（账号云同步 / WebDAV 自持同步 / 本地 .ykbak）都走这里。
+// 白名单外、缺失、与当前一致时一律不动，绝不覆盖用户设置。
+func (s *ImportService) applyImportedMetadataSource(source string) {
+	if s.config == nil {
+		return
+	}
+	normalized, changed := resolveImportedMetadataSource(s.config.CurrentMetadataSource, source)
+	if !changed {
+		return
+	}
+
+	applog.LogInfof(s.ctx, "YukiHub 导入：采纳快照里的全局资料源 %s（原为 %s）",
+		normalized, s.config.CurrentMetadataSource)
+	s.config.CurrentMetadataSource = normalized
+	if err := appconf.SaveConfig(s.config); err != nil {
+		applog.LogWarningf(s.ctx, "YukiHub 导入：保存资料源设置失败: %v", err)
+	}
+	// 资料源是设置页草稿的一部分：不通知前端的话，用户接着点「保存」会把
+	// 刚采纳的值用旧草稿写回去。复用同步已落库事件，前端会顺带 refreshConfig。
+	s.runtime.Emit(selfSyncAppliedEvent, nil)
+}
+
+// resolveImportedMetadataSource 判断快照声明的全局资料源该不该被采纳。
+//
+// 返回采纳后的取值与「是否发生了变化」；changed=false 表示保持原值。
+// 白名单外（steam / dlsite 等桌面端独有来源、以及任何拼写错误）一律不采纳 ——
+// 手机版的 importSnapshot 也只接受 vndb / bangumi / bangumi_mirror / ymgal /
+// hikarinagi / nextmoe 这六个值。
+//
+// 单独抽成纯函数是为了能直接单测：真正的落库路径会写 appconf.json。
+func resolveImportedMetadataSource(current enums.SourceType, incoming string) (enums.SourceType, bool) {
+	trimmed := strings.TrimSpace(incoming)
+	if trimmed == "" || !appconf.IsSelectableMetadataSource(trimmed) {
+		return current, false
+	}
+	normalized := enums.SourceType(strings.ToLower(trimmed))
+	if normalized == current {
+		return current, false
+	}
+	return normalized, true
 }
 
 // =================== Playnite 导入功能 ====================

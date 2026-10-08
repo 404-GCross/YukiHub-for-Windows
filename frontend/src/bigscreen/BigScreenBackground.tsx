@@ -18,6 +18,12 @@ interface BigScreenBackgroundProps {
   trailerUrl?: string;
   /** 焦点停留够久、且没有浮层挡住时，背景改播预告片 */
   backgroundTrailerActive?: boolean;
+  /** 预告片显示方式：true = 原比例留黑边，false = 铺满裁切 */
+  trailerFit?: boolean;
+  /** 预告片是否静音 */
+  trailerMuted?: boolean;
+  /** 预告片遮罩不透明度（0–1） */
+  trailerScrimOpacity?: number;
 }
 
 /**
@@ -31,6 +37,9 @@ export function BigScreenBackground({
   isNSFW,
   trailerUrl,
   backgroundTrailerActive = false,
+  trailerFit = false,
+  trailerMuted = false,
+  trailerScrimOpacity = 0,
 }: BigScreenBackgroundProps) {
   const [slots, setSlots] = useState<{
     active: "a" | "b";
@@ -83,8 +92,11 @@ export function BigScreenBackground({
       </div>
 
       <BackgroundTrailerVideo
-        url={trailerUrl ?? ""}
         active={backgroundTrailerActive}
+        fit={trailerFit}
+        muted={trailerMuted}
+        scrimOpacity={trailerScrimOpacity}
+        url={trailerUrl ?? ""}
       />
 
       {/* 左右渐变遮罩：左侧给分类栏留出可读底，右侧收暗让信息层浮起来 */}

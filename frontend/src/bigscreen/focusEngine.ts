@@ -322,8 +322,21 @@ export class FocusEngine {
     return ordered;
   }
 
+  /**
+   * 允许上下穿梭的区域顺序。
+   *
+   * **只含显式登记在 `verticalOrder` 里的区域**：侧栏与详情层不参与上下穿梭 ——
+   * 侧栏由货架的「←」边界显式进入（对齐手机端的 `ZONE_RAIL`），详情层自己处理 ↑↓。
+   * 早期实现会把未登记的区域追加到末尾，于是「货架按 ↓」被引擎丢进侧栏里。
+   */
+  private verticalOrderIds() {
+    return this.verticalOrder.filter(zoneId =>
+      this.zones.some(zone => zone.id === zoneId),
+    );
+  }
+
   private verticalNeighbor(zoneId: string, direction: FocusDirection) {
-    const order = this.orderedZoneIds();
+    const order = this.verticalOrderIds();
     const currentIndex = order.indexOf(zoneId);
     if (currentIndex === -1) {
       return undefined;

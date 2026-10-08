@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 	"yukihub/internal/models"
@@ -518,4 +519,152 @@ func readYukiHubSnapshot(t *testing.T, path string) yukihub.Backup {
 		t.Fatalf("解析快照失败: %v", err)
 	}
 	return backup
+}
+
+// TestYukiHubThreeChannelsExportIdenticalPayload 钉住「三条通道导出的必须是同一个东西」。
+//
+// 账号云同步（yukihub.zh.kg）与 WebDAV 自持同步都走 exporter.Build()（云同步形态），
+// 本地全量备份（.ykbak）走 exporter.BuildLocalBackup()（本地形态）。两者共用
+// build(kind)，**负载必须逐字节相同**，只有顶层信封按手机版约定不同
+// （created_at / note / backup_type，见 SyncManager.buildLocalSnapshot 与
+// MainActivity.exportLocalBackup）。谁要在某一条通道上单独加字段，数据在手机端
+// 与桌面端之间往返就会互相丢。
+func TestYukiHubThreeChannelsExportIdenticalPayload(t *testing.T) {
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	createdAt := time.Date(2026, time.October, 1, 10, 0, 0, 0, time.Local)
+	resetAt := createdAt.Add(2 * time.Hour)
+
+	// 覆盖到每一条导出分支：带别名的清零游戏、带收藏+标签+元数据缓存的游戏、
+	// 只有本地封面的游戏、以及会被跳过的无标题游戏。
+	seedStatements := []struct {
+		query string
+		args  []any
+	}{
+		{
+			`INSERT INTO games (id, name, aliases, cover_url, summary, path, game_directory, status,
+				source_type, source_id, created_at, updated_at, legacy_local_id, playtime_reset_at, hidden, is_nsfw)
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			[]any{"ch-1", "通道一致性 1", `["Alias One"]`, `D:/covers/local.jpg`, "简介",
+				`D:/Games/one/game.exe`, `D:/Games/one`, "playing", "local", "",
+				createdAt, createdAt.Add(time.Hour), "42", resetAt, true, true},
+		},
+		{
+			`INSERT INTO games (id, name, cover_url, cover_source_url, path, status, source_type, source_id, created_at, updated_at)
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			[]any{"ch-2", "通道一致性 2", "https://example.com/b.jpg", "",
+				`D:/Games/two/game.exe`, "completed", "local", "", createdAt, createdAt.Add(time.Hour)},
+		},
+		{
+			`INSERT INTO games (id, name, cover_url, cover_source_url, path, status, source_type, source_id, created_at, updated_at)
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			[]any{"ch-3", "通道一致性 3（本地封面来源）", "https://example.com/c.jpg", `D:/covers/local-source.jpg`,
+				`D:/Games/three/game.exe`, "unplayed", "local", "", createdAt, createdAt},
+		},
+		{
+			`INSERT INTO games (id, name, path, status, source_type, source_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+			[]any{"ch-empty", "   ", `D:/Games/empty/game.exe`, "unplayed", "local", "", createdAt, createdAt},
+		},
+		{
+			`INSERT INTO game_tags (id, game_id, name, source, weight, is_spoiler, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+			[]any{"ch-tag-1", "ch-2", "剧情", "vndb", 1.0, false, createdAt, createdAt},
+		},
+		{
+			`INSERT INTO game_categories (game_id, category_id, updated_at) VALUES (?, ?, ?)`,
+			[]any{"ch-2", gamehelper.SystemFavoritesCategoryID, createdAt},
+		},
+		{
+			`INSERT INTO game_metadata_sources (game_id, source_type, source_id, cache_json, cached_at, created_at, updated_at)
+			 VALUES (?, ?, ?, ?, ?, ?, ?)`,
+			[]any{"ch-2", "nextmoe", "12345", `{"chineseTitle":"通道一致性 2"}`, createdAt, createdAt, createdAt},
+		},
+	}
+	for _, stmt := range seedStatements {
+		if _, err := db.Exec(stmt.query, stmt.args...); err != nil {
+			t.Fatalf("准备测试数据失败: %v", err)
+		}
+	}
+
+	// 清零之前 + 之后的会话各一条，两条通道都必须用同一套过滤规则。
+	for _, session := range []struct {
+		id        string
+		gameID    string
+		startTime time.Time
+		duration  int
+	}{
+		{"ch-session-before", "ch-1", createdAt.Add(30 * time.Minute), 90},
+		{"ch-session-after", "ch-1", resetAt.Add(time.Hour), 90},
+		{"ch-session-two", "ch-2", createdAt.Add(3 * time.Hour), 60},
+	} {
+		if _, err := db.Exec(
+			`INSERT INTO play_sessions (id, game_id, start_time, end_time, duration, updated_at) VALUES (?, ?, ?, ?, ?, ?)`,
+			session.id, session.gameID, session.startTime,
+			session.startTime.Add(time.Duration(session.duration)*time.Second),
+			session.duration, session.startTime,
+		); err != nil {
+			t.Fatalf("准备游玩记录失败: %v", err)
+		}
+	}
+
+	exporterInstance := exporter.NewYukiHubExporter(context.Background(), db)
+	exporterInstance.SetProfile("Yuki", "https://yukihub.zh.kg/avatar.png")
+	exporterInstance.SetMetadataSource("nextmoe")
+
+	cloud, err := exporterInstance.Build()
+	if err != nil {
+		t.Fatalf("云同步快照导出失败: %v", err)
+	}
+	local, err := exporterInstance.BuildLocalBackup()
+	if err != nil {
+		t.Fatalf("本地备份快照导出失败: %v", err)
+	}
+
+	// 先确认负载确实非空，避免「两边都是空快照所以相等」的假阳性。
+	if len(cloud.Games) != 3 {
+		t.Fatalf("导出游戏数 = %d, want 3（无标题条目应被跳过）", len(cloud.Games))
+	}
+	if len(cloud.PlaySessions) != 2 {
+		t.Fatalf("导出会话数 = %d, want 2（清零之前的会话被过滤）", len(cloud.PlaySessions))
+	}
+	if len(cloud.MetadataCache) != 1 {
+		t.Fatalf("导出元数据缓存数 = %d, want 1", len(cloud.MetadataCache))
+	}
+	if cloud.Profile == nil || cloud.Settings.MetadataSource != "nextmoe" {
+		t.Fatalf("profile/settings 缺失: %+v / %+v", cloud.Profile, cloud.Settings)
+	}
+
+	// 信封差异必须恰好是手机版约定的那三项。
+	if cloud.CreatedAt != 0 || cloud.BackupType != "" {
+		t.Errorf("云同步形态 created_at/backup_type = %d/%q, want 0/空", cloud.CreatedAt, cloud.BackupType)
+	}
+	if local.CreatedAt <= 0 || local.BackupType != "local_full" {
+		t.Errorf("本地形态 created_at/backup_type = %d/%q, want 当前毫秒/local_full", local.CreatedAt, local.BackupType)
+	}
+	if local.Note == cloud.Note {
+		t.Errorf("两种形态的 note 应不同，都等于 %q", local.Note)
+	}
+
+	// 把信封归一化后，两份快照必须逐字节相同。
+	normalizedLocal := *local
+	normalizedLocal.CreatedAt = cloud.CreatedAt
+	normalizedLocal.Note = cloud.Note
+	normalizedLocal.BackupType = cloud.BackupType
+
+	cloudJSON, err := json.Marshal(cloud)
+	if err != nil {
+		t.Fatalf("序列化云同步快照失败: %v", err)
+	}
+	localJSON, err := json.Marshal(&normalizedLocal)
+	if err != nil {
+		t.Fatalf("序列化本地备份快照失败: %v", err)
+	}
+	if string(cloudJSON) != string(localJSON) {
+		t.Errorf("三条通道的负载必须完全一致（差异只能出现在信封上）:\ncloud=%s\nlocal=%s", cloudJSON, localJSON)
+	}
+
+	// 云同步形态不能带上本地备份专属键。
+	if strings.Contains(string(cloudJSON), "backup_type") {
+		t.Errorf("云同步快照不应包含 backup_type：%s", cloudJSON)
+	}
 }

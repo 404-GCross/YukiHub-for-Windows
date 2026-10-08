@@ -311,6 +311,12 @@ export default defineConfig({
         "bigscreen-kenburns": "1",
         "bigscreen-hint-dim": "1",
         "bigscreen-enter": "1",
+        "bigscreen-panel-in": "1",
+        "bigscreen-scrim-in": "1",
+        // 入场动画的收尾：主界面圆形揭示 + 轻微回缩（对齐手机端 createCircularReveal）
+        "bigscreen-reveal": "1",
+        // 设置页加载中的齿轮（原来写的是 animate-spin-slow，主题里没有 → 齿轮是不转的）
+        "spin-slow": "infinite",
       },
       durations: {
         "app-toast-enter": "450ms",
@@ -326,6 +332,10 @@ export default defineConfig({
         "bigscreen-kenburns": "22s",
         "bigscreen-hint-dim": "4000ms",
         "bigscreen-enter": "320ms",
+        "bigscreen-panel-in": "220ms",
+        "bigscreen-scrim-in": "180ms",
+        "bigscreen-reveal": "620ms",
+        "spin-slow": "2800ms",
       },
       keyframes: {
         "app-toast-enter":
@@ -355,6 +365,17 @@ export default defineConfig({
         // 入场：卡片 / 侧栏条目自下而上淡入，配合 42ms×idx 的错峰延迟
         "bigscreen-enter":
           "{0%{opacity:0;transform:translate3d(0,18px,0) scale(.96)}100%{opacity:1;transform:translate3d(0,0,0) scale(1)}}",
+        // 浮层：遮罩淡入 + 面板自右侧滑入（对齐手机端 BigScreenPanel 的 180/200ms）
+        "bigscreen-panel-in":
+          "{0%{opacity:0;transform:translate3d(22px,0,0)}100%{opacity:1;transform:translate3d(0,0,0)}}",
+        "bigscreen-scrim-in": "{0%{opacity:0}100%{opacity:1}}",
+        // 主界面揭示：圆心由 0 扩到覆盖四角（手机端 radius = hypot(w,h)/2），
+        // 同时 1.06 → 1.0 回缩。clip-path 的百分比参考值是 hypot(w,h)/√2，
+        // 所以 75% ≈ 0.53×hypot > 0.5×hypot，四角一定被盖住。
+        "bigscreen-reveal":
+          "{0%{clip-path:circle(0% at 50% 50%);transform:scale(1.06)}100%{clip-path:circle(75% at 50% 50%);transform:scale(1)}}",
+        "spin-slow":
+          "{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}",
       },
       properties: {
         "app-toast-enter": {
@@ -398,6 +419,16 @@ export default defineConfig({
           "animation-fill-mode": "both",
           "transform-origin": "center",
         },
+        "bigscreen-panel-in": {
+          "animation-fill-mode": "both",
+        },
+        "bigscreen-scrim-in": {
+          "animation-fill-mode": "both",
+        },
+        "bigscreen-reveal": {
+          "animation-fill-mode": "both",
+          "transform-origin": "center",
+        },
       },
       timingFns: {
         "app-toast-enter": "cubic-bezier(.22,1,.36,1)",
@@ -412,6 +443,10 @@ export default defineConfig({
         "bigscreen-kenburns": "ease-out",
         "bigscreen-hint-dim": "ease-out",
         "bigscreen-enter": "cubic-bezier(.2,.9,.18,1)",
+        "bigscreen-panel-in": "cubic-bezier(.2,.9,.18,1)",
+        "bigscreen-scrim-in": "ease-out",
+        "bigscreen-reveal": "cubic-bezier(.2,.9,.18,1)",
+        "spin-slow": "linear",
       },
     },
     colors: {
@@ -423,6 +458,7 @@ export default defineConfig({
         100: "#F1F3F9",
         150: "#E7EAF4",
         200: "#DDE2F0",
+        250: "#D2D9EA", // 200 与 300 之间，供细描边使用（之前只剩 200/300 可选）
         300: "#C7CFE3",
         400: "#9AA4BF", // = yh_text_muted
         500: "#6E7A9B",
@@ -431,6 +467,10 @@ export default defineConfig({
         750: "#222B49", // = yh_card_2
         800: "#171E33", // = yh_card
         900: "#0B1020", // = yh_bg
+        // **950 必须存在**：大屏的遮罩全部用它（入场层、详情层、设置层、卡片压暗）。
+        // 少了这一档，`bg-brand-950` / `bg-brand-950/85` 这类类名会被 UnoCSS 静默丢弃 ——
+        // 表现就是「入场动画没有遮罩，背后的游戏列表直接可见」。
+        950: "#060A15",
       },
       // 主色调 (primary) - YukiHub 柔和蓝。
       // 300 是手机版 yh_primary(#8AB4FF) 本身，供暗色模式的前景/强调文字使用；
@@ -500,6 +540,7 @@ export default defineConfig({
         700: "#334155",
         800: "#1E293B",
         900: "#0F172A",
+        950: "#020617", // 与 50~900 同源的 slate 步进（缺它会让 text-neutral-950 静默失效）
       },
       // 成功色 (Success) - 极光绿
       success: {
@@ -553,6 +594,17 @@ export default defineConfig({
         800: "#075985",
         900: "#0C181D",
       },
+    },
+
+    // 主内容区的宽度上限。`max-w-8xl mx-auto` 写在 9 个页面/骨架里
+    // （library / game / stats / settings / downloads + 4 个 Skeleton），
+    // 但 presetWind3 只到 7xl（80rem），`8xl` 一直是**静默失效的死引用** ——
+    // 页面在超宽屏上被拉满、骨架与真实页面也永远对不齐。
+    //
+    // 取 96rem（1536px）：1920 窗口（侧栏展开 16rem + p-8）下可用宽度约 1600px，
+    // 只收 32px 左右，观感几乎不变；2560 / 3440 / 4K 上则把长行与过宽的网格收住。
+    maxWidth: {
+      "8xl": "96rem",
     },
   },
 });
