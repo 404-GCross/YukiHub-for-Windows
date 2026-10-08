@@ -146,6 +146,28 @@ wails3 build
 > 注意：仓库目录名包含空格（`YukiHub for Windows`），部分脚本对含空格路径敏感。
 > 如果构建脚本报路径错误，可把仓库检出到无空格路径下（例如 `D:\work\yukihub`）。
 
+## 9. Linux 构建（deb / rpm / AppImage）
+
+CI 的 `autobuild` / `release` 的 Linux 作业会自动完成下列步骤；本地构建需要：
+
+```bash
+sudo apt-get install -y build-essential pkg-config desktop-file-utils \
+  libayatana-appindicator3-dev libgtk-4-dev libwebkitgtk-6.0-dev
+go install github.com/goreleaser/nfpm/v2/cmd/nfpm@latest
+# AppImage 另需 appimagetool（https://github.com/AppImage/AppImageKit/releases）
+# 凭据通过环境变量注入（与 Windows 同名）：YUKIHUB_UPDATE_SERVICE_URL、
+# YUKIHUB_BANGUMI_CLIENT_ID/SECRET、YUKIHUB_HIKARINAGI_CLIENT_ID/SECRET、
+# YUKIHUB_TOUCHGAL_TOKEN、YUKIHUB_UMBRA_CLIENT_ID/REGISTRATION_TOKEN
+
+./scripts/build.sh all <version> amd64
+```
+
+- 构建脚本会自动调用 `scripts/patch-wails-linux-tray.sh`（Wails beta.24 的
+  Linux 托盘 / WebKitGTK 兼容补丁）；直接 `go build` 前也需手动运行一次
+- 产物在 `build/bin/`：`YukiHub-<version>-linux-amd64.{deb,rpm,AppImage}`
+- 运行库依赖：GTK4、WebKitGTK 6.0、xdg-utils（AppImage 不捆绑这些系统库）
+- 仅支持 amd64；代码中保留的上游 arm64 分支不构建、不验证
+
 ## 本机构建安装包（WorkBuddy 沙箱环境）
 
 CI 上直接跑 `scripts/build.bat installer <version> amd64` 即可。

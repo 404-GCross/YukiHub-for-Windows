@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Name=YukiHub
+Comment=YukiHub game library manager
+Exec=/usr/bin/YukiHub %u
+Terminal=false
+Type=Application
+Icon=com.yukihub.desktop
+Categories=Game;
+StartupWMClass=com.yukihub.desktop
+MimeType=x-scheme-handler/yukihub;

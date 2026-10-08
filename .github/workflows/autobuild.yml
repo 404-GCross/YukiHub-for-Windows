@@ -91,7 +91,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 10
+          version: 12.6.0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -345,9 +345,111 @@ jobs:
           path: signed-installer/YukiHub-${{ needs.version.outputs.version }}-windows-${{ matrix.arch }}-setup.exe
           if-no-files-found: error
 
+  build-linux:
+    name: Linux amd64 / Packages
+    needs: version
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+          cache-dependency-path: |
+            go.sum
+            updater/go.sum
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 12.6.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Install Linux build dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y build-essential ca-certificates curl desktop-file-utils libayatana-appindicator3-dev libgtk-4-dev libwebkitgtk-6.0-dev pkg-config
+
+      - name: Install nFPM
+        shell: bash
+        run: |
+          set -euo pipefail
+          go install github.com/goreleaser/nfpm/v2/cmd/nfpm@latest
+          nfpm --version
+
+      - name: Install appimagetool
+        shell: bash
+        run: |
+          set -euo pipefail
+          tool_path="${RUNNER_TEMP:-/tmp}/appimagetool-x86_64.AppImage"
+          curl -fsSL \
+            "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage" \
+            -o "$tool_path"
+          chmod 755 "$tool_path"
+          sudo install -m 0755 "$tool_path" /usr/local/bin/appimagetool
+          APPIMAGE_EXTRACT_AND_RUN=1 appimagetool --version
+
+      - name: Install matching Wails v3 CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(go list -m -f '{{.Version}}' github.com/wailsapp/wails/v3)"
+          go install "github.com/wailsapp/wails/v3/cmd/wails3@$version"
+          test "$(wails3 version 2>&1)" = "$version"
+
+      - name: Patch Wails Linux tray support
+        shell: bash
+        run: ./scripts/patch-wails-linux-tray.sh
+
+      - name: Build Linux packages
+        shell: bash
+        env:
+          YUKIHUB_UPDATE_SERVICE_URL: ${{ vars.YUKIHUB_UPDATE_SERVICE_URL }}
+          YUKIHUB_BANGUMI_CLIENT_ID: ${{ vars.YUKIHUB_BANGUMI_CLIENT_ID }}
+          YUKIHUB_BANGUMI_CLIENT_SECRET: ${{ secrets.YUKIHUB_BANGUMI_CLIENT_SECRET }}
+          YUKIHUB_HIKARINAGI_CLIENT_ID: ${{ vars.YUKIHUB_HIKARINAGI_CLIENT_ID }}
+          YUKIHUB_HIKARINAGI_CLIENT_SECRET: ${{ secrets.YUKIHUB_HIKARINAGI_CLIENT_SECRET }}
+          YUKIHUB_TOUCHGAL_TOKEN: ${{ secrets.YUKIHUB_TOUCHGAL_TOKEN }}
+          YUKIHUB_UMBRA_CLIENT_ID: ${{ vars.YUKIHUB_UMBRA_CLIENT_ID }}
+          YUKIHUB_UMBRA_REGISTRATION_TOKEN: ${{ secrets.YUKIHUB_UMBRA_REGISTRATION_TOKEN }}
+          APPIMAGE_EXTRACT_AND_RUN: "1"
+        run: |
+          set -euo pipefail
+          chmod +x scripts/build.sh
+          ./scripts/build.sh all '${{ needs.version.outputs.version }}' 'amd64'
+          test "$(find build/bin -maxdepth 1 -type f -name 'YukiHub-*-linux-amd64.deb' | wc -l | tr -d ' ')" -eq 1
+          test "$(find build/bin -maxdepth 1 -type f -name 'YukiHub-*-linux-amd64.rpm' | wc -l | tr -d ' ')" -eq 1
+          test "$(find build/bin -maxdepth 1 -type f -name 'YukiHub-*-linux-amd64.AppImage' | wc -l | tr -d ' ')" -eq 1
+
+      - name: Upload Linux packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: yukihub-${{ needs.version.outputs.version }}-linux-amd64
+          path: |
+            build/bin/YukiHub-*-linux-amd64.deb
+            build/bin/YukiHub-*-linux-amd64.rpm
+            build/bin/YukiHub-*-linux-amd64.AppImage
+          if-no-files-found: error
+
   create-prerelease:
     name: Create pre-release
-    needs: [version, build-windows]
+    needs: [version, build-windows, build-linux]
     runs-on: ubuntu-latest
     permissions:
       actions: read
@@ -371,8 +473,8 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p release
-          find artifacts -maxdepth 1 -type f \( -name '*.zip' -o -name '*.exe' \) -exec cp {} release/ \;
-          test "$(find release -maxdepth 1 -type f | wc -l | tr -d ' ')" -eq 4
+          find artifacts -maxdepth 1 -type f \( -name '*.zip' -o -name '*.exe' -o -name '*.deb' -o -name '*.rpm' -o -name '*.AppImage' \) -exec cp {} release/ \;
+          test "$(find release -maxdepth 1 -type f | wc -l | tr -d ' ')" -eq 7
           find release -maxdepth 1 -type f -printf '%f\n' | sort
 
       - name: Get recent commits
@@ -412,8 +514,11 @@ jobs:
           |------|------|
           | `*-windows-*-portable.zip` | Windows 便携版，解压即用，数据存储在程序目录 |
           | `*-windows-*-setup.exe` | Windows NSIS 安装版，数据存储在 `%APPDATA%\\YukiHub` |
+          | `*-linux-amd64.AppImage` | Linux AppImage，依赖系统 GTK4 / WebKitGTK 6.0 运行库 |
+          | `*-linux-amd64.deb` | Linux Debian/Ubuntu 安装包 |
+          | `*-linux-amd64.rpm` | Linux Fedora/RHEL/openSUSE 安装包 |
 
-          Windows 提供 AMD64 与 ARM64。
+          Windows 提供 AMD64 与 ARM64；Linux 提供 AMD64。
 
           ### ⚠️ 注意事项
 

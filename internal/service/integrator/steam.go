@@ -42,6 +42,24 @@ type SteamBatchResult struct {
 	BackupPath string
 }
 
+type SteamCompatibilityTool struct {
+	Name        string
+	DisplayName string
+	Path        string
+	BuiltIn     bool
+}
+
+type SteamCompatibilityInfo struct {
+	Supported      bool
+	SteamInstalled bool
+	SteamRoot      string
+	AppID          string
+	ProtonPrefix   string
+	CurrentTool    string
+	DefaultTool    string
+	Tools          []SteamCompatibilityTool
+}
+
 func ResolveSteamTarget(ctx context.Context, game models.Game) (SteamResult, error) {
 	return resolveSteamPlatformTarget(ctx, game)
 }
@@ -57,4 +75,16 @@ func ImportSteamShortcuts(ctx context.Context, games []models.Game) (SteamBatchR
 func SetSteamLaunchOptions(ctx context.Context, game models.Game, launchOptions string) (SteamResult, error) {
 	game.SteamLaunchOptions = launchOptions
 	return setSteamPlatformLaunchOptions(ctx, game)
+}
+
+func GetSteamCompatibilityInfo(ctx context.Context, game models.Game) (SteamCompatibilityInfo, error) {
+	return getSteamPlatformCompatibilityInfo(ctx, game)
+}
+
+func SetSteamCompatibilityTool(ctx context.Context, game models.Game, toolName string) (SteamCompatibilityInfo, error) {
+	return setSteamPlatformCompatibilityTool(ctx, game, toolName)
+}
+
+func RestartSteamClient(ctx context.Context) error {
+	return restartSteamPlatformClient(ctx)
 }

@@ -183,6 +183,7 @@ function GameDetailPage() {
   const navigate = useNavigate();
   const { gameId } = Route.useParams();
   const config = useAppStore(state => state.config);
+  const platformGOOS = useAppStore(state => state.platformGOOS);
   const startGame = useAppStore(state => state.startGame);
   const fetchHomeData = useAppStore(state => state.fetchHomeData);
   const gameRuntime = useAppStore(state => state.gameRuntimes[gameId]);
@@ -241,8 +242,9 @@ function GameDetailPage() {
   const latestGameData = useRef<models.Game | null>(null);
   const skipNextAutoSave = useRef(false);
   latestGameData.current = game;
-  const supportsAdminLaunch = true;
-  const supportsSteamLaunch = true;
+  const supportsAdminLaunch = platformGOOS === "windows";
+  const supportsSteamLaunch
+    = platformGOOS === "windows" || platformGOOS === "linux";
 
   const updateGameState = useCallback(
     (
@@ -1756,6 +1758,7 @@ function GameDetailPage() {
         <GameLaunchPanel
           game={game}
           config={config || undefined}
+          goos={platformGOOS}
           onGameChange={updateGameState}
           onLaunchModeChange={handleDefaultLaunchModeChange}
           onRefreshSteamSettings={handleRefreshSteamSettings}
@@ -1835,7 +1838,7 @@ function GameDetailPage() {
         status={steamStatus}
         isChecking={isCheckingSteam}
         isImporting={isImportingSteam}
-        canRestartSteam={false}
+        canRestartSteam={platformGOOS === "linux"}
         onClose={handleCloseSteamModal}
         onImport={handleImportGameToSteam}
         onRetry={handleRetrySteamStatus}

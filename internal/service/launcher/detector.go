@@ -2,6 +2,7 @@ package launcher
 
 import (
 	"fmt"
+	"runtime"
 	"strings"
 	"time"
 	"yukihub/internal/utils/processutils"
@@ -130,7 +131,24 @@ func IsPersistableProcessName(processName string) bool {
 	if name == "" || IsLikelyHelperProcess(name) {
 		return false
 	}
-	return strings.HasSuffix(name, ".exe")
+	if runtime.GOOS != "windows" && isGenericUnixWrapperProcessName(name) {
+		return false
+	}
+	if runtime.GOOS == "windows" {
+		return strings.HasSuffix(name, ".exe")
+	}
+	return true
+}
+
+func isGenericUnixWrapperProcessName(processName string) bool {
+	name := strings.ToLower(strings.TrimSpace(processName))
+	switch name {
+	case "bash", "dash", "env", "fish", "sh", "zsh",
+		"python", "python2", "python3":
+		return true
+	default:
+		return strings.HasPrefix(name, "python2.") || strings.HasPrefix(name, "python3.")
+	}
 }
 
 func IsLikelyHelperProcess(processName string) bool {
@@ -173,6 +191,10 @@ func IsLikelyHelperProcess(processName string) bool {
 		"rpcss.exe",
 		"svchost.exe",
 		"tabtip.exe",
+		"unitycrashhandler.exe",
+		"unitycrashhandler32.exe",
+		"unitycrashhandler64.exe",
+		"unitycrashhandl",
 		"xalia.exe":
 		return true
 	default:

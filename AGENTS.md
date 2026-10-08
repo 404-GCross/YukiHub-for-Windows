@@ -4,18 +4,19 @@
 
 ## 项目概况
 
-Wails v3 Alpha 桌面应用（**仅 Windows**）。
+Wails v3 Alpha 桌面应用（**Windows + Linux amd64**）。
 前端：React + TypeScript + UnoCSS（presetWind3）+ Zustand + TanStack Router。
 后端：Go + DuckDB + 自研 migrations。
 
-macOS / iOS / Linux 的平台实现、构建资源与发布作业已全部移除。
-**新增代码 MUST NOT 引入非 Windows 的平台分支**——不要写 `runtime.GOOS` 的
-darwin / linux 分支，也不要用 `//go:build darwin` 之类的标签。
-`docs/ROADMAP.md` 阶段 1 列出了尚未清理干净的少数遗留点。
+macOS / iOS 的平台实现已移除。Linux（amd64）支持已于 2026-10-06 恢复，
+见 [ADR-0004](docs/decisions/0004-restore-linux-support.md)。
+**新增代码 MUST NOT 引入 macOS 平台分支**；Linux 分支必须落在 `_linux.go`
+文件或带显式 `runtime.GOOS == "linux"` 判断，界面侧使用 `platformGOOS`。
 
 ## 项目身份（影响每一次改动）
 
-本仓库是 **YukiHub for Windows**，LunaBox v1.13.0 的硬分叉。
+本仓库是 **YukiHub for Windows**（同时支持 Windows 与 Linux amd64 桌面端），
+LunaBox v1.13.0 的硬分叉。
 
 - 整体按 **AGPL-3.0** 授权（GPL-3.0 的 Android 版与本项目为同一产品家族，但本项目不能闭源）。
 - 与上游定位为"硬分叉、不回灌"，不要试图与上游保持同步。
@@ -24,6 +25,8 @@ darwin / linux 分支，也不要用 `//go:build darwin` 之类的标签。
   - MUST 发布前同步更新 `NOTICE`、`docs/upstream-lunabox.md` 的修改记录。
 - 产品与来源信息的唯一来源是 `internal/version`（`AppDisplayName`、`RepositoryURL`、
   `UpstreamProject` 等），MUST NOT 在别处再硬编码一份。
+- 平台支持边界：**Windows 10/11（amd64/arm64）+ Linux（amd64）**。
+  macOS / iOS 不在支持范围；Linux 构建依赖 GTK4 与 WebKitGTK 6.0。
 
 ## 关键词优先级
 

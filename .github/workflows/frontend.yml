@@ -23,7 +23,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 9
+          version: 12.6.0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -38,7 +38,8 @@ jobs:
 
       - name: Audit dependencies
         working-directory: ./frontend
-        run: pnpm audit
+        # 只看生产依赖：devDependencies 的告警不应阻塞 CI（与上游 LunaBox 一致）
+        run: pnpm audit --prod
 
       - name: Run ESLint
         working-directory: ./frontend

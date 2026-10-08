@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	goruntime "runtime"
 	"runtime/debug"
 	"strings"
 	"sync"
@@ -387,6 +388,33 @@ func dispatchProtocolRequest(
 			}
 		}()
 	}
+}
+
+func repairStaleAppImageProtocolRegistration(appLogger *applog.FileLogger) {
+	if goruntime.GOOS != "linux" || !apputils.IsAppImageMode() {
+		return
+	}
+
+	currentPath, err := apputils.GetLaunchExecutablePath()
+	if err != nil {
+		appLogger.Warning("failed to resolve AppImage path for protocol repair: " + err.Error())
+		return
+	}
+	registeredPath, err := protocol.GetRegisteredURLSchemeExe()
+	if err != nil {
+		appLogger.Warning("failed to query protocol registration for AppImage repair: " + err.Error())
+		return
+	}
+	registeredPath = strings.TrimSpace(registeredPath)
+	if !protocol.RegistrationNeedsRepair(registeredPath, currentPath) {
+		return
+	}
+
+	if err := protocol.RegisterPortableURLScheme(currentPath); err != nil {
+		appLogger.Warning("failed to repair stale AppImage protocol registration: " + err.Error())
+		return
+	}
+	appLogger.Info(fmt.Sprintf("repaired stale AppImage protocol registration: %s -> %s", registeredPath, currentPath))
 }
 
 type startupCoordinator struct {
@@ -1084,6 +1112,9 @@ func runGUI(
 			return fmt.Errorf("读取应用配置失败: %w", err)
 		}
 		config = loadedConfig
+
+		repairStaleAppImageProtocolRegistration(appLogger)
+
 		// 好友栏快捷键的复查要等配置读出来才知道用户设的是什么（见下面的
 		// verifyOverlayShortcut 装配处）。
 		if verifyOverlayShortcut != nil {

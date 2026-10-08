@@ -1,7 +1,9 @@
+import { Browser } from "@wailsio/runtime";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { DownloadAndApplyUpdate } from "../../../bindings/yukihub/internal/service/updateservice";
 import { onWailsEvent } from "../../bindings/runtime";
+import { useAppStore } from "../../store";
 import { formatFileSize } from "../../utils/size";
 import { ModalPortal } from "./ModalPortal";
 
@@ -41,6 +43,7 @@ export function UpdateDialog({
   onSkip,
 }: UpdateDialogProps) {
   const { t } = useTranslation();
+  const platformGOOS = useAppStore(state => state.platformGOOS);
   const [isVisible, setIsVisible] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [progress, setProgress] = useState<UpdateProgress | null>(null);
@@ -89,6 +92,14 @@ export function UpdateDialog({
     return null;
   }
 
+  const supportsInAppUpdate = platformGOOS === "windows";
+  const usesManualUpdate
+    = platformGOOS === "darwin" || platformGOOS === "linux";
+  const showGitHubDownload
+    = usesManualUpdate && Boolean(updateInfo.downloads.github);
+  const showGiteeDownload
+    = usesManualUpdate && Boolean(updateInfo.downloads.gitee);
+
   const handleClose = () => {
     if (isUpdating) {
       return;
@@ -102,8 +113,15 @@ export function UpdateDialog({
     handleClose();
   };
 
+  const handleDownload = (source: string) => {
+    const url = updateInfo.downloads[source];
+    if (url) {
+      void Browser.OpenURL(url);
+    }
+  };
+
   const handleInAppUpdate = async () => {
-    if (!updateInfo.update_manifest_url || isUpdating) {
+    if (!supportsInAppUpdate || !updateInfo.update_manifest_url || isUpdating) {
       return;
     }
     setIsUpdating(true);
@@ -262,7 +280,7 @@ export function UpdateDialog({
                 </div>
               )}
 
-              {updateInfo.update_manifest_url && (
+              {supportsInAppUpdate && updateInfo.update_manifest_url && (
                 <button
                   type="button"
                   onClick={handleInAppUpdate}
@@ -285,9 +303,40 @@ export function UpdateDialog({
                     {t("updateDialog.updateFailed")}
                   </p>
                   <p className="mt-1 break-words">{updateError}</p>
+                  {(showGitHubDownload || showGiteeDownload) && (
+                    <p className="mt-1">{t("updateDialog.manualFallback")}</p>
+                  )}
                 </div>
               )}
 
+              {(showGitHubDownload || showGiteeDownload) && (
+                <div
+                  className={`grid gap-2 ${showGitHubDownload && showGiteeDownload ? "grid-cols-2" : "grid-cols-1"}`}
+                >
+                  {showGitHubDownload && (
+                    <button
+                      type="button"
+                      onClick={() => handleDownload("github")}
+                      disabled={isUpdating}
+                      className="w-full px-4 py-2.5 text-sm font-medium text-white bg-brand-700 hover:bg-brand-800 dark:bg-brand-200 dark:hover:bg-white dark:text-brand-900 rounded-lg transition-colors flex items-center justify-center gap-2"
+                    >
+                      <span className="i-mdi-github text-lg" />
+                      {t("updateDialog.githubDownload")}
+                    </button>
+                  )}
+                  {showGiteeDownload && (
+                    <button
+                      type="button"
+                      onClick={() => handleDownload("gitee")}
+                      disabled={isUpdating}
+                      className="w-full px-4 py-2.5 text-sm font-medium text-white bg-neutral-600 hover:bg-neutral-700 rounded-lg transition-colors flex items-center justify-center gap-2"
+                    >
+                      <span className="i-mdi-cloud-download text-lg" />
+                      {t("updateDialog.giteeDownload")}
+                    </button>
+                  )}
+                </div>
+              )}
               <button
                 type="button"
                 onClick={handleSkip}

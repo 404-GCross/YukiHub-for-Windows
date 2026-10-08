@@ -1,3 +1,7 @@
+//go:build windows
+
+// 后台静音是 Windows-only 功能：Linux 上 audioutils.IsProcessMuteSupported()
+// 恒为 false，handleFocusUpdate 会直接返回，这组状态机测试只可能在 Windows 通过。
 package service
 
 import (

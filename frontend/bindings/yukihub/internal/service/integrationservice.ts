@@ -15,15 +15,57 @@ export function BatchImportGamesToSteam(gameIDs: string[]): $CancellablePromise<
     });
 }
 
+/**
+ * GetGameCompatibilityTools 返回指定游戏可用的 Wine/Proton 快捷工具。
+ */
+export function GetGameCompatibilityTools(gameID: string): $CancellablePromise<$models.GameCompatibilityToolsInfo> {
+    return $Call.ByID(2329531978, gameID).then(($result: any) => {
+        return $$createType3($result);
+    });
+}
+
+export function GetGameSteamCompatibility(gameID: string): $CancellablePromise<$models.SteamCompatibilityInfo> {
+    return $Call.ByID(830408929, gameID).then(($result: any) => {
+        return $$createType6($result);
+    });
+}
+
 export function GetGameSteamStatus(gameID: string): $CancellablePromise<$models.SteamLaunchStatus> {
     return $Call.ByID(596984333, gameID).then(($result: any) => {
         return $$createType1($result);
     });
 }
 
+export function GetLocalProtonTools(): $CancellablePromise<$models.LocalProtonTool[]> {
+    return $Call.ByID(2824450473).then(($result: any) => {
+        return $$createType5($result);
+    });
+}
+
 export function ImportGameToSteam(gameID: string): $CancellablePromise<$models.SteamImportResult> {
     return $Call.ByID(3268789273, gameID).then(($result: any) => {
         return $$createType2($result);
+    });
+}
+
+/**
+ * OpenGameCompatibilityTool 打开指定游戏的 Wine/Proton 快捷工具。
+ */
+export function OpenGameCompatibilityTool(gameID: string, action: string): $CancellablePromise<string> {
+    return $Call.ByID(1083713867, gameID, action);
+}
+
+export function OpenGameSteamProtonPrefix(gameID: string): $CancellablePromise<string> {
+    return $Call.ByID(960698933, gameID);
+}
+
+export function RestartSteamClient(): $CancellablePromise<void> {
+    return $Call.ByID(140996259);
+}
+
+export function SetGameSteamCompatibilityTool(gameID: string, toolName: string): $CancellablePromise<$models.SteamCompatibilityInfo> {
+    return $Call.ByID(3484874087, gameID, toolName).then(($result: any) => {
+        return $$createType6($result);
     });
 }
 
@@ -37,3 +79,7 @@ export function SetGameSteamLaunchOptions(gameID: string, launchOptions: string)
 const $$createType0 = $models.SteamBatchImportResult.createFrom;
 const $$createType1 = $models.SteamLaunchStatus.createFrom;
 const $$createType2 = $models.SteamImportResult.createFrom;
+const $$createType3 = $models.GameCompatibilityToolsInfo.createFrom;
+const $$createType4 = $models.LocalProtonTool.createFrom;
+const $$createType5 = $Create.Array($$createType4);
+const $$createType6 = $models.SteamCompatibilityInfo.createFrom;

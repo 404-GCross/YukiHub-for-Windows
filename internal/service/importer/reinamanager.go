@@ -12,6 +12,7 @@ import (
 	"time"
 	"yukihub/internal/applog"
 	"yukihub/internal/common/enums"
+	"yukihub/internal/common/importpath"
 	"yukihub/internal/common/vo"
 	"yukihub/internal/models"
 	"yukihub/internal/models/reinamanager"
@@ -575,6 +576,12 @@ func joinReinaManagerLaunchPath(localPath string, executable string) string {
 		return executable
 	case executable == "":
 		return localPath
+	case importpath.IsWindowsAbs(executable):
+		// Windows 绝对路径（如 D:\Games\a.exe）：保持大小写，只统一分隔符，
+		// 不依赖宿主 filepath 语义（Linux 上会被误判为相对路径）。
+		return importpath.NormalizeWindowsSeparators(executable)
+	case importpath.IsWindowsAbs(localPath):
+		return importpath.JoinWindows(localPath, executable)
 	case filepath.IsAbs(executable):
 		return executable
 	default:

@@ -13,6 +13,9 @@
 
 ### 新增
 
+- **Linux（amd64）支持**：恢复原生 Linux 运行（GTK4 / WebKitGTK 6.0）。游戏启动支持
+  原生 / Wine / Proton / Steam 四种策略；URL 协议注册、托盘、Wine/Proton 辅助工具
+  （winecfg / winetricks / protontricks）一并恢复；发布 deb / rpm / AppImage
 - **YukiHub 账号系统**：邮箱注册 / 登录 / 找回密码；未萌（NextMoe）、Hikarinagi
   第三方快捷登录（OAuth 授权码 + PKCE + 本地 loopback 回调，客户端不接触第三方令牌）；
   登录后默认开启「向好友展示正在玩」

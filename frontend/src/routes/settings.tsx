@@ -35,6 +35,7 @@ function SettingsPage() {
   const { t } = useTranslation();
   const config = useAppStore(state => state.config);
   const draftConfig = useAppStore(state => state.draftConfig);
+  const platformGOOS = useAppStore(state => state.platformGOOS);
   const backgroundProcessMuteSupported = useAppStore(
     state => state.backgroundProcessMuteSupported,
   );
@@ -229,6 +230,7 @@ function SettingsPage() {
           <GameSettingsPanel
             formData={draftConfig}
             onChange={handleDraftChange}
+            goos={platformGOOS}
             backgroundProcessMuteSupported={backgroundProcessMuteSupported}
           />
         </CollapsibleSection>

@@ -223,6 +223,33 @@ func TestNormalizeBigScreenEffectLevel(t *testing.T) {
 	}
 }
 
-// Wine / CrossOver 相关的配置迁移逻辑（MigrateLegacyCompatibilityConfig 及
-// 其两个用例）已随 Windows-only 裁剪移除：这些字段仅服务于 macOS/Linux 上的
-// Wine、CrossOver、winetricks、protontricks，Windows 上不存在对应概念。
+func TestMigrateLegacyCompatibilityConfigMovesCrossOverFields(t *testing.T) {
+	config := &AppConfig{
+		WineRunnerPath: "/Applications/CrossOver.app/Contents/SharedSupport/CrossOver/bin/wine",
+		WinePrefix:     "Legacy Bottle",
+	}
+
+	if !MigrateLegacyCompatibilityConfig(config) {
+		t.Fatal("expected legacy CrossOver config to be migrated")
+	}
+	if config.WineRunnerPath != "" || config.WinePrefix != "" {
+		t.Fatalf("legacy shared fields were not cleared: path=%q prefix=%q", config.WineRunnerPath, config.WinePrefix)
+	}
+	if config.CrossOverRunnerPath != "/Applications/CrossOver.app/Contents/SharedSupport/CrossOver/bin/wine" || config.CrossOverBottle != "Legacy Bottle" {
+		t.Fatalf("unexpected migrated CrossOver config: path=%q bottle=%q", config.CrossOverRunnerPath, config.CrossOverBottle)
+	}
+}
+
+func TestMigrateLegacyCompatibilityConfigKeepsWineFields(t *testing.T) {
+	config := &AppConfig{
+		WineRunnerPath: "/opt/homebrew/bin/wine",
+		WinePrefix:     "/Users/test/.wine",
+	}
+
+	if MigrateLegacyCompatibilityConfig(config) {
+		t.Fatal("plain Wine config should not be migrated")
+	}
+	if config.WineRunnerPath != "/opt/homebrew/bin/wine" || config.WinePrefix != "/Users/test/.wine" {
+		t.Fatalf("Wine config changed unexpectedly: %+v", config)
+	}
+}

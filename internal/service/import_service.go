@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	goruntime "runtime"
 	"strings"
 	"sync"
 	"time"
@@ -530,7 +531,7 @@ func emptyServiceImportResult() ImportResult {
 // SelectLibraryDirectory 选择游戏库目录，并仅将当前系统可访问的目录用于初始化对话框。
 func (s *ImportService) SelectLibraryDirectory(initialDirectory string) (LibraryDirectorySelection, error) {
 	initialDirectory = strings.TrimSpace(initialDirectory)
-	validInitialDirectory := batchImportInitialDirectory(initialDirectory)
+	validInitialDirectory := batchImportInitialDirectory(initialDirectory, goruntime.GOOS)
 	selection, err := s.runtime.OpenDirectory(wailsruntime.OpenDialogOptions{
 		Title:     "选择游戏库目录",
 		Directory: validInitialDirectory,
@@ -541,17 +542,20 @@ func (s *ImportService) SelectLibraryDirectory(initialDirectory string) (Library
 	}, err
 }
 
-func batchImportInitialDirectory(directory string) string {
+func batchImportInitialDirectory(directory string, goos string) string {
 	directory = strings.TrimSpace(directory)
 	if directory == "" {
 		return ""
 	}
 
-	// 拒绝 Unix 绝对路径（单个前导斜杠），UNC 路径（双斜杠）保留。
-	if strings.HasPrefix(directory, "/") && !strings.HasPrefix(directory, "//") {
+	if goos == "windows" {
+		if strings.HasPrefix(directory, "/") && !strings.HasPrefix(directory, "//") {
+			return ""
+		}
+		directory = strings.ReplaceAll(directory, "/", `\`)
+	} else if strings.Contains(directory, `\`) {
 		return ""
 	}
-	directory = strings.ReplaceAll(directory, "/", `\`)
 
 	directory = filepath.Clean(directory)
 	if !filepath.IsAbs(directory) {
